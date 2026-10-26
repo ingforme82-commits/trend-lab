@@ -20,7 +20,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
-TGR = Path(r"C:\projects\market-site\tg_research")
+TGR = Path(os.environ.get("TRL_TG_DIR", r"C:\projects\market-site\tg_research"))   # 텔레 수집기(메인 PC 전용)
 TGR_PY = TGR / ".venv" / "Scripts" / "python.exe"
 DB = TGR / "data" / "tgr.sqlite3"
 REPO = "ingforme82-commits/trend-lab"

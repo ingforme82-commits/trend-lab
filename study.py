@@ -88,6 +88,8 @@ def push(msg: str) -> None:
         print("바뀐 내용 없음")
         return
     subprocess.run(["git", "commit", "-q", "-m", msg], cwd=ROOT, check=True)
+    # 다른 PC·Codex에서 먼저 올린 수정이 있으면 받아서 합친 뒤 올린다
+    subprocess.run(["git", "pull", "-q", "--rebase", "--autostash"], cwd=ROOT, check=True)
     subprocess.run(["git", "push", "-q"], cwd=ROOT, check=True)
     print("push 완료 — 1~2분 뒤 사이트에 반영됩니다")
 

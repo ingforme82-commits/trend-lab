@@ -8,12 +8,13 @@
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime
 from html import escape
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-OUT = Path(r"C:\Users\이가영\Documents\블로그시황")
+OUT = Path(os.environ.get("TRL_BLOG_DIR", r"C:\Users\이가영\Documents\블로그시황"))
 SITE_URL = "https://ingforme82-commits.github.io/trend-lab/"
 DOW = "월화수목금토일"
 

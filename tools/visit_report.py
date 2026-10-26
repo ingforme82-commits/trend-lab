@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import urllib.request
 from datetime import datetime, timedelta, timezone
@@ -57,7 +58,7 @@ def main() -> None:
     if "--dry" in sys.argv:
         print(msg)
         return
-    sys.path.insert(0, r"C:\projects\market-site\trader")
+    sys.path.insert(0, os.environ.get("TRL_KAKAO_DIR", r"C:\projects\market-site\trader"))   # 카톡 모듈(메인 PC 전용)
     from kakao_notify import notify
     ok = notify(msg)
     print("전송 성공" if ok else "전송 실패")
