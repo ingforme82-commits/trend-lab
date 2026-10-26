@@ -47,6 +47,7 @@
       <p class="eyebrow">조영근 추세추종 리서치 랩</p>
       <h1>숫자로 확인하는<br><span class="gold">추세추종</span></h1>
       <p class="lead">선물·금리·유가·환율·해외 프록시를 매일 정리합니다.<br>의견보다 사실과 수치, 예측보다 흐름 확인.</p>
+      <div class="hero-live" id="heroLive" hidden></div>
       <div class="hero-btns">
         <a class="btn btn-gold" href="#quiz">나의 투자 스타일 테스트</a>
         <a class="btn btn-ghost" href="#feed">블로그 분석 글 보기</a>
@@ -65,7 +66,11 @@
       </div>
       <p class="stamp" id="tickStamp">불러오는 중…</p>
     </div>
+    <div class="spot-box" id="spotBox" hidden></div>
+    <div class="sector-box" id="sectorBox" hidden></div>
     <div class="tick-grid" id="tickGrid"></div>
+    <p class="tick-group world-h">해외 지수 <small>정규장 시세(5분 갱신) · 대만은 24시간 ETF</small></p>
+    <div class="tick-grid" id="worldGrid"></div>
     <p class="fine">출처: Hyperliquid(24시간 무기한 선물, 전일 대비는 24시간 기준). 실제 지수·현물 가격과 차이가 있을 수 있는 참고용 수치입니다.</p>
   </div>
 </section>
@@ -83,6 +88,7 @@
     <div class="mv-head"><h3>📍 시장을 움직인 순간</h3><p>평소보다 크게 움직이기 시작한 구간(변곡점)과 그 직전 15분 안의 관련 뉴스입니다. 빨간 점(🔴)은 이 뉴스에만 붙습니다. 시각이 겹친다는 뜻이며 인과관계를 단정하지 않습니다. 💡 해석은 운영자가 직접 쓴 내용입니다.</p></div>
     <div class="mv-list" id="moveList"></div>
     <h3 class="nw-head">전체 속보</h3>
+    <div class="trend" id="trendBox"></div>
     <div class="chips" id="newsChips"></div>
     <ol class="nws" id="newsList"></ol>
     <button class="btn btn-ghost-dark btn-more" id="newsMore" hidden>더 보기</button>

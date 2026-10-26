@@ -168,6 +168,7 @@
 
   function open(o) {
     if (!root) build();
+    if (o.coin && !COINS.find((c) => c.k === o.coin)) COINS.push({ k: o.coin, n: o.name || o.coin.replace("xyz:", ""), d: 2, u: "$" });   // 화제 종목 등
     st.coin = o.coin || st.coin; st.sel = o.sel || null; st.news = o.news || st.news;
     if (st.sel) fitRange(); else st.range = 180;
     root.hidden = false; document.body.style.overflow = "hidden";

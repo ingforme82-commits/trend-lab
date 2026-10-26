@@ -446,3 +446,39 @@ body{overflow-x:hidden}
 .cm-note{display:block;margin-top:6px;background:#fff8e6;border-left:3px solid var(--gold);border-radius:6px;padding:6px 10px;font-size:13px}
 .cm-note a{color:var(--gold-d);font-weight:700;text-decoration:none}
 .cm-ni small{color:var(--sub)}
+
+
+/* 살아 있는 첫 화면 · 화제 종목 · 해외 지수 · 많이 나온 종목 */
+.hero-live{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;margin:-8px 0 22px;padding:10px 14px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.14);border-radius:12px;font-size:14px;color:#d8dfeb}
+.hero-live[hidden]{display:none}
+.hero-live b{color:#fff}.hero-live a{margin-left:auto;color:var(--gold);font-weight:700;text-decoration:none}
+.hl-dot{width:9px;height:9px;border-radius:50%;background:#ff4d5a;box-shadow:0 0 0 0 rgba(255,77,90,.6);animation:pulse 1.6s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 8px rgba(255,77,90,0)}100%{box-shadow:0 0 0 0 rgba(255,77,90,0)}}
+.spot-box{margin-bottom:16px}.spot-box[hidden]{display:none}
+.spot-h{margin:0 0 8px;font-weight:900;color:var(--ink)}.spot-h small{font-weight:400;color:var(--sub);font-size:12px;margin-left:6px}
+.spot{background:linear-gradient(135deg,#fff7f0,#fff);border:2px solid #f3b38f;border-radius:14px;padding:14px 16px;margin-bottom:10px}
+.spot-top{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 12px}
+.spot-n{font-size:20px}.spot-m{font-size:12px;color:var(--sub)}.spot-px{margin-left:auto;font-size:20px;font-weight:700;font-variant-numeric:tabular-nums}
+.spot-r{margin:6px 0 4px;font-size:14px;color:#4a3d24}.spot-c{margin:0 0 4px;font-size:13px;color:var(--sub)}
+.spot-news{list-style:none;margin:0 0 8px;padding:0;font-size:14px}.spot-news li{padding:2px 0}.spot-news b{font-variant-numeric:tabular-nums;color:var(--gold-d)}
+.spot-btns{display:flex;gap:8px;flex-wrap:wrap}
+.world-h{margin-top:18px}.world-h small{font-weight:400;color:var(--sub);font-size:12px;margin-left:6px}
+#worldGrid{margin-top:8px}
+.trend{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 12px}
+.trend-h{font-size:13px;font-weight:700;color:var(--sub);margin-right:4px}
+.trend-i{border:1px solid #f3b38f;background:#fff7f0;border-radius:999px;padding:4px 11px;font:inherit;font-size:13px;cursor:pointer}
+.trend-i b{color:#c2410c;margin-left:2px}.trend-i.on{background:#c2410c;color:#fff;border-color:#c2410c}.trend-i.on b{color:#fff}
+.kw-chip{background:#c2410c !important;border-color:#c2410c !important}
+
+
+/* 섹터 카드 */
+.sector-box{margin-bottom:16px}.sector-box[hidden]{display:none}
+.sec-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:10px}
+.sec-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:8px}
+.sec-top>b{font-size:17px}.sec-top span{font-size:14px;color:var(--sub)}.sec-top .btn{margin-left:auto}
+.sec-rows{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px}
+.sec-r{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 8px;background:var(--bg2);border-radius:10px;padding:8px 10px;font-size:14px}
+.sec-r.flag{background:#fff3ea;border:1px solid #f3b38f}
+.sec-n{font-weight:700}.sec-r small{color:var(--sub);font-size:12px;margin-left:auto}
+.sec-f{flex-basis:100%;font-size:11px;font-weight:700;color:#c2410c}
+.nw-txt.sector{font-weight:700;color:#7c2d12}

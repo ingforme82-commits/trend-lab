@@ -34,6 +34,9 @@
 | `tools/make_cta.py` | 블로그 글 끝 그룹 스터디 안내(CTA)를 데이터로 생성 |
 | `tools/make_intro.py` | 그룹 스터디 소개 블로그 글 생성 |
 | `tools/moves.py` | 변곡점 감지(1분봉 10분·30분 급변, 평소 변동폭의 4배 이상) + 직전 15분 관련 뉴스 연결. 🔴 빨간 점은 이 뉴스에만 |
+| `data/site.json` spotlight · `spot.py` | 🔥 이번 주 화제 종목(주 단위로 on/off, 추천 아님 표시). `python spot.py on TSLA --name 테슬라 ... --push` / `off` |
+| `data/sectors.json` · `tools/sector_watch.py` | 섹터 시세 감시(지금은 사이버보안 9종목). 하루 ±3%·3개월 고점 돌파·52주 신고가 3% 이내가 생기면 속보 목록에 '섹터 시세'로. 섹터를 늘리려면 sectors.json에 추가 |
+| `tools/market_extra.py` | 해외 지수(니케이·상하이·CSI300·항셍·대만EWT·DAX·CAC40·유로스톡스50), 화제 종목 시세, 최근 24시간 많이 나온 종목 |
 | `data/notes.json` · `note.py` | 변곡점 '💡 해석' 노트(운영자가 쓴 해석 → 블로그 분석 글 연결). 자동 화면은 사실·수치만, 해석은 노트로만 |
 | `tools/live_news.py` · `tools/visit_report.py` | 메인 PC 전용(텔레 수집기·카톡 모듈 필요). 예약 작업이 실행 |
 

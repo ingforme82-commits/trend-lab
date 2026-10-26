@@ -105,7 +105,9 @@ TAGS = [
     ("AI·빅테크", r"앤스로픽|앤트로픽|Anthropic|OpenAI|오픈AI|엔비디아|NVIDIA|Nvidia|마이크로소프트|Microsoft|MSFT|알파벳|Alphabet|구글|Google|메타|Meta\b|"
                  r"아마존|Amazon|애플|Apple|테슬라|Tesla|스페이스X|SpaceX|xAI|\bAI\b|데이터센터|data center|GPU|IPO|상장"),
     ("반도체", r"반도체|하이닉스|삼성전자|마이크론|Micron|TSMC|HBM|메모리|D램|DRAM|낸드|NAND|SOX|램리서치|ASML|chip|semiconductor"),
-    ("보안·코인", r"해킹|해커|유출|사이버|보안|비트코인|이더리움|코인|암호화폐|가상자산|Coinbase|코인베이스|월렛|거래소|hack|breach|bitcoin|crypto"),
+    ("사이버보안", r"해킹|해커|유출|사이버|보안|랜섬|hack|breach|cyber|ransomware|security|시스코|Cisco|크라우드스트라이크|CrowdStrike|"
+                 r"팔로알토|Palo Alto|지스케일러|Zscaler|옥타|Okta|클라우드플레어|Cloudflare|포티넷|Fortinet|데이터도그|Datadog|센티넬원|SentinelOne"),
+    ("코인", r"비트코인|이더리움|코인|암호화폐|가상자산|Coinbase|코인베이스|월렛|bitcoin|crypto|ether"),
     ("러·우", r"러시아|우크라|푸틴|젤렌스키|크렘린|스타링크|Russia|Ukrain|Putin|Kremlin"),
     ("한국", r"코스피|코스닥|한국|원/달러|원화|한은|KOSPI|Korea"),
     ("2차전지·바이오", r"2차전지|이차전지|배터리|양극재|리튬|ESS|바이오|제약|신약|임상|FDA|battery|biotech"),
@@ -338,7 +340,14 @@ def bigrams(s: str) -> set[str]:
 def build() -> dict:
     rss = fetch_rss()
     translate(rss)
-    allitems = sorted(from_telegram() + rss, key=lambda x: -x["ts"])
+    sector_items, sector_cards = [], []
+    try:                                                  # 섹터 시세 감시(가격 변화를 뉴스처럼)
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from sector_watch import run as sector_run
+        sector_items, sector_cards = sector_run()
+    except Exception as e:  # noqa: BLE001
+        log(f"섹터 감시 건너뜀: {type(e).__name__}: {e}")
+    allitems = sorted(from_telegram() + rss + sector_items, key=lambda x: -x["ts"])
     items, seen, per = [], [], {}
     n_strat = n_other = 0
     for it in allitems:
@@ -357,13 +366,19 @@ def build() -> dict:
             n_strat += 1
         else:
             n_other += 1
-    out = {"updated": int(datetime.now(timezone.utc).timestamp() * 1000), "items": items, "moves": [], "series": {}}
+    out = {"updated": int(datetime.now(timezone.utc).timestamp() * 1000), "items": items, "moves": [], "series": {}, "sectors": sector_cards}
     try:                                                  # 변곡점 감지 + 직전 뉴스 연결(실패해도 속보는 그대로)
         sys.path.insert(0, str(Path(__file__).resolve().parent))
         from moves import analyze
         out["moves"], out["series"] = analyze(items)
     except Exception as e:  # noqa: BLE001
         log(f"변곡점 감지 건너뜀: {type(e).__name__}: {e}")
+    try:                                                  # 해외 지수·화제 종목·많이 나온 종목
+        from market_extra import trending, world_and_spot
+        out["world"], out["spot"] = world_and_spot()
+        out["trending"] = trending(items)
+    except Exception as e:  # noqa: BLE001
+        log(f"해외 지수·종목 건너뜀: {type(e).__name__}: {e}")
     return out
 
 
@@ -398,7 +413,7 @@ def _upload(data: dict) -> bool:
             old = json.loads(base64.b64decode(j["content"]).decode("utf-8"))
         except Exception:  # noqa: BLE001
             old = None
-    if old and old.get("items") == data["items"] and old.get("moves") == data.get("moves"):
+    if old and all(old.get(k) == data.get(k) for k in ("items", "moves", "world", "spot", "trending", "sectors")):
         return False                                   # 바뀐 글 없음 → 커밋 안 함
     body = {"message": f"속보 갱신 {datetime.now(KST):%m-%d %H:%M}", "branch": BRANCH,
             "content": base64.b64encode(json.dumps(data, ensure_ascii=False).encode("utf-8")).decode()}

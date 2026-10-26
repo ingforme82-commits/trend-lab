@@ -49,7 +49,7 @@ async function loadTicks() {
       const x = map[t.k];
       if (!x) return "";
       const px = +x.markPx, prev = +x.prevDayPx, ch = prev ? (px / prev - 1) * 100 : 0;
-      const cls = ch > 0.005 ? "up" : ch < -0.005 ? "down" : "flat";
+      const cls = ch > 0.005 ? "c-up" : ch < -0.005 ? "c-dn" : "c-fl";
       const flash = lastPx[t.k] && lastPx[t.k] !== px ? " flash" : "";
       lastPx[t.k] = px;
       const val = (t.u || "") + px.toLocaleString("ko-KR", { minimumFractionDigits: t.d, maximumFractionDigits: t.d }) + (t.suf || "");
