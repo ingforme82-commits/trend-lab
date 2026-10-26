@@ -176,6 +176,12 @@
         <button class="btn btn-ghost-dark btn-sm" data-spot-kw="${esc(s.kw || s.name)}" data-spot-name="${esc(s.name)}">관련 속보 보기</button></div>
     </article>`;
   }
+  // 통화별 가격 표시(지수는 숫자만)
+  const money = (m) => {
+    const v = (+m.px).toLocaleString("ko-KR", { maximumFractionDigits: m.cur === "KRW" ? 0 : 2 });
+    if ((m.sym || "").startsWith("^")) return v;
+    return m.cur === "KRW" ? v + "원" : m.cur === "JPY" ? "¥" + v : "$" + v;
+  };
   // 종목군 구성 종목: 이름 버튼만 → 누르면 그 종목 상세
   function memBlock(s, mem) {
     const key = (m) => `${s.id}:${m.sym}`;
@@ -187,7 +193,7 @@
       const rel = news.filter((n) => rx.test(n.text + " " + (n.orig || "") + " " + (n.sub || ""))).slice(0, 4);
       detail = `<div class="mem-d">
         <div class="mem-h"><b>${esc(open.name)}</b> <small>${esc(open.sym)}</small>
-          <span class="mem-px">$${(+open.px).toLocaleString("ko-KR", { maximumFractionDigits: 2 })}</span>
+          <span class="mem-px">${money(open)}</span>
           <b class="${cls(open.chg)}">${open.chg > 0 ? "+" : ""}${open.chg.toFixed(2)}%</b>
           ${open.to3m != null ? `<span class="dim">3개월 고점 대비 ${open.to3m > 0 ? "+" : ""}${open.to3m}%</span>` : ""}</div>
         ${rel.length ? `<ul class="spot-news">${rel.map((n) => `<li><b>${hm(n.ts)}</b> ${n.pivot ? "🔴 " : ""}${esc(n.text)} <small class="dim">${esc(n.osrc ? n.osrc + " · " + n.src + " 경유" : n.src)}</small></li>`).join("")}</ul>` : `<p class="dim" style="margin:4px 0">최근 관련 속보가 없습니다.</p>`}

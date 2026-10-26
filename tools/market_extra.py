@@ -102,7 +102,7 @@ def world_and_spot() -> tuple[list[dict], list[dict]]:
             for sym, nm in s["members"].items():
                 qd = qs.get(sym)
                 if qd and qd.get("px") and qd.get("prev"):
-                    mem.append({"sym": sym, "name": nm, "px": round(qd["px"], 2), "chg": round((qd["px"] / qd["prev"] - 1) * 100, 2),
+                    mem.append({"sym": sym, "name": nm, "cur": qd.get("cur", "USD"), "px": round(qd["px"], 2), "chg": round((qd["px"] / qd["prev"] - 1) * 100, 2),
                                 "to3m": round((qd["px"] / qd["hi3m"] - 1) * 100, 1) if qd.get("hi3m") else None})
             row["members"] = mem
             if mem:
