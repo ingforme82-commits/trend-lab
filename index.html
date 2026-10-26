@@ -24,7 +24,8 @@
   <div class="wrap nav-in">
     <a class="brand" href="#top"><span class="brand-mark">TRL</span><span class="brand-txt">Trend Research Lab</span></a>
     <nav class="nav-links">
-      <a href="#market">실시간 시세</a>
+      <a href="#market">시세</a>
+      <a href="#news">속보</a>
       <a href="#feed">시황 업데이트</a>
       <a href="#quiz">성향 테스트</a>
       <a href="#study">모임</a>
@@ -65,6 +66,23 @@
     </div>
     <div class="tick-grid" id="tickGrid"></div>
     <p class="fine">출처: Hyperliquid(24시간 무기한 선물, 전일 대비는 24시간 기준). 실제 지수·현물 가격과 차이가 있을 수 있는 참고용 수치입니다.</p>
+  </div>
+</section>
+
+<section class="sec sec-alt" id="news">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <h2>실시간 속보 · 지수 반응</h2>
+        <p class="sec-sub">텔레그램 속보 헤드라인을 10분마다 모읍니다. 속보를 누르면 그 시각 이후 나스닥100·코스피200·WTI가 얼마나 움직였는지 차트에 표시합니다.</p>
+      </div>
+      <p class="stamp" id="newsStamp">불러오는 중…</p>
+    </div>
+    <div class="nc-grid" id="newsCharts"></div>
+    <div class="chips" id="newsChips"></div>
+    <ol class="nws" id="newsList"></ol>
+    <button class="btn btn-ghost-dark btn-more" id="newsMore" hidden>더 보기</button>
+    <p class="fine">출처: 김치 텔레그램 등 공개 뉴스 채널의 헤드라인(원문 링크), 지수는 Hyperliquid 24시간 선물 5분봉. '이후' 수치는 속보 시각 직전 봉 대비 현재까지의 변화이며 인과관계를 뜻하지 않습니다. 매매 권유가 아닙니다.</p>
   </div>
 </section>
 
@@ -172,6 +190,8 @@
   </div>
 </footer>
 
+<script src="count.js"></script>
 <script src="app.js"></script>
+<script src="news.js"></script>
 </body>
 </html>

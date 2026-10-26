@@ -41,12 +41,12 @@ def main(quiet: bool = False) -> None:
     <p style="margin:0 0 2px;font-size:13px;color:#9a7330;font-weight:bold;">{se["emoji"]} {escape(se["name"])}{no}</p>
     <p style="margin:0 0 6px;font-size:19px;font-weight:bold;color:#7a5413;">「{escape(s["title"])}」</p>
     {f'<p style="margin:0 0 6px;font-size:14px;">{escape(s["theme"])}</p>' if s.get("theme") else ""}
-    <p style="margin:0;font-size:15px;">🗓️ <b>일시</b> : {when(s)}<br>📍 <b>장소</b> : {escape(s.get("place") or site["place"])}{f"<br>📖 <b>함께 읽을 책</b> : {escape(s['book'])}" if s.get("book") else ""}</p>
+    <p style="margin:0;font-size:15px;">🗓️ <b>일시</b> : {when(s)}{f'<br><span style="color:#c0392b;font-size:13px;">※ {escape(s["date_note"])}</span>' if s.get("date_note") else ""}<br>📍 <b>장소</b> : {escape(s.get("place") or site["place"])}{f"<br>📖 <b>함께 읽을 책</b> : {escape(s['book'])}" if s.get("book") else ""}</p>
   </div>''')
         t += [f"{se['emoji']} {se['name']}{no} 「{s['title']}」"]
         if s.get("theme"):
             t.append(s["theme"])
-        t += [f"🗓️ 일시 : {when(s)}", f"📍 장소 : {s.get('place') or site['place']}"]
+        t += [f"🗓️ 일시 : {when(s)}"] + ([f"   ※ {s['date_note']}"] if s.get("date_note") else []) + [f"📍 장소 : {s.get('place') or site['place']}"]
         if s.get("book"):
             t.append(f"📖 함께 읽을 책 : {s['book']}")
         t.append("")

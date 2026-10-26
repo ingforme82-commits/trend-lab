@@ -242,6 +242,7 @@ $("#qOpts").addEventListener("click", (e) => {
 $("#qBack").addEventListener("click", () => { if (qi > 0) { qi--; showQ(); } });
 
 function showResult() {
+  if (window.trlCount) window.trlCount("quiz");
   const sc = { T: 0, C: 0, S: 0, L: 0, N: 0 }, h = [], g = [], rs = [];
   answers.forEach((a, i) => {
     const o = Q[i].o[a];
@@ -312,7 +313,7 @@ async function loadStudies() {
       <a class="hc-item${i ? " sub" : ""}" href="study.html?id=${encodeURIComponent(s.id)}">
         <span class="hc-kind">${label(s)} <em>${dday(s.date)}</em></span>
         <span class="hc-title">「${esc(s.title)}」</span>
-        <span class="hc-when">${fmtD(s.date)} ${ampm(s.time)} · 베델회관 7층</span>
+        <span class="hc-when">${fmtD(s.date)} ${ampm(s.time)} · 베델회관 7층</span>${s.date_note ? `<span class="hc-note">※ ${esc(s.date_note)}</span>` : ""}
       </a>`).join("") + `<a class="btn btn-kakao btn-block" href="${esc(site.kakao)}" target="_blank" rel="noopener">💬 카카오톡으로 참여하기</a>`;
 
     $("#upList").innerHTML = ups.map((s) => {
@@ -322,7 +323,7 @@ async function loadStudies() {
         <h3 class="up-title">${esc(s.title)}</h3>
         ${s.theme ? `<p class="up-theme">${esc(s.theme)}</p>` : ""}
         <ul class="up-meta">
-          <li>🗓️ ${fmtD(s.date, true)} ${ampm(s.time)}</li>
+          <li>🗓️ ${fmtD(s.date, true)} ${ampm(s.time)}${s.date_note ? `<br><span class="date-note">※ ${esc(s.date_note)}</span>` : ""}</li>
           <li>📍 ${esc(s.place || site.place)}</li>
           ${s.book ? `<li>📖 ${esc(s.book)}</li>` : ""}
         </ul>

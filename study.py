@@ -3,6 +3,7 @@
 일정·주제 바꾸기 (사이트 메인 카드, 상세 페이지, 커리큘럼 표시, 블로그 CTA가 모두 따라 바뀜)
   python study.py edit 2026-11-14 --date 2026-11-21 --push        # 날짜 변경(id는 그대로)
   python study.py edit 2026-11-30 --time 19:30 --place "장소" --push
+  python study.py edit 2026-11-30 --date-note "11/23로 앞당겨질 수 있습니다" --push   # 미정 안내('' 이면 지움)
   python study.py edit 2026-11-14 --title "새 주제" --theme "한 줄 설명" --summary "소개" --push
 
 새 회차 만들기
@@ -117,6 +118,11 @@ def cmd_edit(a) -> None:
         s["no"] = a.no
     if a.date:
         s["date"] = a.date
+        s.pop("date_note", None)            # 날짜가 확정되면 '바뀔 수 있음' 안내는 지운다
+    if getattr(a, "date_note", None) is not None:
+        s["date_note"] = a.date_note
+        if not a.date_note:
+            s.pop("date_note")
     save(DATA, items)
     ch = [f"{k}: {old.get(k)!r} → {s.get(k)!r}" for k in (*FIELDS, "date", "no") if old.get(k) != s.get(k)]
     print("\n".join(ch) or "바뀐 값 없음")
@@ -256,6 +262,7 @@ def main() -> None:
             for k in FIELDS:
                 p.add_argument(f"--{k}")
             p.add_argument("--date")
+            p.add_argument("--date-note", dest="date_note", help='날짜 변경 가능성 안내(빈 문자열 ""이면 지움)')
             p.add_argument("--no", type=int)
 
     p = sub.add_parser("edit"); p.add_argument("id"); common(p); p.set_defaults(f=cmd_edit)

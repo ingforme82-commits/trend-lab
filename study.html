@@ -44,6 +44,7 @@
   </div>
 </footer>
 
+<script src="count.js"></script>
 <script>
 "use strict";
 const $ = (s) => document.querySelector(s);
@@ -94,7 +95,7 @@ let shots = [], cur = 0;
     ${cover ? `<div class="sv-hero"><img src="${esc(cover.src)}" alt="${esc(cover.caption || s.title)}" data-k="${s.cover || 0}"></div>` : ""}
     ${s.summary ? `<p class="sv-sum">${esc(s.summary)}</p>` : ""}
     ${isUp ? `<div class="sv-up">
-        <p style="margin:0 0 6px"><b>${dday(s.date)}</b> · ${fmt(s.date)} ${ampm(s.time)}</p>
+        <p style="margin:0 0 6px"><b>${dday(s.date)}</b> · ${fmt(s.date)} ${ampm(s.time)}</p>${s.date_note ? `<p class="date-note" style="margin:0 0 6px">※ ${esc(s.date_note)}</p>` : ""}
         <p style="margin:0 0 4px">📍 ${esc(s.place || site.place || "")}</p>
         ${site.parking ? `<p style="margin:0 0 4px;font-size:14px">🅿️ ${esc(site.parking)}</p>` : ""}
         ${site.free ? `<p style="margin:0 0 12px;font-size:14px">☕ ${esc(site.free)}</p>` : ""}
