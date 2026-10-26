@@ -33,6 +33,8 @@
 | `study.py` | 일정 수정, 새 회차, 사진·후기 올리기, 공지 띠 |
 | `tools/make_cta.py` | 블로그 글 끝 그룹 스터디 안내(CTA)를 데이터로 생성 |
 | `tools/make_intro.py` | 그룹 스터디 소개 블로그 글 생성 |
+| `tools/moves.py` | 변곡점 감지(1분봉 10분·30분 급변, 평소 변동폭의 4배 이상) + 직전 15분 관련 뉴스 연결. 🔴 빨간 점은 이 뉴스에만 |
+| `data/notes.json` · `note.py` | 변곡점 '💡 해석' 노트(운영자가 쓴 해석 → 블로그 분석 글 연결). 자동 화면은 사실·수치만, 해석은 노트로만 |
 | `tools/live_news.py` · `tools/visit_report.py` | 메인 PC 전용(텔레 수집기·카톡 모듈 필요). 예약 작업이 실행 |
 
 ## 자주 하는 작업
@@ -50,6 +52,7 @@ python study.py notes 2026-11-14 후기.txt --push               # '## 소제목
 python study.py hide-photo 2026-08-08 5 --push                 # 5번째 사진 내리기
 python study.py notice "📢 안내 문구" --until 2026-11-21 --push / notice --clear --push
 python publish.py "블로그시황/20261027_xxx.txt" --push         # 같은 이름 .html 필요
+python note.py add --from "2026-10-27 00:40" --to "2026-10-27 01:00" --assets WTI BRENT --title "..." --text "..." --post 블로그글파일이름 --push
 ```
 JSON을 직접 고쳐도 됩니다. 고친 뒤에는 `python -m json.tool data/studies.json > /dev/null`으로 형식을 확인하고 커밋·push 합니다.
 

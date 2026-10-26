@@ -75,11 +75,14 @@
     <div class="sec-head">
       <div>
         <h2>실시간 속보 · 지수 반응</h2>
-        <p class="sec-sub">텔레그램 19개 채널과 Seeking Alpha·CNBC·MarketWatch·Investing·연합뉴스·한국경제의 속보를 1분마다 모읍니다. 속보나 차트를 누르면 1분봉 차트가 크게 열리고, 그 속보 이후 지수가 얼마나 움직였는지 보여 줍니다. 해외 뉴스는 한글로 번역해 싣습니다.</p>
+        <p class="sec-sub">텔레그램 34개 채널(속보·섹터·증권사 시황)과 Seeking Alpha·CNBC·MarketWatch·Investing·연합뉴스·한국경제의 속보를 1분마다 모읍니다. 지수·유가·금리·달러가 평소보다 크게 움직인 순간을 자동으로 찾아, 그 직전 뉴스를 붙여 보여 줍니다. 차트·카드·속보를 누르면 1분봉 차트가 열립니다. 해외 뉴스는 한글로 번역합니다.</p>
       </div>
       <p class="stamp" id="newsStamp">불러오는 중…</p>
     </div>
     <div class="nc-grid" id="newsCharts"></div>
+    <div class="mv-head"><h3>📍 시장을 움직인 순간</h3><p>평소보다 크게 움직이기 시작한 구간(변곡점)과 그 직전 15분 안의 관련 뉴스입니다. 빨간 점(🔴)은 이 뉴스에만 붙습니다. 시각이 겹친다는 뜻이며 인과관계를 단정하지 않습니다. 💡 해석은 운영자가 직접 쓴 내용입니다.</p></div>
+    <div class="mv-list" id="moveList"></div>
+    <h3 class="nw-head">전체 속보</h3>
     <div class="chips" id="newsChips"></div>
     <ol class="nws" id="newsList"></ol>
     <button class="btn btn-ghost-dark btn-more" id="newsMore" hidden>더 보기</button>

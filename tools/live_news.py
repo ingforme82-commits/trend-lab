@@ -79,6 +79,18 @@ FEEDS = [
     ("인베스팅", "https://kr.investing.com/rss/news.rss", "ko"),
     ("연합뉴스", "https://www.yna.co.kr/rss/economy.xml", "ko"),
     ("한국경제", "https://www.hankyung.com/feed/finance", "ko"),
+    # 해외 원출처 직접 번역 (2026-10-27 추가)
+    ("FT", "https://www.ft.com/markets?format=rss", "en"),
+    ("FT", "https://www.ft.com/world?format=rss", "en"),
+    ("BBC", "https://feeds.bbci.co.uk/news/business/rss.xml", "en"),
+    ("NYT", "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml", "en"),
+    ("가디언", "https://www.theguardian.com/business/rss", "en"),
+    ("SCMP", "https://www.scmp.com/rss/92/feed", "en"),
+    ("알자지라", "https://www.aljazeera.com/xml/rss/all.xml", "en"),
+    ("CNBC", "https://www.cnbc.com/id/100727362/device/rss/rss.html", "en"),
+    ("Oilprice", "https://oilprice.com/rss/main", "en"),
+    ("미 연준", "https://www.federalreserve.gov/feeds/press_all.xml", "en"),
+    ("미 EIA", "https://www.eia.gov/rss/todayinenergy.xml", "en"),
 ]
 
 BROKER = re.compile(r"목표주가|목표가|TP\s|투자의견|BUY|매수\(유지\)|Preview|프리뷰|리서치센터|Analyst|\(02-\d|투자포인트|"
@@ -134,27 +146,31 @@ def _lines(text: str) -> list[str]:
     return out
 
 
-def clean_line(text: str, with_sub: bool = False) -> tuple[str, str]:
+def clean_line(text: str, with_sub: bool = False) -> tuple[str, str, str]:
     """(제목, 요약 한 줄). 작성자·연락처·인사말 줄은 건너뛴다."""
     lines = _lines(text)
     while lines and re.fullmatch(r"\[[^\]]{1,40}\]", lines[0]):
         lines.pop(0)
     if not lines:
-        return "", ""
+        return "", "", ""
     h, rest = lines[0], lines[1:]
     if len(h) < 25 and rest:                      # '$TSLA -' 같은 머리말만 있으면 다음 줄 이어 붙임
         h, rest = f"{h} {rest[0]}", rest[1:]
     # 맨 앞 '📮[메리츠증권 퀀트/ETF 이상현]' 같은 작성자 표기 떼기(남는 글이 충분할 때만)
     h2 = re.sub(r"^\W*\[[^\]]{1,40}\]\s*", "", h)
     h = h2 if len(h2) >= 12 else h
-    h = re.sub(r"\s*—\s*[A-Za-z][\w .&]{1,30}$", "", h).strip(" -—:")   # 끝의 '— Fox News' 같은 꼬리 제거
+    orig = ""
+    mo = re.search(r"\s*[—–]\s*([A-Za-z][\w .&']{1,30}|[가-힣][가-힣A-Za-z ]{1,14})$", h) or re.search(r":\s*([A-Z]{2,8})$", h)
+    if mo:                                         # 끝의 '— Fox News', ': ISNA' 같은 원출처 꼬리 → 따로 보관
+        orig, h = mo.group(1).strip(), h[:mo.start()]
+    h = h.strip(" -—:")
     sub = ""
     if with_sub:
         for r in rest:
             if len(r) >= 15 and r not in h:
                 sub = r[:120] + ("…" if len(r) > 120 else "")
                 break
-    return h[:140] + ("…" if len(h) > 140 else ""), sub
+    return h[:140] + ("…" if len(h) > 140 else ""), sub, orig
 
 
 def tags_of(text: str) -> list[str]:
@@ -179,7 +195,7 @@ def from_telegram() -> list[dict]:
             # 일반 채널: 증권사 리포트 머리말·링크 모음·보고서 모음 글은 뺀다
             if BROKER.search(text) or len(re.findall(r"https?://", text)) >= 3 or text.lstrip().startswith("<"):
                 continue
-        h, sub = clean_line(text, with_sub=strat or analysis)
+        h, sub, orig = clean_line(text, with_sub=strat or analysis)
         if len(h) < 12 or re.fullmatch(r"[\w.\-]+\.(?:com|co\.kr|kr|net|io)", h, re.I):   # 사이트 주소만 있는 글
             continue
         tg = tags_of(text)
@@ -191,6 +207,8 @@ def from_telegram() -> list[dict]:
               "text": h, "tags": tg or (["시황"] if strat or analysis else ["기타"]), "hot": bool(HOT.search(h))}
         if sub:
             it["sub"] = sub
+        if orig:
+            it["osrc"] = orig                          # 원출처(예: Fox News) — 화면에 '○○ · 김치터미널 경유'로 표시
         out.append(it)
     return out
 
@@ -268,6 +286,22 @@ def _google_translate(title: str) -> str:
     return "".join(x[0] for x in r[0] if x and x[0]).strip()
 
 
+# 무료 번역이 자주 틀리는 고유명사: (영문, 잘못된 번역들, 바른 표기)
+GLOSSARY = [("Anthropic", ("인류학적", "인류학", "인류의", "인류"), "앤트로픽"), ("Apple", ("사과",), "애플"),
+            ("Shell", ("껍데기", "쉘"), "셸"), ("Target", ("표적", "목표"), "타깃"), ("Snap", ("스냅",), "스냅"),
+            ("Fed", ("먹이를 주었다", "먹인"), "연준"), ("Brent", ("브렌트",), "브렌트")]
+
+
+def fix_terms(en: str, ko: str) -> str:
+    for word, wrongs, right in GLOSSARY:
+        if re.search(r"\b" + word + r"\b", en) and right not in ko:
+            for w in wrongs:
+                if w in ko:
+                    ko = ko.replace(w, right, 1)
+                    break
+    return ko
+
+
 def translate(items: list[dict]) -> None:
     """영문 헤드라인을 한국어로 바꾼다(원문은 orig에 보관). 번역은 저장해 두고 다시 하지 않는다."""
     try:
@@ -293,7 +327,7 @@ def translate(items: list[dict]) -> None:
         TR_CACHE.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
     for it in items:
         if it.get("lang") == "en" and cache.get(it["text"]):
-            it["orig"], it["text"] = it["text"], cache[it["text"]].rstrip(".。 ")
+            it["orig"], it["text"] = it["text"], fix_terms(it["text"], cache[it["text"]].rstrip(".。 "))
 
 
 def bigrams(s: str) -> set[str]:
@@ -323,7 +357,14 @@ def build() -> dict:
             n_strat += 1
         else:
             n_other += 1
-    return {"updated": int(datetime.now(timezone.utc).timestamp() * 1000), "items": items}
+    out = {"updated": int(datetime.now(timezone.utc).timestamp() * 1000), "items": items, "moves": [], "series": {}}
+    try:                                                  # 변곡점 감지 + 직전 뉴스 연결(실패해도 속보는 그대로)
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from moves import analyze
+        out["moves"], out["series"] = analyze(items)
+    except Exception as e:  # noqa: BLE001
+        log(f"변곡점 감지 건너뜀: {type(e).__name__}: {e}")
+    return out
 
 
 def gh(*args: str, input_: str | None = None) -> subprocess.CompletedProcess:
@@ -357,7 +398,7 @@ def _upload(data: dict) -> bool:
             old = json.loads(base64.b64decode(j["content"]).decode("utf-8"))
         except Exception:  # noqa: BLE001
             old = None
-    if old and old.get("items") == data["items"]:
+    if old and old.get("items") == data["items"] and old.get("moves") == data.get("moves"):
         return False                                   # 바뀐 글 없음 → 커밋 안 함
     body = {"message": f"속보 갱신 {datetime.now(KST):%m-%d %H:%M}", "branch": BRANCH,
             "content": base64.b64encode(json.dumps(data, ensure_ascii=False).encode("utf-8")).decode()}

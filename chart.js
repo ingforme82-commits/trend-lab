@@ -8,7 +8,10 @@
     { k: "xyz:SKHX", n: "SK하이닉스", d: 2, u: "$" }, { k: "xyz:SMSN", n: "삼성전자", d: 2, u: "$" }, { k: "xyz:KORU", n: "KORU", d: 2, u: "$" }, { k: "xyz:SOXL", n: "SOXL", d: 2, u: "$" },
     { k: "xyz:CL", n: "WTI", d: 2, u: "$" }, { k: "xyz:BRENTOIL", n: "브렌트", d: 2, u: "$" },
     { k: "xyz:GOLD", n: "금", d: 1, u: "$" }, { k: "xyz:KRW", n: "원/달러", d: 1 },
+    { k: "srv:US10Y", n: "미 10년물 금리", d: 3, bp: true }, { k: "srv:DXY", n: "달러인덱스", d: 2 },
   ];
+  // 변곡점 자산 코드(서버 news.json의 moves.asset)
+  const CODE = { "xyz:XYZ100": "NQ", "xyz:KR200": "K200", "xyz:CL": "WTI", "xyz:BRENTOIL": "BRENT", "xyz:GOLD": "GOLD", "srv:US10Y": "US10Y", "srv:DXY": "DXY" };
   const RANGES = [[60, "1시간"], [180, "3시간"], [360, "6시간"], [720, "12시간"], [1440, "24시간"]];
   const KAKAO = "https://invite.kakao.com/tc/p7OX5rMjd0";
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -31,7 +34,7 @@
       <div class="cm-chart" id="cmChart"><p class="fine" style="padding:20px">불러오는 중…</p></div>
       <div class="cm-tip" id="cmTip" hidden></div>
       <div class="cm-news" id="cmNews"></div>
-      <p class="fine cm-src">Hyperliquid 24시간 선물 1분봉(참고용) · 점은 속보 시각 · 인과관계를 뜻하지 않으며 매매 권유가 아닙니다.</p>
+      <p class="fine cm-src">Hyperliquid 24시간 선물 1분봉·Yahoo(금리·달러) 참고용 · 색칠=변곡점, 🔴=직전 뉴스(시각이 겹친다는 뜻이며 인과관계를 단정하지 않음) · 매매 권유가 아닙니다.</p>
     </div>`;
     document.body.appendChild(root);
     root.addEventListener("click", (e) => {
@@ -58,6 +61,11 @@
   async function load() {
     drawTabs();
     const end = Date.now(), start = end - st.range * 60000;
+    if (st.coin.startsWith("srv:")) {                              // 금리·달러: 서버가 넣어 준 5분 간격 값(미국장 시간)
+      const rows = ((window.trlSeries || {})[st.coin.slice(4)] || []).filter(([t]) => t >= start);
+      st.data = rows.map(([t, v]) => ({ t, o: v, h: v, l: v, c: v, v: 0 }));
+      return draw();
+    }
     try {
       const r = await fetch("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type: "candleSnapshot", req: { coin: st.coin, interval: "1m", startTime: start, endTime: end } }) });
@@ -85,7 +93,9 @@
     const Y = (v) => pad.t + (1 - (v - lo) / rg) * ph;
     const vmax = Math.max(...D.map((x) => x.v)) || 1;
     geo = { X, Y, D, pad, W, H, ph, step, t0, t1, meta };
-    const fmt = (v) => (meta.u || "") + v.toLocaleString("ko-KR", { minimumFractionDigits: meta.d, maximumFractionDigits: meta.d });
+    const fmt = (v) => (meta.u || "") + v.toLocaleString("ko-KR", { minimumFractionDigits: meta.d, maximumFractionDigits: meta.d }) + (meta.bp ? "%" : "");
+    const chgOf = (a, b) => (meta.bp ? (b - a) * 100 : (b / a - 1) * 100);
+    const chgTxt = (v) => (meta.bp ? `${v > 0 ? "+" : ""}${v.toFixed(1)}bp` : pctTxt(v));
     const bw = Math.max(1, step * 0.65);
     let s = "";
     for (let i = 0; i <= 4; i++) {                                   // 가격 눈금
@@ -102,11 +112,15 @@
       s += `<rect x="${cx - bw / 2}" y="${H - pad.b - vh}" width="${bw}" height="${vh}" class="${c} v"/>`;
     });
     const inWin = st.news.filter((n) => n.ts >= t0 && n.ts <= t1 + 60000);
-    // 점이 너무 많으면 주요 속보·선택한 속보만 찍는다(1시간 구간은 모두)
-    const dots = st.range <= 60 || inWin.length <= 30 ? inWin : inWin.filter((n) => n.hot || n.ts === st.sel);
-    dots.forEach((n) => { s += `<circle cx="${X(Math.min(n.ts, t1))}" cy="${pad.t - 10}" r="${n.hot ? 4.5 : 3}" class="cm-dot${n.hot ? " hot" : ""}" data-sel="${n.ts}"><title>${esc(hm(n.ts) + " " + n.text)}</title></circle>`; });
+    // 변곡점 구간 색칠 + 그 직전 뉴스에만 빨간 점(이 자산 기준). 나머지 속보는 구간이 짧을 때만 회색 작은 점
+    const myMoves = (window.trlMoves || []).filter((m) => m.asset === CODE[st.coin] && m.end >= t0 && m.start <= t1);
+    const piv = new Set(myMoves.flatMap((m) => m.news || []));
+    myMoves.forEach((m) => { const x0 = X(Math.max(m.start, t0)), x1 = X(Math.min(m.end, t1)); s += `<rect x="${x0}" y="${pad.t - 2}" width="${Math.max(3, x1 - x0)}" height="${ph + 4}" class="cm-zone ${m.move > 0 ? "up" : "dn"}"/>`; });
+    const gray = st.range <= 60 || inWin.length <= 30 ? inWin.filter((n) => !piv.has(n.ts)) : [];
+    gray.forEach((n) => { s += `<circle cx="${X(Math.min(n.ts, t1))}" cy="${pad.t - 10}" r="2.4" class="cm-dot" data-sel="${n.ts}"><title>${esc(hm(n.ts) + " " + n.text)}</title></circle>`; });
+    inWin.filter((n) => piv.has(n.ts)).forEach((n) => { s += `<circle cx="${X(Math.min(n.ts, t1))}" cy="${pad.t - 10}" r="5" class="cm-dot hot" data-sel="${n.ts}"><title>${esc("🔴 " + hm(n.ts) + " " + n.text)}</title></circle>`; });
     let info = "";
-    const last = D[D.length - 1].c, first = D[0].o, chg = (last / first - 1) * 100;
+    const last = D[D.length - 1].c, first = D[0].o, chg = chgOf(first, last);
     if (st.sel && st.sel >= t0 - 60000) {                           // 선택한 속보: 세로선 + 기준 가격선 + 이후 변화
       let i = D.findIndex((x) => x.t > st.sel); i = i === -1 ? D.length - 1 : Math.max(0, i - 1);
       const base = D[i].c, after = D.slice(i), mx = Math.max(...after.map((x) => x.h)), mn = Math.min(...after.map((x) => x.l));
@@ -114,16 +128,24 @@
       s += `<line x1="${sx}" x2="${sx}" y1="${pad.t - 4}" y2="${H - pad.b}" class="cm-sel"/><line x1="${sx}" x2="${W - pad.r}" y1="${by}" y2="${by}" class="cm-base"/>`;
       s += `<text x="${Math.min(sx + 4, W - pad.r - 70)}" y="${pad.t + 12}" class="cm-lbl">속보 ${hm(st.sel)}</text>`;
       const n = st.news.find((x) => x.ts === st.sel);
-      info = `<b>${hm(st.sel)}</b> ${n ? esc(n.text) : ""}<br>이후 <b class="${cls((last / base - 1) * 100)}">${pctTxt((last / base - 1) * 100)}</b> · 최고 <b class="${cls((mx / base - 1) * 100)}">${pctTxt((mx / base - 1) * 100)}</b> · 최저 <b class="${cls((mn / base - 1) * 100)}">${pctTxt((mn / base - 1) * 100)}</b>`;
+      const a1 = chgOf(base, last), a2 = chgOf(base, mx), a3 = chgOf(base, mn);
+      info = `<b>${piv.has(st.sel) ? "🔴 " : ""}${hm(st.sel)}</b> ${n ? esc(n.text) : ""}${n ? ` <small>${esc(n.src || "")}</small>` : ""}<br>이후 <b class="${cls(a1)}">${chgTxt(a1)}</b> · 최고 <b class="${cls(a2)}">${chgTxt(a2)}</b> · 최저 <b class="${cls(a3)}">${chgTxt(a3)}</b>`;
+      const mv = myMoves.find((m) => (m.news || []).includes(st.sel)) || myMoves.find((m) => st.sel >= m.start - 15 * 60000 && st.sel <= m.end);
+      if (mv) {
+        info += `<br><span class="cm-mv">변곡점 ${hm(mv.start)}–${hm(mv.end)} ${esc(mv.name)} ${mv.move > 0 ? "+" : ""}${mv.move}${mv.unit === "bp" ? "bp" : "%"} (평소 변동폭의 ${mv.ratio}배)</span>`;
+        const nt = (window.trlNotes || []).find((x) => x.assets.includes(mv.asset) && Date.parse(x.from) <= mv.end + 300000 && Date.parse(x.to) >= mv.start - 300000);
+        if (nt) info += `<span class="cm-note"><b>💡 ${esc(nt.title)}</b> ${esc(nt.text)}${nt.post ? ` <a href="posts/${encodeURIComponent(nt.post)}.html" target="_blank" rel="noopener">블로그 분석 글 →</a>` : ""}</span>`;
+      }
     } else {
-      info = `최근 ${RANGES.find(([m]) => m === st.range)[1]} <b class="${cls(chg)}">${pctTxt(chg)}</b> · 위쪽 점(●)을 누르면 그 속보 이후 변화를 보여 줍니다.`;
+      info = `최근 ${RANGES.find(([m]) => m === st.range)[1]} <b class="${cls(chg)}">${chgTxt(chg)}</b> · 색칠한 구간은 변곡점, 빨간 점(🔴)은 그 직전 뉴스입니다. 점을 누르면 그 뉴스 이후 변화를 보여 줍니다.`;
     }
-    root.querySelector("#cmTitle").innerHTML = `${meta.n} <span>${fmt(last)}</span> <b class="${cls(chg)}">${pctTxt(chg)}</b> <small>1분봉</small>`;
+    root.querySelector("#cmTitle").innerHTML = `${meta.n} <span>${fmt(last)}</span> <b class="${cls(chg)}">${chgTxt(chg)}</b> <small>${st.coin.startsWith("srv:") ? "5분 간격" : "1분봉"}</small>`;
     root.querySelector("#cmInfo").innerHTML = info;
     box.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${s}<g id="cmHover"></g></svg>`;
     // 차트 구간의 속보 목록(누르면 선택)
-    root.querySelector("#cmNews").innerHTML = inWin.length ? `<p class="cm-nh">이 구간의 속보 ${inWin.length}건</p>` + inWin.slice(0, 30).map((n) =>
-      `<button class="cm-ni${n.ts === st.sel ? " on" : ""}${n.hot ? " hot" : ""}" data-sel="${n.ts}"><b>${hm(n.ts)}</b> ${esc(n.text)}</button>`).join("") : "";
+    const ordered = [...inWin.filter((n) => piv.has(n.ts)), ...inWin.filter((n) => !piv.has(n.ts))];
+    root.querySelector("#cmNews").innerHTML = inWin.length ? `<p class="cm-nh">이 구간의 속보 ${inWin.length}건${piv.size ? ` · 🔴 변곡점 직전 뉴스 ${inWin.filter((n) => piv.has(n.ts)).length}건` : ""}</p>` + ordered.slice(0, 30).map((n) =>
+      `<button class="cm-ni${n.ts === st.sel ? " on" : ""}${piv.has(n.ts) ? " hot" : ""}" data-sel="${n.ts}"><b>${piv.has(n.ts) ? "🔴 " : ""}${hm(n.ts)}</b> ${esc(n.text)} <small>${esc(n.src || "")}</small></button>`).join("") : "";
     drawHover();
   }
 
