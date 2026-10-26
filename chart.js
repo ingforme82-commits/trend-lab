@@ -31,8 +31,6 @@
       <div class="cm-chart" id="cmChart"><p class="fine" style="padding:20px">불러오는 중…</p></div>
       <div class="cm-tip" id="cmTip" hidden></div>
       <div class="cm-news" id="cmNews"></div>
-      <div class="cm-foot"><p>이 움직임이 내 계좌에는 어떤 의미일까요? 오픈채팅방에서 매일 함께 해석합니다.</p>
-        <a class="btn btn-kakao btn-sm" href="${KAKAO}" target="_blank" rel="noopener">💬 오픈채팅 참여</a></div>
       <p class="fine cm-src">Hyperliquid 24시간 선물 1분봉(참고용) · 점은 속보 시각 · 인과관계를 뜻하지 않으며 매매 권유가 아닙니다.</p>
     </div>`;
     document.body.appendChild(root);
