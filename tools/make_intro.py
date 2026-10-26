@@ -138,7 +138,7 @@ html.append(H2("5. 모임 밖에서도: Trend Research Lab 사이트"))
 txt.append("5. 모임 밖에서도: Trend Research Lab 사이트")
 feats = ["📊 실시간 시세 — 코스피200·EWY·나스닥100·WTI·브렌트 등 24시간 해외 프록시",
          "🔴 실시간 속보 · 지수 반응 — 텔레그램 속보 헤드라인과, 그 시각 이후 나스닥100·코스피200·WTI가 얼마나 움직였는지",
-         "📰 시황 업데이트 — 블로그에 올린 시황·분석 모음",
+         "📰 블로그 분석 글 — 블로그에 올린 시황·섹터 분석 모음",
          "🧭 나의 투자 스타일 테스트 — 11문항, 스타일·위험 감수 수준·조심할 매매 습관(답변은 저장되지 않음)",
          "📸 스터디 아카이브 · 연간 커리큘럼 · 선정 도서"]
 html.append('<ul style="margin:0 0 12px;padding-left:20px;">' + "".join(f'<li style="margin:4px 0;">{E(f)}</li>' for f in feats) + "</ul>")

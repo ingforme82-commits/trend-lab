@@ -76,7 +76,7 @@ async function loadChecks() {
   } catch { /* 체크포인트 없으면 섹션만 비움 */ }
 }
 
-/* ───────── 3. 시황 업데이트 피드 ───────── */
+/* ───────── 3. 블로그 분석 글 피드 ───────── */
 let posts = [], cat = "전체", shown = 8, knownSlugs = null;
 
 async function loadFeed() {

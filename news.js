@@ -27,13 +27,42 @@
     }));
   }
 
+  // 1순위: GitHub API(바로 반영, 바뀐 게 없으면 304라 한도 소모 없음) → 한도 초과 등 실패 시 raw(최대 5분 캐시)
+  const API_URL = "https://api.github.com/repos/ingforme82-commits/trend-lab/contents/news.json?ref=live";
+  let apiBlockedUntil = 0;
+  async function fetchNews() {
+    if (Date.now() > apiBlockedUntil) {
+      try {
+        const r = await fetch(API_URL, { headers: { Accept: "application/vnd.github.raw+json" }, cache: "no-cache" });
+        if (r.ok) return await r.json();
+        if (r.status === 403 || r.status === 429) apiBlockedUntil = Date.now() + 20 * 60000;
+      } catch { /* raw로 */ }
+    }
+    const r = await fetch(`${NEWS_URL}?t=${Math.floor(Date.now() / 60000)}`);
+    return r.json();
+  }
   async function loadNews() {
     try {
-      const r = await fetch(`${NEWS_URL}?t=${Math.floor(Date.now() / 60000)}`);
-      const j = await r.json();
+      const j = await fetchNews();
       news = j.items || [];
-      q("#newsStamp").textContent = `속보 갱신 ${hm(j.updated)} KST · ${ago(j.updated)}`;
-    } catch { q("#newsStamp").textContent = "속보를 불러오지 못했습니다."; }
+      setText("#newsStamp", `속보 갱신 ${hm(j.updated)} KST · ${ago(j.updated)}`);
+      drawTicker();
+    } catch { setText("#newsStamp", "속보를 불러오지 못했습니다."); }
+  }
+  const setText = (s, t) => { const e = q(s); if (e) e.textContent = t; };
+
+  // 맨 위 '주요 시황' 띠: 최근 속보 한 줄씩 계속 흐름(주요 속보 우선)
+  let tickerKey = "";
+  function drawTicker() {
+    const box = q("#ticker"); if (!box) return;
+    const recent = news.filter((n) => Date.now() - n.ts < 12 * 3600e3);
+    const pick = [...recent.filter((n) => n.hot), ...recent.filter((n) => !n.hot)].slice(0, 14).sort((a, b) => b.ts - a.ts);
+    const key = pick.map((n) => n.ts).join(",");
+    if (!pick.length || key === tickerKey) return;
+    tickerKey = key;
+    const row = pick.map((n) => `<a class="tk-i${n.hot ? " hot" : ""}" href="${q("#news") ? "#news" : "index.html#news"}" data-ts="${n.ts}"><b>${hm(n.ts)}</b>${esc(n.text)}</a>`).join("");
+    box.innerHTML = `<span class="tk-label">🔴 주요 시황</span><div class="tk-view"><div class="tk-track" style="animation-duration:${Math.max(40, pick.length * 9)}s">${row}${row}</div></div>`;
+    box.hidden = false;
   }
 
   // ts 시점 가격(그 이후 첫 봉의 시가 대신 직전 봉 종가) → 최신 종가 대비 변화율
@@ -82,17 +111,28 @@
     q("#newsMore").hidden = list.length <= shown;
   }
 
-  q("#newsChips").addEventListener("click", (e) => { const b = e.target.closest(".chip"); if (!b) return; tag = b.dataset.t; shown = 15; drawList(); });
-  q("#newsList").addEventListener("click", (e) => {
-    if (e.target.closest("a")) return;
-    const li = e.target.closest(".nw"); if (!li) return;
-    const ts = +li.dataset.ts; sel = sel === ts ? null : ts;
-    drawCharts(); drawList();
-    if (sel && window.innerWidth < 760) q("#newsCharts").scrollIntoView({ behavior: "smooth", block: "nearest" });
-  });
-  q("#newsMore").addEventListener("click", () => { shown += 15; drawList(); });
+  const full = !!q("#newsList");       // 메인 페이지(속보 칸 있음) / 다른 페이지(띠만)
+  if (full) {
+    q("#newsChips").addEventListener("click", (e) => { const b = e.target.closest(".chip"); if (!b) return; tag = b.dataset.t; shown = 15; drawList(); });
+    q("#newsList").addEventListener("click", (e) => {
+      if (e.target.closest("a")) return;
+      const li = e.target.closest(".nw"); if (!li) return;
+      const ts = +li.dataset.ts; sel = sel === ts ? null : ts;
+      drawCharts(); drawList();
+      if (sel && window.innerWidth < 760) q("#newsCharts").scrollIntoView({ behavior: "smooth", block: "nearest" });
+    });
+    q("#newsMore").addEventListener("click", () => { shown += 15; drawList(); });
+    // 띠에서 속보를 누르면 속보 칸으로 내려가 그 속보를 선택
+    document.addEventListener("click", (e) => {
+      const a = e.target.closest(".tk-i"); if (!a) return;
+      e.preventDefault(); sel = +a.dataset.ts; tag = "전체"; shown = Math.max(shown, 40);
+      drawCharts(); drawList(); q("#news").scrollIntoView({ behavior: "smooth" });
+    });
+  }
 
-  async function tick() { await Promise.all([loadNews(), loadCandles()]); drawCharts(); drawList(); }
-  tick();
-  setInterval(tick, 120000);          // 2분마다
+  async function tickNews() { await loadNews(); if (full) { drawCharts(); drawList(); } }
+  async function tickAll() { await Promise.all([loadNews(), full ? loadCandles() : null]); if (full) { drawCharts(); drawList(); } }
+  tickAll();
+  setInterval(tickNews, 60000);        // 속보 1분마다
+  if (full) setInterval(async () => { await loadCandles(); drawCharts(); drawList(); }, 120000);   // 지수 2분마다
 })();

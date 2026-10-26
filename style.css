@@ -349,3 +349,18 @@ body{overflow-x:hidden}
 .howto li{background:var(--gold-bg);border-radius:12px;padding:12px;font-size:14px;color:#4a3d24;counter-increment:st}
 .howto li::before{content:counter(st);display:inline-flex;width:22px;height:22px;border-radius:50%;background:var(--gold);color:var(--navy);font-weight:900;font-size:12px;align-items:center;justify-content:center;margin-right:6px}
 .howto li b{color:#3d2a07}
+
+/* 주요 시황 띠 */
+.ticker{position:sticky;top:60px;z-index:19;display:flex;align-items:center;background:#0b1422;color:#e8edf5;border-bottom:1px solid #22324d;height:38px;overflow:hidden;font-size:14px}
+.ticker[hidden]{display:none}
+.tk-label{flex:none;padding:0 12px 0 16px;font-weight:900;color:#fff;background:#0b1422;height:100%;display:flex;align-items:center;box-shadow:8px 0 12px #0b1422;z-index:1;white-space:nowrap}
+.tk-view{flex:1;overflow:hidden;height:100%}
+.tk-track{display:inline-flex;height:100%;align-items:center;white-space:nowrap;animation:tk linear infinite}
+.ticker:hover .tk-track{animation-play-state:paused}
+@keyframes tk{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.tk-i{color:inherit;text-decoration:none;padding:0 22px;border-right:1px solid #22324d}
+.tk-i b{color:var(--gold);margin-right:7px;font-variant-numeric:tabular-nums}
+.tk-i.hot{color:#fff;font-weight:700}
+.tk-i:hover{color:var(--gold)}
+@media (max-width:600px){.ticker{font-size:13px;height:34px}.tk-label{padding:0 8px 0 12px}}
+@media (prefers-reduced-motion:reduce){.tk-track{animation-duration:400s !important}}

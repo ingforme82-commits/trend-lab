@@ -1,4 +1,4 @@
-"""블로그 글(txt+html)을 사이트 '시황 업데이트' 피드에 올린다.
+"""블로그 글(txt+html)을 사이트 '시황 업데이트' '블로그 분석 글' 칸에 올린다.
 
   python publish.py "C:\\...\\블로그시황\\20261026_xxx.txt"          # 피드에 추가(같은 글이면 갱신)
   python publish.py <txt> [<txt> ...] --push                        # 추가 후 git commit·push(사이트 반영)
@@ -69,7 +69,7 @@ def copy_html(txt: Path) -> None:
         j = s.find('<p style="font-size:13px;color:#888;">※', i)
         s = s[:i] + (s[j:] if j >= 0 else "</div>\n</body>\n</html>\n")
     back = ('<p style="margin:0 0 18px;font-size:14px;"><a href="../index.html#feed" '
-            'style="color:#9a7330;text-decoration:none;font-weight:bold;">← Trend Research Lab 시황 목록</a></p>\n')
+            'style="color:#9a7330;text-decoration:none;font-weight:bold;">← Trend Research Lab 블로그 분석 글</a></p>\n')
     s = re.sub(r"(<body[^>]*>\s*(?:<!--.*?-->\s*)?<div[^>]*>)", r"\1\n" + back, s, count=1, flags=re.S)
     OUT.mkdir(exist_ok=True)
     (OUT / f"{txt.stem}.html").write_text(s, encoding="utf-8")
@@ -120,7 +120,7 @@ def main() -> None:
         print(f"추가: {p['date']} {p['time']} {p['title'][:50]} | 분류 {p['cats']} | 소제목 {len(p['sections'])}개")
     save(items)
     if do_push and added:
-        push("시황 업데이트: " + added[-1][:60])
+        push("블로그 분석 글: " + added[-1][:60])
 
 
 if __name__ == "__main__":

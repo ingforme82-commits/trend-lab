@@ -1,4 +1,4 @@
-"""텔레그램 속보 → 사이트 '실시간 속보' 칸 (10분마다 예약 실행)
+"""텔레그램 속보 → 사이트 '실시간 속보' 칸 (10분마다 1분마다 예약 실행)
 
   python tools/live_news.py          # 텔레 새로고침 → news.json 만들기 → GitHub live 브랜치에 올리기
   python tools/live_news.py --dry    # 올리지 않고 화면에만 출력
@@ -55,10 +55,14 @@ def log(msg: str) -> None:
         f.write(f"{datetime.now(KST):%m-%d %H:%M} {msg}\n")
 
 
+NO_WINDOW = 0x08000000 if os.name == "nt" else 0     # 예약 실행 때 검은 창이 뜨지 않게
+
+
 def refresh() -> None:
+    """속보 채널 3개만 빠르게 받는다(tg_research/fast_news.py, 약 2초)."""
     if TGR_PY.exists():
-        subprocess.run([str(TGR_PY), "run.py", "once", "--no-classify"], cwd=TGR, capture_output=True, timeout=300,
-                       env={**os.environ, "PYTHONIOENCODING": "utf-8"})
+        subprocess.run([str(TGR_PY), "fast_news.py"], cwd=TGR, capture_output=True, timeout=55,
+                       env={**os.environ, "PYTHONIOENCODING": "utf-8"}, creationflags=NO_WINDOW)
 
 
 def headline(text: str) -> str:
@@ -105,7 +109,7 @@ def build() -> dict:
 
 
 def gh(*args: str, input_: str | None = None) -> subprocess.CompletedProcess:
-    return subprocess.run(["gh", *args], capture_output=True, text=True, input=input_, encoding="utf-8")
+    return subprocess.run(["gh", *args], capture_output=True, text=True, input=input_, encoding="utf-8", creationflags=NO_WINDOW)
 
 
 def ensure_branch() -> None:
