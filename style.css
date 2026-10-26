@@ -223,3 +223,89 @@ body{overflow-x:hidden}
 .lb-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.12);border:0;color:#fff;font-size:40px;width:52px;height:72px;border-radius:10px;cursor:pointer}
 .lb-prev{left:12px}.lb-next{right:12px}
 @media (max-width:600px){.lb-nav{display:none}}
+
+/* notice */
+.notice{background:var(--gold);color:var(--navy);font-weight:700;font-size:14px;padding:9px 0;text-align:center}
+
+/* hero study items */
+.hc-item{display:block;text-decoration:none;padding:12px 0;border-bottom:1px dashed rgba(255,255,255,.14)}
+.hc-item:hover .hc-title{color:var(--gold)}
+.hc-item .hc-kind{display:block;font-size:13px;color:#aab5c8}
+.hc-item .hc-kind em{font-style:normal;color:#fff;background:var(--up);border-radius:5px;padding:0 6px;margin-left:4px;font-size:12px}
+.hc-item .hc-title{display:block;margin:2px 0;font-size:20px;font-weight:700}
+.hc-item.sub .hc-title{font-size:17px}
+.hc-item .hc-when{display:block;font-size:14px;color:#d8dfeb}
+.hero-card .btn{margin-top:16px}
+
+/* upcoming */
+.sec-sub.dark{color:#6b5a38}
+.up-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.up{background:#fff;border:2px solid var(--gold);border-radius:18px;padding:22px;display:flex;flex-direction:column}
+.up-top{display:flex;justify-content:space-between;align-items:center}
+.up-kind{font-size:13px;font-weight:700;color:var(--gold-d)}
+.up-dday{background:var(--up);color:#fff;font-weight:900;font-size:13px;border-radius:7px;padding:2px 9px}
+.up-title{margin:8px 0 4px;font-size:23px;line-height:1.35;color:#3d2a07}
+.up-theme{margin:0 0 10px;color:#5a4a2c;font-size:15px}
+.up-meta{list-style:none;padding:0;margin:0 0 10px;font-size:15px;color:#3d4556}
+.up-meta li{padding:3px 0}
+.up-sum{margin:0 0 10px;font-size:14px;color:var(--sub)}
+.up-rule{margin:auto 0 12px;font-size:12px;color:#9a8a6a}
+.up-btns{display:flex;gap:8px;flex-wrap:wrap}
+.up-btns .btn{flex:1}
+.study-info{margin-top:18px;background:rgba(255,255,255,.6);border-radius:14px;padding:14px 18px}
+.study-info ul{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:4px 18px;font-size:14px;color:#4a3d24}
+
+/* archive stats */
+.arch-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:16px}
+.arch-stats div{background:var(--bg2);border-radius:12px;padding:12px;text-align:center}
+.arch-stats b{display:block;font-size:24px;color:var(--navy);font-weight:900}
+.arch-stats span{font-size:13px;color:var(--sub)}
+@media (max-width:600px){.arch-stats{grid-template-columns:repeat(2,1fr)}}
+
+/* curriculum */
+.cur{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px}
+.cur-part{background:#fff;border:1px solid var(--line);border-radius:14px;padding:18px}
+.cur-part h3{margin:0 0 4px;font-size:17px;color:var(--navy)}
+.cur-part>p{margin:0 0 10px;font-size:13px;color:var(--sub)}
+.cur-part ol{list-style:none;margin:0;padding:0}
+.cur-part li>a,.cur-part li>div{display:grid;grid-template-columns:42px 104px 1fr auto;gap:6px;align-items:center;padding:8px 6px;border-top:1px solid var(--line);font-size:14px;text-decoration:none}
+.cur-part li>a:hover{background:var(--gold-bg)}
+.cur-part li.done{color:#8a92a1}
+.cur-part li.next>a,.cur-part li.next>div{background:var(--gold-bg);border-radius:8px;font-weight:700}
+.cur-no{font-weight:700;color:var(--gold-d)}
+.cur-d{font-size:13px}
+.cur-done,.cur-next,.bk-sel{font-style:normal;font-size:11px;border-radius:5px;padding:1px 7px;white-space:nowrap}
+.cur-done{background:#e8f4ec;color:#2f7a4a}
+.cur-next{background:var(--up);color:#fff}
+.bk-sel{background:var(--bg2);color:var(--sub)}
+@media (max-width:600px){.cur-part li>a,.cur-part li>div{grid-template-columns:38px 1fr auto}.cur-d{display:none}}
+
+/* books */
+.books{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:10px}
+.books li>a,.books li>div{display:flex;align-items:center;gap:12px;border:1px solid var(--line);border-radius:12px;padding:12px 14px;text-decoration:none;height:100%}
+.books li>a:hover{border-color:var(--gold);background:var(--gold-bg)}
+.bk-n{flex:none;width:30px;height:30px;border-radius:50%;background:var(--navy);color:#fff;font-weight:700;display:flex;align-items:center;justify-content:center;font-size:14px}
+.bk-t{flex:1;min-width:0}
+.bk-t b{display:block;font-size:15px}
+.bk-t small{color:var(--sub);font-size:13px}
+
+/* study detail */
+.sv-kind{display:inline-block;background:var(--navy);color:#fff;border-radius:6px;padding:2px 10px;font-size:13px;font-weight:700;margin-bottom:8px}
+.sv-hero{border-radius:16px;overflow:hidden;margin:6px 0 18px;aspect-ratio:16/9;background:var(--bg2)}
+.sv-hero img{width:100%;height:100%;object-fit:cover;display:block;cursor:zoom-in}
+.sv-hl{list-style:none;padding:0;margin:0;display:grid;gap:10px}
+.sv-hl li{position:relative;background:#fff;border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:10px;padding:12px 14px 12px 44px;font-size:15px}
+.sv-hl li::before{content:counter(hl);counter-increment:hl;position:absolute;left:12px;top:12px;width:22px;height:22px;border-radius:50%;background:var(--gold);color:var(--navy);font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center}
+.sv-hl{counter-reset:hl}
+.rv{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px}
+.rv blockquote{margin:0;background:var(--gold-bg);border-radius:14px;padding:14px 16px;font-size:15px;color:#4a3d24;position:relative}
+.rv blockquote::before{content:"“";position:absolute;top:-6px;left:10px;font-size:40px;color:var(--gold);font-family:Georgia,serif}
+.rv cite{display:block;margin-top:6px;font-size:12px;font-style:normal;color:#9a8a6a}
+.gal-i{position:relative}
+.gal-t{position:absolute;left:6px;bottom:6px;background:rgba(15,27,45,.72);color:#fff;font-size:11px;border-radius:5px;padding:1px 6px}
+.sv-poster{display:grid;grid-template-columns:160px 1fr;gap:16px;align-items:center;background:var(--bg2);border-radius:14px;padding:14px;margin-top:10px}
+.sv-poster img{width:100%;border-radius:8px;cursor:zoom-in;display:block}
+.sv-poster p{margin:0;font-size:14px;color:var(--sub)}
+@media (max-width:600px){.sv-poster{grid-template-columns:110px 1fr}}
+.sv-up{background:var(--gold-bg);border:2px solid var(--gold);border-radius:14px;padding:16px 18px;margin:16px 0}
+.sv-up b{color:var(--up)}

@@ -4,8 +4,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>스터디 아카이브 | Trend Research Lab</title>
+<meta name="description" content="조영근 추세추종 리서치 랩 — 매달 오프라인 정기 스터디와 독서 토론의 사진과 내용">
 <meta property="og:title" content="스터디 아카이브 | Trend Research Lab">
-<meta property="og:description" content="매달 오프라인 스터디의 사진과 내용을 모았습니다">
+<meta property="og:description" content="매달 오프라인 정기 스터디와 성장주 발굴 독서 토론의 기록">
 <meta property="og:image" content="https://ingforme82-commits.github.io/trend-lab/og.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -17,9 +18,9 @@
   <div class="wrap nav-in">
     <a class="brand" href="index.html"><span class="brand-mark">TRL</span><span class="brand-txt">Trend Research Lab</span></a>
     <nav class="nav-links">
-      <a href="index.html#feed">시황 업데이트</a>
-      <a href="index.html#quiz">성향 테스트</a>
+      <a href="index.html#study">다가오는 모임</a>
       <a href="index.html#archive">스터디 아카이브</a>
+      <a href="index.html#curriculum">커리큘럼</a>
     </nav>
     <a class="btn btn-kakao btn-sm" href="https://invite.kakao.com/tc/p7OX5rMjd0" target="_blank" rel="noopener">오픈채팅</a>
   </div>
@@ -39,7 +40,7 @@
 <footer class="foot">
   <div class="wrap">
     <p><b>조영근 추세추종 리서치 랩 | Trend Research Lab</b></p>
-    <p>본 모임은 교육 목적이며, 특정 종목을 추천하지 않고 수익을 보장하지 않습니다.</p>
+    <p>본 모임은 교육 목적이며, 특정 종목을 추천하지 않고 수익을 보장하지 않습니다. 사진 게시를 원하지 않으시면 오픈채팅으로 알려 주세요. 바로 내리겠습니다.</p>
   </div>
 </footer>
 
@@ -49,55 +50,84 @@ const $ = (s) => document.querySelector(s);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 const DOW = ["일", "월", "화", "수", "목", "금", "토"];
 const fmt = (d) => { const x = new Date(d + "T00:00:00"); return `${x.getFullYear()}년 ${x.getMonth() + 1}월 ${x.getDate()}일(${DOW[x.getDay()]})`; };
-let photos = [], cur = 0;
+const ampm = (t) => { if (!t) return ""; const [h, m] = t.split(":").map(Number); return `${h < 12 ? "오전" : "오후"} ${h % 12 || 12}시${m ? " " + m + "분" : ""}`; };
+const k = new Date(Date.now() + (new Date().getTimezoneOffset() + 540) * 60000);
+const today = `${k.getFullYear()}-${String(k.getMonth() + 1).padStart(2, "0")}-${String(k.getDate()).padStart(2, "0")}`;
+const dday = (d) => { const n = Math.round((new Date(d + "T00:00:00") - new Date(today + "T00:00:00")) / 864e5); return n === 0 ? "오늘" : n > 0 ? `D-${n}` : ""; };
+let shots = [], cur = 0;
 
 (async () => {
   const id = new URLSearchParams(location.search).get("id");
-  let list = [];
-  try { list = await (await fetch(`data/studies.json?t=${Date.now()}`)).json(); } catch { /* 아래에서 안내 */ }
-  list.sort((a, b) => b.date.localeCompare(a.date));
-  const i = list.findIndex((s) => s.id === id);
-  const s = list[i];
+  let list = [], site = {};
+  try {
+    [list, site] = await Promise.all(["studies", "site"].map((f) => fetch(`data/${f}.json?t=${Date.now()}`).then((r) => r.json())));
+  } catch { /* 아래에서 안내 */ }
+  const s = list.find((x) => x.id === id);
   if (!s) { $("#sv").innerHTML = `<p class="empty">스터디 기록을 찾지 못했습니다. <a href="index.html#archive">아카이브로 돌아가기</a></p>`; return; }
-  document.title = `${s.title} | 스터디 아카이브`;
-  const k = new Date(Date.now() + (new Date().getTimezoneOffset() + 540) * 60000);
-  const today = `${k.getFullYear()}-${String(k.getMonth() + 1).padStart(2, "0")}-${String(k.getDate()).padStart(2, "0")}`;
-  photos = s.photos || [];
-  const newer = list[i - 1], older = list[i + 1];
+  const se = (site.series || {})[s.series] || {};
+  const kakao = site.kakao || "https://invite.kakao.com/tc/p7OX5rMjd0";
+  const isUp = s.date > today || (s.date === today && !(s.photos || []).length);
+  document.title = `${s.title} | ${se.short || "스터디"} | Trend Research Lab`;
+
+  const photos = s.photos || [];
+  shots = photos.map((p) => ({ src: p.src, cap: [p.time, p.caption].filter(Boolean).join(" · ") }));
+  if (s.poster) shots.push({ src: s.poster.src, cap: "안내 포스터" });
+  const posterIdx = s.poster ? shots.length - 1 : -1;
+  const cover = photos[s.cover || 0];
+
+  const same = list.filter((x) => x.series === s.series).sort((a, b) => a.date.localeCompare(b.date));
+  const i = same.findIndex((x) => x.id === s.id);
+  const prev = same[i - 1], next = same[i + 1];
+  const nth = s.no ? `${s.no}회` : "";
+
   $("#sv").innerHTML = `
     <p class="sv-back"><a href="index.html#archive">← 스터디 아카이브</a></p>
-    <p class="eyebrow dark">${fmt(s.date)}${s.time ? " " + esc(s.time) : ""} · 오프라인 스터디${s.date > today ? " · 예정" : ""}</p>
+    <span class="sv-kind">${se.emoji || ""} ${esc(se.name || "")}${nth ? " · " + nth : ""}</span>
+    <p class="eyebrow dark">${fmt(s.date)} ${ampm(s.time)}${isUp ? ` · 예정 <b style="color:#d6343f">${dday(s.date)}</b>` : ""}</p>
     <h1 class="sv-title">${esc(s.title)}</h1>
     ${s.theme ? `<p class="sv-theme">${esc(s.theme)}</p>` : ""}
     <ul class="sv-meta">
       ${s.book ? `<li>📖 ${esc(s.book)}</li>` : ""}
-      ${s.place ? `<li>📍 ${esc(s.place)}</li>` : ""}
+      <li>📍 ${esc(s.place || site.place || "")}</li>
       ${photos.length ? `<li>📷 사진 ${photos.length}장</li>` : ""}
     </ul>
+    ${cover ? `<div class="sv-hero"><img src="${esc(cover.src)}" alt="${esc(cover.caption || s.title)}" data-k="${s.cover || 0}"></div>` : ""}
     ${s.summary ? `<p class="sv-sum">${esc(s.summary)}</p>` : ""}
-    ${photos.length ? `<h2 class="sv-h">현장 사진</h2><div class="gal">${photos.map((p, k) => `<button class="gal-i" data-k="${k}"><img src="${esc(p.thumb)}" alt="${esc(p.caption || s.title)}" loading="lazy"></button>`).join("")}</div>`
-      : `<div class="sv-empty">${s.date > today ? "🗓️ 아직 열리지 않은 스터디입니다. 참여 신청은 아래 오픈채팅에서 받습니다." : "📷 사진과 후기를 정리하고 있습니다."}</div>`}
-    ${(s.notes || []).length ? `<h2 class="sv-h">이날 나눈 이야기</h2>${s.notes.map((n) => n.h ? `<div class="sv-note"><h3>${esc(n.h)}</h3>${(n.p || []).map((x) => `<p>${esc(x)}</p>`).join("")}</div>` : `<div class="sv-note"><p>${esc(n)}</p></div>`).join("")}` : ""}
+    ${isUp ? `<div class="sv-up">
+        <p style="margin:0 0 6px"><b>${dday(s.date)}</b> · ${fmt(s.date)} ${ampm(s.time)}</p>
+        <p style="margin:0 0 4px">📍 ${esc(s.place || site.place || "")}</p>
+        ${site.parking ? `<p style="margin:0 0 4px;font-size:14px">🅿️ ${esc(site.parking)}</p>` : ""}
+        ${site.free ? `<p style="margin:0 0 12px;font-size:14px">☕ ${esc(site.free)}</p>` : ""}
+        <a class="btn btn-kakao" href="${esc(kakao)}" target="_blank" rel="noopener">💬 오픈채팅으로 참여 신청</a>
+      </div>` : ""}
+    ${(s.highlights || []).length ? `<h2 class="sv-h">${s.series === "book" ? "함께 짚은 핵심" : "이날의 핵심"}</h2><ol class="sv-hl">${s.highlights.map((h) => `<li>${esc(h)}</li>`).join("")}</ol>` : ""}
+    ${(s.notes || []).length ? s.notes.map((n) => n.h ? `<div class="sv-note"><h3>${esc(n.h)}</h3>${(n.p || []).map((x) => `<p>${esc(x)}</p>`).join("")}</div>` : `<div class="sv-note"><p>${esc(n)}</p></div>`).join("") : ""}
+    ${photos.length ? `<h2 class="sv-h">현장 사진 <small style="font-size:14px;color:#5b6474;font-weight:400">촬영 시각 순</small></h2>
+      <div class="gal">${photos.map((p, k2) => `<button class="gal-i" data-k="${k2}"><img src="${esc(p.thumb)}" alt="${esc(p.caption || s.title)}" loading="lazy">${p.time ? `<span class="gal-t">${esc(p.time)}</span>` : ""}</button>`).join("")}</div>`
+      : !isUp ? `<div class="sv-empty">📷 사진과 후기를 정리하고 있습니다.</div>` : ""}
+    ${s.poster ? `<div class="sv-poster"><img src="${esc(s.poster.thumb)}" alt="안내 포스터" data-k="${posterIdx}"><p><b>안내 포스터</b><br>단톡방과 블로그에 공유했던 이날의 모임 안내입니다.</p></div>` : ""}
+    ${(s.reviews || []).length ? `<h2 class="sv-h">참석자 한마디</h2><div class="rv">${s.reviews.map((r) => `<blockquote>${esc(r.text)}<cite>— ${esc(r.who || "참석자")}</cite></blockquote>`).join("")}</div>` : ""}
     ${(s.materials || []).length ? `<h2 class="sv-h">자료</h2><ul class="sv-mat">${s.materials.map((m) => `<li><a href="${esc(m.url)}" target="_blank" rel="noopener">📎 ${esc(m.name)}</a></li>`).join("")}</ul>` : ""}
     <div class="sv-pn">
-      ${older ? `<a href="study.html?id=${encodeURIComponent(older.id)}"><small>이전 스터디</small>${esc(older.title)}</a>` : "<span></span>"}
-      ${newer ? `<a class="r" href="study.html?id=${encodeURIComponent(newer.id)}"><small>다음 스터디</small>${esc(newer.title)}</a>` : "<span></span>"}
+      ${prev ? `<a href="study.html?id=${encodeURIComponent(prev.id)}"><small>← 이전 ${esc(se.short || "모임")}</small>${esc(prev.title)}</a>` : "<span></span>"}
+      ${next ? `<a class="r" href="study.html?id=${encodeURIComponent(next.id)}"><small>다음 ${esc(se.short || "모임")} →</small>${esc(next.title)}</a>` : "<span></span>"}
     </div>
-    <div class="sv-cta"><p>다음 스터디 일정과 참여 신청은 카카오톡 오픈채팅에서 안내합니다.</p><a class="btn btn-kakao" href="https://invite.kakao.com/tc/p7OX5rMjd0" target="_blank" rel="noopener">💬 오픈채팅 참여하기</a></div>`;
+    <div class="sv-cta"><p>${esc(se.name || "모임")}은 ${esc(se.rule || "매달")} 열립니다. 일정 안내와 참여 신청은 카카오톡 오픈채팅에서 받습니다.</p><a class="btn btn-kakao" href="${esc(kakao)}" target="_blank" rel="noopener">💬 오픈채팅 참여하기</a></div>`;
 })();
 
-function openLb(k) {
-  cur = (k + photos.length) % photos.length;
-  const p = photos[cur];
-  $("#lbImg").src = p.src; $("#lbCap").textContent = `${p.caption ? p.caption + " · " : ""}${cur + 1} / ${photos.length}`;
+function openLb(n) {
+  if (!shots.length) return;
+  cur = (n + shots.length) % shots.length;
+  $("#lbImg").src = shots[cur].src;
+  $("#lbCap").textContent = `${shots[cur].cap ? shots[cur].cap + " · " : ""}${cur + 1} / ${shots.length}`;
   $("#lb").hidden = false; document.body.style.overflow = "hidden";
 }
 function closeLb() { $("#lb").hidden = true; document.body.style.overflow = ""; }
-document.addEventListener("click", (e) => { const g = e.target.closest(".gal-i"); if (g) openLb(+g.dataset.k); });
+document.addEventListener("click", (e) => { const g = e.target.closest("[data-k]"); if (g && g.closest("#sv")) openLb(+g.dataset.k); });
 $("#lbX").onclick = closeLb;
 $("#lbPrev").onclick = () => openLb(cur - 1);
 $("#lbNext").onclick = () => openLb(cur + 1);
-$("#lb").addEventListener("click", (e) => { if (e.target.id === "lb") closeLb(); });
+$("#lb").addEventListener("click", (e) => { if (e.target.id === "lb" || e.target.tagName === "FIGURE") closeLb(); });
 document.addEventListener("keydown", (e) => {
   if ($("#lb").hidden) return;
   if (e.key === "Escape") closeLb(); else if (e.key === "ArrowLeft") openLb(cur - 1); else if (e.key === "ArrowRight") openLb(cur + 1);

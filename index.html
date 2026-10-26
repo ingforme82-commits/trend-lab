@@ -27,12 +27,15 @@
       <a href="#market">실시간 시세</a>
       <a href="#feed">시황 업데이트</a>
       <a href="#quiz">성향 테스트</a>
-      <a href="#study">스터디</a>
+      <a href="#study">모임</a>
       <a href="#archive">아카이브</a>
+      <a href="#curriculum">커리큘럼</a>
     </nav>
     <a class="btn btn-kakao btn-sm" href="https://invite.kakao.com/tc/p7OX5rMjd0" target="_blank" rel="noopener">오픈채팅</a>
   </div>
 </header>
+
+<div class="notice" id="notice" hidden></div>
 
 <main id="top">
 
@@ -47,16 +50,7 @@
         <a class="btn btn-ghost" href="#feed">최신 시황 보기</a>
       </div>
     </div>
-    <aside class="hero-card" id="heroStudy">
-      <p class="hc-tag">다음 오프라인 스터디</p>
-      <p class="hc-title">「Envelope, 추세와 흐름」</p>
-      <ul class="hc-list">
-        <li><b>일시</b> 2026년 11월 14일(토) 오전 10시</li>
-        <li><b>장소</b> 서울 양재시민의숲역 베델회관 7층</li>
-        <li><b>비용</b> 커피·와이파이·장소 무료</li>
-      </ul>
-      <a class="btn btn-kakao btn-block" href="https://invite.kakao.com/tc/p7OX5rMjd0" target="_blank" rel="noopener">💬 카카오톡으로 참여하기</a>
-    </aside>
+    <aside class="hero-card" id="heroStudy"><p class="hc-tag">다음 오프라인 모임</p><p class="hc-title">불러오는 중…</p></aside>
   </div>
 </section>
 
@@ -132,23 +126,10 @@
 </section>
 
 <section class="sec sec-gold" id="study">
-  <div class="wrap study">
-    <div>
-      <p class="eyebrow dark">오프라인 스터디</p>
-      <h2>「Envelope, 추세와 흐름」</h2>
-      <p>이동평균선 위아래로 일정한 폭의 띠를 두르는 Envelope로 지금 시장이 추세 안에 있는지, 흐름이 꺾이는지 함께 읽어봅니다. 차트와 이번 주 시장을 같이 놓고, 숫자로 확인하는 추세추종을 연습합니다.</p>
-      <ul class="study-list">
-        <li>🗓️ 2026년 11월 14일(토) 오전 10시</li>
-        <li>📍 서울 양재시민의숲역 베델회관 7층</li>
-        <li>🅿️ 토·일 무료 / 평일 08:00~17:30 무료, 이후 30분당 1,000원 · 1층이 차면 인근 공영주차장</li>
-        <li>☕ 커피 · 와이파이 · 사무실 이용 모두 무료</li>
-      </ul>
-    </div>
-    <div class="study-cta">
-      <p class="sc-big">100명+</p>
-      <p>카카오톡 오픈채팅에서<br>온라인 시황분석과 월간 스터디를 함께합니다.</p>
-      <a class="btn btn-kakao btn-block" href="https://invite.kakao.com/tc/p7OX5rMjd0" target="_blank" rel="noopener">💬 오픈채팅 참여하기</a>
-    </div>
+  <div class="wrap">
+    <div class="sec-head"><div><p class="eyebrow dark">오프라인 모임 · 서울 양재</p><h2>다가오는 모임</h2><p class="sec-sub dark">매달 두 번 만납니다. 차트로 배우는 정기 스터디, 책으로 생각을 넓히는 독서 토론.</p></div></div>
+    <div class="up-grid" id="upList"></div>
+    <div class="study-info" id="studyInfo"></div>
   </div>
 </section>
 
@@ -157,11 +138,28 @@
     <div class="sec-head">
       <div>
         <h2>스터디 아카이브</h2>
-        <p class="sec-sub">매달 오프라인 스터디의 사진과 내용을 모았습니다. 카드를 누르면 그날의 기록을 볼 수 있습니다.</p>
+        <p class="sec-sub">2026년 5월부터 이어온 모임의 기록입니다. 카드를 누르면 그날의 사진과 내용을 볼 수 있습니다.</p>
       </div>
       <p class="stamp" id="archStamp"></p>
     </div>
+    <div class="arch-stats" id="archStats"></div>
+    <div class="chips" id="archChips"></div>
     <div class="arch" id="archList"></div>
+  </div>
+</section>
+
+<section class="sec sec-alt" id="curriculum">
+  <div class="wrap">
+    <div class="sec-head"><div><h2>연간 커리큘럼</h2><p class="sec-sub" id="curSub"></p></div></div>
+    <div class="cur" id="curList"></div>
+    <p class="fine" id="curNote"></p>
+  </div>
+</section>
+
+<section class="sec" id="books">
+  <div class="wrap">
+    <div class="sec-head"><div><h2>독서 토론 선정 도서 10권</h2><p class="sec-sub" id="bookSub"></p></div></div>
+    <ol class="books" id="bookList"></ol>
   </div>
 </section>
 

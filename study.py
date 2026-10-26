@@ -1,21 +1,25 @@
-"""스터디 아카이브에 사진·내용을 올린다.
+"""스터디 일정·아카이브 관리 (사이트 data/studies.json, data/site.json)
 
-  python study.py 2026-10-26 --photos "C:\\사진폴더" --push
-  python study.py 2026-10-26 --notes 후기.txt --summary "한 줄 소개" --push
-  python study.py 2026-12-12 --title "새 스터디" --theme "주제" --book "책" --photos 폴더 --push   # 새 회차
+일정·주제 바꾸기 (사이트 메인 카드, 상세 페이지, 커리큘럼 표시, 블로그 CTA가 모두 따라 바뀜)
+  python study.py edit 2026-11-14 --date 2026-11-21 --push        # 날짜 변경(id는 그대로)
+  python study.py edit 2026-11-30 --time 19:30 --place "장소" --push
+  python study.py edit 2026-11-14 --title "새 주제" --theme "한 줄 설명" --summary "소개" --push
 
-옵션
-  --photos 폴더 또는 파일들   jpg·png·webp. 폴더 안 captions.txt("파일명: 설명" 한 줄씩)가 있으면 설명으로 쓴다.
-                              기존 사진 뒤에 추가된다. 처음부터 다시 올리려면 --replace-photos.
-  --notes 텍스트 파일         '## 소제목' 줄로 묶음을 나누고, 그 아래 줄들은 문단. 소제목 없이 써도 된다.
-  --cover N                   목록 카드에 쓸 사진 번호(1부터). 기본은 첫 사진.
-  --title/--theme/--book/--place/--summary/--time   값 바꾸기
-  --material "이름|주소"       자료 링크 추가(여러 번 가능)
-  --remove                    이 회차 삭제
-  --push                      git commit·push(사이트 반영, 1~2분)
+새 회차 만들기
+  python study.py new 2026-12-12 --series regular --no 5 --title "캔들 패턴" --push
+  python study.py new 2026-12-28 --series book --no 3 --title "책 제목" --book "『책』 — 저자" --push
 
-사진은 긴 변 1600px로 줄이고, 촬영 위치(GPS) 같은 메타데이터는 모두 지운 뒤 올린다.
-공개 사이트이므로 참석자 얼굴이 나온 사진은 본인 동의를 받은 것만 올린다.
+사진·후기 올리기 (사진은 촬영 시각 순 정렬, 긴 변 1600px, GPS 등 메타데이터 제거)
+  python study.py photos 2026-11-14 "C:\\사진폴더" [--replace] [--cover 3] --push
+  python study.py notes 2026-11-14 후기.txt --push      # '## 소제목' 아래 줄은 문단, '> 참석자: 내용'은 참석자 한마디
+  python study.py hide-photo 2026-08-08 5 --push        # 5번째 사진 내리기(게시 거부 요청 시)
+
+공지 띠 (사이트 맨 위 금색 띠)
+  python study.py notice "11/14 스터디가 11/21로 변경되었습니다" --until 2026-11-21 --push
+  python study.py notice --clear --push
+
+확인
+  python study.py list
 """
 
 from __future__ import annotations
@@ -24,78 +28,57 @@ import argparse
 import json
 import shutil
 import subprocess
+import sys
+from datetime import datetime
 from pathlib import Path
-
-from PIL import Image, ImageOps
 
 ROOT = Path(__file__).resolve().parent
 DATA = ROOT / "data" / "studies.json"
+SITE = ROOT / "data" / "site.json"
 IMG_EXT = {".jpg", ".jpeg", ".png", ".webp"}
 
 
-def load() -> list[dict]:
-    return json.loads(DATA.read_text(encoding="utf-8")) if DATA.exists() else []
-
-
-def save(items: list[dict]) -> None:
-    items.sort(key=lambda s: s["date"], reverse=True)
-    DATA.write_text(json.dumps(items, ensure_ascii=False, indent=1), encoding="utf-8")
-
-
 def shrink(src: Path, dst: Path, size: int, quality: int) -> None:
+    from PIL import Image, ImageOps
     with Image.open(src) as im:
-        im = ImageOps.exif_transpose(im)          # 휴대폰 사진 회전 맞추기
-        im = im.convert("RGB")
+        im = ImageOps.exif_transpose(im).convert("RGB")      # 휴대폰 사진 회전 맞추기
         im.thumbnail((size, size), Image.LANCZOS)
         im.save(dst, "JPEG", quality=quality, optimize=True, progressive=True)   # exif 없이 저장 = GPS 제거
 
 
-def add_photos(s: dict, paths: list[str], replace: bool) -> int:
-    files: list[Path] = []
-    captions: dict[str, str] = {}
-    for p in map(Path, paths):
-        if p.is_dir():
-            cap = p / "captions.txt"
-            if cap.exists():
-                for line in cap.read_text(encoding="utf-8").splitlines():
-                    if ":" in line:
-                        k, v = line.split(":", 1)
-                        captions[k.strip()] = v.strip()
-            files += sorted(f for f in p.iterdir() if f.suffix.lower() in IMG_EXT)
-        elif p.suffix.lower() in IMG_EXT:
-            files.append(p)
-        elif p.suffix.lower() in {".heic", ".heif"}:
-            print(f"건너뜀(HEIC는 jpg로 바꿔서 넣어 주세요): {p.name}")
-    out = ROOT / "study" / s["id"]
-    if replace:
-        shutil.rmtree(out, ignore_errors=True)
-        s["photos"] = []
-    out.mkdir(parents=True, exist_ok=True)
-    n0 = len(s["photos"])
-    for i, f in enumerate(files, start=n0 + 1):
-        name = f"{i:02d}.jpg"
-        shrink(f, out / name, 1600, 82)
-        shrink(f, out / f"t_{name}", 520, 78)
-        s["photos"].append({"src": f"study/{s['id']}/{name}", "thumb": f"study/{s['id']}/t_{name}",
-                            "caption": captions.get(f.name, captions.get(f.stem, ""))})
-    return len(files)
-
-
-def parse_notes(path: str) -> list:
-    blocks: list = []
-    cur: dict | None = None
-    for line in Path(path).read_text(encoding="utf-8").splitlines():
-        t = line.strip()
-        if not t:
+def shot_time(p: Path) -> datetime | None:
+    from PIL import Image
+    try:
+        ex = Image.open(p).getexif()
+        v = ex.get_ifd(0x8769).get(36867) or ex.get(306)
+        if v:
+            return datetime.strptime(v, "%Y:%m:%d %H:%M:%S")
+    except Exception:  # noqa: BLE001
+        pass
+    for fmt, n in (("%Y%m%d_%H%M%S", 15), ("%Y%m%d", 8)):
+        s = p.stem.replace("KakaoTalk_", "")
+        try:
+            return datetime.strptime(s[:n], fmt)
+        except ValueError:
             continue
-        if t.startswith("##"):
-            cur = {"h": t.lstrip("#").strip(), "p": []}
-            blocks.append(cur)
-        elif cur is not None:
-            cur["p"].append(t.lstrip("-• ").strip())
-        else:
-            blocks.append(t)
-    return blocks
+    return None
+
+
+def load(p: Path):
+    return json.loads(p.read_text(encoding="utf-8"))
+
+
+def save(p: Path, obj) -> None:
+    if isinstance(obj, list):
+        obj.sort(key=lambda s: s["date"], reverse=True)
+    p.write_text(json.dumps(obj, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
+def find(items: list[dict], sid: str) -> dict:
+    s = next((x for x in items if x["id"] == sid), None)
+    if s is None:
+        raise SystemExit(f"없는 회차입니다: {sid}  (python study.py list 로 확인)")
+    return s
 
 
 def push(msg: str) -> None:
@@ -108,54 +91,186 @@ def push(msg: str) -> None:
     print("push 완료 — 1~2분 뒤 사이트에 반영됩니다")
 
 
-def main() -> None:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("date", help="스터디 날짜 YYYY-MM-DD (같은 날 두 번이면 2026-10-26-2처럼)")
-    ap.add_argument("--photos", nargs="+")
-    ap.add_argument("--replace-photos", action="store_true")
-    ap.add_argument("--notes")
-    ap.add_argument("--cover", type=int)
-    ap.add_argument("--material", action="append", default=[])
-    for k in ("title", "theme", "book", "place", "summary", "time"):
-        ap.add_argument(f"--{k}")
-    ap.add_argument("--remove", action="store_true")
-    ap.add_argument("--push", action="store_true")
-    a = ap.parse_args()
+def after(a, msg: str) -> None:
+    try:
+        sys.path.insert(0, str(ROOT / "tools"))
+        from make_cta import main as cta
+        cta(quiet=True)                      # 블로그 글 끝 모임 안내도 같이 갱신
+    except Exception as e:  # noqa: BLE001
+        print(f"(블로그 CTA 갱신 건너뜀: {e})")
+    if getattr(a, "push", False):
+        push(msg)
 
-    items = load()
-    sid = a.date
-    s = next((x for x in items if x["id"] == sid), None)
-    if a.remove:
-        items = [x for x in items if x["id"] != sid]
-        shutil.rmtree(ROOT / "study" / sid, ignore_errors=True)
-        save(items)
-        print(f"삭제: {sid}")
-        if a.push:
-            push(f"스터디 아카이브 삭제: {sid}")
-        return
-    if s is None:
-        if not a.title:
-            raise SystemExit("새 회차는 --title이 필요합니다")
-        s = {"id": sid, "date": sid[:10], "time": "", "title": "", "theme": "", "book": "",
-             "place": "서울 양재시민의숲역 베델회관 7층", "summary": "", "notes": [], "photos": [], "materials": []}
-        items.append(s)
-    for k in ("title", "theme", "book", "place", "summary", "time"):
-        if getattr(a, k) is not None:
-            s[k] = getattr(a, k)
-    if a.photos:
-        print(f"사진 {add_photos(s, a.photos, a.replace_photos)}장 추가 (총 {len(s['photos'])}장)")
-    if a.notes:
-        s["notes"] = parse_notes(a.notes)
-        print(f"내용 {len(s['notes'])}묶음")
+
+FIELDS = ("title", "theme", "book", "place", "summary", "time", "series")
+
+
+def cmd_edit(a) -> None:
+    items = load(DATA)
+    s = find(items, a.id)
+    old = dict(s)
+    for k in FIELDS:
+        v = getattr(a, k, None)
+        if v is not None:
+            s[k] = v
+    if a.no is not None:
+        s["no"] = a.no
+    if a.date:
+        s["date"] = a.date
+    save(DATA, items)
+    ch = [f"{k}: {old.get(k)!r} → {s.get(k)!r}" for k in (*FIELDS, "date", "no") if old.get(k) != s.get(k)]
+    print("\n".join(ch) or "바뀐 값 없음")
+    after(a, f"스터디 수정: {s['id']} {s['title']}")
+
+
+def cmd_new(a) -> None:
+    items = load(DATA)
+    if any(x["id"] == a.id for x in items):
+        raise SystemExit("이미 있는 회차입니다. edit을 쓰세요.")
+    site = load(SITE)
+    s = {"id": a.id, "series": a.series, "no": a.no or 0, "date": a.date or a.id[:10], "time": a.time or "10:00",
+         "title": a.title, "theme": a.theme or "", "book": a.book or "", "place": a.place or site["place"],
+         "summary": a.summary or "", "highlights": [], "notes": [], "reviews": [], "photos": [], "materials": []}
+    items.append(s)
+    save(DATA, items)
+    print(f"새 회차: {s['date']} {site['series'][s['series']]['short']} {s['title']}")
+    after(a, f"스터디 추가: {s['date']} {s['title']}")
+
+
+def cmd_photos(a) -> None:
+    items = load(DATA)
+    s = find(items, a.id)
+    files: list[Path] = []
+    captions: dict[str, str] = {}
+    for p in map(Path, a.paths):
+        if p.is_dir():
+            cap = p / "captions.txt"
+            if cap.exists():
+                for line in cap.read_text(encoding="utf-8").splitlines():
+                    if ":" in line:
+                        k, v = line.split(":", 1)
+                        captions[k.strip()] = v.strip()
+            files += [f for f in p.iterdir() if f.suffix.lower() in IMG_EXT]
+        elif p.suffix.lower() in IMG_EXT:
+            files.append(p)
+        elif p.suffix.lower() in {".heic", ".heif"}:
+            print(f"건너뜀(HEIC는 jpg로 바꿔서 넣어 주세요): {p.name}")
+    out = ROOT / "study" / s["id"]
+    if a.replace:
+        for f in out.glob("[0-9]*.jpg"):
+            f.unlink()
+        for f in out.glob("t_[0-9]*.jpg"):
+            f.unlink()
+        s["photos"] = []
+    out.mkdir(parents=True, exist_ok=True)
+    rows = sorted(((shot_time(f) or datetime.min, f) for f in files), key=lambda r: r[0])
+    n0 = max([int(Path(p["src"]).stem) for p in s["photos"]] + [0])
+    for i, (t, f) in enumerate(rows, start=n0 + 1):
+        name = f"{i:02d}.jpg"
+        shrink(f, out / name, 1600, 82)
+        shrink(f, out / f"t_{name}", 520, 78)
+        same = t != datetime.min and t.strftime("%Y-%m-%d") == s["date"]
+        s["photos"].append({"src": f"study/{s['id']}/{name}", "thumb": f"study/{s['id']}/t_{name}",
+                            "caption": captions.get(f.name, captions.get(f.stem, "")),
+                            "time": t.strftime("%H:%M") if same else "", "date": t.strftime("%Y-%m-%d") if t != datetime.min else ""})
+    s["photos"].sort(key=lambda p: (p.get("date", ""), p.get("time", "")))
     if a.cover:
         s["cover"] = max(0, min(len(s["photos"]) - 1, a.cover - 1))
-    for m in a.material:
-        name, _, url = m.partition("|")
-        s["materials"].append({"name": name.strip(), "url": url.strip()})
-    save(items)
-    print(f"저장: {s['date']} {s['title']}")
-    if a.push:
-        push(f"스터디 아카이브: {s['date']} {s['title']}")
+    save(DATA, items)
+    print(f"사진 {len(rows)}장 추가 (총 {len(s['photos'])}장)")
+    after(a, f"스터디 사진: {s['date']} {s['title']}")
+
+
+def cmd_hide(a) -> None:
+    items = load(DATA)
+    s = find(items, a.id)
+    if not 1 <= a.n <= len(s["photos"]):
+        raise SystemExit(f"사진 번호는 1~{len(s['photos'])}")
+    p = s["photos"].pop(a.n - 1)
+    for k in ("src", "thumb"):
+        (ROOT / p[k]).unlink(missing_ok=True)
+    if s.get("cover", 0) >= len(s["photos"]):
+        s["cover"] = 0
+    save(DATA, items)
+    print(f"사진 내림: {p['src']} ({p.get('caption', '')})")
+    after(a, f"스터디 사진 내림: {s['date']}")
+
+
+def cmd_notes(a) -> None:
+    items = load(DATA)
+    s = find(items, a.id)
+    blocks, reviews, hl = [], [], []
+    cur = None
+    for line in Path(a.file).read_text(encoding="utf-8").splitlines():
+        t = line.strip()
+        if not t:
+            continue
+        if t.startswith(">"):
+            who, _, text = t.lstrip("> ").partition(":")
+            reviews.append({"who": who.strip() if text else "참석자", "text": (text or who).strip()})
+        elif t.startswith("!"):
+            hl.append(t.lstrip("! ").strip())
+        elif t.startswith("##"):
+            cur = {"h": t.lstrip("#").strip(), "p": []}
+            blocks.append(cur)
+        elif cur is not None:
+            cur["p"].append(t.lstrip("-• ").strip())
+        else:
+            blocks.append(t)
+    s["notes"] = blocks
+    if reviews:
+        s["reviews"] = reviews
+    if hl:
+        s["highlights"] = hl
+    save(DATA, items)
+    print(f"내용 {len(blocks)}묶음, 핵심 {len(hl)}개, 참석자 한마디 {len(reviews)}개")
+    after(a, f"스터디 후기: {s['date']} {s['title']}")
+
+
+def cmd_notice(a) -> None:
+    site = load(SITE)
+    site["notice"] = {"text": "", "until": ""} if a.clear else {"text": a.text or "", "until": a.until or ""}
+    save(SITE, site)
+    print("공지 삭제" if a.clear else f"공지: {a.text} (~{a.until or '계속'})")
+    after(a, "공지 " + ("삭제" if a.clear else "변경"))
+
+
+def cmd_list(a) -> None:
+    site = load(SITE)
+    today = datetime.now().strftime("%Y-%m-%d")
+    for s in sorted(load(DATA), key=lambda x: x["date"]):
+        se = site["series"].get(s["series"], {})
+        mark = "예정" if s["date"] > today or (s["date"] == today and not s.get("photos")) else "    "
+        print(f"{mark} {s['id']}  {s['date']} {s['time']}  {se.get("short", "")} {str(s["no"]) + "회" if s.get("no") else "":4} {s['title']}  (사진 {len(s.get('photos', []))})")
+    if site.get("notice", {}).get("text"):
+        print(f"\n공지: {site['notice']['text']} (~{site['notice'].get('until') or '계속'})")
+
+
+def main() -> None:
+    ap = argparse.ArgumentParser()
+    sub = ap.add_subparsers(dest="cmd", required=True)
+
+    def common(p, with_fields=True):
+        p.add_argument("--push", action="store_true")
+        if with_fields:
+            for k in FIELDS:
+                p.add_argument(f"--{k}")
+            p.add_argument("--date")
+            p.add_argument("--no", type=int)
+
+    p = sub.add_parser("edit"); p.add_argument("id"); common(p); p.set_defaults(f=cmd_edit)
+    p = sub.add_parser("new"); p.add_argument("id"); common(p); p.set_defaults(f=cmd_new)
+    p = sub.add_parser("photos"); p.add_argument("id"); p.add_argument("paths", nargs="+")
+    p.add_argument("--replace", action="store_true"); p.add_argument("--cover", type=int); common(p, False); p.set_defaults(f=cmd_photos)
+    p = sub.add_parser("hide-photo"); p.add_argument("id"); p.add_argument("n", type=int); common(p, False); p.set_defaults(f=cmd_hide)
+    p = sub.add_parser("notes"); p.add_argument("id"); p.add_argument("file"); common(p, False); p.set_defaults(f=cmd_notes)
+    p = sub.add_parser("notice"); p.add_argument("text", nargs="?"); p.add_argument("--until"); p.add_argument("--clear", action="store_true")
+    common(p, False); p.set_defaults(f=cmd_notice)
+    p = sub.add_parser("list"); p.set_defaults(f=cmd_list)
+    a = ap.parse_args()
+    if a.cmd == "new" and (not a.title or not a.series):
+        raise SystemExit("new에는 --series(regular/book)와 --title이 필요합니다")
+    a.f(a)
 
 
 if __name__ == "__main__":

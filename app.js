@@ -289,29 +289,105 @@ function showResult() {
   });
 }
 
-/* ───────── 5. 스터디 아카이브 ───────── */
-async function loadArchive() {
+/* ───────── 5. 오프라인 모임 · 아카이브 · 커리큘럼 · 도서 ───────── */
+const fmtD = (d, withYear) => { const x = new Date(d + "T00:00:00"); return `${withYear ? x.getFullYear() + "년 " : ""}${x.getMonth() + 1}월 ${x.getDate()}일(${DOW[x.getDay()]})`; };
+const ampm = (t) => { if (!t) return ""; const [h, m] = t.split(":").map(Number); return `${h < 12 ? "오전" : "오후"} ${h % 12 || 12}시${m ? " " + m + "분" : ""}`; };
+const dday = (d) => { const n = Math.round((new Date(d + "T00:00:00") - new Date(ymd(KST()) + "T00:00:00")) / 864e5); return n === 0 ? "오늘" : n > 0 ? `D-${n}` : ""; };
+let archCat = "all";
+
+async function loadStudies() {
   try {
-    const list = await (await fetch(`data/studies.json?t=${Date.now()}`)).json();
+    const [site, list, cur, books] = await Promise.all(["site", "studies", "curriculum", "books"].map((f) => fetch(`data/${f}.json?t=${Date.now()}`).then((r) => r.json())));
     const today = ymd(KST());
-    const next = list.filter((s) => s.date > today).sort((a, b) => a.date.localeCompare(b.date))[0];
-    const past = list.filter((s) => s.date <= today).sort((a, b) => b.date.localeCompare(a.date));
-    const card = (s, isNext) => {
-      const d = new Date(s.date + "T00:00:00");
-      const ph = s.photos || [];
-      const img = ph.length ? `<img src="${esc(ph[s.cover || 0].thumb)}" alt="" loading="lazy"><span class="arc-cnt">📷 ${ph.length}</span>`
-        : `<div class="arc-ph"><span>${isNext ? "🗓️" : "📚"}</span>${isNext ? "다음 스터디" : "사진 정리 중"}</div>`;
-      return `<a class="arc${isNext ? " next" : ""}" href="study.html?id=${encodeURIComponent(s.id)}">
-        <div class="arc-img">${img}<span class="arc-month">${isNext ? "예정" : `${d.getFullYear() % 100}년 ${d.getMonth() + 1}월`}</span></div>
-        <div class="arc-body"><p class="arc-date">${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]})${s.time ? " " + esc(s.time) : ""}</p>
-        <h3 class="arc-title">${esc(s.title)}</h3><p class="arc-sub">${esc(s.book || s.theme || "")}</p></div></a>`;
+    // 오늘 열리는 모임은 사진이 올라오기 전까지 '다가오는 모임'으로 둔다
+    const upcoming = list.filter((s) => s.date > today || (s.date === today && !(s.photos || []).length)).sort((a, b) => a.date.localeCompare(b.date));
+    const nextOf = (k) => upcoming.find((s) => s.series === k);
+    const ups = ["regular", "book"].map(nextOf).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date));
+    const label = (s) => { const se = site.series[s.series] || {}; return `${se.emoji || ""} ${se.short || ""}${s.no ? ` ${s.no}회` : ""}`; };
+
+    const nt = site.notice || {};
+    if (nt.text && (!nt.until || nt.until >= today)) { $("#notice").innerHTML = `<div class="wrap">📢 ${esc(nt.text)}</div>`; $("#notice").hidden = false; }
+
+    $("#heroStudy").innerHTML = `<p class="hc-tag">다음 오프라인 모임</p>` + ups.map((s, i) => `
+      <a class="hc-item${i ? " sub" : ""}" href="study.html?id=${encodeURIComponent(s.id)}">
+        <span class="hc-kind">${label(s)} <em>${dday(s.date)}</em></span>
+        <span class="hc-title">「${esc(s.title)}」</span>
+        <span class="hc-when">${fmtD(s.date)} ${ampm(s.time)} · 베델회관 7층</span>
+      </a>`).join("") + `<a class="btn btn-kakao btn-block" href="${esc(site.kakao)}" target="_blank" rel="noopener">💬 카카오톡으로 참여하기</a>`;
+
+    $("#upList").innerHTML = ups.map((s) => {
+      const se = site.series[s.series] || {};
+      return `<article class="up">
+        <div class="up-top"><span class="up-kind">${label(s)}</span><span class="up-dday">${dday(s.date)}</span></div>
+        <h3 class="up-title">${esc(s.title)}</h3>
+        ${s.theme ? `<p class="up-theme">${esc(s.theme)}</p>` : ""}
+        <ul class="up-meta">
+          <li>🗓️ ${fmtD(s.date, true)} ${ampm(s.time)}</li>
+          <li>📍 ${esc(s.place || site.place)}</li>
+          ${s.book ? `<li>📖 ${esc(s.book)}</li>` : ""}
+        </ul>
+        ${s.summary ? `<p class="up-sum">${esc(s.summary)}</p>` : ""}
+        <p class="up-rule">${esc(se.name || "")} · ${esc(se.rule || "")}</p>
+        <div class="up-btns"><a class="btn btn-kakao" href="${esc(site.kakao)}" target="_blank" rel="noopener">💬 참여 신청</a><a class="btn btn-ghost-dark" href="study.html?id=${encodeURIComponent(s.id)}">자세히</a></div>
+      </article>`;
+    }).join("") || `<p class="empty">다음 모임 일정은 곧 안내합니다.</p>`;
+    $("#studyInfo").innerHTML = `<ul><li>📍 ${esc(site.place)}</li><li>🅿️ ${esc(site.parking)}</li><li>☕ ${esc(site.free)}</li><li>👥 카카오톡 오픈채팅 ${esc(site.members)} · 참가비 무료 · 교육 목적 모임</li></ul>`;
+
+    const past = list.filter((s) => !upcoming.includes(s)).sort((a, b) => b.date.localeCompare(a.date));
+    const nPhoto = past.reduce((n, s) => n + (s.photos || []).length, 0);
+    const first = past[past.length - 1];
+    const fd = first ? new Date(first.date + "T00:00:00") : null;
+    $("#archStats").innerHTML = [
+      [past.filter((s) => s.series === "regular").length + "회", "정기 스터디"],
+      [past.filter((s) => s.series === "book").length + "회", "독서 토론"],
+      [nPhoto + "장", "현장 사진"],
+      [fd ? `${fd.getFullYear() % 100}.${fd.getMonth() + 1}~` : "-", "함께한 기간"],
+    ].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join("");
+    $("#archChips").innerHTML = [["all", "전체"], ["regular", "📈 정기 스터디"], ["book", "📚 독서 토론"]].map(([k, l]) => `<button class="chip${k === archCat ? " on" : ""}" data-k="${k}">${l}</button>`).join("");
+    const draw = () => {
+      const pick = (s) => archCat === "all" || s.series === archCat;
+      $("#archList").innerHTML = ups.filter(pick).map((s) => archCard(s, true, label)).join("") + past.filter(pick).map((s) => archCard(s, false, label)).join("");
     };
-    $("#archList").innerHTML = (next ? card(next, true) : "") + past.map((s) => card(s, false)).join("");
-    $("#archStamp").textContent = `지난 스터디 ${past.length}회`;
-  } catch { /* 아카이브 없으면 비움 */ }
+    $("#archChips").onclick = (e) => { const b = e.target.closest(".chip"); if (!b) return; archCat = b.dataset.k; $("#archChips").querySelectorAll(".chip").forEach((c) => c.classList.toggle("on", c === b)); draw(); };
+    draw();
+    $("#archStamp").textContent = past[0] ? `마지막 기록 ${fmtD(past[0].date)}` : "";
+
+    $("#curSub").textContent = `${cur.rule} · ${cur.flow}`;
+    $("#curNote").textContent = `${cur.why} ${cur.note}`;
+    const byDate = Object.fromEntries(list.filter((s) => s.series === "regular").map((s) => [s.date, s]));
+    const nextReg = nextOf("regular");
+    $("#curList").innerHTML = cur.parts.map((p) => `<div class="cur-part"><h3>${esc(p.name)}</h3><p>${esc(p.desc)}</p><ol>${p.items.map((it) => {
+      const full = it.date.length === 10, done = full && it.date < today, st = byDate[it.date], isNext = !!(nextReg && nextReg.date === it.date);
+      const tag = isNext ? `<em class="cur-next">다음 회차</em>` : done ? `<em class="cur-done">완료</em>` : "";
+      const d = full ? fmtD(it.date) : it.date.replace("-", "년 ") + "월~";
+      const inner = `<span class="cur-no">${it.no ? it.no + "회" : "2년차"}</span><span class="cur-d">${d}</span><span class="cur-t">${esc(it.topic)}</span>${tag}`;
+      return `<li class="${done ? "done" : ""}${isNext ? " next" : ""}">${st ? `<a href="study.html?id=${encodeURIComponent(st.id)}">${inner}</a>` : `<div>${inner}</div>`}</li>`;
+    }).join("")}</ol></div>`).join("");
+
+    $("#bookSub").textContent = `${site.series.book.name} · ${books.rule}`;
+    const sById = Object.fromEntries(list.map((s) => [s.id, s]));
+    $("#bookList").innerHTML = books.books.map((b, i) => {
+      const st = b.study && sById[b.study];
+      const tag = st ? (upcoming.includes(st) ? `<em class="cur-next">${fmtD(st.date)} 예정</em>` : `<em class="cur-done">${fmtD(st.date)} 완료</em>`) : `<em class="bk-sel">선정 도서</em>`;
+      const body = `<span class="bk-n">${i + 1}</span><span class="bk-t"><b>${esc(b.title)}</b><small>${esc(b.author)}</small></span>${tag}`;
+      return `<li>${st ? `<a href="study.html?id=${encodeURIComponent(st.id)}">${body}</a>` : `<div>${body}</div>`}</li>`;
+    }).join("");
+  } catch (e) { console.error(e); }
+}
+
+function archCard(s, isNext, label) {
+  const d = new Date(s.date + "T00:00:00");
+  const ph = s.photos || [];
+  const img = ph.length ? `<img src="${esc(ph[s.cover || 0].thumb)}" alt="" loading="lazy"><span class="arc-cnt">📷 ${ph.length}</span>`
+    : s.poster ? `<img src="${esc(s.poster.thumb)}" alt="" loading="lazy">`
+    : `<div class="arc-ph"><span>${isNext ? "🗓️" : "📚"}</span>${isNext ? `${dday(s.date)} · 다음 모임` : "사진 정리 중"}</div>`;
+  return `<a class="arc${isNext ? " next" : ""}" href="study.html?id=${encodeURIComponent(s.id)}">
+    <div class="arc-img">${img}<span class="arc-month">${isNext ? "예정" : `${d.getFullYear() % 100}년 ${d.getMonth() + 1}월`}</span></div>
+    <div class="arc-body"><p class="arc-date">${label(s)} · ${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]})</p>
+    <h3 class="arc-title">${esc(s.title)}</h3><p class="arc-sub">${esc(s.book || s.theme || "")}</p></div></a>`;
 }
 
 /* ───────── 시작 ───────── */
-loadTicks(); loadChecks(); loadFeed(); loadArchive();
+loadTicks(); loadChecks(); loadFeed(); loadStudies();
 setInterval(loadTicks, 30000);
 setInterval(loadFeed, 5 * 60000);
