@@ -575,3 +575,5 @@ body{overflow-x:hidden}
 .mem-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 10px;margin-bottom:4px}
 .mem-h b:first-child{font-size:17px}.mem-px{font-weight:700;font-variant-numeric:tabular-nums}
 .mem-d .spot-news small{margin-left:4px}
+
+.tk-label small{font-weight:400;font-size:11px;color:#aab5c8;margin-left:4px}

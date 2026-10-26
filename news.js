@@ -75,13 +75,19 @@
   let tickerKey = "";
   function drawTicker() {
     const box = q("#ticker"); if (!box) return;
-    const recent = news.filter((n) => Date.now() - n.ts < 12 * 3600e3);
-    const pick = [...recent.filter((n) => n.pivot).slice(0, 6), ...recent.filter((n) => !n.pivot)].slice(0, 14).sort((a, b) => b.ts - a.ts);
-    const key = pick.map((n) => n.ts + (n.pivot ? "p" : "")).join(",");
+    // 최근 1시간 안의 주요 뉴스 위주(중요도 순으로 고른 뒤 시간 순으로 흘림). 1시간 안에 5건이 안 되면 3시간까지 넓힌다
+    const score = (n) => (n.pivot ? 8 : 0) + (n.hot ? 4 : 0) + (n.kind === "섹터 시세" ? 3 : 0)
+      + ((n.tags || []).some((t) => ["중동·유가", "연준·금리", "반도체", "AI·빅테크", "한국", "지수"].includes(t)) ? 1 : 0)
+      - (n.kind === "증권사 시황" || n.kind === "시황 분석" ? 2 : 0) - (/입찰|낙찰|응찰|Bid-to-Cover|\$거시경제/.test(n.text) ? 2 : 0);
+    let span = 1;
+    let recent = news.filter((n) => Date.now() - n.ts < 3600e3);
+    if (recent.length < 5) { span = 3; recent = news.filter((n) => Date.now() - n.ts < 3 * 3600e3); }
+    const pick = recent.map((n) => [score(n), n]).sort((a, b) => b[0] - a[0] || b[1].ts - a[1].ts).slice(0, 12).map((x) => x[1]).sort((a, b) => b.ts - a.ts);
+    const key = span + ":" + pick.map((n) => n.ts + (n.pivot ? "p" : "")).join(",");
     if (!pick.length || key === tickerKey) return;
     tickerKey = key;
     const row = pick.map((n) => `<a class="tk-i${n.pivot ? " hot" : ""}" href="${q("#news") ? "#news" : "index.html#news"}" data-ts="${n.ts}"><b>${hm(n.ts)}</b>${n.pivot ? "🔴 " : ""}${n.lang === "en" ? "🌐 " : ""}${esc(n.text)}</a>`).join("");
-    box.innerHTML = `<span class="tk-label">📡 주요 시황</span><div class="tk-view"><div class="tk-track" style="animation-duration:${Math.max(40, pick.length * 9)}s">${row}${row}</div></div>`;
+    box.innerHTML = `<span class="tk-label">📡 주요 시황 <small>${span === 1 ? "최근 1시간" : "최근 3시간"}</small></span><div class="tk-view"><div class="tk-track" style="animation-duration:${Math.max(40, pick.length * 9)}s">${row}${row}</div></div>`;
     box.hidden = false;
   }
 
