@@ -540,3 +540,15 @@ body{overflow-x:hidden}
 .rp-box.note a{font-weight:700;color:var(--gold-d);text-decoration:none;font-size:14px}
 .rp-disc{margin:16px 0 0;font-size:12px;color:var(--sub)}
 .rp-btns{display:flex;gap:8px;margin-top:10px}
+
+
+/* 섹터: 이름+평균 한 줄 버튼 → 누르면 종목 */
+.sc-bar{display:flex;flex-wrap:wrap;gap:6px}
+.sc-chip{position:relative;display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:999px;padding:6px 12px;font:inherit;font-size:14px;cursor:pointer}
+.sc-chip:hover{border-color:var(--gold)}
+.sc-chip.on{background:var(--navy);color:#fff;border-color:var(--navy)}
+.sc-chip.on .c-up{color:#ff8a92}.sc-chip.on .c-dn{color:#8fb6ff}
+.sc-dot{width:7px;height:7px;border-radius:50%;background:#f97316;display:inline-block}
+.sc-panel{margin-top:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px}
+.sc-ph{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:8px;font-size:15px}
+.sc-ph .btn{margin-left:auto}

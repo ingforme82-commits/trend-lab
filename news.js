@@ -170,31 +170,30 @@
     }).join("");
   }
 
-  /* ── 섹터 카드: 처음엔 요약만, 누르면 종목이 펼쳐진다 ── */
-  const openSec = new Set();
+  /* ── 섹터: 처음엔 '섹터 이름 + 평균'만 한 줄로, 누르면 그 섹터 종목 등락이 펼쳐진다 ── */
+  let openSector = null;
   function drawSectors() {
     const box = q("#sectorBox"); if (!box) return;
     if (!sectors.length) { box.hidden = true; return; }
     box.hidden = false;
     const won = (r) => r.cur === "KRW";
-    box.innerHTML = `<p class="spot-h">📊 섹터 시세 <small>누르면 종목이 펼쳐집니다 · 하루 ±3%, 3개월 고점 돌파, 52주 신고가 3% 이내가 생기면 속보 목록에 올라갑니다</small></p>
-      <div class="sec-grid">` + sectors.map((c) => {
-      const open = openSec.has(c.name), flags = c.rows.filter((r) => r.flags.length).length;
-      const best = c.rows[0], worst = c.rows[c.rows.length - 1];
-      const closed = c.rows.length && Date.now() - Math.max(...c.rows.map((r) => r.at)) > 3 * 3600e3;
-      return `<article class="sec-card${open ? " open" : ""}">
-        <button class="sec-top" data-sec-toggle="${esc(c.name)}" aria-expanded="${open}">
-          <span class="sec-t">${c.icon} ${esc(c.name)}</span>
-          <b class="sec-avg ${cls(c.avg)}">${c.avg > 0 ? "+" : ""}${c.avg.toFixed(2)}%</b>
-          <span class="sec-sum">강 ${esc(best ? best.name : "-")} ${best ? `${best.chg > 0 ? "+" : ""}${best.chg.toFixed(1)}%` : ""} · 약 ${esc(worst ? worst.name : "-")} ${worst ? `${worst.chg > 0 ? "+" : ""}${worst.chg.toFixed(1)}%` : ""}${flags ? ` · <em>신호 ${flags}</em>` : ""}${closed ? " · 장 마감" : ""}</span>
-          <span class="sec-arrow">${open ? "▲" : "▼"}</span></button>
-        ${open ? `<div class="sec-rows">${c.rows.map((r) => `<div class="sec-r${r.flags.length ? " flag" : ""}"><span class="sec-n">${esc(r.name)}</span>
+    const chips = sectors.map((c) => {
+      const flags = c.rows.filter((r) => r.flags.length).length;
+      return `<button class="sc-chip${openSector === c.name ? " on" : ""}" data-sec-toggle="${esc(c.name)}" aria-expanded="${openSector === c.name}">
+        ${c.icon} ${esc(c.name)} <b class="${cls(c.avg)}">${c.avg > 0 ? "+" : ""}${c.avg.toFixed(2)}%</b>${flags ? '<i class="sc-dot" title="신호 종목 있음"></i>' : ""}</button>`;
+    }).join("");
+    const c = sectors.find((x) => x.name === openSector);
+    const panel = c ? `<div class="sc-panel">
+        <div class="sc-ph"><b>${c.icon} ${esc(c.name)}</b> 평균 <b class="${cls(c.avg)}">${c.avg > 0 ? "+" : ""}${c.avg.toFixed(2)}%</b>
+          ${c.rows.length && Date.now() - Math.max(...c.rows.map((r) => r.at)) > 3 * 3600e3 ? '<span class="dim">· 장 마감 기준</span>' : ""}
+          <button class="btn btn-ghost-dark btn-sm" data-sec-tag="${esc(c.tag)}">${esc(c.tag)} 관련 속보</button></div>
+        <div class="sec-rows">${c.rows.map((r) => `<div class="sec-r${r.flags.length ? " flag" : ""}"><span class="sec-n">${esc(r.name)}</span>
           <b class="${cls(r.chg)}">${r.chg > 0 ? "+" : ""}${r.chg.toFixed(2)}%</b>
           <small>${won(r) ? `${Math.round(r.px).toLocaleString("ko-KR")}원` : `$${r.px}`}${r.to3m != null && r.to3m > 0 ? " · 3개월 고점 돌파" : r.to52 != null ? ` · 52주 고가 ${r.to52 > 0 ? "+" : ""}${r.to52}%` : ""}</small>
           ${r.flags.length ? `<span class="sec-f">${r.flags.map(esc).join(" · ")}</span>` : ""}</div>`).join("")}</div>
-          <button class="btn btn-ghost-dark btn-sm sec-news" data-sec-tag="${esc(c.tag)}">${esc(c.tag)} 관련 속보 보기</button>` : ""}
-      </article>`;
-    }).join("") + `</div>`;
+      </div>` : "";
+    box.innerHTML = `<p class="spot-h">📊 섹터 시세 <small>섹터를 누르면 종목별 등락이 보입니다 · 주황 점은 신호(±3%·고점 돌파) 종목이 있는 섹터</small></p>
+      <div class="sc-bar">${chips}</div>${panel}`;
   }
 
   /* ── 📋 시장 브리핑(실시간 + 매일 12시 기록) ── */
@@ -322,7 +321,7 @@
     }
     if (e.target.closest("[data-clear-kw]")) { kwFilter = null; drawTrend(); drawList(); return; }
     const tg = e.target.closest("[data-sec-toggle]");
-    if (tg) { const n = tg.dataset.secToggle; if (openSec.has(n)) openSec.delete(n); else openSec.add(n); drawSectors(); return; }
+    if (tg) { const n = tg.dataset.secToggle; openSector = openSector === n ? null : n; drawSectors(); return; }
     const st = e.target.closest("[data-sec-tag]"); if (st && q("#news")) { kwFilter = null; tag = st.dataset.secTag; shown = 30; drawTrend(); drawList(); q("#news").scrollIntoView({ behavior: "smooth" }); return; }
     const sk = e.target.closest("[data-spot-kw]"); if (sk && q("#news")) { setKw(sk.dataset.spotName, sk.dataset.spotKw); return; }
     const sc = e.target.closest("[data-spot-chart]"); if (sc && window.trlChart) window.trlChart.open({ coin: sc.dataset.spotChart, name: sc.dataset.spotName, sel: null, news });
