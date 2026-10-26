@@ -171,3 +171,55 @@ a{color:inherit}
 .foot b{color:#fff}
 @media (max-width:600px){.tick-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.tick .t-px{font-size:19px}.sec{padding:48px 0}.sec h2{font-size:24px}.lead{font-size:16px}}
 body{overflow-x:hidden}
+
+/* study archive */
+.arch{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px}
+.arc{display:block;text-decoration:none;background:#fff;border:1px solid var(--line);border-radius:var(--r);overflow:hidden;transition:box-shadow .15s,transform .15s}
+.arc:hover{box-shadow:0 10px 26px rgba(15,27,45,.1);transform:translateY(-2px)}
+.arc-img{aspect-ratio:16/10;background:linear-gradient(135deg,#16263d,#2a3f63);display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.arc-img img{width:100%;height:100%;object-fit:cover;display:block}
+.arc-ph{color:#c9963a;text-align:center;font-weight:700;padding:0 18px}
+.arc-ph span{display:block;font-size:34px;margin-bottom:4px}
+.arc-cnt{position:absolute;right:10px;bottom:10px;background:rgba(15,27,45,.75);color:#fff;font-size:12px;border-radius:6px;padding:2px 8px}
+.arc-month{position:absolute;left:10px;top:10px;background:var(--gold);color:var(--navy);font-weight:900;font-size:13px;border-radius:6px;padding:2px 9px}
+.arc-body{padding:16px 18px 18px}
+.arc-date{margin:0;font-size:13px;color:var(--gold-d);font-weight:700}
+.arc-title{margin:4px 0 6px;font-size:18px;line-height:1.4;color:var(--ink)}
+.arc-sub{margin:0;font-size:14px;color:var(--sub)}
+.arc.next{border:2px dashed var(--gold)}
+.arc.next .arc-img{background:var(--gold-bg)}
+
+.sv{max-width:860px}
+.sv-back a{color:var(--gold-d);font-weight:700;text-decoration:none;font-size:14px}
+.sv-title{margin:4px 0 8px;font-size:clamp(26px,4vw,36px);line-height:1.3;font-weight:900;letter-spacing:-.5px}
+.sv-theme{margin:0 0 14px;font-size:18px;color:#3d4556}
+.sv-meta{list-style:none;padding:0;margin:0 0 18px;display:flex;flex-wrap:wrap;gap:8px 18px;color:var(--sub);font-size:15px}
+.sv-sum{background:var(--gold-bg);border-left:4px solid var(--gold);border-radius:10px;padding:14px 18px;margin:0 0 8px}
+.sec .sv-h{margin:34px 0 14px;font-size:21px;font-weight:900}
+.sv-empty{margin-top:24px;background:var(--bg2);border-radius:12px;padding:40px 20px;text-align:center;color:var(--sub)}
+.gal{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px}
+@media (max-width:600px){.gal{grid-template-columns:repeat(2,1fr)}}
+.gal-i{padding:0;border:0;border-radius:10px;overflow:hidden;cursor:zoom-in;aspect-ratio:1;background:var(--bg2)}
+.gal-i img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .2s}
+.gal-i:hover img{transform:scale(1.04)}
+.sv-note{border:1px solid var(--line);border-radius:12px;padding:16px 18px;margin:0 0 10px}
+.sv-note h3{margin:0 0 6px;font-size:17px}
+.sv-note p{margin:4px 0;color:#3d4556}
+.sv-mat{padding-left:0;list-style:none}
+.sv-mat a{color:var(--gold-d);font-weight:700}
+.sv-pn{display:flex;justify-content:space-between;gap:12px;margin:40px 0 0;border-top:1px solid var(--line);padding-top:18px}
+.sv-pn a{text-decoration:none;font-weight:700;max-width:48%}
+.sv-pn a.r{text-align:right}
+.sv-pn small{display:block;color:var(--sub);font-weight:400;font-size:12px}
+.sv-cta{margin-top:30px;background:linear-gradient(135deg,#fdf8ee,#fbefd6);border:2px solid var(--gold);border-radius:14px;padding:20px;text-align:center}
+.sv-cta p{margin:0 0 12px;color:#5a4a2c}
+
+.lb{position:fixed;inset:0;z-index:50;background:rgba(5,10,18,.94);display:flex;align-items:center;justify-content:center}
+.lb[hidden]{display:none}
+.lb figure{margin:0;max-width:92vw;text-align:center}
+.lb img{max-width:92vw;max-height:82vh;border-radius:8px;display:block;margin:0 auto}
+.lb figcaption{color:#cfd6e2;font-size:14px;margin-top:10px}
+.lb-x{position:absolute;top:14px;right:16px;background:none;border:0;color:#fff;font-size:28px;cursor:pointer}
+.lb-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.12);border:0;color:#fff;font-size:40px;width:52px;height:72px;border-radius:10px;cursor:pointer}
+.lb-prev{left:12px}.lb-next{right:12px}
+@media (max-width:600px){.lb-nav{display:none}}

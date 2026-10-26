@@ -289,7 +289,29 @@ function showResult() {
   });
 }
 
+/* ───────── 5. 스터디 아카이브 ───────── */
+async function loadArchive() {
+  try {
+    const list = await (await fetch(`data/studies.json?t=${Date.now()}`)).json();
+    const today = ymd(KST());
+    const next = list.filter((s) => s.date > today).sort((a, b) => a.date.localeCompare(b.date))[0];
+    const past = list.filter((s) => s.date <= today).sort((a, b) => b.date.localeCompare(a.date));
+    const card = (s, isNext) => {
+      const d = new Date(s.date + "T00:00:00");
+      const ph = s.photos || [];
+      const img = ph.length ? `<img src="${esc(ph[s.cover || 0].thumb)}" alt="" loading="lazy"><span class="arc-cnt">📷 ${ph.length}</span>`
+        : `<div class="arc-ph"><span>${isNext ? "🗓️" : "📚"}</span>${isNext ? "다음 스터디" : "사진 정리 중"}</div>`;
+      return `<a class="arc${isNext ? " next" : ""}" href="study.html?id=${encodeURIComponent(s.id)}">
+        <div class="arc-img">${img}<span class="arc-month">${isNext ? "예정" : `${d.getFullYear() % 100}년 ${d.getMonth() + 1}월`}</span></div>
+        <div class="arc-body"><p class="arc-date">${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]})${s.time ? " " + esc(s.time) : ""}</p>
+        <h3 class="arc-title">${esc(s.title)}</h3><p class="arc-sub">${esc(s.book || s.theme || "")}</p></div></a>`;
+    };
+    $("#archList").innerHTML = (next ? card(next, true) : "") + past.map((s) => card(s, false)).join("");
+    $("#archStamp").textContent = `지난 스터디 ${past.length}회`;
+  } catch { /* 아카이브 없으면 비움 */ }
+}
+
 /* ───────── 시작 ───────── */
-loadTicks(); loadChecks(); loadFeed();
+loadTicks(); loadChecks(); loadFeed(); loadArchive();
 setInterval(loadTicks, 30000);
 setInterval(loadFeed, 5 * 60000);
