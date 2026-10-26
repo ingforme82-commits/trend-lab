@@ -34,6 +34,7 @@ NAMES = {
     "LG에너지솔루션": r"LG에너지솔루션|LG엔솔", "한화에어로스페이스": r"한화에어로", "두산에너빌리티": r"두산에너빌리티",
     "삼성전기": r"삼성전기", "셀트리온": r"셀트리온", "카카오": r"카카오", "네이버": r"네이버|NAVER",
     "코인베이스": r"코인베이스|Coinbase", "비트코인": r"비트코인|Bitcoin",
+    "루멘텀": r"루멘텀|Lumentum|\$LITE", "코히런트": r"코히런트|Coherent|\$COHR", "광통신": r"광통신|광트랜시버|광모듈|CPO", "네비우스": r"네비우스|Nebius|\$NBIS",
 }
 
 
@@ -91,7 +92,25 @@ def world_and_spot() -> tuple[list[dict], list[dict]]:
         if not s.get("on"):
             continue
         row = {k: s.get(k) for k in ("id", "name", "market", "reason", "since", "kw", "hl", "yf")}
-        if s.get("hl") and hl.get(s["hl"]):
+        if s.get("members"):                              # 종목군: 구성 종목별 오늘 등락·3개월 고점 대비
+            from concurrent.futures import ThreadPoolExecutor
+            from sector_watch import _quote
+            syms = list(s["members"])
+            with ThreadPoolExecutor(max_workers=8) as ex:
+                qs = dict(zip(syms, ex.map(_quote, syms)))
+            mem = []
+            for sym, nm in s["members"].items():
+                qd = qs.get(sym)
+                if qd and qd.get("px") and qd.get("prev"):
+                    mem.append({"sym": sym, "name": nm, "px": round(qd["px"], 2), "chg": round((qd["px"] / qd["prev"] - 1) * 100, 2),
+                                "to3m": round((qd["px"] / qd["hi3m"] - 1) * 100, 1) if qd.get("hi3m") else None})
+            row["members"] = mem
+            if mem:
+                row["chg"] = round(sum(m["chg"] for m in mem) / len(mem), 2)       # 종목군 평균
+                row["avg"] = True
+        if s.get("members"):
+            pass
+        elif s.get("hl") and hl.get(s["hl"]):
             c = hl[s["hl"]]
             px, prev = float(c["markPx"]), float(c["prevDayPx"])
             row.update(px=px, chg=round((px / prev - 1) * 100, 2), live=True)

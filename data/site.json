@@ -29,10 +29,56 @@
    "market": "미국",
    "hl": "xyz:TSLA",
    "yf": "TSLA",
-   "kw": "테슬라|Tesla|TSLA|머스크|Musk|사이버캡|옵티머스|로보택시",
-   "reason": "스페이스X 합병 논의 속 하루 +6%, 3개월 만에 최고",
+   "on": true,
    "since": "2026-10-27",
-   "on": true
+   "kw": "테슬라|Tesla|TSLA|머스크|Musk|사이버캡|옵티머스|로보택시",
+   "reason": "스페이스X 합병 논의 속 강세 — 3개월 고점 돌파 구간"
+  },
+  {
+   "id": "OPTICAL",
+   "name": "광통신·네트워크",
+   "market": "미국",
+   "hl": "xyz:LITE",
+   "on": true,
+   "since": "2026-10-27",
+   "kw": "루멘텀|Lumentum|광통신|광트랜시버|광모듈|코히런트|Coherent|Ciena|시에나|AAOI|패브리넷|Fabrinet|크레도|Credo|코닝|Corning|CPO|아리스타|Arista",
+   "reason": "AI 데이터센터 광부품 수요 기대 속 동반 반등 — 3개월 고점보다 크게 낮은 구간",
+   "members": {
+    "LITE": "루멘텀",
+    "COHR": "코히런트",
+    "CIEN": "시에나",
+    "AAOI": "AAOI",
+    "FN": "패브리넷",
+    "CRDO": "크레도",
+    "GLW": "코닝",
+    "ANET": "아리스타"
+   }
+  },
+  {
+   "id": "NEOCLOUD",
+   "name": "코어위브·네오클라우드",
+   "market": "미국",
+   "hl": "xyz:CRWV",
+   "on": true,
+   "since": "2026-10-27",
+   "kw": "코어위브|CoreWeave|CRWV|네오클라우드|neocloud|네비우스|Nebius|NBIS|IREN|아이렌",
+   "reason": "'네오클라우드 구조조정' 경고(머스크) 이후 반등 시도 — 3개월 고점 대비 절반 수준",
+   "members": {
+    "CRWV": "코어위브",
+    "NBIS": "네비우스",
+    "IREN": "IREN"
+   }
+  },
+  {
+   "id": "INTC",
+   "name": "인텔",
+   "market": "미국",
+   "hl": "xyz:INTC",
+   "yf": "INTC",
+   "on": true,
+   "since": "2026-10-27",
+   "kw": "인텔|Intel|INTC",
+   "reason": "미국 반도체 섹터 동반 강세 속 상승"
   }
  ]
 }

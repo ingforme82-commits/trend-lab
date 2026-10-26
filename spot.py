@@ -5,6 +5,8 @@
       --kw "테슬라|Tesla|TSLA|머스크" --reason "스페이스X 합병 논의 속 3개월 최고" --push
   python spot.py on 005930 --name 삼성전자 --market 한국 --hl xyz:SMSN --yf 005930.KS --kw "삼성전자" --reason "..." --push
   python spot.py off TSLA --push          # 끄기(기록은 남김, 다시 on 하면 그대로 켜짐)
+  python spot.py on OPTICAL --name 광통신·네트워크 --market 미국 --hl xyz:LITE       --members "LITE=루멘텀,COHR=코히런트,CIEN=시에나" --kw "루멘텀|광통신|코히런트" --reason "..." --push   # 종목군
+- 켜진 종목(군)은 사이트 '🔥 오늘의 주요 종목군' 칸에서 8초마다 번갈아 보인다(점·화살표로 넘김).
 
 - --hl: 하이퍼리퀴드 24시간 종목(있으면 실시간 + 1분봉 차트), --yf: 야후 심볼(정규장 시세)
 - --kw: 관련 속보를 고르는 말(| 로 구분)
@@ -40,6 +42,7 @@ def main() -> None:
     p = sub.add_parser("on"); p.add_argument("id")
     for k in ("name", "market", "hl", "yf", "kw", "reason"):
         p.add_argument(f"--{k}")
+    p.add_argument("--members", help='종목군: "LITE=루멘텀,COHR=코히런트,CIEN=시에나" (야후 심볼=이름)')
     p.add_argument("--push", action="store_true")
     p = sub.add_parser("off"); p.add_argument("id"); p.add_argument("--push", action="store_true")
     sub.add_parser("list")
@@ -66,6 +69,8 @@ def main() -> None:
             v = getattr(a, k)
             if v is not None:
                 s[k] = v
+        if a.members:
+            s["members"] = dict(x.split("=", 1) for x in a.members.split(",") if "=" in x)
         s.setdefault("kw", s.get("name", a.id))
         s["on"] = True
         s["since"] = datetime.now().strftime("%Y-%m-%d")
