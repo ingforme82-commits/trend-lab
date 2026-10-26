@@ -255,7 +255,10 @@ def _upload(data: dict) -> bool:
 def main() -> None:
     dry = "--dry" in sys.argv
     if not dry:
-        refresh()
+        try:
+            refresh()
+        except Exception as e:  # noqa: BLE001  (텔레 수집이 늦어도 저장된 글과 RSS로 계속 진행)
+            log(f"텔레 수집 건너뜀: {type(e).__name__}")
     data = build()
     if dry:
         from collections import Counter
