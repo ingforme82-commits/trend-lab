@@ -55,30 +55,30 @@ def main(quiet: bool = False) -> None:
     html = f'''<!-- CTA (항상 글 마지막) -->
 <div style="border:2px solid #b8862b;border-radius:14px;background:linear-gradient(135deg,#fdf8ee,#fbefd6);padding:20px 22px;margin:30px 0 16px;">
   <p style="margin:0 0 4px;font-size:13px;color:#9a7330;letter-spacing:1px;">조영근 추세추종 리서치 랩 | Trend Research Lab</p>
-  <p style="margin:0 0 12px;font-size:20px;font-weight:bold;color:#7a5413;">다가오는 오프라인 모임</p>
+  <p style="margin:0 0 12px;font-size:20px;font-weight:bold;color:#7a5413;">다가오는 그룹 스터디</p>
 {chr(10).join(h)}
   <p style="margin:0 0 12px;padding:10px 12px;background:#fffaf0;border:1px dashed #d4a85a;border-radius:10px;font-size:14px;">🅿️ <b>주차</b> : {escape(site["parking"])}<br>☕ <b>무료 제공</b> : {escape(site["free"])}</p>
   <p style="margin:0 0 12px;">카카오톡 오픈채팅방에 100명 이상이 함께하고 있습니다. ({escape(rules)})<br>
   ① 온라인 시황분석: 선물·금리·유가·환율·해외 프록시<br>
   ② 오프라인 정기 스터디 · 독서 토론</p>
-  <p style="margin:0 0 12px;font-size:14px;">📸 지난 모임 사진과 내용, 연간 커리큘럼: <a href="{SITE_URL}#archive" style="color:#9a7330;font-weight:bold;">Trend Research Lab 스터디 아카이브</a></p>
+  <p style="margin:0 0 12px;font-size:14px;">📸 지난 그룹 스터디 사진과 내용, 연간 커리큘럼: <a href="{SITE_URL}#archive" style="color:#9a7330;font-weight:bold;">Trend Research Lab 스터디 아카이브</a></p>
   <p style="margin:0;text-align:center;"><a href="{site["kakao"]}" style="display:inline-block;background:#fee500;color:#191919;font-weight:bold;text-decoration:none;padding:12px 22px;border-radius:10px;">💬 카카오톡 오픈채팅 참여하기</a></p>
   <p style="margin:10px 0 0;text-align:center;font-size:13px;">{site["kakao"]}</p>
-  <p style="margin:12px 0 0;font-size:12px;color:#8a7a5a;">본 모임은 교육 목적이며, 특정 종목을 추천하지 않고 수익을 보장하지 않습니다.</p>
+  <p style="margin:12px 0 0;font-size:12px;color:#8a7a5a;">본 그룹 스터디는 교육 목적이며, 특정 종목을 추천하지 않고 수익을 보장하지 않습니다.</p>
 </div>
 '''
     txt = "\n".join([
         "━━━━━━━━━━━━━━━",
         "조영근 추세추종 리서치 랩 | Trend Research Lab",
-        "다가오는 오프라인 모임", "", *t,
+        "다가오는 그룹 스터디", "", *t,
         f"🅿️ 주차 : {site['parking']}",
         f"☕ 무료 제공 : {site['free']}", "",
         "카카오톡 오픈채팅방에 100명 이상이 함께하고 있습니다.",
         "① 온라인 시황분석: 선물·금리·유가·환율·해외 프록시",
         "② 오프라인 정기 스터디 · 독서 토론", "",
-        f"📸 지난 모임 사진·내용·커리큘럼: {SITE_URL}#archive", "",
+        f"📸 지난 그룹 스터디 사진·내용·커리큘럼: {SITE_URL}#archive", "",
         "💬 카카오톡 오픈채팅 참여하기", site["kakao"], "",
-        "본 모임은 교육 목적이며, 특정 종목을 추천하지 않고 수익을 보장하지 않습니다.",
+        "본 그룹 스터디는 교육 목적이며, 특정 종목을 추천하지 않고 수익을 보장하지 않습니다.",
         "━━━━━━━━━━━━━━━", "",
         "※ 본 글은 투자 참고용이며, 투자 판단의 최종 책임은 본인에게 있습니다.", ""])
     OUT.mkdir(exist_ok=True)

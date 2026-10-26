@@ -274,20 +274,42 @@ function showResult() {
     <p class="r-h">스스로 점검해 볼 질문</p>
     <ul class="r-rules">${main.c.map((x) => `<li>${x}</li>`).join("")}</ul>
     <div class="r-btns">
-      <button class="btn btn-gold" id="rCopy">결과 복사하기</button>
+      <button class="btn btn-kakao" id="rShare">💬 카톡으로 결과 공유</button>
+      <button class="btn btn-gold" id="rStudy">📋 복사하고 오픈채팅 열기</button>
+      <button class="btn btn-ghost-dark" id="rCopy">결과만 복사</button>
       <button class="btn btn-ghost-dark" id="rAgain">다시 하기</button>
-      <a class="btn btn-kakao" href="https://invite.kakao.com/tc/p7OX5rMjd0" target="_blank" rel="noopener">💬 스터디에서 함께 점검하기</a>
     </div>
+    <p class="r-toast" id="rToast" hidden></p>
     <p class="r-fine">이 결과는 답변을 바탕으로 한 교육용 자기 점검이며, 투자 자문이나 특정 종목·상품의 추천이 아닙니다. 답변은 저장·전송되지 않습니다.</p>`;
   r.scrollIntoView({ behavior: "smooth", block: "start" });
 
   $("#rAgain").addEventListener("click", () => $("#quizStart").click());
-  $("#rCopy").addEventListener("click", async (e) => {
-    const txt = `[나의 투자 스타일] ${main.e} ${main.n}${sub ? ` (보조: ${sub.n})` : ""}\n위험 감수: ${RISK[risk - 1]}\n` +
-      (h.length ? `조심할 습관: ${[...new Set(h)].map((x) => HABITS[x][0]).join(", ")}\n` : "") +
-      `${location.href.split("#")[0]}#quiz`;
-    try { await navigator.clipboard.writeText(txt); e.target.textContent = "복사됐어요 ✓"; } catch { e.target.textContent = "복사 실패"; }
+  const quizUrl = `${location.origin}${location.pathname}#quiz`;
+  const habitTxt = h.length ? `조심할 습관: ${[...new Set(h)].map((x) => HABITS[x][0]).join(", ")}
+` : "";
+  const txt = `[나의 투자 스타일] ${main.e} ${main.n}${sub ? ` (보조: ${sub.n})` : ""}
+위험 감수: ${RISK[risk - 1]}
+${habitTxt}` +
+    `
+나도 해보기 👉 ${quizUrl}`;
+  const toast = (m) => { const t = $("#rToast"); t.textContent = m; t.hidden = false; };
+  const copy = async () => { try { await navigator.clipboard.writeText(txt); return true; } catch { return false; } };
+  // 휴대폰: 공유 창(카톡 선택) / PC: 복사 후 안내
+  $("#rShare").addEventListener("click", async () => {
+    if (navigator.share) {
+      try { await navigator.share({ title: "나의 투자 스타일", text: txt }); if (window.trlCount) window.trlCount("share"); return; }
+      catch (err) { if (err && err.name === "AbortError") return; }
+    }
+    toast((await copy()) ? "결과가 복사됐어요. 카톡 대화방에 붙여넣기(Ctrl+V 또는 길게 눌러 붙여넣기) 하세요." : "복사하지 못했어요. 화면을 캡처해서 공유해 주세요.");
   });
+  // 스터디 오픈채팅: 결과를 먼저 복사해 두고 방을 연다(카톡은 외부에서 메시지를 대신 보내 줄 수 없음)
+  $("#rStudy").addEventListener("click", async () => {
+    const ok = await copy();
+    toast(ok ? "결과가 복사됐어요. 열린 오픈채팅방 입력창을 길게 눌러 '붙여넣기' 하면 그대로 올라갑니다." : "복사하지 못했어요. 결과 화면을 캡처해서 올려 주세요.");
+    if (window.trlCount) window.trlCount("kakao");
+    window.open("https://invite.kakao.com/tc/p7OX5rMjd0", "_blank", "noopener");
+  });
+  $("#rCopy").addEventListener("click", async (e) => { e.target.textContent = (await copy()) ? "복사됐어요 ✓" : "복사 실패"; });
 }
 
 /* ───────── 5. 오프라인 모임 · 아카이브 · 커리큘럼 · 도서 ───────── */
@@ -309,7 +331,7 @@ async function loadStudies() {
     const nt = site.notice || {};
     if (nt.text && (!nt.until || nt.until >= today)) { $("#notice").innerHTML = `<div class="wrap">📢 ${esc(nt.text)}</div>`; $("#notice").hidden = false; }
 
-    $("#heroStudy").innerHTML = `<p class="hc-tag">다음 오프라인 모임</p>` + ups.map((s, i) => `
+    $("#heroStudy").innerHTML = `<p class="hc-tag">다음 그룹 스터디</p>` + ups.map((s, i) => `
       <a class="hc-item${i ? " sub" : ""}" href="study.html?id=${encodeURIComponent(s.id)}">
         <span class="hc-kind">${label(s)} <em>${dday(s.date)}</em></span>
         <span class="hc-title">「${esc(s.title)}」</span>
@@ -331,8 +353,8 @@ async function loadStudies() {
         <p class="up-rule">${esc(se.name || "")} · ${esc(se.rule || "")}</p>
         <div class="up-btns"><a class="btn btn-kakao" href="${esc(site.kakao)}" target="_blank" rel="noopener">💬 참여 신청</a><a class="btn btn-ghost-dark" href="study.html?id=${encodeURIComponent(s.id)}">자세히</a></div>
       </article>`;
-    }).join("") || `<p class="empty">다음 모임 일정은 곧 안내합니다.</p>`;
-    $("#studyInfo").innerHTML = `<ul><li>📍 ${esc(site.place)}</li><li>🅿️ ${esc(site.parking)}</li><li>☕ ${esc(site.free)}</li><li>👥 카카오톡 오픈채팅 ${esc(site.members)} · 참가비 무료 · 교육 목적 모임</li></ul>`;
+    }).join("") || `<p class="empty">다음 그룹 스터디 일정은 곧 안내합니다.</p>`;
+    $("#studyInfo").innerHTML = `<ul><li>📍 ${esc(site.place)}</li><li>🅿️ ${esc(site.parking)}</li><li>☕ ${esc(site.free)}</li><li>👥 카카오톡 오픈채팅 ${esc(site.members)} · 참가비 무료 · 교육 목적 그룹 스터디</li></ul>`;
 
     const past = list.filter((s) => !upcoming.includes(s)).sort((a, b) => b.date.localeCompare(a.date));
     const nPhoto = past.reduce((n, s) => n + (s.photos || []).length, 0);
@@ -381,7 +403,7 @@ function archCard(s, isNext, label) {
   const ph = s.photos || [];
   const img = ph.length ? `<img src="${esc(ph[s.cover || 0].thumb)}" alt="" loading="lazy"><span class="arc-cnt">📷 ${ph.length}</span>`
     : s.poster ? `<img src="${esc(s.poster.thumb)}" alt="" loading="lazy">`
-    : `<div class="arc-ph"><span>${isNext ? "🗓️" : "📚"}</span>${isNext ? `${dday(s.date)} · 다음 모임` : "사진 정리 중"}</div>`;
+    : `<div class="arc-ph"><span>${isNext ? "🗓️" : "📚"}</span>${isNext ? `${dday(s.date)} · 다음 스터디` : "사진 정리 중"}</div>`;
   return `<a class="arc${isNext ? " next" : ""}" href="study.html?id=${encodeURIComponent(s.id)}">
     <div class="arc-img">${img}<span class="arc-month">${isNext ? "예정" : `${d.getFullYear() % 100}년 ${d.getMonth() + 1}월`}</span></div>
     <div class="arc-body"><p class="arc-date">${label(s)} · ${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]})</p>

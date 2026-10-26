@@ -31,16 +31,16 @@ def get(key: str) -> int:
 
 def day(d: datetime) -> dict[str, int]:
     s = d.strftime("%Y%m%d")
-    return {k: get(f"{k}-{s}") for k in ("v", "pv", "kakao", "quiz", "tg")}
+    return {k: get(f"{k}-{s}") for k in ("v", "pv", "kakao", "quiz", "share", "tg")}
 
 
 def main() -> None:
     now = datetime.now(KST)
     y, t = day(now - timedelta(days=1)), day(now)
-    tot = {k: get(f"{k}-total") for k in ("v", "pv", "kakao", "quiz", "tg")}
+    tot = {k: get(f"{k}-total") for k in ("v", "pv", "kakao", "quiz", "share", "tg")}
     tot["u"] = get("u-total")
     yd = (now - timedelta(days=1))
-    line = lambda d: f"방문자 {d['v']}명 · 클릭(페이지뷰) {d['pv']}회\n   오픈채팅 클릭 {d['kakao']} · 성향테스트 {d['quiz']} · 속보 원문 {d['tg']}"
+    line = lambda d: f"방문자 {d['v']}명 · 클릭(페이지뷰) {d['pv']}회\n   오픈채팅 클릭 {d['kakao']} · 성향테스트 {d['quiz']}(공유 {d['share']}) · 속보 원문 {d['tg']}"
     msg = "\n".join([
         f"📊 Trend Research Lab 방문 현황 ({now:%m/%d %H:%M})",
         "",
@@ -50,7 +50,7 @@ def main() -> None:
         "   " + line(t),
         f"■ 누적 ({START[5:].replace('-', '/')}부터)",
         f"   순방문자 {tot['u']}명 · 방문 {tot['v']}회 · 클릭 {tot['pv']}회",
-        f"   오픈채팅 클릭 {tot['kakao']} · 성향테스트 {tot['quiz']}",
+        f"   오픈채팅 클릭 {tot['kakao']} · 성향테스트 {tot['quiz']}(공유 {tot['share']})",
         "",
         SITE,
     ])
