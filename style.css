@@ -577,3 +577,11 @@ body{overflow-x:hidden}
 .mem-d .spot-news small{margin-left:4px}
 
 .tk-label small{font-weight:400;font-size:11px;color:#aab5c8;margin-left:4px}
+
+/* 시장 브리핑: 장 구분·선물·지표·속보 */
+.bwide{grid-column:1/-1}
+.bsess{margin:0 0 8px;font-size:15px}
+.bfs{display:flex;flex-wrap:wrap;gap:6px}
+.bf{border:1px solid var(--line,#e5e7eb);border-radius:10px;padding:4px 10px;font-size:13px;font-variant-numeric:tabular-nums;background:#fff}
+.bf small{color:var(--sub,#64748b);margin-right:2px}
+.brief ul.bn{padding-left:0;list-style:none}.brief ul.bn li{margin:0 0 6px;font-size:13px;line-height:1.45}
