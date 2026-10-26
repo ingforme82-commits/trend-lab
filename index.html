@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trend Research Lab</title>
+<meta name="description" content="조영근 추세추종 리서치 랩 — 선물·금리·유가·환율·해외 프록시 시황 정리와 투자 성향 자가 점검">
+<meta property="og:title" content="Trend Research Lab | 숫자로 확인하는 추세추종">
+<meta property="og:description" content="매일 시황 업데이트 · 실시간 시세 · 나의 투자 스타일 테스트">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="nav">
+  <div class="wrap nav-in">
+    <a class="brand" href="#top"><span class="brand-mark">TRL</span><span class="brand-txt">Trend Research Lab</span></a>
+    <nav class="nav-links">
+      <a href="#market">실시간 시세</a>
+      <a href="#feed">시황 업데이트</a>
+      <a href="#quiz">성향 테스트</a>
+      <a href="#study">스터디</a>
+    </nav>
+    <a class="btn btn-kakao btn-sm" href="https://invite.kakao.com/tc/p7OX5rMjd0" target="_blank" rel="noopener">오픈채팅</a>
+  </div>
+</header>
+
+<main id="top">
+
+<section class="hero">
+  <div class="wrap hero-in">
+    <div class="hero-copy">
+      <p class="eyebrow">조영근 추세추종 리서치 랩</p>
+      <h1>숫자로 확인하는<br><span class="gold">추세추종</span></h1>
+      <p class="lead">선물·금리·유가·환율·해외 프록시를 매일 정리합니다.<br>의견보다 사실과 수치, 예측보다 흐름 확인.</p>
+      <div class="hero-btns">
+        <a class="btn btn-gold" href="#quiz">나의 투자 스타일 테스트</a>
+        <a class="btn btn-ghost" href="#feed">최신 시황 보기</a>
+      </div>
+    </div>
+    <aside class="hero-card" id="heroStudy">
+      <p class="hc-tag">다음 오프라인 스터디</p>
+      <p class="hc-title">「Envelope, 추세와 흐름」</p>
+      <ul class="hc-list">
+        <li><b>일시</b> 2026년 11월 14일(토) 오전 10시</li>
+        <li><b>장소</b> 서울 양재시민의숲역 베델회관 7층</li>
+        <li><b>비용</b> 커피·와이파이·장소 무료</li>
+      </ul>
+      <a class="btn btn-kakao btn-block" href="https://invite.kakao.com/tc/p7OX5rMjd0" target="_blank" rel="noopener">💬 카카오톡으로 참여하기</a>
+    </aside>
+  </div>
+</section>
+
+<section class="sec" id="market">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <h2>실시간 시세</h2>
+        <p class="sec-sub">한국장이 닫혀 있을 때도 24시간 거래되는 해외 프록시 기준입니다. 30초마다 갱신.</p>
+      </div>
+      <p class="stamp" id="tickStamp">불러오는 중…</p>
+    </div>
+    <div class="tick-grid" id="tickGrid"></div>
+    <p class="fine">출처: Hyperliquid(24시간 무기한 선물, 전일 대비는 24시간 기준). 실제 지수·현물 가격과 차이가 있을 수 있는 참고용 수치입니다.</p>
+  </div>
+</section>
+
+<section class="sec sec-alt" id="checks">
+  <div class="wrap">
+    <div class="sec-head"><div><h2>이번 주 체크포인트</h2><p class="sec-sub">시황 글에서 반복해서 확인하는 일정입니다.</p></div></div>
+    <ol class="checks" id="checkList"></ol>
+  </div>
+</section>
+
+<section class="sec" id="feed">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <h2>시황 업데이트</h2>
+        <p class="sec-sub">블로그에 올린 시황·분석을 시간 순으로 모았습니다. 새 글은 자동으로 나타납니다.</p>
+      </div>
+      <p class="stamp" id="feedStamp"></p>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="feed" id="feedList"></div>
+    <button class="btn btn-ghost-dark btn-more" id="moreBtn" hidden>더 보기</button>
+  </div>
+</section>
+
+<section class="sec sec-dark" id="quiz">
+  <div class="wrap quiz-wrap">
+    <div class="quiz-intro" id="quizIntro">
+      <p class="eyebrow">자가 점검 · 약 2분</p>
+      <h2>나의 투자 스타일 테스트</h2>
+      <p class="lead-sm">11개 질문에 답하면 <b>투자 스타일</b>, <b>위험 감수 수준</b>, 그리고 <b>조심하면 좋은 매매 습관</b>을 보여 드립니다.</p>
+      <ul class="quiz-notes">
+        <li>답변은 이 브라우저 안에서만 계산되고 어디에도 저장·전송되지 않습니다.</li>
+        <li>종목이나 상품을 추천하지 않는 교육용 자기 점검입니다.</li>
+      </ul>
+      <button class="btn btn-gold" id="quizStart">테스트 시작</button>
+    </div>
+    <div class="quiz-box" id="quizBox" hidden>
+      <div class="qbar"><div class="qbar-fill" id="qbarFill"></div></div>
+      <p class="qcount" id="qCount"></p>
+      <h3 class="qtext" id="qText"></h3>
+      <div class="qopts" id="qOpts"></div>
+      <button class="qback" id="qBack">← 이전 질문</button>
+    </div>
+    <div class="result" id="result" hidden></div>
+  </div>
+</section>
+
+<section class="sec" id="about">
+  <div class="wrap">
+    <div class="sec-head"><div><h2>우리가 보는 것</h2><p class="sec-sub">매일 같은 기준으로, 같은 순서로 확인합니다.</p></div></div>
+    <div class="pillars">
+      <div class="pillar"><span class="p-ico">📈</span><h3>추세를 따른다</h3><p>바닥과 꼭지를 맞히기보다, 이미 시작된 흐름 안에 있는지를 확인합니다.</p></div>
+      <div class="pillar"><span class="p-ico">📏</span><h3>5일선과 Envelope</h3><p>반등이 진짜인지는 5일선 회복과 유지로, 과열과 이탈은 이동평균 위아래 띠로 봅니다.</p></div>
+      <div class="pillar"><span class="p-ico">🌐</span><h3>밤사이 프록시</h3><p>야간선물·EWY·코스피200 무기한 선물·유가·금리로 다음 날 한국장을 미리 점검합니다.</p></div>
+      <div class="pillar"><span class="p-ico">🧾</span><h3>사실과 수치만</h3><p>매수·매도 권유 없이 숫자와 일정, 출처를 남깁니다. 판단은 각자의 규칙으로.</p></div>
+    </div>
+  </div>
+</section>
+
+<section class="sec sec-gold" id="study">
+  <div class="wrap study">
+    <div>
+      <p class="eyebrow dark">오프라인 스터디</p>
+      <h2>「Envelope, 추세와 흐름」</h2>
+      <p>이동평균선 위아래로 일정한 폭의 띠를 두르는 Envelope로 지금 시장이 추세 안에 있는지, 흐름이 꺾이는지 함께 읽어봅니다. 차트와 이번 주 시장을 같이 놓고, 숫자로 확인하는 추세추종을 연습합니다.</p>
+      <ul class="study-list">
+        <li>🗓️ 2026년 11월 14일(토) 오전 10시</li>
+        <li>📍 서울 양재시민의숲역 베델회관 7층</li>
+        <li>🅿️ 토·일 무료 / 평일 08:00~17:30 무료, 이후 30분당 1,000원 · 1층이 차면 인근 공영주차장</li>
+        <li>☕ 커피 · 와이파이 · 사무실 이용 모두 무료</li>
+      </ul>
+    </div>
+    <div class="study-cta">
+      <p class="sc-big">100명+</p>
+      <p>카카오톡 오픈채팅에서<br>온라인 시황분석과 월간 스터디를 함께합니다.</p>
+      <a class="btn btn-kakao btn-block" href="https://invite.kakao.com/tc/p7OX5rMjd0" target="_blank" rel="noopener">💬 오픈채팅 참여하기</a>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap">
+    <p><b>조영근 추세추종 리서치 랩 | Trend Research Lab</b></p>
+    <p>본 사이트와 모임은 교육 목적이며, 특정 종목을 추천하지 않고 수익을 보장하지 않습니다. 게시된 내용은 투자 참고용이며 투자 판단의 최종 책임은 본인에게 있습니다.</p>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
