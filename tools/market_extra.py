@@ -118,3 +118,18 @@ def trending(items: list[dict], hours: int = 24) -> list[dict]:
             out.append({"name": name, "n": len(hits), "kw": pat, "last": max(h["ts"] for h in hits)})
     out.sort(key=lambda x: (-x["n"], -x["last"]))
     return out[:10]
+
+
+def dow() -> dict:
+    """다우존스: 지수(^DJI, 미국 정규장)와 미니 다우 선물(YM=F, 거의 24시간). 1분마다."""
+    out = {}
+    for key, sym in (("idx", "^DJI"), ("fut", "YM=F")):
+        u = f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.request.quote(sym)}?range=1d&interval=1m"
+        try:
+            m = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"}), timeout=10).read())["chart"]["result"][0]["meta"]
+            px, prev = m.get("regularMarketPrice"), m.get("previousClose") or m.get("chartPreviousClose")
+            if px and prev:
+                out[key] = {"px": px, "chg": round((px / prev - 1) * 100, 2), "at": m.get("regularMarketTime", 0) * 1000}
+        except Exception:  # noqa: BLE001
+            pass
+    return out

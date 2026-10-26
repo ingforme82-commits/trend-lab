@@ -46,6 +46,7 @@
       const j = await fetchNews();
       news = j.items || []; moves = j.moves || []; series = j.series || {};
       world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
+      window.trlDow = j.dow || {}; window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
       window.trlMoves = moves; window.trlSeries = series; window.trlNews = news;
       setText("#newsStamp", `속보 갱신 ${hm(j.updated)} KST · ${ago(j.updated)}`);
       drawTicker();

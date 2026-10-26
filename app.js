@@ -20,7 +20,7 @@ const TICKS = [
   { g: "미국 지수·반도체" },
   { k: "SP500", n: "S&P500", d: 1 },
   { k: "XYZ100", n: "나스닥100", d: 0 },
-  { k: "SMH", n: "반도체 ETF(SMH)", d: 2, u: "$" },
+  { k: "DOW", n: "다우존스", d: 0, srv: true },
   { k: "SOXL", n: "SOXL (반도체 3배)", d: 2, u: "$" },
   { k: "NVDA", n: "엔비디아", d: 2, u: "$" },
   { k: "TSLA", n: "테슬라", d: 2, u: "$" },
@@ -46,6 +46,16 @@ async function loadTicks() {
     const krw = map.KRW ? +map.KRW.markPx : null;
     const html = TICKS.map((t) => {
       if (t.g) return `<p class="tick-group">${t.g}</p>`;
+      if (t.srv) {                                        // 다우존스: 사이트 속보 데이터(야후)에서 — 미국장엔 지수, 그 외엔 선물
+        const dw = window.trlDow || {};
+        const now = Date.now(), live = dw.idx && now - dw.idx.at < 20 * 60000;
+        const main = live ? dw.idx : (dw.fut || dw.idx);
+        if (!main) return `<div class="tick"><p class="t-name">${t.n}</p><p class="t-px">-</p><p class="fine">불러오는 중</p></div>`;
+        const c2 = main.chg > 0.005 ? "c-up" : main.chg < -0.005 ? "c-dn" : "c-fl";
+        const sub = live ? (dw.fut ? `선물 ${Math.round(dw.fut.px).toLocaleString("ko-KR")} (${dw.fut.chg > 0 ? "+" : ""}${dw.fut.chg}%)` : "지수")
+          : "미니 다우 선물 · 장외";
+        return `<div class="tick" data-k="DOW"><p class="t-name">${t.n}${live ? "" : " (선물)"}</p><p class="t-px">${Math.round(main.px).toLocaleString("ko-KR")}</p><p class="t-ch ${c2}">${main.chg > 0 ? "▲" : main.chg < 0 ? "▼" : ""} ${main.chg > 0 ? "+" : ""}${main.chg.toFixed(2)}%</p><p class="fine" style="margin:2px 0 0">${sub}</p></div>`;
+      }
       const x = map[t.k];
       if (!x) return "";
       const px = +x.markPx, prev = +x.prevDayPx, ch = prev ? (px / prev - 1) * 100 : 0;
@@ -88,6 +98,7 @@ async function loadFeed() {
     if (knownSlugs) data.forEach((p) => { if (!knownSlugs.has(p.slug)) fresh.add(p.slug); });
     knownSlugs = new Set(data.map((p) => p.slug));
     posts = data.map((p) => ({ ...p, fresh: fresh.has(p.slug) }));
+    window.trlPosts = posts;
     posts.sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
     renderChips(); renderFeed();
     if (posts[0]) $("#feedStamp").textContent = `마지막 글 ${posts[0].date.slice(5).replace("-", "/")} ${posts[0].time}`;
@@ -101,8 +112,13 @@ function renderChips() {
   $("#chips").innerHTML = cats.map((c) => `<button class="chip${c === cat ? " on" : ""}" data-c="${esc(c)}">${esc(c)}</button>`).join("");
 }
 
+window.trlRenderFeed = () => renderFeed();
 function renderFeed() {
-  const list = posts.filter((p) => cat === "전체" || (p.cats || []).includes(cat));
+  // 위쪽 '시황 리포트 만들기' 입력창에 쓴 말로 블로그 글도 함께 검색
+  const fq = (window.trlFeedQuery || "").trim();
+  let frx = null;
+  if (fq) { try { frx = new RegExp(fq.split(/[\s,]+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "i"); } catch { frx = null; } }
+  const list = posts.filter((p) => (cat === "전체" || (p.cats || []).includes(cat)) && (!frx || frx.test(`${p.title} ${p.summary} ${(p.tags || []).join(" ")} ${(p.sections || []).join(" ")}`)));
   const today = ymd(KST());
   $("#feedList").innerHTML = list.slice(0, shown).map((p) => {
     const d = new Date(p.date + "T00:00:00");

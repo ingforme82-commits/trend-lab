@@ -378,8 +378,9 @@ def build() -> dict:
     except Exception as e:  # noqa: BLE001
         log(f"변곡점 감지 건너뜀: {type(e).__name__}: {e}")
     try:                                                  # 해외 지수·화제 종목·많이 나온 종목
-        from market_extra import trending, world_and_spot
+        from market_extra import dow, trending, world_and_spot
         out["world"], out["spot"] = world_and_spot()
+        out["dow"] = dow()
         out["trending"] = trending(items)
     except Exception as e:  # noqa: BLE001
         log(f"해외 지수·종목 건너뜀: {type(e).__name__}: {e}")
@@ -422,7 +423,7 @@ def _upload(data: dict) -> bool:
             old = json.loads(base64.b64decode(j["content"]).decode("utf-8"))
         except Exception:  # noqa: BLE001
             old = None
-    if old and all(old.get(k) == data.get(k) for k in ("items", "moves", "world", "spot", "trending", "sectors")):
+    if old and all(old.get(k) == data.get(k) for k in ("items", "moves", "world", "spot", "trending", "sectors", "dow")):
         return False                                   # 바뀐 글 없음 → 커밋 안 함
     body = {"message": f"속보 갱신 {datetime.now(KST):%m-%d %H:%M}", "branch": BRANCH,
             "content": base64.b64encode(json.dumps(data, ensure_ascii=False).encode("utf-8")).decode()}
