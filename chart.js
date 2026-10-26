@@ -5,7 +5,7 @@
   const COINS = [
     { k: "xyz:XYZ100", n: "나스닥100", d: 1 }, { k: "xyz:SP500", n: "S&P500", d: 1 },
     { k: "xyz:KR200", n: "코스피200", d: 2 }, { k: "xyz:EWY", n: "EWY", d: 2, u: "$" },
-    { k: "xyz:SKHX", n: "SK하이닉스", d: 2, u: "$" }, { k: "xyz:SMSN", n: "삼성전자", d: 2, u: "$" },
+    { k: "xyz:SKHX", n: "SK하이닉스", d: 2, u: "$" }, { k: "xyz:SMSN", n: "삼성전자", d: 2, u: "$" }, { k: "xyz:KORU", n: "KORU", d: 2, u: "$" }, { k: "xyz:SOXL", n: "SOXL", d: 2, u: "$" },
     { k: "xyz:CL", n: "WTI", d: 2, u: "$" }, { k: "xyz:BRENTOIL", n: "브렌트", d: 2, u: "$" },
     { k: "xyz:GOLD", n: "금", d: 1, u: "$" }, { k: "xyz:KRW", n: "원/달러", d: 1 },
   ];

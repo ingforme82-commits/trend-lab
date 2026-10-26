@@ -41,6 +41,8 @@ KST = timezone(timedelta(hours=9))
 NO_WINDOW = 0x08000000 if os.name == "nt" else 0     # 예약 실행 때 검은 창이 뜨지 않게
 
 KEEP_H = 30
+KEEP_H_STRAT = 48          # 증권사 시황·분석 글은 아침·마감에 몰려 있어 더 길게
+MAX_STRAT = 50
 MAX_ITEMS = 200
 PER_SOURCE = {"김치터미널": 90}          # 출처별 최대 건수(나머지 출처는 30)
 
@@ -51,8 +53,21 @@ CHANNELS = {
     "corevalue": "가치투자클럽", "tRadarnewsdesk": "유안타 뉴스라운지", "yuantais": "유안타 투자전략", "yuantaresearch": "유안타 리서치",
     "YSKoreaSemi": "유안타 반도체", "kiwoom_semibat": "키움 반도체·2차전지", "anna7673": "유안타 2차전지", "growthbio": "그로쓰리서치",
     "huhpharm": "허혜민 제약바이오", "KB_EPC_MJ": "KB 건설", "HanaResearchTelecom": "하나 통신", "china_kis": "메리츠 중국",
+    # 증권사 시황·전략·매크로 (2026-10-27 추가)
+    "hedgecat0301": "키움 한지영(전략)", "HANAStrategy": "하나 주식전략", "HANA_Macro": "하나 매크로", "Meritz_strategy": "메리츠 투자전략",
+    "stephenlee_meritz": "메리츠 매크로", "shStrategy": "신한 주식전략", "daishinstrategy": "대신 전략·시황", "eqmirae": "미래에셋 전략",
+    "hanwhastrategy": "한화 투자전략", "lim_econ": "한화 경제", "hmsecstrat": "현대차 투자전략", "kisthemacro": "한투 매크로",
+    "huhjae": "유진 허재환(전략)", "SK_Research_Asset": "SK 자산전략", "KiwoomResearch": "키움 리서치",
 }
 FAST = ("KimchiTerminal", "cahier_de_market", "realtime_stock_news")
+# 시황·전략 글(긴 분석) — 제목 + 요약 한 줄로 싣고 '시황·전략'으로 묶는다
+BROKER_STRAT = {"hedgecat0301", "HANAStrategy", "HANA_Macro", "Meritz_strategy", "stephenlee_meritz", "shStrategy", "daishinstrategy",
+                "eqmirae", "hanwhastrategy", "lim_econ", "hmsecstrat", "kisthemacro", "huhjae", "SK_Research_Asset", "KiwoomResearch",
+                "yuantais", "tRadarnewsdesk"}
+ANALYSIS = {"cahier_de_market", "Badonions", "corevalue"}
+# 개별 종목 매매 판단으로 읽힐 수 있는 글(모든 채널 공통으로 뺀다)
+STOCKREC = re.compile(r"목표주가|목표가|TP\s|투자의견|BUY\b|매수\(유지\)|Outperform|Overweight|Underweight|비중\s?확대|비중\s?축소|"
+                      r"상향 조정|하향 조정|커버리지 개시|Initiat", re.I)
 
 # (출처 이름, 주소, 언어)
 FEEDS = [
@@ -103,21 +118,43 @@ def refresh() -> None:
                    env={**os.environ, "PYTHONIOENCODING": "utf-8"}, creationflags=NO_WINDOW)
 
 
-def clean_line(text: str) -> str:
+BYLINE = re.compile(r"☎|☏|T\.\s?\d|\d{2,3}-\d{3,4}-\d{4}|@\w|애널리스트|Analyst|자료\s?링크|링크\s?[:▶]|^[-=_]{3,}$|"
+                    r"^\W*\[[^\]]{0,40}(증권|리서치|전략|매크로|퀀트|Research)[^\]]*\]\W*$|^\W*(안녕하세요|안녕하십니까)", re.I)
+
+
+def _lines(text: str) -> list[str]:
     t = re.sub(r"https?://\S+", "", text or "")
     t = re.sub(r"[*_`#>]+", "", t)
-    lines = [ln.strip() for ln in t.splitlines() if ln.strip()]
-    # 머리말 줄 버리기: '[키움 이차전지 권준수]' 같은 작성자 표기, 너무 짧은 줄
-    while lines and (re.fullmatch(r"\[[^\]]{1,40}\]", lines[0]) or len(lines[0]) < 6):
+    out = []
+    for ln in t.splitlines():
+        s = re.sub(r"\s+", " ", ln).strip(" -—:•▶►▷◆◇■□※·")
+        if len(s) < 6 or BYLINE.search(s):
+            continue
+        out.append(s)
+    return out
+
+
+def clean_line(text: str, with_sub: bool = False) -> tuple[str, str]:
+    """(제목, 요약 한 줄). 작성자·연락처·인사말 줄은 건너뛴다."""
+    lines = _lines(text)
+    while lines and re.fullmatch(r"\[[^\]]{1,40}\]", lines[0]):
         lines.pop(0)
     if not lines:
-        return ""
-    h = lines[0]
-    if len(h) < 25 and len(lines) > 1:            # '$TSLA -' 같은 머리말만 있으면 다음 줄 이어 붙임
-        h = f"{h} {lines[1]}"
-    h = re.sub(r"\s+", " ", h).strip(" -—:")
-    h = re.sub(r"\s*—\s*[A-Za-z][\w .&]{1,30}$", "", h)  # 끝의 '— Fox News' 같은 외부 출처 꼬리 제거
-    return h[:140] + ("…" if len(h) > 140 else "")
+        return "", ""
+    h, rest = lines[0], lines[1:]
+    if len(h) < 25 and rest:                      # '$TSLA -' 같은 머리말만 있으면 다음 줄 이어 붙임
+        h, rest = f"{h} {rest[0]}", rest[1:]
+    # 맨 앞 '📮[메리츠증권 퀀트/ETF 이상현]' 같은 작성자 표기 떼기(남는 글이 충분할 때만)
+    h2 = re.sub(r"^\W*\[[^\]]{1,40}\]\s*", "", h)
+    h = h2 if len(h2) >= 12 else h
+    h = re.sub(r"\s*—\s*[A-Za-z][\w .&]{1,30}$", "", h).strip(" -—:")   # 끝의 '— Fox News' 같은 꼬리 제거
+    sub = ""
+    if with_sub:
+        for r in rest:
+            if len(r) >= 15 and r not in h:
+                sub = r[:120] + ("…" if len(r) > 120 else "")
+                break
+    return h[:140] + ("…" if len(h) > 140 else ""), sub
 
 
 def tags_of(text: str) -> list[str]:
@@ -128,23 +165,33 @@ def from_telegram() -> list[dict]:
     if not DB.exists():
         return []
     con = sqlite3.connect(str(DB))
-    since = (datetime.now(timezone.utc) - timedelta(hours=KEEP_H)).isoformat()
+    since = (datetime.now(timezone.utc) - timedelta(hours=KEEP_H_STRAT)).isoformat()
+    cut = datetime.now(timezone.utc) - timedelta(hours=KEEP_H)
     q = f"select channel_username, posted_at, text from messages where posted_at >= ? and channel_username in ({','.join('?' * len(CHANNELS))})"
     out = []
     for ch, posted, text in con.execute(q, (since, *CHANNELS)):
-        if not text or BROKER.search(text) or JUNK.search(text):
+        if ch not in BROKER_STRAT and ch not in ANALYSIS and datetime.fromisoformat(posted) < cut:
+            continue                                   # 시황·전략 글만 48시간, 나머지는 30시간
+        if not text or STOCKREC.search(text) or JUNK.search(text):
             continue
-        if len(re.findall(r"https?://", text)) >= 3 or text.lstrip().startswith("<"):   # 링크 모음·보고서 모음 글
-            continue
-        h = clean_line(text)
-        if len(h) < 12:
+        strat, analysis = ch in BROKER_STRAT, ch in ANALYSIS
+        if not (strat or analysis):
+            # 일반 채널: 증권사 리포트 머리말·링크 모음·보고서 모음 글은 뺀다
+            if BROKER.search(text) or len(re.findall(r"https?://", text)) >= 3 or text.lstrip().startswith("<"):
+                continue
+        h, sub = clean_line(text, with_sub=strat or analysis)
+        if len(h) < 12 or re.fullmatch(r"[\w.\-]+\.(?:com|co\.kr|kr|net|io)", h, re.I):   # 사이트 주소만 있는 글
             continue
         tg = tags_of(text)
-        if ch not in FAST and not tg:                  # 섹터 채널은 시장 관련 키워드가 있는 글만
+        if ch not in FAST and not (strat or analysis) and not tg:   # 섹터 채널은 시장 관련 키워드가 있는 글만
             continue
         ts = datetime.fromisoformat(posted).astimezone(timezone.utc)
-        out.append({"ts": int(ts.timestamp() * 1000), "src": CHANNELS[ch], "kind": "텔레그램", "text": h,
-                    "tags": tg or ["기타"], "hot": bool(HOT.search(h))})
+        it = {"ts": int(ts.timestamp() * 1000), "src": CHANNELS[ch],
+              "kind": "증권사 시황" if strat else "시황 분석" if analysis else "텔레그램",
+              "text": h, "tags": tg or (["시황"] if strat or analysis else ["기타"]), "hot": bool(HOT.search(h))}
+        if sub:
+            it["sub"] = sub
+        out.append(it)
     return out
 
 
@@ -259,7 +306,11 @@ def build() -> dict:
     translate(rss)
     allitems = sorted(from_telegram() + rss, key=lambda x: -x["ts"])
     items, seen, per = [], [], {}
+    n_strat = n_other = 0
     for it in allitems:
+        strat = it.get("kind") in ("증권사 시황", "시황 분석")
+        if (strat and n_strat >= MAX_STRAT) or (not strat and n_other >= MAX_ITEMS):
+            continue
         if per.get(it["src"], 0) >= PER_SOURCE.get(it["src"], 30):   # 한 출처가 목록을 다 차지하지 않게
             continue
         g = bigrams(it["text"])
@@ -268,8 +319,10 @@ def build() -> dict:
         seen.append(g)
         items.append(it)
         per[it["src"]] = per.get(it["src"], 0) + 1
-        if len(items) >= MAX_ITEMS:
-            break
+        if strat:
+            n_strat += 1
+        else:
+            n_other += 1
     return {"updated": int(datetime.now(timezone.utc).timestamp() * 1000), "items": items}
 
 

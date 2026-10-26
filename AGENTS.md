@@ -19,7 +19,7 @@
 | 파일 | 내용 |
 |---|---|
 | `index.html` · `style.css` · `app.js` | 메인 페이지. 시세, 체크포인트, 시황 피드, 성향 테스트, 그룹 스터디, 아카이브, 커리큘럼, 도서 |
-| `news.js` | 맨 위 '주요 시황' 띠 + 실시간 속보·지수 반응. `live` 브랜치 `news.json`(텔레 19개 채널 + Seeking Alpha·CNBC·MarketWatch·Investing·연합뉴스·한국경제 RSS)과 Hyperliquid 5분봉 |
+| `news.js` | 맨 위 '주요 시황' 띠 + 실시간 속보·지수 반응. `live` 브랜치 `news.json`(텔레 34개 채널 — 속보 3 + 섹터·뉴스 16 + 증권사 시황·전략 15 — + Seeking Alpha·CNBC·MarketWatch·Investing·연합뉴스·한국경제 RSS)과 Hyperliquid 5분봉 |
 | `count.js` | 방문자 집계(abacus 카운터 `trendlab-ing82`). `?me=1`로 연 브라우저는 세지 않음 |
 | `study.html` | 회차별 기록 페이지(`study.html?id=2026-08-08`) |
 | `data/studies.json` | **그룹 스터디 회차 전체(지난 기록과 예정).** 날짜·주제·사진·후기 |

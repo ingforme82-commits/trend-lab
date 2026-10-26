@@ -97,15 +97,17 @@
   }
 
   function drawList() {
-    const tags = ["주요", "전체", ...new Set(news.flatMap((n) => n.tags))];
+    const STRAT = "📊 시황·전략";
+    const isStrat = (n) => n.kind === "증권사 시황" || n.kind === "시황 분석";
+    const tags = ["주요", "전체", STRAT, ...new Set(news.flatMap((n) => n.tags).filter((t) => t !== "시황"))];
     q("#newsChips").innerHTML = tags.map((t) => `<button class="chip${t === tag ? " on" : ""}" data-t="${esc(t)}">${t === "주요" ? "🔴 주요" : esc(t)}</button>`).join("");
-    const list = news.filter((n) => tag === "전체" || (tag === "주요" ? n.hot : n.tags.includes(tag)));
+    const list = news.filter((n) => tag === "전체" || (tag === "주요" ? n.hot : tag === STRAT ? isStrat(n) : n.tags.includes(tag)));
     q("#newsList").innerHTML = list.slice(0, shown).map((n) => {
       const rs = SERIES.map((s) => `${s.n} ${pct(reaction(s.k, n.ts))}`).join(" · ");
       const item = `<li class="nw${n.hot ? " hot" : ""}${sel === n.ts ? " sel" : ""}" data-ts="${n.ts}">
         <div class="nw-t"><b>${hm(n.ts)}</b><span>${ago(n.ts)}</span></div>
-        <div class="nw-b"><p class="nw-txt">${n.hot ? "🔴 " : ""}${n.lang === "en" ? "🌐 " : ""}${esc(n.text)}</p>
-          <p class="nw-m">${n.tags.map((t) => `<span class="nw-tag">${esc(t)}</span>`).join("")}<span class="nw-r">이후 ${rs}</span>
+        <div class="nw-b"><p class="nw-txt">${n.hot ? "🔴 " : ""}${n.lang === "en" ? "🌐 " : ""}${esc(n.text)}</p>${n.sub ? `<p class="nw-sub">${esc(n.sub)}</p>` : ""}
+          <p class="nw-m">${n.tags.map((t) => `<span class="nw-tag">${esc(t)}</span>`).join("")}${isStrat(n) ? `<span class="nw-tag strat">${esc(n.kind)}</span>` : ""}<span class="nw-r">이후 ${rs}</span>
           <span class="nw-src">${esc(n.src)}${n.kind ? ` · ${esc(n.kind)}` : ""}</span></p></div></li>`;
       return item;
     }).join("") || `<li class="empty">이 분류의 속보가 아직 없습니다.</li>`;
