@@ -5,7 +5,7 @@
 
 숫자는 count.js가 올린 abacus 카운터(trendlab-ing82)에서 읽는다. 날짜는 한국 시간 기준.
   v  = 방문자(하루에 브라우저 1개당 1명)   pv = 페이지뷰(클릭 수)
-  u  = 처음 온 사람 누적(순방문자)          kakao = 오픈채팅 버튼 클릭   quiz = 성향 테스트 완료   tg = 속보 원문 클릭
+  u  = 처음 온 사람 누적(순방문자)          kakao = 오픈채팅 버튼 클릭   quiz = 성향 테스트 완료   news = 속보 클릭(차트에서 확인)
 """
 
 from __future__ import annotations
@@ -32,16 +32,16 @@ def get(key: str) -> int:
 
 def day(d: datetime) -> dict[str, int]:
     s = d.strftime("%Y%m%d")
-    return {k: get(f"{k}-{s}") for k in ("v", "pv", "kakao", "quiz", "share", "tg")}
+    return {k: get(f"{k}-{s}") for k in ("v", "pv", "kakao", "quiz", "share", "news")}
 
 
 def main() -> None:
     now = datetime.now(KST)
     y, t = day(now - timedelta(days=1)), day(now)
-    tot = {k: get(f"{k}-total") for k in ("v", "pv", "kakao", "quiz", "share", "tg")}
+    tot = {k: get(f"{k}-total") for k in ("v", "pv", "kakao", "quiz", "share", "news")}
     tot["u"] = get("u-total")
     yd = (now - timedelta(days=1))
-    line = lambda d: f"방문자 {d['v']}명 · 클릭(페이지뷰) {d['pv']}회\n   오픈채팅 클릭 {d['kakao']} · 성향테스트 {d['quiz']}(공유 {d['share']}) · 속보 원문 {d['tg']}"
+    line = lambda d: f"방문자 {d['v']}명 · 클릭(페이지뷰) {d['pv']}회\n   오픈채팅 클릭 {d['kakao']} · 성향테스트 {d['quiz']}(공유 {d['share']}) · 속보 클릭 {d['news']}"
     msg = "\n".join([
         f"📊 Trend Research Lab 방문 현황 ({now:%m/%d %H:%M})",
         "",

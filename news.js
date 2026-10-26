@@ -51,6 +51,27 @@
   }
   const setText = (s, t) => { const e = q(s); if (e) e.textContent = t; };
 
+  // 방문자를 오픈채팅 → 오프라인 그룹 스터디로 잇는 안내 문구(다음 스터디 일정은 데이터에서)
+  const KAKAO = "https://invite.kakao.com/tc/p7OX5rMjd0";
+  const base = q("#news") ? "" : "index.html";
+  let nextStudies = [];
+  fetch(`data/studies.json?t=${Math.floor(Date.now() / 600000)}`).then((r) => r.json()).then((list) => {
+    const k = kst(Date.now()), today = `${k.getFullYear()}-${String(k.getMonth() + 1).padStart(2, "0")}-${String(k.getDate()).padStart(2, "0")}`;
+    const up = list.filter((s) => s.date > today || (s.date === today && !(s.photos || []).length)).sort((a, b) => a.date.localeCompare(b.date));
+    nextStudies = ["regular", "book"].map((x) => up.find((s) => s.series === x)).filter(Boolean);
+    tickerKey = ""; drawTicker(); if (q("#newsList")) drawList();
+  }).catch(() => {});
+  function funnel() {
+    const md = (d) => { const x = new Date(d + "T00:00:00"); return `${x.getMonth() + 1}/${x.getDate()}(${"일월화수목금토"[x.getDay()]})`; };
+    const out = [{ t: "💬 이 속보, 내 계좌엔 무슨 의미일까? 오픈채팅에서 같이 해석해요 →", big: "💬 <b>속보 하나에 지수가 이렇게 움직입니다.</b> 내 계좌에는 어떤 의미인지, 오픈채팅방에서 매일 함께 해석합니다.", btn: "오픈채팅 참여하기", href: KAKAO, ext: true }];
+    nextStudies.forEach((s) => out.push({
+      t: `${s.series === "book" ? "📚" : "📈"} ${md(s.date)} 그룹 스터디 「${esc(s.title)}」 함께해요 →`,
+      big: `${s.series === "book" ? "📚" : "📈"} <b>${md(s.date)} 오프라인 그룹 스터디 「${esc(s.title)}」</b> — 차트와 매매 기록을 들고 와서 함께 점검합니다. 참가비 무료.`,
+      btn: "자세히 보기", href: `study.html?id=${encodeURIComponent(s.id)}`, ext: false }));
+    out.push({ t: "🧭 나의 투자 스타일은? 2분 테스트 →", big: "🧭 <b>나는 추세추종형일까, 역발상형일까?</b> 2분 테스트로 내 스타일과 조심할 습관을 확인하고 스터디에서 함께 점검해요.", btn: "테스트 하러 가기", href: `${base}#quiz`, ext: false });
+    return out;
+  }
+
   // 맨 위 '주요 시황' 띠: 최근 속보 한 줄씩 계속 흐름(주요 속보 우선)
   let tickerKey = "";
   function drawTicker() {
@@ -60,7 +81,9 @@
     const key = pick.map((n) => n.ts).join(",");
     if (!pick.length || key === tickerKey) return;
     tickerKey = key;
-    const row = pick.map((n) => `<a class="tk-i${n.hot ? " hot" : ""}" href="${q("#news") ? "#news" : "index.html#news"}" data-ts="${n.ts}"><b>${hm(n.ts)}</b>${esc(n.text)}</a>`).join("");
+    const ctas = funnel();
+    const row = pick.map((n, i) => `<a class="tk-i${n.hot ? " hot" : ""}" href="${q("#news") ? "#news" : "index.html#news"}" data-ts="${n.ts}"><b>${hm(n.ts)}</b>${n.lang === "en" ? "🌐 " : ""}${esc(n.text)}</a>`
+      + ((i + 1) % 4 === 0 && ctas.length ? (({ t, href, ext }) => `<a class="tk-cta" href="${href}"${ext ? ' target="_blank" rel="noopener"' : ""}>${t}</a>`)(ctas[((i + 1) / 4 - 1) % ctas.length]) : "")).join("");
     box.innerHTML = `<span class="tk-label">🔴 주요 시황</span><div class="tk-view"><div class="tk-track" style="animation-duration:${Math.max(40, pick.length * 9)}s">${row}${row}</div></div>`;
     box.hidden = false;
   }
@@ -100,13 +123,17 @@
     const tags = ["주요", "전체", ...new Set(news.flatMap((n) => n.tags))];
     q("#newsChips").innerHTML = tags.map((t) => `<button class="chip${t === tag ? " on" : ""}" data-t="${esc(t)}">${t === "주요" ? "🔴 주요" : esc(t)}</button>`).join("");
     const list = news.filter((n) => tag === "전체" || (tag === "주요" ? n.hot : n.tags.includes(tag)));
-    q("#newsList").innerHTML = list.slice(0, shown).map((n) => {
+    const ctas = funnel();
+    q("#newsList").innerHTML = list.slice(0, shown).map((n, i) => {
       const rs = SERIES.map((s) => `${s.n} ${pct(reaction(s.k, n.ts))}`).join(" · ");
-      return `<li class="nw${n.hot ? " hot" : ""}${sel === n.ts ? " sel" : ""}" data-ts="${n.ts}">
+      const item = `<li class="nw${n.hot ? " hot" : ""}${sel === n.ts ? " sel" : ""}" data-ts="${n.ts}">
         <div class="nw-t"><b>${hm(n.ts)}</b><span>${ago(n.ts)}</span></div>
-        <div class="nw-b"><p class="nw-txt">${n.hot ? "🔴 " : ""}${esc(n.text)}</p>
+        <div class="nw-b"><p class="nw-txt">${n.hot ? "🔴 " : ""}${n.lang === "en" ? "🌐 " : ""}${esc(n.text)}</p>
           <p class="nw-m">${n.tags.map((t) => `<span class="nw-tag">${esc(t)}</span>`).join("")}<span class="nw-r">이후 ${rs}</span>
-          <a href="${esc(n.url)}" target="_blank" rel="noopener" class="nw-src">${esc(n.src)} ↗</a></p></div></li>`;
+          <span class="nw-src">${esc(n.src)}${n.kind ? ` · ${esc(n.kind)}` : ""}</span></p></div></li>`;
+      // 6건마다 오픈채팅·그룹 스터디로 이어지는 안내 한 칸
+      const c = (i + 1) % 6 === 0 && ctas.length ? ctas[((i + 1) / 6 - 1) % ctas.length] : null;
+      return item + (c ? `<li class="nw-cta"><p>${c.big}</p><a class="btn ${c.ext ? "btn-kakao" : "btn-gold"} btn-sm" href="${c.href}"${c.ext ? ' target="_blank" rel="noopener"' : ""}>${c.btn}</a></li>` : "");
     }).join("") || `<li class="empty">이 분류의 속보가 아직 없습니다.</li>`;
     q("#newsMore").hidden = list.length <= shown;
   }
@@ -117,7 +144,7 @@
     q("#newsList").addEventListener("click", (e) => {
       if (e.target.closest("a")) return;
       const li = e.target.closest(".nw"); if (!li) return;
-      const ts = +li.dataset.ts; sel = sel === ts ? null : ts;
+      const ts = +li.dataset.ts; sel = sel === ts ? null : ts; if (sel && window.trlCount) window.trlCount("news");
       drawCharts(); drawList();
       if (sel && window.innerWidth < 760) q("#newsCharts").scrollIntoView({ behavior: "smooth", block: "nearest" });
     });
