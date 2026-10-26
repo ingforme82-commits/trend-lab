@@ -12,9 +12,9 @@ const DOW = ["일", "월", "화", "수", "목", "금", "토"];
 const TICKS = [
   { g: "한국 프록시" },
   { k: "KR200", n: "코스피200", d: 2 },
-  { k: "EWY", n: "EWY (한국 ETF)", d: 2, u: "$" },
-  { k: "SKHX", n: "SK하이닉스", d: 2, u: "$", won: true },
   { k: "SMSN", n: "삼성전자", d: 2, u: "$", won: true },
+  { k: "SKHX", n: "SK하이닉스", d: 2, u: "$", won: true },
+  { k: "EWY", n: "EWY (한국 ETF)", d: 2, u: "$" },
   { k: "KORU", n: "KORU (한국 3배)", d: 2, u: "$" },
   { k: "KRW", n: "원/달러", d: 1, suf: "원" },
   { g: "미국 지수·반도체" },

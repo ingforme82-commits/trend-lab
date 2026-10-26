@@ -169,20 +169,31 @@
     }).join("");
   }
 
-  /* ── 섹터 카드(종목 등락·고점 대비 위치) ── */
+  /* ── 섹터 카드: 처음엔 요약만, 누르면 종목이 펼쳐진다 ── */
+  const openSec = new Set();
   function drawSectors() {
     const box = q("#sectorBox"); if (!box) return;
     if (!sectors.length) { box.hidden = true; return; }
     box.hidden = false;
-    box.innerHTML = sectors.map((c) => `<article class="sec-card">
-      <div class="sec-top"><b>${c.icon} ${esc(c.name)} 섹터</b><span>평균 <b class="${cls(c.avg)}">${c.avg > 0 ? "+" : ""}${c.avg.toFixed(2)}%</b></span>
-        <button class="btn btn-ghost-dark btn-sm" data-sec-tag="${esc(c.tag)}">관련 속보</button></div>
-      <div class="sec-rows">${c.rows.map((r) => `<div class="sec-r${r.flags.length ? " flag" : ""}"><span class="sec-n">${esc(r.name)}</span>
-        <b class="${cls(r.chg)}">${r.chg > 0 ? "+" : ""}${r.chg.toFixed(2)}%</b>
-        <small>${r.to3m != null && r.to3m > 0 ? "3개월 고점 돌파" : r.to52 != null ? `52주 고가 ${r.to52 > 0 ? "+" : ""}${r.to52}%` : ""}${Date.now() - r.at > 3 * 3600e3 ? ` · ${kst(r.at).getMonth() + 1}/${kst(r.at).getDate()} 마감` : ""}</small>
-        ${r.flags.length ? `<span class="sec-f">${r.flags.map(esc).join(" · ")}</span>` : ""}</div>`).join("")}</div>
-      <p class="fine" style="margin:6px 0 0">정규장 시세(야후, 5분 갱신) · 하루 ±3%, 3개월 고점 돌파, 52주 신고가 3% 이내가 생기면 속보 목록에 '섹터 시세'로 올라갑니다.</p>
-    </article>`).join("");
+    const won = (r) => r.cur === "KRW";
+    box.innerHTML = `<p class="spot-h">📊 섹터 시세 <small>누르면 종목이 펼쳐집니다 · 하루 ±3%, 3개월 고점 돌파, 52주 신고가 3% 이내가 생기면 속보 목록에 올라갑니다</small></p>
+      <div class="sec-grid">` + sectors.map((c) => {
+      const open = openSec.has(c.name), flags = c.rows.filter((r) => r.flags.length).length;
+      const best = c.rows[0], worst = c.rows[c.rows.length - 1];
+      const closed = c.rows.length && Date.now() - Math.max(...c.rows.map((r) => r.at)) > 3 * 3600e3;
+      return `<article class="sec-card${open ? " open" : ""}">
+        <button class="sec-top" data-sec-toggle="${esc(c.name)}" aria-expanded="${open}">
+          <span class="sec-t">${c.icon} ${esc(c.name)}</span>
+          <b class="sec-avg ${cls(c.avg)}">${c.avg > 0 ? "+" : ""}${c.avg.toFixed(2)}%</b>
+          <span class="sec-sum">강 ${esc(best ? best.name : "-")} ${best ? `${best.chg > 0 ? "+" : ""}${best.chg.toFixed(1)}%` : ""} · 약 ${esc(worst ? worst.name : "-")} ${worst ? `${worst.chg > 0 ? "+" : ""}${worst.chg.toFixed(1)}%` : ""}${flags ? ` · <em>신호 ${flags}</em>` : ""}${closed ? " · 장 마감" : ""}</span>
+          <span class="sec-arrow">${open ? "▲" : "▼"}</span></button>
+        ${open ? `<div class="sec-rows">${c.rows.map((r) => `<div class="sec-r${r.flags.length ? " flag" : ""}"><span class="sec-n">${esc(r.name)}</span>
+          <b class="${cls(r.chg)}">${r.chg > 0 ? "+" : ""}${r.chg.toFixed(2)}%</b>
+          <small>${won(r) ? `${Math.round(r.px).toLocaleString("ko-KR")}원` : `$${r.px}`}${r.to3m != null && r.to3m > 0 ? " · 3개월 고점 돌파" : r.to52 != null ? ` · 52주 고가 ${r.to52 > 0 ? "+" : ""}${r.to52}%` : ""}</small>
+          ${r.flags.length ? `<span class="sec-f">${r.flags.map(esc).join(" · ")}</span>` : ""}</div>`).join("")}</div>
+          <button class="btn btn-ghost-dark btn-sm sec-news" data-sec-tag="${esc(c.tag)}">${esc(c.tag)} 관련 속보 보기</button>` : ""}
+      </article>`;
+    }).join("") + `</div>`;
   }
 
   /* ── 📋 시장 브리핑(실시간 + 매일 12시 기록) ── */
@@ -309,6 +320,8 @@
       return;
     }
     if (e.target.closest("[data-clear-kw]")) { kwFilter = null; drawTrend(); drawList(); return; }
+    const tg = e.target.closest("[data-sec-toggle]");
+    if (tg) { const n = tg.dataset.secToggle; if (openSec.has(n)) openSec.delete(n); else openSec.add(n); drawSectors(); return; }
     const st = e.target.closest("[data-sec-tag]"); if (st && q("#news")) { kwFilter = null; tag = st.dataset.secTag; shown = 30; drawTrend(); drawList(); q("#news").scrollIntoView({ behavior: "smooth" }); return; }
     const sk = e.target.closest("[data-spot-kw]"); if (sk && q("#news")) { setKw(sk.dataset.spotName, sk.dataset.spotKw); return; }
     const sc = e.target.closest("[data-spot-chart]"); if (sc && window.trlChart) window.trlChart.open({ coin: sc.dataset.spotChart, name: sc.dataset.spotName, sel: null, news });

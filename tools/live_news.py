@@ -110,7 +110,11 @@ TAGS = [
     ("코인", r"비트코인|이더리움|코인|암호화폐|가상자산|Coinbase|코인베이스|월렛|bitcoin|crypto|ether"),
     ("러·우", r"러시아|우크라|푸틴|젤렌스키|크렘린|스타링크|Russia|Ukrain|Putin|Kremlin"),
     ("한국", r"코스피|코스닥|한국|원/달러|원화|한은|KOSPI|Korea"),
-    ("2차전지·바이오", r"2차전지|이차전지|배터리|양극재|리튬|ESS|바이오|제약|신약|임상|FDA|battery|biotech"),
+    ("원전", r"원전|원자력|SMR|소형모듈원자로|두산에너빌리티|한전기술|우라늄|nuclear|Oklo|오클로|NuScale|뉴스케일|Constellation|Cameco"),
+    ("방산", r"방산|방위산업|K9|K2 전차|레드백|천무|한화에어로|LIG넥스원|현대로템|한국항공우주|KAI|Lockheed|록히드|Raytheon|defense contractor"),
+    ("조선", r"조선|선박|LNG선|컨테이너선|수주|HD현대중공업|한화오션|삼성중공업|HD한국조선|shipbuild|MASGA|마스가"),
+    ("2차전지", r"2차전지|이차전지|배터리|양극재|음극재|리튬|ESS|LG에너지|삼성SDI|에코프로|포스코퓨처엠|battery|lithium"),
+    ("바이오", r"바이오|제약|신약|임상|FDA|비만|ADC|biotech|pharma"),
     ("지수", r"나스닥|S&P|다우|선물|지수|VIX|Nasdaq|Dow\b|S&P 500|futures|stocks|Wall Street"),
 ]
 HOT = re.compile(r"속보|긴급|Breaking|사상 최고|사상최고|급등|급락|폭락|폭등|공격|미사일|공습|휴전|합의|핵무기|해킹|IPO|파산|"

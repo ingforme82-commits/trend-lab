@@ -54,11 +54,15 @@ def run() -> tuple[list[dict], list[dict]]:
     # 신호 기록: "거래일:종목:신호" (사흘 지난 기록은 지움)
     cutoff = (now - timedelta(days=3)).strftime("%Y-%m-%d")
     fired = {k: v for k, v in st.get("fired", {}).items() if not k.startswith("_") and k[:10] >= cutoff}
+    from concurrent.futures import ThreadPoolExecutor
+    syms = [sym for sec in sectors.values() for sym in sec["tickers"]]
+    with ThreadPoolExecutor(max_workers=8) as ex:            # 60여 종목을 동시에(약 5초)
+        quotes = dict(zip(syms, ex.map(_quote, syms)))
     cards, new_items = [], []
     for sname, sec in sectors.items():
         rows, sig = [], []
         for sym, name in sec["tickers"].items():
-            d = _quote(sym)
+            d = quotes.get(sym)
             if not d or not d["px"] or not d["prev"]:
                 continue
             chg = (d["px"] / d["prev"] - 1) * 100
