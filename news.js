@@ -46,7 +46,7 @@
       const j = await fetchNews();
       news = j.items || []; moves = j.moves || []; series = j.series || {};
       world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
-      window.trlDow = j.dow || {}; window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
+      window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
       window.trlMoves = moves; window.trlSeries = series; window.trlNews = news;
       setText("#newsStamp", `속보 갱신 ${hm(j.updated)} KST · ${ago(j.updated)}`);
       drawTicker();
@@ -150,7 +150,9 @@
   }
 
   /* ── 🔥 화제 종목(종목군): 한 칸에서 번갈아 보이기 ── */
-  let spotIdx = 0, spotHold = false, spotTimer = null;
+  let spotIdx = 0, spotHold = false, spotTimer = null, memOpen = null;   // memOpen: "종목군id:심볼"
+  // 하이퍼리퀴드에서 1분봉을 볼 수 있는 종목(그 외는 차트 버튼 대신 정규장 수치만)
+  const HL_SYMS = new Set(["LITE", "CRWV", "NBIS", "IREN", "AAOI", "GLW", "INTC", "NVDA", "AMD", "MU", "TSM", "TSLA", "SPCX", "META", "MSFT", "GOOGL", "AMZN", "AAPL", "ORCL", "PLTR", "AVGO", "ARM", "MRVL", "QCOM", "LRCX", "AMAT", "ASML", "SMH", "SOXL", "COIN", "HOOD", "NFLX", "NET", "CRWD", "DELL", "IBM", "WDC", "SNDK", "GEV", "BE"]);
   function spotCard(s) {
     let rx; try { rx = new RegExp(s.kw || s.name, "i"); } catch { rx = /$^/; }
     const rel = news.filter((n) => rx.test(n.text + " " + (n.orig || "") + " " + (n.sub || "")));
@@ -161,14 +163,35 @@
     return `<article class="spot">
       <div class="spot-top"><b class="spot-n">${esc(s.name)}</b><span class="spot-m">${esc(s.market || "")} · ${esc(s.since || "")}부터</span>${head}</div>
       ${s.reason ? `<p class="spot-r">${esc(s.reason)}</p>` : ""}
-      ${mem.length ? `<div class="spot-mem">${mem.slice().sort((a, b) => b.chg - a.chg).map((m) => `<span><b>${esc(m.name)}</b> <b class="${cls(m.chg)}">${m.chg > 0 ? "+" : ""}${m.chg.toFixed(1)}%</b>${m.to3m != null ? `<small>고점 ${m.to3m > 0 ? "+" : ""}${m.to3m}%</small>` : ""}</span>`).join("")}</div>
-        <p class="fine" style="margin:4px 0 6px">오늘 등락 · '고점'은 3개월 최고가 대비 위치(미국 정규장, 5분 갱신)</p>` : ""}
+      ${mem.length ? memBlock(s, mem) : ""}
       <p class="spot-c">최근 24시간 관련 속보 <b>${today}건</b></p>
       ${rel.length ? `<ul class="spot-news">${rel.slice(0, 3).map((n) => `<li><b>${hm(n.ts)}</b> ${n.pivot ? "🔴 " : ""}${esc(n.text)}</li>`).join("")}</ul>` : ""}
       <div class="spot-btns">${s.hl ? `<button class="btn btn-gold btn-sm" data-spot-chart="${esc(s.hl)}" data-spot-name="${esc(mem.length ? mem.find((m) => "xyz:" + m.sym === s.hl)?.name || s.name : s.name)}">1분봉 차트</button>` : ""}
         <button class="btn btn-ghost-dark btn-sm" data-spot-kw="${esc(s.kw || s.name)}" data-spot-name="${esc(s.name)}">관련 속보 보기</button></div>
     </article>`;
   }
+  // 종목군 구성 종목: 이름 버튼만 → 누르면 그 종목 상세
+  function memBlock(s, mem) {
+    const key = (m) => `${s.id}:${m.sym}`;
+    const open = mem.find((m) => memOpen === key(m));
+    const btns = mem.map((m) => `<button class="mem-b${open === m ? " on" : ""}" data-mem="${esc(key(m))}">${esc(m.name)}</button>`).join("");
+    let detail = "";
+    if (open) {
+      let rx; try { rx = new RegExp(`${open.name}|\\b${open.sym}\\b`, "i"); } catch { rx = /$^/; }
+      const rel = news.filter((n) => rx.test(n.text + " " + (n.orig || "") + " " + (n.sub || ""))).slice(0, 4);
+      detail = `<div class="mem-d">
+        <div class="mem-h"><b>${esc(open.name)}</b> <small>${esc(open.sym)}</small>
+          <span class="mem-px">$${(+open.px).toLocaleString("ko-KR", { maximumFractionDigits: 2 })}</span>
+          <b class="${cls(open.chg)}">${open.chg > 0 ? "+" : ""}${open.chg.toFixed(2)}%</b>
+          ${open.to3m != null ? `<span class="dim">3개월 고점 대비 ${open.to3m > 0 ? "+" : ""}${open.to3m}%</span>` : ""}</div>
+        ${rel.length ? `<ul class="spot-news">${rel.map((n) => `<li><b>${hm(n.ts)}</b> ${n.pivot ? "🔴 " : ""}${esc(n.text)} <small class="dim">${esc(n.osrc ? n.osrc + " · " + n.src + " 경유" : n.src)}</small></li>`).join("")}</ul>` : `<p class="dim" style="margin:4px 0">최근 관련 속보가 없습니다.</p>`}
+        <div class="spot-btns">${HL_SYMS.has(open.sym) ? `<button class="btn btn-gold btn-sm" data-spot-chart="xyz:${esc(open.sym)}" data-spot-name="${esc(open.name)}">${esc(open.name)} 1분봉</button>` : ""}
+          <button class="btn btn-ghost-dark btn-sm" data-mem="${esc(key(open))}">접기</button></div>
+      </div>`;
+    }
+    return `<div class="mem-bar"><span class="mem-l">구성 종목</span>${btns}</div>${detail}`;
+  }
+
   function drawSpot() {
     const box = q("#spotBox"); if (!box) return;
     if (!spot.length) { box.hidden = true; return; }
@@ -178,14 +201,16 @@
       `<button class="spot-dot${i === spotIdx ? " on" : ""}" data-spot-go="${i}" title="${esc(x.name)}">${esc(x.name)}</button>`).join("")}<button class="spot-arrow" data-spot-step="1" aria-label="다음">›</button></div>` : "";
     box.innerHTML = `<p class="spot-h">🔥 오늘의 주요 종목군 <small>뉴스·가격 움직임이 많은 종목 · 추천 아님 · ${spot.length}개가 번갈아 보입니다</small></p>${nav}${spotCard(spot[spotIdx])}`;
     if (!spotTimer && spot.length > 1) {
-      spotTimer = setInterval(() => { if (!spotHold) { spotIdx++; drawSpot(); } }, 8000);
+      spotTimer = setInterval(() => { if (!spotHold && !memOpen) { spotIdx++; drawSpot(); } }, 8000);
       box.addEventListener("mouseenter", () => { spotHold = true; });
       box.addEventListener("mouseleave", () => { spotHold = false; });
       box.addEventListener("touchstart", () => { spotHold = true; setTimeout(() => { spotHold = false; }, 15000); }, { passive: true });
       box.addEventListener("click", (e) => {
         const st = e.target.closest("[data-spot-step]"), go = e.target.closest("[data-spot-go]");
-        if (st) { spotIdx += +st.dataset.spotStep; drawSpot(); }
-        if (go) { spotIdx = +go.dataset.spotGo; drawSpot(); }
+        if (st) { spotIdx += +st.dataset.spotStep; memOpen = null; drawSpot(); }
+        if (go) { spotIdx = +go.dataset.spotGo; memOpen = null; drawSpot(); }
+        const mb = e.target.closest("[data-mem]");
+        if (mb) { memOpen = memOpen === mb.dataset.mem ? null : mb.dataset.mem; drawSpot(); }
       });
     }
   }

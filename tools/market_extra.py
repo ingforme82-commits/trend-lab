@@ -152,3 +152,16 @@ def dow() -> dict:
         except Exception:  # noqa: BLE001
             pass
     return out
+
+
+def us10y() -> dict:
+    """미 10년물 국채 금리(^TNX, %). 전일 대비 변화는 bp. 미국 채권시장 시간에 갱신."""
+    u = "https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX?range=1d&interval=1m"
+    try:
+        m = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"}), timeout=10).read())["chart"]["result"][0]["meta"]
+        px, prev = m.get("regularMarketPrice"), m.get("previousClose") or m.get("chartPreviousClose")
+        if px and prev:
+            return {"px": round(px, 3), "bp": round((px - prev) * 100, 1), "prev": round(prev, 3), "at": m.get("regularMarketTime", 0) * 1000}
+    except Exception:  # noqa: BLE001
+        pass
+    return {}
