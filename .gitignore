@@ -3,3 +3,4 @@
 tools/live_news.log
 tools/visit_report.log
 tools/rss_cache.json
+tools/translate_cache.json

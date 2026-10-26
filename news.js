@@ -113,9 +113,9 @@
       }).join("");
       const line = sel && sel >= t0 && sel <= t1 ? `<line x1="${X(sel).toFixed(1)}" x2="${X(sel).toFixed(1)}" y1="0" y2="${Hh}" class="nc-sel"/>` : "";
       const r = sel ? reaction(s.k, sel) : null;
-      return `<div class="nc"><div class="nc-h"><span class="nc-n">${s.n}</span><span class="nc-v">${s.u || ""}${last.toLocaleString("ko-KR", { maximumFractionDigits: s.d, minimumFractionDigits: s.d })}</span>${pct(chg)}</div>
+      return `<div class="nc" data-coin="${s.k}" role="button" tabindex="0"><div class="nc-h"><span class="nc-n">${s.n}</span><span class="nc-v">${s.u || ""}${last.toLocaleString("ko-KR", { maximumFractionDigits: s.d, minimumFractionDigits: s.d })}</span>${pct(chg)}</div>
         <svg viewBox="0 0 ${W} ${Hh}" preserveAspectRatio="none" class="nc-svg"><path d="${path}" class="nc-line ${chg >= 0 ? "up" : "down"}"/>${marks}${line}</svg>
-        <p class="nc-f">${sel ? `선택한 속보(${hm(sel)}) 이후 ${pct(r)}` : `최근 ${H}시간 · 점은 주요 속보 시각`}</p></div>`;
+        <p class="nc-f">${sel ? `선택한 속보(${hm(sel)}) 이후 ${pct(r)}` : `최근 ${H}시간 · 누르면 1분봉 차트`}</p></div>`;
     }).join("");
   }
 
@@ -144,11 +144,17 @@
     q("#newsList").addEventListener("click", (e) => {
       if (e.target.closest("a")) return;
       const li = e.target.closest(".nw"); if (!li) return;
-      const ts = +li.dataset.ts; sel = sel === ts ? null : ts; if (sel && window.trlCount) window.trlCount("news");
+      const ts = +li.dataset.ts; sel = ts; if (window.trlCount) window.trlCount("news");
       drawCharts(); drawList();
-      if (sel && window.innerWidth < 760) q("#newsCharts").scrollIntoView({ behavior: "smooth", block: "nearest" });
+      // 속보를 누르면 관련 지수의 1분봉 차트를 그 시각 기준으로 연다
+      const n = news.find((x) => x.ts === ts) || { tags: [] };
+      const coin = n.tags.includes("중동·유가") ? "xyz:CL" : (n.tags.includes("한국") || n.tags.includes("반도체")) ? "xyz:KR200" : "xyz:XYZ100";
+      if (window.trlChart) window.trlChart.open({ coin, sel: ts, news });
     });
     q("#newsMore").addEventListener("click", () => { shown += 15; drawList(); });
+    const openCard = (e) => { const c = e.target.closest(".nc[data-coin]"); if (c && window.trlChart) window.trlChart.open({ coin: c.dataset.coin, sel, news }); };
+    q("#newsCharts").addEventListener("click", openCard);
+    q("#newsCharts").addEventListener("keydown", (e) => { if (e.key === "Enter") openCard(e); });
     // 띠에서 속보를 누르면 속보 칸으로 내려가 그 속보를 선택
     document.addEventListener("click", (e) => {
       const a = e.target.closest(".tk-i"); if (!a) return;

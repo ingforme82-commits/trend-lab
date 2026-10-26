@@ -70,7 +70,7 @@ BROKER = re.compile(r"목표주가|목표가|TP\s|투자의견|BUY|매수\(유�
                     r"\[[^\]\n]*증권|상향 조정|하향 조정|비중\s?확대|비중\s?축소|Overweight|Underweight|Outperform|등급|"
                     r"price target|upgrade|downgrade|initiates|reiterate|Buy rating|Sell rating|top pick|stocks? to buy|"
                     r"should you buy|buy now|best stocks|stock to watch|stock picks?|stocks with|how to invest|dividend stocks|undervalued", re.I)
-JUNK = re.compile(r"광고|이벤트|구독|무료\s?리딩|수익\s?보장|가입|추천주|급등주|리딩방|쿠폰|할인|sponsored|podcast|webinar", re.I)
+JUNK = re.compile(r"광고|이벤트|구독|무료\s?리딩|수익\s?보장|가입|추천주|급등주|리딩방|쿠폰|할인|sponsored|podcast|webinar|at close of trade|stocks (?:higher|lower) at close", re.I)
 TAGS = [
     ("중동·유가", r"이란|이스라엘|호르무즈|후티|사우디|카타르|레바논|헤즈볼라|유가|원유|WTI|브렌트|OPEC|오펙|천연가스|LNG|정유|핵무기|핵 활동|NPT|우라늄|"
                 r"\bIran|Israel|Hormuz|Houthi|Saudi|\boil\b|crude|Brent|OPEC|natural gas"),
@@ -187,13 +187,77 @@ def fetch_rss() -> list[dict]:
     return cache["items"]
 
 
+TR_CACHE = ROOT / "tools" / "translate_cache.json"
+
+
+def _claude_translate(titles: list[str]) -> dict[str, str]:
+    """Claude(크레딧이 있을 때만). 실패하면 빈 dict — 키 값은 tg_research/.env에서 읽고 출력하지 않는다."""
+    env = TGR / ".env"
+    key = ""
+    if env.exists():
+        for line in env.read_text(encoding="utf-8").splitlines():
+            if line.startswith("ANTHROPIC_API_KEY="):
+                key = line.split("=", 1)[1].strip()
+    if not key:
+        return {}
+    body = {"model": "claude-haiku-5-5", "max_tokens": 4000, "messages": [{"role": "user", "content":
+            "다음 영문 금융 뉴스 헤드라인을 자연스러운 한국어 뉴스 제목으로 번역해. 회사명·티커는 원문 유지, 과장 없이. "
+            "입력과 같은 순서의 JSON 문자열 배열만 출력해.\n" + json.dumps(titles, ensure_ascii=False)}]}
+    try:
+        req = urllib.request.Request("https://api.anthropic.com/v1/messages", data=json.dumps(body).encode(),
+                                     headers={"x-api-key": key, "anthropic-version": "2023-06-01", "content-type": "application/json"})
+        out = json.loads(urllib.request.urlopen(req, timeout=40).read())["content"][0]["text"]
+        arr = json.loads(out[out.index("["): out.rindex("]") + 1])
+        return {t: k for t, k in zip(titles, arr) if isinstance(k, str) and k.strip()}
+    except Exception:  # noqa: BLE001  (크레딧 없음 등)
+        return {}
+
+
+def _google_translate(title: str) -> str:
+    import urllib.parse
+    u = "https://translate.googleapis.com/translate_a/single?" + urllib.parse.urlencode(
+        {"client": "gtx", "sl": "en", "tl": "ko", "dt": "t", "q": title})
+    r = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"}), timeout=10).read())
+    return "".join(x[0] for x in r[0] if x and x[0]).strip()
+
+
+def translate(items: list[dict]) -> None:
+    """영문 헤드라인을 한국어로 바꾼다(원문은 orig에 보관). 번역은 저장해 두고 다시 하지 않는다."""
+    try:
+        cache = json.loads(TR_CACHE.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        cache = {}
+    todo = list(dict.fromkeys(it["text"] for it in items if it.get("lang") == "en" and it["text"] not in cache))
+    if todo:
+        got = {}
+        if cache.get("_claude_off_until", 0) < datetime.now(timezone.utc).timestamp():
+            got = _claude_translate(todo[:60])
+            if not got:                                   # 크레딧 없음 → 1시간 동안 Claude 시도 안 함
+                cache["_claude_off_until"] = datetime.now(timezone.utc).timestamp() + 3600
+        for t in todo[:80]:
+            if t not in got:
+                try:
+                    got[t] = _google_translate(t)
+                except Exception:  # noqa: BLE001
+                    pass
+        cache.update({k: v for k, v in got.items() if v})
+        keep = {it["text"] for it in items}
+        cache = {k: v for k, v in cache.items() if k in keep or k.startswith("_")}   # 오래된 번역 정리
+        TR_CACHE.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
+    for it in items:
+        if it.get("lang") == "en" and cache.get(it["text"]):
+            it["orig"], it["text"] = it["text"], cache[it["text"]].rstrip(".。 ")
+
+
 def bigrams(s: str) -> set[str]:
     s = re.sub(r"[^0-9A-Za-z가-힣]", "", s.lower())
     return {s[i:i + 2] for i in range(len(s) - 1)}
 
 
 def build() -> dict:
-    allitems = sorted(from_telegram() + fetch_rss(), key=lambda x: -x["ts"])
+    rss = fetch_rss()
+    translate(rss)
+    allitems = sorted(from_telegram() + rss, key=lambda x: -x["ts"])
     items, seen, per = [], [], {}
     for it in allitems:
         if per.get(it["src"], 0) >= PER_SOURCE.get(it["src"], 30):   # 한 출처가 목록을 다 차지하지 않게
