@@ -27,7 +27,7 @@
   const pct = (v) => v == null ? "-" : `<b class="${cls(v)}">${v > 0 ? "+" : ""}${v.toFixed(2)}%</b>`;
 
   let news = [], moves = [], series = {}, notes = [], candles = {}, sel = null, tag = "전체", shown = 15;
-  let world = [], spot = [], trend = [], sectors = [], kwFilter = null;   // kwFilter: {label, rx}
+  let world = [], spot = [], trend = [], sectors = [], brief = null, briefs = [], kwFilter = null;   // kwFilter: {label, rx}
 
   /* ── 데이터 ── */
   let apiBlockedUntil = 0;
@@ -45,7 +45,7 @@
     try {
       const j = await fetchNews();
       news = j.items || []; moves = j.moves || []; series = j.series || {};
-      world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || [];
+      world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
       window.trlMoves = moves; window.trlSeries = series; window.trlNews = news;
       setText("#newsStamp", `속보 갱신 ${hm(j.updated)} KST · ${ago(j.updated)}`);
       drawTicker();
@@ -179,11 +179,47 @@
         <button class="btn btn-ghost-dark btn-sm" data-sec-tag="${esc(c.tag)}">관련 속보</button></div>
       <div class="sec-rows">${c.rows.map((r) => `<div class="sec-r${r.flags.length ? " flag" : ""}"><span class="sec-n">${esc(r.name)}</span>
         <b class="${cls(r.chg)}">${r.chg > 0 ? "+" : ""}${r.chg.toFixed(2)}%</b>
-        <small>${r.to3m != null && r.to3m > 0 ? "3개월 고점 돌파" : r.to52 != null ? `52주 고가 ${r.to52 > 0 ? "+" : ""}${r.to52}%` : ""}</small>
+        <small>${r.to3m != null && r.to3m > 0 ? "3개월 고점 돌파" : r.to52 != null ? `52주 고가 ${r.to52 > 0 ? "+" : ""}${r.to52}%` : ""}${Date.now() - r.at > 3 * 3600e3 ? ` · ${kst(r.at).getMonth() + 1}/${kst(r.at).getDate()} 마감` : ""}</small>
         ${r.flags.length ? `<span class="sec-f">${r.flags.map(esc).join(" · ")}</span>` : ""}</div>`).join("")}</div>
-      <p class="fine" style="margin:6px 0 0">미국 정규장 시세(야후, 5분 갱신) · 하루 ±3%, 3개월 고점 돌파, 52주 신고가 3% 이내가 생기면 속보 목록에 '섹터 시세'로 올라갑니다.</p>
+      <p class="fine" style="margin:6px 0 0">정규장 시세(야후, 5분 갱신) · 하루 ±3%, 3개월 고점 돌파, 52주 신고가 3% 이내가 생기면 속보 목록에 '섹터 시세'로 올라갑니다.</p>
     </article>`).join("");
   }
+
+  /* ── 📋 시장 브리핑(실시간 + 매일 12시 기록) ── */
+  async function loadBriefs() {
+    try { briefs = await (await fetch(`data/briefs.json?t=${Math.floor(Date.now() / 600000)}`)).json(); } catch { briefs = []; }
+  }
+  const sg = (v, u = "%") => `<b class="${cls(v)}">${v > 0 ? "+" : ""}${(+v).toFixed(2)}${u}</b>`;
+  function briefHtml(b, hist) {
+    if (!b) return "";
+    // 후속 확인: 지난 기록에서 같은 종목이 며칠 연속 화제였는지, 섹터 평균이 어떻게 바뀌었는지
+    const streak = (name) => { let n = 1; for (const h of hist) { if ((h.trending || []).some((t) => t.name === name)) n++; else break; } return n; };
+    const prevSec = (name) => { const h = hist[0]; const x = h && (h.sectors || []).find((s) => s.name === name); return x ? x.avg : null; };
+    const mv = (b.moves || []).map((m) => `<li><b class="${m.move > 0 ? "c-up" : "c-dn"}">${esc(m.name)} ${m.move > 0 ? "▲" : "▼"}${m.move > 0 ? "+" : ""}${m.move}${m.unit === "bp" ? "bp" : "%"}</b>
+      <small>${hm(m.start)}–${hm(m.end)} · 평소의 ${m.ratio}배</small>${m.news && m.news[0] ? `<span>🔴 ${esc(m.news[0])}</span>` : `<span class="dim">직전 관련 뉴스 없음</span>`}</li>`).join("");
+    const sec = (b.sectors || []).map((s) => { const p = prevSec(s.name);
+      return `<li><b>${s.icon} ${esc(s.name)}</b> 평균 ${sg(s.avg)}${p != null ? ` <small>(전 기록 ${p > 0 ? "+" : ""}${p.toFixed(2)}%)</small>` : ""}
+        <span>강 ${esc(s.best.name)} ${sg(s.best.chg)} · 약 ${esc(s.worst.name)} ${sg(s.worst.chg)}${s.flags ? ` · 신호 ${s.flags}종목` : ""}</span></li>`; }).join("");
+    const tr = (b.trending || []).map((t) => { const k = hist.length ? streak(t.name) : 1;
+      return `<span class="bt">${esc(t.name)} <b>${t.n}</b>${k > 1 ? `<em>${k}일 연속</em>` : ""}</span>`; }).join("");
+    const w = b.world || {};
+    return `<div class="bcol"><h4>📍 가장 크게 움직인 순간</h4><ul>${mv || '<li class="dim">최근 24시간 변곡점 없음</li>'}</ul></div>
+      <div class="bcol"><h4>📊 섹터 강약</h4><ul>${sec || '<li class="dim">-</li>'}</ul></div>
+      <div class="bcol"><h4>📈 뉴스에 많이 나온 종목</h4><div class="bts">${tr || '<span class="dim">-</span>'}</div>
+        <h4 style="margin-top:12px">🌏 해외 지수</h4><p>상승 ${w.up || 0} · 하락 ${w.down || 0}${w.best ? ` · 최강 ${esc(w.best.name)} ${sg(w.best.chg)} · 최약 ${esc(w.worst.name)} ${sg(w.worst.chg)}` : ""}</p>
+        ${(b.spot || []).length ? `<h4 style="margin-top:12px">🔥 화제 종목</h4><p>${b.spot.map((s) => `${esc(s.name)} ${s.chg != null ? sg(s.chg) : ""}`).join(" · ")}</p>` : ""}</div>`;
+  }
+  function drawBrief() {
+    const box = q("#briefNow"); if (!box) return;
+    const today = briefs.filter((h) => h.day !== kstDay(Date.now()) || true);
+    box.innerHTML = brief ? briefHtml(brief, briefs.filter((h) => h.day !== kstDay(Date.now()))) : `<p class="empty">브리핑을 불러오는 중…</p>`;
+    if (brief) setText("#briefStamp", `실시간 · ${hm(brief.at)} KST 기준`);
+    const hb = q("#briefHist"); if (!hb) return;
+    hb.innerHTML = briefs.length ? briefs.slice(0, 14).map((h, i) => `<details class="bh"${i === 0 ? "" : ""}><summary><b>${h.day.slice(5).replace("-", "/")}</b> ${hm(h.at)} 기록
+        <span>${(h.moves || [])[0] ? `${esc(h.moves[0].name)} ${h.moves[0].move > 0 ? "+" : ""}${h.moves[0].move}${h.moves[0].unit === "bp" ? "bp" : "%"}` : ""}${(h.trending || [])[0] ? ` · 화제 ${esc(h.trending[0].name)}` : ""}</span></summary>
+        <div class="brief">${briefHtml(h, briefs.slice(i + 1))}</div></details>`).join("") : `<p class="dim">첫 기록은 오늘 12시에 저장됩니다.</p>`;
+  }
+  const kstDay = (ms) => { const d = kst(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 
   /* ── 최근 24시간 뉴스에 많이 나온 종목 ── */
   function drawTrend() {
@@ -261,7 +297,7 @@
     });
   }
 
-  const redraw = () => { drawHeroLive(); drawWorld(); drawSpot(); drawSectors(); if (full) { drawCharts(); drawMoves(); drawTrend(); drawList(); } };
+  const redraw = () => { drawHeroLive(); drawWorld(); drawSpot(); drawSectors(); drawBrief(); if (full) { drawCharts(); drawMoves(); drawTrend(); drawList(); } };
   const setKw = (label, pat) => {
     try { kwFilter = { label, rx: new RegExp(pat, "i") }; } catch { kwFilter = null; }
     tag = "전체"; shown = 30; drawTrend(); drawList(); q("#news").scrollIntoView({ behavior: "smooth" });
@@ -277,7 +313,8 @@
     const sk = e.target.closest("[data-spot-kw]"); if (sk && q("#news")) { setKw(sk.dataset.spotName, sk.dataset.spotKw); return; }
     const sc = e.target.closest("[data-spot-chart]"); if (sc && window.trlChart) window.trlChart.open({ coin: sc.dataset.spotChart, name: sc.dataset.spotName, sel: null, news });
   });
-  (async () => { await Promise.all([loadNews(), loadNotes(), full ? loadCandles() : null]); redraw(); })();
+  (async () => { await Promise.all([loadNews(), loadNotes(), loadBriefs(), full ? loadCandles() : null]); redraw(); })();
+  setInterval(loadBriefs, 600000);
   setInterval(async () => { await loadNews(); redraw(); }, 60000);                 // 속보·변곡점 1분마다
   setInterval(loadNotes, 600000);
   if (full) setInterval(async () => { await loadCandles(); redraw(); }, 120000);  // 지수 2분마다

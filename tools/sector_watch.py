@@ -1,6 +1,6 @@
 """섹터 시세 감시 — 종목 가격 변화를 '뉴스처럼' 속보 목록에 싣는다 (data/sectors.json 에 섹터·종목)
 
-신호(미국 정규장 기준, 하루 한 번씩만):
+신호(종목별 현지 거래일 기준, 하루 한 번씩만):
 - 하루 +3% / -3% 이상, +5% / -5% 이상
 - 3개월 고점 돌파
 - 52주 신고가 3% 이내 접근 / 52주 신고가 돌파
@@ -25,13 +25,15 @@ def _quote(sym: str) -> dict | None:
     try:
         r = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"}), timeout=12).read())["chart"]["result"][0]
         m, q = r["meta"], r["indicators"]["quote"][0]
-        highs = [h for h in q["high"] if h]
-        px, prev = m.get("regularMarketPrice"), m.get("chartPreviousClose")
-        closes = [c for c in q["close"] if c]
-        if len(closes) >= 2:
-            prev = closes[-2]                     # 3개월 범위에서는 chartPreviousClose가 3개월 전 값이라 직접 계산
-        return {"px": px, "prev": prev, "hi52": m.get("fiftyTwoWeekHigh"), "hi3m": max(highs[:-1]) if len(highs) > 1 else None,
-                "at": m.get("regularMarketTime", 0) * 1000}
+        off = m.get("gmtoffset", 0)
+        day = lambda t: datetime.fromtimestamp(t + off, timezone.utc).strftime("%Y-%m-%d")   # 거래소 현지 날짜
+        mday = day(m.get("regularMarketTime", 0))
+        past = [(day(t), c, h) for t, c, h in zip(r["timestamp"], q["close"], q["high"]) if day(t) < mday and c]
+        if not past:
+            return None
+        return {"px": m.get("regularMarketPrice"), "prev": past[-1][1], "hi52": m.get("fiftyTwoWeekHigh"),
+                "hi3m": max(h for _, _, h in past if h), "at": m.get("regularMarketTime", 0) * 1000,
+                "day": mday, "cur": m.get("currency", "USD")}
     except Exception:  # noqa: BLE001
         return None
 
@@ -49,10 +51,9 @@ def run() -> tuple[list[dict], list[dict]]:
         sectors = json.loads((ROOT / "data" / "sectors.json").read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001
         return st["items"], st["cards"]
-    day = now.astimezone(ET).strftime("%Y-%m-%d")
-    fired = st.get("fired", {})
-    if fired.get("_day") != day:                  # 미국 날짜가 바뀌면 신호 초기화
-        fired = {"_day": day}
+    # 신호 기록: "거래일:종목:신호" (사흘 지난 기록은 지움)
+    cutoff = (now - timedelta(days=3)).strftime("%Y-%m-%d")
+    fired = {k: v for k, v in st.get("fired", {}).items() if not k.startswith("_") and k[:10] >= cutoff}
     cards, new_items = [], []
     for sname, sec in sectors.items():
         rows, sig = [], []
@@ -71,12 +72,12 @@ def run() -> tuple[list[dict], list[dict]]:
             if to52 is not None and to52 >= 0: flags.append("52주 신고가")
             elif to52 is not None and to52 >= -3: flags.append("52주 고가 근접")
             if to3m is not None and to3m > 0: flags.append("3개월 고점 돌파")
-            rows.append({"sym": sym, "name": name, "px": round(d["px"], 2), "chg": round(chg, 2),
+            rows.append({"sym": sym, "name": name, "px": round(d["px"], 2), "chg": round(chg, 2), "cur": d.get("cur", "USD"),
                          "to52": None if to52 is None else round(to52, 1), "to3m": None if to3m is None else round(to3m, 1),
                          "flags": flags, "at": d["at"]})
             fresh = now.timestamp() * 1000 - d["at"] < 30 * 60_000      # 장중(30분 안에 체결된 값)일 때만 신호
             for f in flags:
-                key = f"{sym}:{f}"
+                key = f"{d['day']}:{sym}:{f}"
                 if fresh and key not in fired:
                     fired[key] = True
                     sig.append((sym, name, f, chg, to3m, to52))

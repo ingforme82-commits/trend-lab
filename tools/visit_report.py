@@ -14,6 +14,7 @@ import json
 import os
 import sys
 import urllib.request
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
 NS = "trendlab-ing82"
@@ -91,6 +92,28 @@ def main() -> None:
     from kakao_notify import notify
     ok = notify(msg)
     print("전송 성공" if ok else "전송 실패")
+    save_brief()
+
+
+def save_brief() -> None:
+    """사이트 '지난 브리핑'용으로 오늘 12시 브리핑을 data/briefs.json 에 저장하고 올린다."""
+    import subprocess
+    root = Path(__file__).resolve().parents[1]
+    sys.path.insert(0, str(root / "tools"))
+    try:
+        u = "https://api.github.com/repos/ingforme82-commits/trend-lab/contents/news.json?ref=live"
+        req = urllib.request.Request(u, headers={"Accept": "application/vnd.github.raw+json", "User-Agent": "trl"})
+        d = json.loads(urllib.request.urlopen(req, timeout=20).read())
+        from brief import save
+        if not d.get("brief") or not save(d["brief"]):
+            return
+        nw = 0x08000000 if os.name == "nt" else 0
+        for cmd in (["git", "add", "data/briefs.json"], ["git", "commit", "-q", "-m", "시장 브리핑 저장"],
+                    ["git", "pull", "-q", "--rebase", "--autostash"], ["git", "push", "-q"]):
+            subprocess.run(cmd, cwd=root, check=True, creationflags=nw)
+        print("브리핑 저장·push 완료")
+    except Exception as e:  # noqa: BLE001
+        print(f"브리핑 저장 건너뜀: {e}")
 
 
 if __name__ == "__main__":

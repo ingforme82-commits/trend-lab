@@ -141,6 +141,8 @@ def analyze(items: list[dict]) -> tuple[list[dict], dict]:
         cands = []
         for it in items:
             dt = (it["ts"] - m["start"]) / 60000
+            if it.get("kind") in ("시황 분석", "증권사 시황"):   # 긴 분석·정기 시황 글은 변곡점 후보에서 뺀다
+                continue
             match = sum(t in rel for t in it.get("tags", []))
             if -BEFORE <= dt <= AFTER and match:          # 그 자산과 관련된 분야의 뉴스만 후보
                 score = 3 * match + (1 if it.get("hot") else 0) + (1 - abs(dt) / 20)

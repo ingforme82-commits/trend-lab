@@ -379,6 +379,11 @@ def build() -> dict:
         out["trending"] = trending(items)
     except Exception as e:  # noqa: BLE001
         log(f"해외 지수·종목 건너뜀: {type(e).__name__}: {e}")
+    try:                                                  # 📋 시장 브리핑(사이트 표시용 요약)
+        from brief import make as make_brief
+        out["brief"] = make_brief(out)
+    except Exception as e:  # noqa: BLE001
+        log(f"브리핑 건너뜀: {type(e).__name__}: {e}")
     return out
 
 

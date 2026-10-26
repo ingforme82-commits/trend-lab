@@ -482,3 +482,24 @@ body{overflow-x:hidden}
 .sec-n{font-weight:700}.sec-r small{color:var(--sub);font-size:12px;margin-left:auto}
 .sec-f{flex-basis:100%;font-size:11px;font-weight:700;color:#c2410c}
 .nw-txt.sector{font-weight:700;color:#7c2d12}
+
+
+/* 시장 브리핑 */
+.brief{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+@media (max-width:900px){.brief{grid-template-columns:1fr}}
+.bcol{background:#fff;border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.bcol h4{margin:0 0 8px;font-size:15px}
+.bcol ul{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.bcol li{font-size:14px;line-height:1.5}
+.bcol li small{color:var(--sub);margin-left:6px}
+.bcol li span{display:block;font-size:13px;color:#3d4556}
+.bcol p{margin:0;font-size:14px}
+.dim{color:var(--sub)}
+.bts{display:flex;flex-wrap:wrap;gap:6px}
+.bt{background:#fff7f0;border:1px solid #f3b38f;border-radius:999px;padding:3px 10px;font-size:13px}
+.bt b{color:#c2410c}.bt em{font-style:normal;font-size:11px;background:#c2410c;color:#fff;border-radius:6px;padding:0 5px;margin-left:4px}
+.brief-hh{margin:22px 0 8px;font-size:17px}.brief-hh small{font-weight:400;color:var(--sub);font-size:12px;margin-left:6px}
+.bh{border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:#fff}
+.bh summary{cursor:pointer;padding:10px 14px;font-size:14px;display:flex;gap:10px;flex-wrap:wrap}
+.bh summary span{color:var(--sub)}
+.bh .brief{padding:0 12px 12px}
