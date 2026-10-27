@@ -60,7 +60,7 @@ def market_lines(now: datetime) -> list[str]:
     mv = d.get("moves") or []
     if mv:
         m = max(mv[:20], key=lambda x: x.get("ratio", 0))
-        out.append(f"■ 최근 가장 큰 변곡점: {m['name']} {m['move']:+}{'bp' if m['unit'] == 'bp' else '%'} (평소의 {m['ratio']}배)")
+        out.append(f"■ 최근 가장 큰 변곡점: {m['name']} {m['move']:+}{'bp' if m['unit'] == 'bp' else '%'}")
     return out if len(out) > 1 else []
 
 

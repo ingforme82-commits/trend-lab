@@ -174,7 +174,7 @@
       const others = Object.entries(m.others || {}).filter(([k]) => !inGrp.has(k)).slice(0, 4).map(([k, v]) => `${esc(k)} <b class="${cls(v)}">${v > 0 ? "+" : ""}${v}${k.includes("금리") ? "bp" : "%"}</b>`).join(" · ");
       return `<article class="mv" data-asset="${m.asset}" data-start="${m.start}">
         <div class="mv-h"><span class="mv-a ${m.move > 0 ? "pos" : "neg"}">${esc(m.name)} ${m.move > 0 ? "▲" : "▼"} ${fmtMove(m)}</span>
-          <span class="mv-t">${hm(m.start)}–${hm(m.end)}${m.session ? ` · ${esc(m.session)}` : ""} · 평소 변동폭의 ${m.ratio}배</span></div>
+          <span class="mv-t">${hm(m.start)}–${hm(m.end)}${m.session ? ` · ${esc(m.session)}` : ""}</span></div>
         <p class="mv-o">${px(m)}${co.length ? ` · <b>함께 움직임</b> ${co.map((x) => `${esc(x.name)} <b class="${cls(x.move)}">${fmtMove(x)}</b> <small>(${hm(x.start)}–${hm(x.end)}${x.session ? ", " + esc(x.session) : ""})</small>`).join(" · ")}` : ""}</p>
         ${others ? `<p class="mv-o">같은 구간 ${others}</p>` : ""}
         ${ns.length ? `<ul class="mv-n">${ns.slice(0, 4).map((n) => `<li><span class="mv-dot"></span><b>${hm(n.ts)}</b> ${n.lang === "en" ? "🌐 " : ""}${esc(n.text)} <small>${n.osrc ? `${esc(n.osrc)} · ${esc(n.src)} 경유` : esc(n.src)}${co.length ? ` · ${esc(n._a)} 쪽` : ""}</small></li>`).join("")}</ul>`
@@ -418,7 +418,7 @@
     const streak = (name) => { let n = 1; for (const h of hist) { if ((h.trending || []).some((t) => t.name === name)) n++; else break; } return n; };
     const prevSec = (name) => { const h = hist[0]; const x = h && (h.sectors || []).find((s) => s.name === name); return x ? x.avg : null; };
     const mv = (b.moves || []).map((m) => `<li><b class="${m.move > 0 ? "c-up" : "c-dn"}">${esc(m.name)} ${m.move > 0 ? "▲" : "▼"}${m.move > 0 ? "+" : ""}${m.move}${m.unit === "bp" ? "bp" : "%"}</b>
-      <small>${hm(m.start)}–${hm(m.end)} · 평소의 ${m.ratio}배</small>${m.news && m.news[0] ? `<span>🔴 ${esc(m.news[0])}</span>` : `<span class="dim">직전 관련 뉴스 없음</span>`}</li>`).join("");
+      <small>${hm(m.start)}–${hm(m.end)}</small>${m.news && m.news[0] ? `<span>🔴 ${esc(m.news[0])}</span>` : `<span class="dim">직전 관련 뉴스 없음</span>`}</li>`).join("");
     const sec = (b.sectors || []).map((s) => { const p = prevSec(s.name);
       return `<li><b>${s.icon} ${esc(s.name)}</b> 평균 ${sg(s.avg)}${p != null ? ` <small>(전 기록 ${p > 0 ? "+" : ""}${p.toFixed(2)}%)</small>` : ""}
         <span>강 ${esc(s.best.name)} ${sg(s.best.chg)} · 약 ${esc(s.worst.name)} ${sg(s.worst.chg)}${s.flags ? ` · 신호 ${s.flags}종목` : ""}</span></li>`; }).join("");

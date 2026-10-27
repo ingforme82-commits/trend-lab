@@ -132,7 +132,7 @@
       info = `<b>${piv.has(st.sel) ? "🔴 " : ""}${hm(st.sel)}</b> ${n ? esc(n.text) : ""}${n ? ` <small>${esc(n.src || "")}</small>` : ""}<br>이후 <b class="${cls(a1)}">${chgTxt(a1)}</b> · 최고 <b class="${cls(a2)}">${chgTxt(a2)}</b> · 최저 <b class="${cls(a3)}">${chgTxt(a3)}</b>`;
       const mv = myMoves.find((m) => (m.news || []).includes(st.sel)) || myMoves.find((m) => st.sel >= m.start - 15 * 60000 && st.sel <= m.end);
       if (mv) {
-        info += `<br><span class="cm-mv">변곡점 ${hm(mv.start)}–${hm(mv.end)} ${esc(mv.name)} ${mv.move > 0 ? "+" : ""}${mv.move}${mv.unit === "bp" ? "bp" : "%"} (평소 변동폭의 ${mv.ratio}배)</span>`;
+        info += `<br><span class="cm-mv">변곡점 ${hm(mv.start)}–${hm(mv.end)} ${esc(mv.name)} ${mv.move > 0 ? "+" : ""}${mv.move}${mv.unit === "bp" ? "bp" : "%"}</span>`;
         const nt = (window.trlNotes || []).find((x) => x.assets.includes(mv.asset) && Date.parse(x.from) <= mv.end + 300000 && Date.parse(x.to) >= mv.start - 300000);
         if (nt) info += `<span class="cm-note"><b>💡 ${esc(nt.title)}</b> ${esc(nt.text)}${nt.post ? ` <a href="posts/${encodeURIComponent(nt.post)}.html" target="_blank" rel="noopener">블로그 분석 글 →</a>` : ""}</span>`;
       }

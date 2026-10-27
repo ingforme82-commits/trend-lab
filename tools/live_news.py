@@ -116,7 +116,7 @@ TAGS = [
     ("원전", r"원전|원자력|SMR|소형모듈원자로|두산에너빌리티|한전기술|우라늄|nuclear|Oklo|오클로|NuScale|뉴스케일|Constellation|Cameco"),
     ("방산", r"방산|방위산업|K9|K2 전차|레드백|천무|한화에어로|LIG넥스원|현대로템|한국항공우주|KAI|Lockheed|록히드|Raytheon|defense contractor"),
     ("조선", r"조선|선박|LNG선|컨테이너선|수주|HD현대중공업|한화오션|삼성중공업|HD한국조선|케이프|한국카본|동성화인텍|세진중공업|성광벤드|보냉재|기자재|선박엔진|shipbuild|MASGA|마스가"),
-    ("2차전지", r"2차전지|이차전지|배터리|양극재|음극재|리튬|ESS|LG에너지|삼성SDI|에코프로|포스코퓨처엠|battery|lithium"),
+    ("2차전지", r"2차전지|이차전지|배터리|양극재|음극재|리튬|ESS|LG에너지|삼성SDI|에코프로|포스코퓨처엠|POSCO홀딩스|포스코홀딩스|엔켐|코스모신소재|대주전자재료|천보|battery|lithium"),
     ("바이오", r"바이오|제약|신약|임상|FDA|비만|ADC|biotech|pharma"),
     ("지수", r"나스닥|S&P|다우|선물|지수|VIX|Nasdaq|Dow\b|S&P 500|futures|stocks|Wall Street"),
 ]
