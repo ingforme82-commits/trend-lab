@@ -587,3 +587,15 @@ body{overflow-x:hidden}
 .brief ul.bn{padding-left:0;list-style:none}.brief ul.bn li{margin:0 0 6px;font-size:13px;line-height:1.45}
 
 .stale{font-style:normal;font-size:11px;color:var(--sub,#64748b);border:1px solid var(--line,#e5e7eb);border-radius:6px;padding:0 4px;margin-left:4px}
+
+/* 속보: 필터·검증·수집 상태·반응 구간 */
+.nfilt{display:flex;flex-wrap:wrap;gap:8px 14px;margin:0 0 10px}
+.nfilt label{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--sub)}
+.nfilt select{font:inherit;font-size:14px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;min-height:36px}
+.nw-note{margin:-8px 0 10px}
+.nw-v{border-radius:5px;padding:1px 7px;font-weight:600}
+.v-ok{background:#e8f5ee;color:#17663a}.v-one{background:var(--bg2);color:#5b6474}.v-warn{background:#fff4e0;color:#9a5b00}.v-tr{background:#eef3ff;color:#2f4fa0}
+.nw.unv{border-style:dashed}
+.nw-also{color:#5b6474}
+.nw-r small{color:var(--sub);margin-right:4px}.rw{margin-right:8px;white-space:nowrap}
+.h-warn{color:#b45309;font-weight:700}

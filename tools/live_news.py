@@ -60,6 +60,7 @@ CHANNELS = {
     "huhjae": "유진 허재환(전략)", "SK_Research_Asset": "SK 자산전략", "KiwoomResearch": "키움 리서치",
 }
 FAST = ("KimchiTerminal", "cahier_de_market", "realtime_stock_news")
+REFRESH: dict = {}
 # 시황·전략 글(긴 분석) — 제목 + 요약 한 줄로 싣고 '시황·전략'으로 묶는다
 BROKER_STRAT = {"hedgecat0301", "HANAStrategy", "HANA_Macro", "Meritz_strategy", "stephenlee_meritz", "shStrategy", "daishinstrategy",
                 "eqmirae", "hanwhastrategy", "lim_econ", "hmsecstrat", "kisthemacro", "huhjae", "SK_Research_Asset", "KiwoomResearch",
@@ -110,6 +111,7 @@ TAGS = [
     ("코인", r"비트코인|이더리움|코인|암호화폐|가상자산|Coinbase|코인베이스|월렛|bitcoin|crypto|ether"),
     ("러·우", r"러시아|우크라|푸틴|젤렌스키|크렘린|스타링크|Russia|Ukrain|Putin|Kremlin"),
     ("한국", r"코스피|코스닥|한국|원/달러|원화|한은|KOSPI|Korea"),
+    ("환율", r"환율|원/달러|달러/원|원화|엔화|엔/달러|달러/엔|위안화|달러인덱스|DXY|외환|yen|currency|forex"),
     ("원전", r"원전|원자력|SMR|소형모듈원자로|두산에너빌리티|한전기술|우라늄|nuclear|Oklo|오클로|NuScale|뉴스케일|Constellation|Cameco"),
     ("방산", r"방산|방위산업|K9|K2 전차|레드백|천무|한화에어로|LIG넥스원|현대로템|한국항공우주|KAI|Lockheed|록히드|Raytheon|defense contractor"),
     ("조선", r"조선|선박|LNG선|컨테이너선|수주|HD현대중공업|한화오션|삼성중공업|HD한국조선|케이프|한국카본|동성화인텍|세진중공업|성광벤드|보냉재|기자재|선박엔진|shipbuild|MASGA|마스가"),
@@ -189,9 +191,9 @@ def from_telegram() -> list[dict]:
     con = sqlite3.connect(str(DB))
     since = (datetime.now(timezone.utc) - timedelta(hours=KEEP_H_STRAT)).isoformat()
     cut = datetime.now(timezone.utc) - timedelta(hours=KEEP_H)
-    q = f"select channel_username, posted_at, text from messages where posted_at >= ? and channel_username in ({','.join('?' * len(CHANNELS))})"
+    q = f"select channel_username, posted_at, text, collected_at from messages where posted_at >= ? and channel_username in ({','.join('?' * len(CHANNELS))})"
     out = []
-    for ch, posted, text in con.execute(q, (since, *CHANNELS)):
+    for ch, posted, text, collected in con.execute(q, (since, *CHANNELS)):
         if ch not in BROKER_STRAT and ch not in ANALYSIS and datetime.fromisoformat(posted) < cut:
             continue                                   # 시황·전략 글만 48시간, 나머지는 30시간
         if not text or STOCKREC.search(text) or JUNK.search(text):
@@ -208,7 +210,11 @@ def from_telegram() -> list[dict]:
         if ch not in FAST and not (strat or analysis) and not tg:   # 섹터 채널은 시장 관련 키워드가 있는 글만
             continue
         ts = datetime.fromisoformat(posted).astimezone(timezone.utc)
-        it = {"ts": int(ts.timestamp() * 1000), "src": CHANNELS[ch],
+        try:
+            got = int(datetime.fromisoformat(collected).astimezone(timezone.utc).timestamp() * 1000)
+        except Exception:  # noqa: BLE001
+            got = None
+        it = {"ts": int(ts.timestamp() * 1000), "got": got, "src": CHANNELS[ch],
               "kind": "증권사 시황" if strat else "시황 분석" if analysis else "텔레그램",
               "text": h, "tags": tg or (["시황"] if strat or analysis else ["기타"]), "hot": bool(HOT.search(h))}
         if sub:
@@ -224,9 +230,11 @@ def fetch_rss() -> list[dict]:
     try:
         cache = json.loads(RSS_CACHE.read_text(encoding="utf-8"))
         if datetime.now(timezone.utc).timestamp() - cache["at"] < 280:
+            RSS_HEALTH.update(cache.get("health", {}))
             return cache["items"]
     except Exception:  # noqa: BLE001
         cache = {"items": []}
+    ok, fail = [], []
     items, cutoff = [], datetime.now(timezone.utc) - timedelta(hours=KEEP_H)
     for name, url, lang in FEEDS:
         try:
@@ -234,7 +242,9 @@ def fetch_rss() -> list[dict]:
             root = ET.fromstring(urllib.request.urlopen(req, timeout=12).read())
         except Exception as e:  # noqa: BLE001
             log(f"RSS 실패 {name}: {type(e).__name__}")
+            fail.append(name)
             continue
+        ok.append(name)
         for it in root.iter("item"):
             title = unescape(re.sub(r"<[^>]+>", "", (it.findtext("title") or "")).strip())
             pub = it.findtext("pubDate") or it.findtext("{http://purl.org/dc/elements/1.1/}date") or ""
@@ -252,13 +262,17 @@ def fetch_rss() -> list[dict]:
             h = re.sub(r"\s+", " ", title)
             items.append({"ts": int(dt.timestamp() * 1000), "src": name, "kind": "해외 뉴스" if lang == "en" else "뉴스",
                           "lang": lang, "text": h[:140] + ("…" if len(h) > 140 else ""), "tags": tg, "hot": bool(HOT.search(h))})
+    health = {"at": int(datetime.now(timezone.utc).timestamp() * 1000), "ok": len(ok), "fail": fail, "total": len(FEEDS)}
+    RSS_HEALTH.update(health)
     if items:
-        RSS_CACHE.write_text(json.dumps({"at": datetime.now(timezone.utc).timestamp(), "items": items}, ensure_ascii=False), encoding="utf-8")
+        RSS_CACHE.write_text(json.dumps({"at": datetime.now(timezone.utc).timestamp(), "items": items, "health": health}, ensure_ascii=False), encoding="utf-8")
         return items
     return cache["items"]
 
 
 TR_CACHE = ROOT / "tools" / "translate_cache.json"
+SEEN_CACHE = ROOT / "tools" / "seen_cache.json"         # RSS 기사 첫 수집 시각(보도 시각과 구분)
+RSS_HEALTH: dict = {}
 
 
 def _claude_translate(titles: list[str]) -> dict[str, str]:
@@ -334,6 +348,26 @@ def translate(items: list[dict]) -> None:
     for it in items:
         if it.get("lang") == "en" and cache.get(it["text"]):
             it["orig"], it["text"] = it["text"], fix_terms(it["text"], cache[it["text"]].rstrip(".。 "))
+            it["tr"] = "auto"                               # 자동 번역(원문은 orig)
+        elif it.get("lang") == "en":
+            it["tr"] = "fail"                               # 번역 실패 → 영문 원문 그대로
+
+
+def mark_seen(items: list[dict]) -> None:
+    """RSS 기사는 수집 시각이 없으므로 이 컴퓨터가 처음 본 시각을 기록해 got 으로 붙인다(3일 보관)."""
+    now = int(datetime.now(timezone.utc).timestamp() * 1000)
+    try:
+        seen = json.loads(SEEN_CACHE.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        seen = {"_boot": now}                            # 첫 실행: 이미 있던 기사는 수집 시각을 알 수 없음(0)
+    boot = seen.get("_boot", 0)
+    for it in items:
+        k = f"{it['src']}|{it['ts']}|{it.get('orig') or it['text']}"[:200]
+        if k not in seen:
+            seen[k] = 0 if now - boot < 120_000 else now
+        it["got"] = max(seen[k], it["ts"]) if seen[k] else None
+    seen = {k: v for k, v in seen.items() if k == "_boot" or (v and now - v < 3 * 86400_000) or (not v and now - boot < 3 * 86400_000)}
+    SEEN_CACHE.write_text(json.dumps(seen, ensure_ascii=False), encoding="utf-8")
 
 
 def bigrams(s: str) -> set[str]:
@@ -351,8 +385,11 @@ def build() -> dict:
         sector_items, sector_cards = sector_run()
     except Exception as e:  # noqa: BLE001
         log(f"섹터 감시 건너뜀: {type(e).__name__}: {e}")
-    allitems = sorted(from_telegram() + rss + sector_items, key=lambda x: -x["ts"])
-    items, seen, per = [], [], {}
+    tg_items = from_telegram()
+    mark_seen(rss)
+    from newsgroup import group
+    allitems = group(tg_items + rss + sector_items)          # 같은 사건은 하나로(최초 보도 기준, 후속 출처는 also)
+    items, per = [], {}
     n_strat = n_other = 0
     for it in allitems:
         strat = it.get("kind") in ("증권사 시황", "시황 분석")
@@ -360,17 +397,20 @@ def build() -> dict:
             continue
         if per.get(it["src"], 0) >= PER_SOURCE.get(it["src"], 30):   # 한 출처가 목록을 다 차지하지 않게
             continue
-        g = bigrams(it["text"])
-        if any(len(g & s) / max(1, len(g | s)) >= 0.5 for s in seen):   # 같은 소식이 여러 곳에 올라온 경우 한 번만
-            continue
-        seen.append(g)
         items.append(it)
         per[it["src"]] = per.get(it["src"], 0) + 1
         if strat:
             n_strat += 1
         else:
             n_other += 1
-    out = {"updated": int(datetime.now(timezone.utc).timestamp() * 1000), "items": items, "moves": [], "series": {}, "sectors": sector_cards}
+    now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+    tg_last = max((i["ts"] for i in tg_items if i["src"] in {CHANNELS[c] for c in FAST if c in CHANNELS}), default=0)
+    tg_got = max((i.get("got") or 0 for i in tg_items), default=0)
+    en = [i for i in items if i.get("lang") == "en"]
+    out = {"updated": now_ms, "items": items, "moves": [], "series": {}, "sectors": sector_cards,
+           "health": {"tg": {"last": tg_last, "got": tg_got, "refresh": REFRESH.get("ok"), "n": len(tg_items)},
+                      "rss": dict(RSS_HEALTH), "tr": {"auto": sum(1 for i in en if i.get("tr") == "auto"), "fail": sum(1 for i in en if i.get("tr") == "fail")},
+                      "groups": sum(1 for i in items if i.get("also"))}}
     try:                                                  # 변곡점 감지 + 직전 뉴스 연결(실패해도 속보는 그대로)
         sys.path.insert(0, str(Path(__file__).resolve().parent))
         from moves import analyze
@@ -442,7 +482,9 @@ def main() -> None:
     if not dry:
         try:
             refresh()
+            REFRESH["ok"] = True
         except Exception as e:  # noqa: BLE001  (텔레 수집이 늦어도 저장된 글과 RSS로 계속 진행)
+            REFRESH["ok"] = False
             log(f"텔레 수집 건너뜀: {type(e).__name__}")
     data = build()
     if dry:

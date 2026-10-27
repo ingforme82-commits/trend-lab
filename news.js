@@ -26,7 +26,9 @@
   const cls = (v) => (v > 0.005 ? "c-up" : v < -0.005 ? "c-dn" : "c-fl");
   const pct = (v) => v == null ? "-" : `<b class="${cls(v)}">${v > 0 ? "+" : ""}${v.toFixed(2)}%</b>`;
 
-  let news = [], moves = [], series = {}, notes = [], candles = {}, sel = null, tag = "전체", shown = 15;
+  let news = [], moves = [], series = {}, notes = [], candles = {}, candles1 = {}, sel = null, tag = "전체", shown = 15, health = null;
+  // 속보 필터: 중요도·시간·검증·정렬(분류는 tag 칩)
+  const flt = { imp: "all", hrs: 0, ver: "all", sort: "new" };
   let world = [], spot = [], trend = [], sectors = [], brief = null, briefs = [], kwFilter = null;   // kwFilter: {label, rx}
 
   /* ── 데이터 ── */
@@ -44,11 +46,11 @@
   async function loadNews() {
     try {
       const j = await fetchNews();
-      news = j.items || []; moves = j.moves || []; series = j.series || {};
+      news = j.items || []; moves = j.moves || []; series = j.series || {}; health = j.health || null;
       world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
       window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlKr = j.kr || {}; if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
       window.trlMoves = moves; window.trlSeries = series; window.trlNews = news;
-      setText("#newsStamp", `속보 갱신 ${hm(j.updated)} KST · ${ago(j.updated)}`);
+      drawHealth(j.updated);
       drawTicker();
     } catch { setText("#newsStamp", "속보를 불러오지 못했습니다."); }
   }
@@ -64,7 +66,28 @@
         candles[s.k] = (await r.json()).map((c) => [c.t, +c.c]);
       } catch { /* 이전 값 유지 */ }
     }));
+    // 속보 반응(보도 5분 전 기준 +5/+15/+30/+60분)은 1분봉으로
+    await Promise.all(REACT.map(async (s) => {
+      try {
+        const r = await fetch("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "candleSnapshot", req: { coin: s.k, interval: "1m", startTime: start - 10 * 60000, endTime: end } }) });
+        candles1[s.k] = (await r.json()).map((c) => [c.t, +c.c]);
+      } catch { /* 이전 값 유지 */ }
+    }));
   }
+  // 시각 t 에 이미 마감된 마지막 1분봉 종가(없으면 null)
+  const pxAt = (rows, t) => { let v = null; for (const [ot, c] of rows) { if (ot + 60000 <= t) v = c; else break; } return v; };
+  const WIN = [5, 15, 30, 60];
+  function windows(k, ts) {
+    const rows = candles1[k] || [];
+    if (rows.length < 2 || ts - 5 * 60000 < rows[0][0] + 60000) return null;      // 기준 가격(보도 5분 전)이 범위 밖
+    const base = pxAt(rows, ts - 5 * 60000);
+    if (!base) return null;
+    const lastOpen = rows[rows.length - 1][0];                                    // 진행 중인 마지막 봉의 시작 시각
+    return WIN.map((n) => { const t = ts + n * 60000; if (t > lastOpen) return { n, v: null }; const p = pxAt(rows, t); return { n, v: p ? (p / base - 1) * 100 : null }; });
+  }
+  window.trlWindows = windows;
+  const reactKey = (n) => (n.tags || []).includes("중동·유가") ? REACT[2] : (n.tags || []).some((t) => ["한국", "반도체", "환율", "2차전지", "조선", "방산", "원전"].includes(t)) ? REACT[1] : REACT[0];
   const rowsOf = (k) => (k.startsWith("srv:") ? series[k.slice(4)] || [] : candles[k] || []);
 
   // 노트: 같은 자산 + 시간이 겹치는 변곡점에 붙는다
@@ -325,24 +348,63 @@
   }
 
   /* ── 속보 목록 ── */
+  const VER = { official: ["🏛 공식 발표", "v-ok"], multi: ["✔ 복수 출처", "v-ok"], single: ["단일 출처", "v-one"], unconfirmed: ["⚠ 미확인·보도 인용", "v-warn"] };
+  const isStrat = (n) => n.kind === "증권사 시황" || n.kind === "시황 분석";
+  const isMajor = (n) => n.pivot || n.hot || n.verify === "multi" || n.verify === "official" || n.kind === "섹터 시세";
+  const impScore = (n) => (n.pivot ? 8 : 0) + (n.hot ? 4 : 0) + (n.verify === "multi" ? 2 : 0) + (n.verify === "official" ? 3 : 0) + (n.nsrc || 1) - (isStrat(n) ? 2 : 0);
+  const mktScore = (n) => { const w = windows(reactKey(n).k, n.ts); if (!w) return -1; const d = w.slice().reverse().find((x) => x.v != null); return d ? Math.abs(d.v) : -1; };
+  function drawFilters() {
+    const box = q("#newsFilt"); if (!box || box.dataset.ready) return;
+    const sel = (k, label, opts) => `<label>${label}<select data-f="${k}">${opts.map(([v, t]) => `<option value="${v}"${String(flt[k]) === String(v) ? " selected" : ""}>${t}</option>`).join("")}</select></label>`;
+    box.innerHTML = sel("imp", "중요도", [["all", "전체"], ["major", "주요만"]])
+      + sel("hrs", "시간", [[0, "전체"], [1, "1시간"], [3, "3시간"], [12, "12시간"]])
+      + sel("ver", "검증", [["all", "전체"], ["ok", "공식·복수 출처만"], ["noun", "미확인 제외"], ["un", "미확인만"]])
+      + sel("sort", "정렬", [["new", "최신순"], ["imp", "중요도순"], ["mkt", "시장 반응순"]]);
+    box.dataset.ready = "1";
+    box.addEventListener("change", (e) => { const f = e.target.dataset.f; if (!f) return; flt[f] = f === "hrs" ? +e.target.value : e.target.value; shown = 15; drawList(); });
+  }
+  function drawHealth(updated) {
+    const el = q("#newsStamp"); if (!el) return;
+    const now = Date.now(), parts = [`속보 갱신 ${hm(updated)} KST · ${ago(updated)}`];
+    const warn = (t) => `<b class="h-warn">${t}</b>`;
+    if (now - updated > 10 * 60000) parts.push(warn("갱신 지연"));
+    const h = health;
+    if (h) {
+      if (h.tg) { const late = h.tg.last && now - h.tg.last > 60 * 60000; parts.push(`텔레 최신 ${h.tg.last ? hm(h.tg.last) : "-"}${h.tg.refresh === false ? " " + warn("수집 실패") : late ? " " + warn("1시간 넘게 새 글 없음") : ""}`); }
+      if (h.rss && h.rss.total) parts.push(`RSS ${h.rss.ok}/${h.rss.total}${h.rss.fail && h.rss.fail.length ? " " + warn(`누락: ${h.rss.fail.map(esc).join("·")}`) : ""}`);
+      if (h.tr && (h.tr.auto || h.tr.fail)) parts.push(`해외 기사 자동 번역 ${h.tr.auto}건${h.tr.fail ? " " + warn(`번역 실패 ${h.tr.fail}건(원문 표시)`) : ""}`);
+    }
+    el.innerHTML = parts.join(" · ");
+  }
   function drawList() {
+    drawFilters();
     const PIV = "🔴 변곡점 뉴스", STRAT = "📊 시황·전략";
-    const isStrat = (n) => n.kind === "증권사 시황" || n.kind === "시황 분석";
     const tags = ["전체", PIV, STRAT, ...new Set(news.flatMap((n) => n.tags).filter((t) => t !== "시황"))];
     q("#newsChips").innerHTML = tags.map((t) => `<button class="chip${t === tag ? " on" : ""}" data-t="${esc(t)}">${esc(t)}</button>`).join("");
     const byTag = (n) => tag === "전체" || (tag === PIV ? n.pivot : tag === STRAT ? isStrat(n) : n.tags.includes(tag));
     const byKw = (n) => !kwFilter || kwFilter.rx.test(n.text + " " + (n.orig || "") + " " + (n.sub || ""));
-    const list = news.filter((n) => byTag(n) && byKw(n));
+    const now = Date.now();
+    const byF = (n) => (flt.imp === "all" || isMajor(n)) && (!flt.hrs || now - n.ts < flt.hrs * 3600e3)
+      && (flt.ver === "all" || (flt.ver === "ok" ? ["multi", "official"].includes(n.verify) : flt.ver === "noun" ? n.verify !== "unconfirmed" : n.verify === "unconfirmed"));
+    let list = news.filter((n) => byTag(n) && byKw(n) && byF(n));
+    if (flt.sort === "imp") list = list.slice().sort((a, b) => impScore(b) - impScore(a) || b.ts - a.ts);
+    if (flt.sort === "mkt") list = list.slice().sort((a, b) => mktScore(b) - mktScore(a) || b.ts - a.ts);
     if (kwFilter) q("#newsChips").insertAdjacentHTML("afterbegin", `<button class="chip on kw-chip" data-clear-kw="1">🔎 ${esc(kwFilter.label)} ✕</button>`);
     q("#newsList").innerHTML = list.slice(0, shown).map((n) => {
-      const rs = REACT.map((s) => `${s.n} ${pct(reaction(s.k, n.ts))}`).join(" · ");
+      const R = reactKey(n), w = n.kind === "섹터 시세" ? null : windows(R.k, n.ts);
+      const rs = w ? `<span class="nw-r">${esc(R.n)} <small>보도 5분 전 대비</small> ${w.map((x) => `<span class="rw">+${x.n}분 ${x.v == null ? `<i class="dim">계산 중</i>` : pct(x.v)}</span>`).join("")}</span>` : "";
       const pv = n.pivot ? `<p class="nw-pv">🔴 변곡점 직전 뉴스 — ${movesOfNews(n.ts).map((m) => `${esc(m.name)} ${fmtMove(m)} (${hm(m.start)}–${hm(m.end)})`).join(", ") || (n.pv || []).map(esc).join(", ")}</p>` : "";
-      return `<li class="nw${n.pivot ? " piv" : ""}${sel === n.ts ? " sel" : ""}" data-ts="${n.ts}">
+      const lag = n.got && n.got - n.ts >= 2 * 60000 ? ` · 수집 ${hm(n.got)}<small>(+${Math.round((n.got - n.ts) / 60000)}분)</small>` : "";
+      const v = VER[n.verify] ? `<span class="nw-v ${VER[n.verify][1]}">${VER[n.verify][0]}${n.nsrc > 1 ? ` ${n.nsrc}곳` : ""}</span>` : "";
+      const tr = n.tr === "auto" ? `<span class="nw-v v-tr" title="${esc(n.orig || "")}">🌐 자동 번역</span>` : n.tr === "fail" ? `<span class="nw-v v-warn">🌐 번역 실패·원문</span>` : "";
+      const also = (n.also || []).length ? `<span class="nw-also">후속: ${n.also.map((a) => `${esc(a.osrc ? a.osrc + "·" + a.src : a.src)} ${hm(a.ts)}`).join(", ")}</span>` : "";
+      return `<li class="nw${n.pivot ? " piv" : ""}${sel === n.ts ? " sel" : ""}${n.verify === "unconfirmed" ? " unv" : ""}" data-ts="${n.ts}">
         <div class="nw-t"><b>${hm(n.ts)}</b><span>${ago(n.ts)}</span></div>
-        <div class="nw-b"><p class="nw-txt${n.kind === "섹터 시세" ? " sector" : ""}">${n.pivot ? "🔴 " : ""}${n.lang === "en" ? "🌐 " : ""}${esc(n.text)}</p>${n.sub ? `<p class="nw-sub">${esc(n.sub)}</p>` : ""}${pv}
-          <p class="nw-m">${n.tags.map((t) => `<span class="nw-tag">${esc(t)}</span>`).join("")}${isStrat(n) ? `<span class="nw-tag strat">${esc(n.kind)}</span>` : ""}<span class="nw-r">이후 ${rs}</span>
-          <span class="nw-src">${n.osrc ? `${esc(n.osrc)} · ${esc(n.src)} 경유` : `${esc(n.src)}${n.kind ? ` · ${esc(n.kind)}` : ""}`}</span></p></div></li>`;
-    }).join("") || `<li class="empty">이 분류의 속보가 아직 없습니다.</li>`;
+        <div class="nw-b"><p class="nw-txt${n.kind === "섹터 시세" ? " sector" : ""}">${n.pivot ? "🔴 " : ""}${esc(n.text)}</p>${n.sub ? `<p class="nw-sub">${esc(n.sub)}</p>` : ""}${pv}
+          <p class="nw-m">${n.tags.map((t) => `<span class="nw-tag">${esc(t)}</span>`).join("")}${isStrat(n) ? `<span class="nw-tag strat">${esc(n.kind)}</span>` : ""}${v}${tr}
+          <span class="nw-src">${n.verify ? "최초 " : ""}${n.osrc ? `${esc(n.osrc)} · ${esc(n.src)} 경유` : esc(n.src)} ${hm(n.ts)}${lag}</span></p>
+          ${also ? `<p class="nw-m">${also}</p>` : ""}${rs ? `<p class="nw-m">${rs}</p>` : ""}</div></li>`;
+    }).join("") || `<li class="empty">조건에 맞는 속보가 없습니다.</li>`;
     q("#newsMore").hidden = list.length <= shown;
   }
 
