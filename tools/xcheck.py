@@ -55,7 +55,7 @@ def similar(a_en: str, b_en: str) -> float:
     """같은 소식 점수(0~1): 겹친 핵심 단어 / 짧은 쪽 단어 수. 겹친 단어가 3개 미만이면 0."""
     a, b = toks(a_en), toks(b_en)
     sh = a & b
-    if len(sh) < 3 or not a or not b:
+    if len(sh) < 3 or not a or not b or len(sh) / len(a | b) < 0.25:   # 지명(이란·호르무즈 등)만 겹치는 다른 기사 거르기
         return 0.0
     return round(len(sh) / min(len(a), len(b)), 2)
 
