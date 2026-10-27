@@ -134,7 +134,7 @@
       if (mv) {
         info += `<br><span class="cm-mv">변곡점 ${hm(mv.start)}–${hm(mv.end)} ${esc(mv.name)} ${mv.move > 0 ? "+" : ""}${mv.move}${mv.unit === "bp" ? "bp" : "%"}</span>`;
         const nt = (window.trlNotes || []).find((x) => x.assets.includes(mv.asset) && Date.parse(x.from) <= mv.end + 300000 && Date.parse(x.to) >= mv.start - 300000);
-        if (nt) info += `<span class="cm-note"><b>💡 ${esc(nt.title)}</b> ${esc(nt.text)}${nt.post ? ` <a href="posts/${encodeURIComponent(nt.post)}.html" target="_blank" rel="noopener">블로그 분석 글 →</a>` : ""}</span>`;
+        if (nt) info += `<span class="cm-note"><b>💡 ${esc(nt.title)}</b> ${esc(nt.text)}</span>`;
       }
     } else {
       info = `최근 ${RANGES.find(([m]) => m === st.range)[1]} <b class="${cls(chg)}">${chgTxt(chg)}</b> · 색칠한 구간은 변곡점, 빨간 점(🔴)은 그 직전 뉴스입니다. 점을 누르면 그 뉴스 이후 변화를 보여 줍니다.`;
