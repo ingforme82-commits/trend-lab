@@ -633,3 +633,9 @@ body{overflow-x:hidden}
 .flow-box .sc-panel{margin-top:8px}
 .nw-xc{margin:4px 0 0;font-size:12.5px;line-height:1.45;color:var(--ink,#222)}.nw-xc b{font-size:11px;color:var(--sub);margin-right:4px}
 .arc-intro{grid-column:1/-1;margin:0 0 4px;font-size:14px;color:var(--sub);line-height:1.6}
+
+/* 운영자 관전 포인트 */
+.watch-box{background:#fffaf0;border:1px solid #e9d7a8;border-radius:12px;padding:10px 12px;margin:0 0 16px}.watch-box[hidden]{display:none}
+.wt-memo{margin:4px 0 10px;padding:8px 12px;border-left:4px solid var(--gold,#c9a14a);background:#fff;font-size:14.5px;line-height:1.6}
+.wt-memo cite{display:block;font-style:normal;font-size:12px;color:var(--sub);margin-top:2px}
+.wt-i{margin:6px 0}.wt-n{margin:0 0 2px}.wt-i ul{margin:0;padding-left:18px;font-size:13.5px;line-height:1.6}

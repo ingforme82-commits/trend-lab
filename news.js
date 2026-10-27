@@ -30,7 +30,7 @@
   let news = [], moves = [], series = {}, notes = [], candles = {}, candles1 = {}, sel = null, tag = "전체", shown = 15, health = null;
   // 속보 필터: 중요도·시간·검증·정렬(분류는 tag 칩)
   const flt = { imp: "all", hrs: 0, ver: "all", sort: "new" };
-  let world = [], spot = [], trend = [], sectors = [], brief = null, briefs = [], kwFilter = null, momentum = null, flows = null, flowSort = "val", flowOpen = null;   // kwFilter: {label, rx}
+  let world = [], spot = [], trend = [], sectors = [], brief = null, briefs = [], kwFilter = null, momentum = null, watch = null, flows = null, flowSort = "val", flowOpen = null;   // kwFilter: {label, rx}
 
   /* ── 데이터 ── */
   let apiBlockedUntil = 0;
@@ -49,7 +49,7 @@
       const j = await fetchNews();
       news = j.items || []; moves = j.moves || []; series = j.series || {}; health = j.health || null;
       world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
-      window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlUst = j.ust || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; flows = j.flows || null; if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
+      window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlUst = j.ust || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; flows = j.flows || null; watch = j.watch || null; if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
       window.trlMoves = moves; window.trlSeries = series; window.trlNews = news;
       drawHealth(j.updated);
       drawTicker();
@@ -288,6 +288,34 @@
       <div class="sc-bar">${chips}</div>${panel}`;
   }
 
+  /* ── 👀 운영자 관전 포인트(data/watch.json): 운영자 메모 + 장중 수치(갭·5일선·연속 양봉·가격대) ── */
+  function watchHtml(w, compact) {
+    const its = (w && w.items) || [];
+    if (!its.length) return "";
+    const $$ = (v) => v == null ? "-" : "$" + (+v).toFixed(2);
+    const sgn = (v) => `<b class="${cls(v)}">${v > 0 ? "+" : ""}${(+v).toFixed(2)}%</b>`;
+    const md = (d) => `${+d.slice(5, 7)}/${+d.slice(8, 10)}`;
+    const row = (x) => {
+      if (x.err || x.px == null) return `<div class="wt-i"><b>${esc(x.name)}</b> <span class="dim">${x.px == null && !x.err ? "개장 전 · 전일 종가 " + $$(x.prev) + " · 5일선 " + $$(x.ma5_prev) : "시세를 받지 못함"}</span></div>`;
+      const st = x.open ? "진행 중" : "마감";
+      const L = [];
+      if (x.focus.includes("gap")) L.push(`갭: 시가 ${$$(x.o)} — 전일 종가 대비 ${sgn(x.gap)} · 전일 고가 ${$$(x.prev_h)} ${x.gap_over_high ? "위" : "아래"}에서 시작`);
+      if (x.focus.includes("ma5")) L.push(`5일선 ${$$(x.ma5)}: 현재 ${x.over_ma5 ? "위" : "아래"} ${sgn(x.vs_ma5)}${x.focus.includes("gap") ? ` · 시가도 5일선(${$$(x.ma5_prev)}) ${x.open_over_ma5 ? "위" : "아래"}` : ""}`);
+      if (x.focus.includes("three")) L.push(`연속 양봉: 전일까지 ${x.streak_prev}일 → 오늘 ${x.bull ? `양봉 ${st} = ${x.streak}일째` : `양봉 아님(${st})`}${x.three ? ` · <b>적삼병 조건 ${x.open ? "충족 중(마감 전)" : "충족 마감"}</b>` : ""}`);
+      if (x.level) L.push(`${$$(x.level)} 구간: 현재가에서 ${sgn(x.to_level)} 남음${x.level_touched ? " · 오늘 고가가 도달" : ""}${(x.level_hits || []).length ? ` · 최근 10거래일 중 ${$$(x.level)} 이상 올랐다 아래에서 마감: ${x.level_hits.map((h) => `${md(h.d)}(고가 ${$$(h.h)}, 종가 ${$$(h.c)})`).join(", ")}` : ""}`);
+      return `<div class="wt-i"><p class="wt-n"><b>${esc(x.name)}</b> ${$$(x.px)} ${sgn(x.chg)} <small class="dim">${md(x.day)} 정규장 ${st} · 고가 ${$$(x.h)} 저가 ${$$(x.l)}</small></p><ul>${L.map((t) => `<li>${t}</li>`).join("")}</ul></div>`;
+    };
+    return `<div class="wt"><p class="spot-h">👀 ${esc(w.title || "운영자 관전 포인트")} <small>${hm(w.at)} 기준 · 1분마다 갱신</small></p>
+      ${w.memo ? `<blockquote class="wt-memo">${esc(w.memo)}<cite>— 운영자 관전 포인트</cite></blockquote>` : ""}
+      ${its.map(row).join("")}
+      ${compact ? "" : `<p class="mm-f">자동 수치는 야후 정규장 시세 기준 · 적삼병 조건 = 3일 연속 양봉(시가보다 높게, 전일보다 높게 마감)으로 단순 판정 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`}</div>`;
+  }
+  function drawWatch() {
+    const box = q("#watchBox"); if (!box) return;
+    const h = watchHtml(watch);
+    box.hidden = !h; box.innerHTML = h;
+  }
+
   /* ── 💰 주도주 수급: 반도체·국내 보안 상위 종목 거래대금·수급(사실 집계) ── */
   const eokS = (v) => v == null ? "-" : `<b class="${cls(v / 1e8)}">${v > 0 ? "+" : v < 0 ? "−" : ""}${eok(Math.abs(v))}</b>`;
   const md = (d) => d ? `${+d.slice(5, 7)}/${+d.slice(8, 10)}` : "";
@@ -375,7 +403,7 @@
     const rg = b.reg && b.reg.SP500 ? `<div class="bcol"><h4>🇺🇸 미국 정규장 마감</h4><div class="bfs">${[["SP500", "S&P500"], ["XYZ100", "나스닥100"], ["SOXL", "SOXL"], ["EWY", "EWY"]].filter(([k]) => b.reg[k]).map(([k, n]) => `<span class="bf"><small>${n}</small> ${sg(b.reg[k].chg)}</span>`).join("")}</div></div>` : "";
     const fl = (b.flows || []).length ? `<div class="bcol">${b.flows.map((g) => flowTable(g, 5, true)).join("")}</div>` : "";
     const mom = (b.momentum || []).length ? `<div class="bcol">${momHtml({ sectors: b.momentum }, true)}</div>` : "";
-    const ev = b.eve && (b.eve.fut || []).length ? eveHtml(b.eve) : "";
+    const ev = (b.watch && (b.watch.items || []).length ? `<div class="bwide">${watchHtml(b.watch, true)}</div>` : "") + (b.eve && (b.eve.fut || []).length ? eveHtml(b.eve) : "");
     return ev + top + cps + rg + mom + fl + ktop + `<div class="bcol"><h4>📍 가장 크게 움직인 순간</h4><ul>${mv || '<li class="dim">최근 24시간 변곡점 없음</li>'}</ul></div>
       <div class="bcol"><h4>📊 섹터 강약</h4><ul>${sec || '<li class="dim">-</li>'}</ul></div>
       <div class="bcol"><h4>📈 뉴스에 많이 나온 종목</h4><div class="bts">${tr || '<span class="dim">-</span>'}</div>
@@ -512,7 +540,7 @@
     });
   }
 
-  const redraw = () => { drawHeroLive(); drawWorld(); drawSpot(); drawSectors(); drawFlows(); drawBrief(); if (full) { drawCharts(); drawMoves(); drawTrend(); drawList(); } };
+  const redraw = () => { drawHeroLive(); drawWorld(); drawSpot(); drawWatch(); drawSectors(); drawFlows(); drawBrief(); if (full) { drawCharts(); drawMoves(); drawTrend(); drawList(); } };
   const setKw = (label, pat) => {
     try { kwFilter = { label, rx: new RegExp(pat, "i") }; } catch { kwFilter = null; }
     tag = "전체"; shown = 30; drawTrend(); drawList(); q("#news").scrollIntoView({ behavior: "smooth" });
