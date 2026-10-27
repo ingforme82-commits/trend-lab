@@ -98,12 +98,17 @@ def world_and_spot() -> tuple[list[dict], list[dict]]:
             syms = list(s["members"])
             with ThreadPoolExecutor(max_workers=8) as ex:
                 qs = dict(zip(syms, ex.map(_quote, syms)))
+            try:
+                from krx import merge
+                merge(qs)
+            except Exception:  # noqa: BLE001
+                pass
             mem = []
             for sym, nm in s["members"].items():
                 qd = qs.get(sym)
                 if qd and qd.get("px") and qd.get("prev"):
                     mem.append({"sym": sym, "name": nm, "cur": qd.get("cur", "USD"), "px": round(qd["px"], 2), "chg": round((qd["px"] / qd["prev"] - 1) * 100, 2),
-                                "to3m": round((qd["px"] / qd["hi3m"] - 1) * 100, 1) if qd.get("hi3m") else None})
+                                "to3m": round((qd["px"] / qd["hi3m"] - 1) * 100, 1) if qd.get("hi3m") else None, "stale": bool(qd.get("stale"))})
             row["members"] = mem
             if mem:
                 row["chg"] = round(sum(m["chg"] for m in mem) / len(mem), 2)       # 종목군 평균
@@ -165,3 +170,14 @@ def us10y() -> dict:
     except Exception:  # noqa: BLE001
         pass
     return {}
+
+
+def kr_now() -> dict:
+    """한국 증시 실시간(네이버): 코스피·코스닥·코스피200·삼성전자·SK하이닉스. 등락은 전일 종가 대비."""
+    try:
+        from krx import quotes
+        q = quotes(["^KS11", "^KQ11", "^KS200", "005930.KS", "000660.KS"])
+    except Exception:  # noqa: BLE001
+        return {}
+    names = {"^KS11": "KOSPI", "^KQ11": "KOSDAQ", "^KS200": "KR200", "005930.KS": "SMSN", "000660.KS": "SKHX"}
+    return {names[k]: {"px": v["px"], "prev": v["prev"], "chg": v["chg"], "at": v["at"], "open": v["status"] == "OPEN"} for k, v in q.items()}

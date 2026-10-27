@@ -31,9 +31,11 @@ def _quote(sym: str) -> dict | None:
         past = [(day(t), c, h) for t, c, h in zip(r["timestamp"], q["close"], q["high"]) if day(t) < mday and c]
         if not past:
             return None
+        today = datetime.fromtimestamp(datetime.now(timezone.utc).timestamp() + off, timezone.utc)
         return {"px": m.get("regularMarketPrice"), "prev": past[-1][1], "hi52": m.get("fiftyTwoWeekHigh"),
                 "hi3m": max(h for _, _, h in past if h), "at": m.get("regularMarketTime", 0) * 1000,
-                "day": mday, "cur": m.get("currency", "USD")}
+                "day": mday, "cur": m.get("currency", "USD"),
+                "stale": today.weekday() < 5 and mday < today.strftime("%Y-%m-%d")}   # 거래일인데 아직 전일 값(개장 전·지연)
     except Exception:  # noqa: BLE001
         return None
 
@@ -58,12 +60,17 @@ def run() -> tuple[list[dict], list[dict]]:
     syms = [sym for sec in sectors.values() for sym in sec["tickers"]]
     with ThreadPoolExecutor(max_workers=8) as ex:            # 60여 종목을 동시에(약 5초)
         quotes = dict(zip(syms, ex.map(_quote, syms)))
+    try:
+        from krx import merge
+        merge(quotes)                                          # 한국 종목은 네이버 실시간(야후는 20분 지연)
+    except Exception:  # noqa: BLE001
+        pass
     cards, new_items = [], []
     for sname, sec in sectors.items():
         rows, sig = [], []
         for sym, name in sec["tickers"].items():
             d = quotes.get(sym)
-            if not d or not d["px"] or not d["prev"]:
+            if not d or not d.get("px") or not d.get("prev"):
                 continue
             chg = (d["px"] / d["prev"] - 1) * 100
             to52 = (d["px"] / d["hi52"] - 1) * 100 if d.get("hi52") else None
@@ -73,12 +80,13 @@ def run() -> tuple[list[dict], list[dict]]:
             elif chg >= 3: flags.append("+3%")
             if chg <= -5: flags.append("-5%")
             elif chg <= -3: flags.append("-3%")
-            if to52 is not None and to52 >= 0: flags.append("52주 신고가")
-            elif to52 is not None and to52 >= -3: flags.append("52주 고가 근접")
-            if to3m is not None and to3m > 0: flags.append("3개월 고점 돌파")
+            if d.get("stale"): flags = []                            # 전일 값이면 오늘 신호로 쓰지 않음
+            if to52 is not None and to52 >= 0 and not d.get("stale"): flags.append("52주 신고가")
+            elif to52 is not None and to52 >= -3 and not d.get("stale"): flags.append("52주 고가 근접")
+            if to3m is not None and to3m > 0 and not d.get("stale"): flags.append("3개월 고점 돌파")
             rows.append({"sym": sym, "name": name, "px": round(d["px"], 2), "chg": round(chg, 2), "cur": d.get("cur", "USD"),
                          "to52": None if to52 is None else round(to52, 1), "to3m": None if to3m is None else round(to3m, 1),
-                         "flags": flags, "at": d["at"]})
+                         "flags": flags, "at": d["at"], "stale": bool(d.get("stale"))})
             fresh = now.timestamp() * 1000 - d["at"] < 30 * 60_000      # 장중(30분 안에 체결된 값)일 때만 신호
             for f in flags:
                 key = f"{d['day']}:{sym}:{f}"

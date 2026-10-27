@@ -118,7 +118,7 @@ def make(out: dict) -> dict:
     heads.sort(key=lambda x: -x["ts"])
     fut = futures()
     tnx = out.get("us10y") or {}
-    return {"at": int(now), "session": session(datetime.now(timezone.utc)), "futures": fut,
+    return {"at": int(now), "session": session(datetime.now(timezone.utc)), "futures": fut, "kr": out.get("kr") or {},
             "us10y": {"px": tnx.get("px"), "bp": tnx.get("bp")} if tnx.get("px") else None,
             "macro": macro, "heads": heads, "moves": moves, "trending": [{"name": t["name"], "n": t["n"]} for t in out.get("trending", [])[:5]],
             "sectors": sectors, "world": w, "spot": [{"name": s["name"], "chg": s.get("chg")} for s in out.get("spot", [])]}

@@ -61,6 +61,13 @@ async function loadTicks() {
         return `<div class="tick" data-k="DOW"><p class="t-name">${t.n}${live ? "" : " (선물)"}</p><p class="t-px">${Math.round(main.px).toLocaleString("ko-KR")}</p><p class="t-ch ${c2}">${main.chg > 0 ? "▲" : main.chg < 0 ? "▼" : ""} ${main.chg > 0 ? "+" : ""}${main.chg.toFixed(2)}%</p><p class="fine" style="margin:2px 0 0">${sub}</p></div>`;
       }
       const x = map[t.k];
+      const kr = (window.trlKr || {})[t.k];
+      if (kr && kr.px && (kr.open || !x)) {               // 한국 정규장: 한국거래소 실시간 가격 · 전일 종가 대비(네이버)
+        const ck = kr.chg > 0.005 ? "c-up" : kr.chg < -0.005 ? "c-dn" : "c-fl";
+        const v = t.k === "KR200" ? kr.px.toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Math.round(kr.px).toLocaleString("ko-KR") + "원";
+        const hx = x ? `24시간 ${(t.u || "") + (+x.markPx).toLocaleString("ko-KR", { maximumFractionDigits: t.d })}` : "";
+        return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">${v}</p><p class="t-ch ${ck}">${kr.chg > 0 ? "▲" : kr.chg < 0 ? "▼" : ""} ${kr.chg > 0 ? "+" : ""}${kr.chg.toFixed(2)}%</p><p class="fine" style="margin:2px 0 0">전일 종가 대비 · 장중${hx ? " · " + hx : ""}</p></div>`;
+      }
       if (!x) return "";
       const px = +x.markPx, prev = +x.prevDayPx, ch = prev ? (px / prev - 1) * 100 : 0;
       const cls = ch > 0.005 ? "c-up" : ch < -0.005 ? "c-dn" : "c-fl";
@@ -68,7 +75,8 @@ async function loadTicks() {
       lastPx[t.k] = px;
       const val = (t.u || "") + px.toLocaleString("ko-KR", { minimumFractionDigits: t.d, maximumFractionDigits: t.d }) + (t.suf || "");
       const won = t.won && krw ? `<p class="fine" style="margin:2px 0 0">원화 환산 약 ${(Math.round(px * krw / 100) * 100).toLocaleString("ko-KR")}원</p>` : "";
-      return `<div class="tick${flash}" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">${val}</p><p class="t-ch ${cls}">${ch > 0 ? "▲" : ch < 0 ? "▼" : ""} ${ch >= 0 ? "+" : ""}${ch.toFixed(2)}%</p>${won}</div>`;
+      const h24 = ["KR200", "SMSN", "SKHX"].includes(t.k) ? `<p class="fine" style="margin:2px 0 0">24시간 거래 · 24시간 전 대비</p>` : "";
+      return `<div class="tick${flash}" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">${val}</p><p class="t-ch ${cls}">${ch > 0 ? "▲" : ch < 0 ? "▼" : ""} ${ch > 0 ? "+" : ""}${ch.toFixed(2)}%</p>${won}${h24}</div>`;
     }).join("");
     $("#tickGrid").innerHTML = html;
     setTimeout(() => document.querySelectorAll(".tick.flash").forEach((e) => e.classList.remove("flash")), 900);

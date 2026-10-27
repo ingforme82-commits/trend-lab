@@ -585,3 +585,5 @@ body{overflow-x:hidden}
 .bf{border:1px solid var(--line,#e5e7eb);border-radius:10px;padding:4px 10px;font-size:13px;font-variant-numeric:tabular-nums;background:#fff}
 .bf small{color:var(--sub,#64748b);margin-right:2px}
 .brief ul.bn{padding-left:0;list-style:none}.brief ul.bn li{margin:0 0 6px;font-size:13px;line-height:1.45}
+
+.stale{font-style:normal;font-size:11px;color:var(--sub,#64748b);border:1px solid var(--line,#e5e7eb);border-radius:6px;padding:0 4px;margin-left:4px}
