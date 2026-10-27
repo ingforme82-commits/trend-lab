@@ -439,7 +439,8 @@
         ${krRow(b.kr)}
         ${fut ? `<h4>⏱️ 24시간 선물·환율 <small class="dim">(24시간 전 대비)</small></h4><div class="bfs">${fut}</div>` : ""}</div>
       ${(b.macro || []).length ? `<div class="bcol"><h4>🧾 경제지표 발표 <small class="dim">최근 12시간</small></h4><ul class="bn">${b.macro.map(li).join("")}</ul></div>` : ""}
-      ${(b.heads || []).length ? `<div class="bcol"><h4>📰 주요 속보 <small class="dim">최근 3시간</small></h4><ul class="bn">${b.heads.map(li).join("")}</ul></div>` : ""}` : "";
+      ${(b.heads || []).length ? `<div class="bcol"><h4>📰 주요 속보 <small class="dim">최근 3시간</small></h4><ul class="bn">${b.heads.map(li).join("")}</ul></div>` : ""}
+      ${(b.analysis || []).length ? `<div class="bcol"><h4>📝 텔레 시황 분석 <small class="dim">최근 12시간 · 중요도 순</small></h4><ul class="bn">${b.analysis.map((n) => `<li><b>${hm(n.ts)}</b> ${esc(n.text)}${n.sub ? `<br><small class="dim">${esc(n.sub)}</small>` : ""} <small class="dim">${esc(n.src)}</small></li>`).join("")}</ul></div>` : ""}` : "";
     const cps = (b.checkpoints || []).length ? `<div class="bcol"><h4>🗓️ 오늘 체크포인트</h4><ul class="bn">${b.checkpoints.map((c) => `<li>${c.time ? `<b>${esc(c.time)}</b> ` : ""}${esc(c.title)}</li>`).join("")}</ul></div>` : "";
     const ktop = (b.kr_top || []).length ? `<div class="bcol"><h4>🇰🇷 국내 감시 종목 상승 상위</h4><ul class="bn">${b.kr_top.map((r) => `<li>${esc(r.name)} ${sg(r.chg)} <small class="dim">${esc(r.sector)}${r.val ? ` · 거래대금 ${eok(r.val)}` : ""}</small></li>`).join("")}</ul></div>` : "";
     const rg = b.reg && b.reg.SP500 ? `<div class="bcol"><h4>🇺🇸 미국 정규장 마감</h4><div class="bfs">${[["SP500", "S&P500"], ["XYZ100", "나스닥100"], ["SOXL", "SOXL"], ["EWY", "EWY"]].filter(([k]) => b.reg[k]).map(([k, n]) => `<span class="bf"><small>${n}</small> ${sg(b.reg[k].chg)}</span>`).join("")}</div></div>` : "";
@@ -494,8 +495,9 @@
   /* ── 속보 목록 ── */
   const VER = { official: ["🏛 공식 발표", "v-ok"], multi: ["✔ 복수 출처", "v-ok"], single: ["단일 출처", "v-one"], unconfirmed: ["⚠ 미확인·보도 인용", "v-warn"] };
   const isStrat = (n) => n.kind === "증권사 시황" || n.kind === "시황 분석";
-  const isMajor = (n) => n.pivot || n.hot || n.verify === "multi" || n.verify === "official" || n.kind === "섹터 시세";
-  const impScore = (n) => (n.pivot ? 8 : 0) + (n.hot ? 4 : 0) + (n.verify === "multi" ? 2 : 0) + (n.verify === "official" ? 3 : 0) + (n.nsrc || 1) - (isStrat(n) ? 2 : 0);
+  // 중요도: 서버가 매긴 imp(0~100, 상 60↑·중 35↑) — 없으면 예전 계산
+  const impScore = (n) => n.imp != null ? n.imp : (n.pivot ? 8 : 0) + (n.hot ? 4 : 0) + (n.verify === "multi" ? 2 : 0) + (n.verify === "official" ? 3 : 0) + (n.nsrc || 1);
+  const isMajor = (n) => n.imp != null ? n.imp >= 60 : (n.pivot || n.hot || n.verify === "multi" || n.verify === "official" || n.kind === "섹터 시세");
   const mktScore = (n) => { const w = windows(reactKey(n).k, n.ts); if (!w) return -1; const d = w.slice().reverse().find((x) => x.v != null); return d ? Math.abs(d.v) : -1; };
   function drawFilters() {
     const box = q("#newsFilt"); if (!box || box.dataset.ready) return;
@@ -539,6 +541,7 @@
       const rs = w ? `<span class="nw-r">${esc(R.n)} <small>보도 5분 전 대비</small> ${w.map((x) => `<span class="rw">+${x.n}분 ${x.v == null ? `<i class="dim">계산 중</i>` : pct(x.v)}</span>`).join("")}</span>` : "";
       const pv = n.pivot ? `<p class="nw-pv">🔴 변곡점 직전 뉴스 — ${movesOfNews(n.ts).map((m) => `${esc(m.name)} ${fmtMove(m)} (${hm(m.start)}–${hm(m.end)})`).join(", ") || (n.pv || []).map(esc).join(", ")}</p>` : "";
       const lag = n.got && n.got - n.ts >= 2 * 60000 ? ` · 수집 ${hm(n.got)}<small>(+${Math.round((n.got - n.ts) / 60000)}분)</small>` : "";
+      const lvb = n.lv === "상" ? `<span class="nw-v v-imp" title="중요도 ${n.imp}">🔥 중요</span>` : n.lv === "중" ? `<span class="nw-v v-one" title="중요도 ${n.imp}">중요도 중</span>` : "";
       const v = VER[n.verify] ? `<span class="nw-v ${VER[n.verify][1]}">${VER[n.verify][0]}${n.nsrc > 1 ? ` ${n.nsrc}곳` : ""}</span>` : "";
       const tr = n.tr === "auto" ? `<span class="nw-v v-tr" title="${esc(n.orig || "")}">🌐 자동 번역</span>` : n.tr === "fail" ? `<span class="nw-v v-warn">🌐 번역 실패·원문</span>` : "";
       const XC = { ok: ["🌐 외신 확인", "v-ok"], ref: ["🌐 해외 보도", "v-one"], diff: ["⚠ 외신과 수치 다름", "v-warn"] };
@@ -548,7 +551,7 @@
       return `<li class="nw${n.pivot ? " piv" : ""}${sel === n.ts ? " sel" : ""}${n.verify === "unconfirmed" ? " unv" : ""}" data-ts="${n.ts}">
         <div class="nw-t"><b>${hm(n.ts)}</b><span>${ago(n.ts)}</span></div>
         <div class="nw-b"><p class="nw-txt${n.kind === "섹터 시세" ? " sector" : ""}">${n.pivot ? "🔴 " : ""}${esc(n.text)}</p>${n.sub ? `<p class="nw-sub">${esc(n.sub)}</p>` : ""}${pv}
-          <p class="nw-m">${n.tags.map((t) => `<span class="nw-tag">${esc(t)}</span>`).join("")}${isStrat(n) ? `<span class="nw-tag strat">${esc(n.kind)}</span>` : ""}${v}${xc}${tr}
+          <p class="nw-m">${n.tags.map((t) => `<span class="nw-tag">${esc(t)}</span>`).join("")}${isStrat(n) ? `<span class="nw-tag strat">${esc(n.kind)}</span>` : ""}${lvb}${v}${xc}${tr}
           <span class="nw-src">${n.verify ? "최초 " : ""}${n.osrc ? `${esc(n.osrc)} · ${esc(n.src)} 경유` : esc(n.src)} ${hm(n.ts)}${lag}</span></p>
           ${xcl}${also ? `<p class="nw-m">${also}</p>` : ""}${rs ? `<p class="nw-m">${rs}</p>` : ""}</div></li>`;
     }).join("") || `<li class="empty">조건에 맞는 속보가 없습니다.</li>`;

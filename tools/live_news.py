@@ -42,9 +42,10 @@ NO_WINDOW = 0x08000000 if os.name == "nt" else 0     # 예약 실행 때 검은 
 
 KEEP_H = 30
 KEEP_H_STRAT = 48          # 증권사 시황·분석 글은 아침·마감에 몰려 있어 더 길게
-MAX_STRAT = 50
-MAX_ITEMS = 200
-PER_SOURCE = {"김치터미널": 90}          # 출처별 최대 건수(나머지 출처는 30)
+MAX_STRAT = 80
+MAX_ITEMS = 500
+PER_SOURCE = {"김치터미널": 250}         # 출처별 최대 건수(나머지 출처는 PER_DEFAULT) — 2026-10-28 모든 채널 새 글 싣기로 늘림
+PER_DEFAULT = 80
 
 # 텔레그램 채널 → 사이트에 보일 출처 이름
 CHANNELS = {
@@ -186,6 +187,18 @@ def tags_of(text: str) -> list[str]:
     return [n for n, pat in TAGS if re.search(pat, text[:500])][:2]
 
 
+URL_ONLY = re.compile(r"^\s*(https?://\S+)\s*$")
+
+
+def link_title(url: str):
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from linktitle import title_for
+        return title_for(url)
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def from_telegram() -> list[dict]:
     if not DB.exists():
         return []
@@ -205,11 +218,16 @@ def from_telegram() -> list[dict]:
             if BROKER.search(text) or len(re.findall(r"https?://", text)) >= 3 or text.lstrip().startswith("<"):
                 continue
         h, sub, orig = clean_line(text, with_sub=strat or analysis)
+        lm = URL_ONLY.match(text)
+        if lm:                                          # 링크만 올린 글 → 기사 제목·언론사(링크는 싣지 않음)
+            got_t = link_title(lm.group(1))
+            if not got_t:
+                continue
+            h, orig = got_t
         if len(h) < 12 or re.fullmatch(r"[\w.\-]+\.(?:com|co\.kr|kr|net|io)", h, re.I):   # 사이트 주소만 있는 글
             continue
         tg = tags_of(text)
-        if ch not in FAST and not (strat or analysis) and not tg:   # 섹터 채널은 시장 관련 키워드가 있는 글만
-            continue
+        # 시장 키워드가 없는 글도 싣는다('기타', 중요도 낮게) — 2026-10-28 운영자 요청
         ts = datetime.fromisoformat(posted).astimezone(timezone.utc)
         try:
             got = int(datetime.fromisoformat(collected).astimezone(timezone.utc).timestamp() * 1000)
@@ -396,7 +414,7 @@ def build() -> dict:
         strat = it.get("kind") in ("증권사 시황", "시황 분석")
         if (strat and n_strat >= MAX_STRAT) or (not strat and n_other >= MAX_ITEMS):
             continue
-        if per.get(it["src"], 0) >= PER_SOURCE.get(it["src"], 30):   # 한 출처가 목록을 다 차지하지 않게
+        if per.get(it["src"], 0) >= PER_SOURCE.get(it["src"], PER_DEFAULT):   # 한 출처가 목록을 다 차지하지 않게
             continue
         items.append(it)
         per[it["src"]] = per.get(it["src"], 0) + 1
@@ -404,6 +422,11 @@ def build() -> dict:
             n_strat += 1
         else:
             n_other += 1
+    try:                                                  # 📊 중요도(0~100, 상·중·하) — 변곡점·교차 확인 결과까지 반영되도록 아래에서 한 번 더
+        from importance import apply as importance
+        importance(items)
+    except Exception as e:  # noqa: BLE001
+        log(f"중요도 건너뜀: {type(e).__name__}: {e}")
     try:                                                  # 🌐 김치터미널 속보 ↔ 해외 언론 원문 헤드라인 교차 확인
         from xcheck import run as xcheck
         xcheck(items, rss, lambda en: fix_terms(en, _google_translate(en)))
@@ -458,6 +481,11 @@ def build() -> dict:
         out["trending"] = trending(items)
     except Exception as e:  # noqa: BLE001
         log(f"해외 지수·종목 건너뜀: {type(e).__name__}: {e}")
+    try:                                                  # 📊 중요도 최종(변곡점 pivot·관전 포인트 반영)
+        from importance import apply as importance
+        importance(out["items"])
+    except Exception as e:  # noqa: BLE001
+        log(f"중요도 건너뜀: {type(e).__name__}: {e}")
     try:                                                  # 📋 시장 브리핑(사이트 표시용 요약)
         from brief import make as make_brief
         out["brief"] = make_brief(out)

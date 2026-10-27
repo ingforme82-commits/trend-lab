@@ -116,12 +116,15 @@ def make(out: dict) -> dict:
         if len(heads) >= 8:
             break
     heads.sort(key=lambda x: -x["ts"])
+    # 📝 텔레 시황 분석(카이에 드 마켓·나쁜양파·증권사 전략 등) — 최근 12시간, 중요도 순 3건
+    ana = sorted((it for it in news if it.get("kind") in ("시황 분석", "증권사 시황")), key=lambda x: (-(x.get("imp") or 0), -x["ts"]))[:3]
+    analysis = [{"ts": it["ts"], "text": it["text"][:120], "sub": (it.get("sub") or "")[:160], "src": it.get("src", ""), "imp": it.get("imp")} for it in ana]
     fut = futures()
     tnx = out.get("us10y") or {}
     return {"at": int(now), "session": session(datetime.now(timezone.utc)), "futures": fut, "kr": out.get("kr") or {},
             "us10y": {"px": tnx.get("px"), "bp": tnx.get("bp")} if tnx.get("px") else None,
             "ust": {k: {"px": v["px"], "bp": v["bp"]} for k, v in (out.get("ust") or {}).items()},
-            "macro": macro, "heads": heads, "moves": moves, "trending": [{"name": t["name"], "n": t["n"]} for t in out.get("trending", [])[:5]],
+            "macro": macro, "heads": heads, "analysis": analysis, "moves": moves, "trending": [{"name": t["name"], "n": t["n"]} for t in out.get("trending", [])[:5]],
             "sectors": sectors, "world": w, "spot": [{"name": s["name"], "chg": s.get("chg")} for s in out.get("spot", [])]}
 
 
