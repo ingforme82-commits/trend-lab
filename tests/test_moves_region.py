@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from moves import group_moments, region, session_of, us_open_gap  # noqa: E402
+from moves import group_moments, level_cross, region, session_of, us_open_gap  # noqa: E402
 
 KST = lambda *a: int(datetime(*a, tzinfo=timezone.utc).timestamp() * 1000) - 9 * 3600_000
 
@@ -37,6 +37,30 @@ class GroupTest(unittest.TestCase):
         ms = [{"id": "a", "start": 0}, {"id": "b", "start": 3 * 60_000}, {"id": "c", "start": 5 * 60_000}, {"id": "d", "start": 20 * 60_000}]
         group_moments(ms)
         self.assertEqual([m["grp"] for m in ms], ["a", "a", "a", "d"])
+
+
+class LevelTest(unittest.TestCase):
+    M = 60_000
+
+    def rows(self, prices):
+        return [(i * self.M, p) for i, p in enumerate(prices)]
+
+    def test_wti_below_100(self):
+        ev = level_cross("WTI", "WTI", "pct", self.rows([100.2, 100.1, 99.95, 99.9, 99.85, 99.8, 99.7]))
+        self.assertEqual([(e["level"], e["move"] < 0) for e in ev], [(100, True)])
+        self.assertEqual(ev[0]["start"], 2 * self.M)
+
+    def test_hover_without_buffer_ignored(self):
+        self.assertEqual(level_cross("WTI", "WTI", "pct", self.rows([100.05, 99.97, 99.96, 99.95, 99.97, 99.96])), [])
+
+    def test_bounce_back_not_held(self):
+        self.assertEqual(level_cross("WTI", "WTI", "pct", self.rows([100.2, 99.8, 99.7, 100.1, 100.2, 100.3])), [])
+
+    def test_recross_keeps_latest(self):
+        p = [100.3, 99.8, 99.7, 99.6, 99.6, 100.3, 100.4, 100.5, 100.4, 99.8, 99.7, 99.6, 99.5]
+        ev = level_cross("WTI", "WTI", "pct", self.rows(p))
+        self.assertEqual(len(ev), 1)
+        self.assertEqual(ev[0]["start"], 9 * self.M)
 
 
 if __name__ == "__main__":

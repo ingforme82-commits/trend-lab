@@ -173,11 +173,11 @@
       const inGrp = new Set(ms.map((x) => x.name));
       const others = Object.entries(m.others || {}).filter(([k]) => !inGrp.has(k)).slice(0, 4).map(([k, v]) => `${esc(k)} <b class="${cls(v)}">${v > 0 ? "+" : ""}${v}${k.includes("금리") ? "bp" : "%"}</b>`).join(" · ");
       return `<article class="mv" data-asset="${m.asset}" data-start="${m.start}">
-        <div class="mv-h"><span class="mv-a ${m.move > 0 ? "pos" : "neg"}">${esc(m.name)} ${m.move > 0 ? "▲" : "▼"} ${fmtMove(m)}</span>
+        <div class="mv-h"><span class="mv-a ${m.move > 0 ? "pos" : "neg"}">${m.kind === "level" ? `🎯 ${esc(m.name)} ${m.unit === "bp" ? (+m.level).toFixed(2) + "%" : (m.asset === "WTI" || m.asset === "BRENT" || m.asset === "GOLD" ? "$" : "") + (+m.level).toLocaleString("ko-KR")} ${m.move > 0 ? "위로" : "아래로"}` : `${esc(m.name)} ${m.move > 0 ? "▲" : "▼"} ${fmtMove(m)}`}</span>
           <span class="mv-t">${hm(m.start)}–${hm(m.end)}${m.session ? ` · ${esc(m.session)}` : ""}</span></div>
-        <p class="mv-o">${px(m)}${co.length ? ` · <b>함께 움직임</b> ${co.map((x) => `${esc(x.name)} <b class="${cls(x.move)}">${fmtMove(x)}</b> <small>(${hm(x.start)}–${hm(x.end)}${x.session ? ", " + esc(x.session) : ""})</small>`).join(" · ")}` : ""}</p>
+        <p class="mv-o">${px(m)}${co.length ? ` · <b>함께 움직임</b> ${co.map((x) => `${x.kind === "level" ? "🎯 " : ""}${esc(x.name)}${x.kind === "level" ? ` ${(+x.level).toLocaleString("ko-KR")} ${x.move > 0 ? "위로" : "아래로"}` : ` <b class="${cls(x.move)}">${fmtMove(x)}</b>`} <small>(${hm(x.start)}–${hm(x.end)}${x.session ? ", " + esc(x.session) : ""})</small>`).join(" · ")}` : ""}</p>
         ${others ? `<p class="mv-o">같은 구간 ${others}</p>` : ""}
-        ${ns.length ? `<ul class="mv-n">${ns.slice(0, 4).map((n) => `<li><span class="mv-dot"></span><b>${hm(n.ts)}</b> ${n.lang === "en" ? "🌐 " : ""}${esc(n.text)} <small>${n.osrc ? `${esc(n.osrc)} · ${esc(n.src)} 경유` : esc(n.src)}${co.length ? ` · ${esc(n._a)} 쪽` : ""}</small></li>`).join("")}</ul>`
+        ${ns.length ? `<ul class="mv-n">${ns.slice(0, 4).map((n) => `<li><span class="mv-dot"></span><b>${hm(n.ts)}</b> ${n.lang === "en" ? "🌐 " : ""}${esc(n.text)} <small>${n.osrc ? `${esc(n.osrc)} · ${esc(n.src)} 경유` : esc(n.src)}${co.length ? ` · ${esc(n._a)} 쪽` : ""}${n.lag != null ? ` · <b class="mv-lag">${n.lag < 0 ? `움직임 ${-n.lag}분 전` : n.lag === 0 ? "움직임과 같은 분" : `가격이 먼저 움직이고 ${n.lag}분 뒤`}</b>` : ""}</small></li>`).join("")}</ul>`
           : `<p class="mv-none">직전 15분 안에 관련 분야 뉴스가 없습니다(수급·기술적 움직임일 수 있음).</p>`}
         ${nt ? `<div class="mv-note"><b>💡 ${esc(nt.title)}</b><p>${esc(nt.text)}</p>${nt.post ? `<a href="posts/${encodeURIComponent(nt.post)}.html" target="_blank" rel="noopener">블로그 분석 글 보기 →</a>` : ""}</div>` : ""}
       </article>`;

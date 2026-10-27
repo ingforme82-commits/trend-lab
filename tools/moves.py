@@ -33,6 +33,9 @@ US_RX = re.compile(r"미국|나스닥|S&P|다우|뉴욕|월가|연준|파월|엔
 KR_RX = re.compile(r"코스피|코스닥|한국|국내|삼성|하이닉스|한은|원/달러|원화|KOSPI|KOSDAQ|Korea|외국인|기관|국민성장")
 
 
+KEY_RX = re.compile(r"트럼프|Trump|파월|Powell|OPEC|오펙|사우디|빈 살만|이란|하메네이|네타냐후|푸틴|시진핑|백악관|재무장관|베선트|연준|Fed\b")
+
+
 def region(it: dict) -> str:
     """뉴스 지역: 'US' / 'KR' / ''(둘 다 또는 판단 불가). 섹터 시세는 섹터 이름으로."""
     t = it.get("text", "")
@@ -84,7 +87,39 @@ def group_moments(moves: list[dict], gap_min: int = 6) -> None:
             cur, anchor = m["id"], m["start"]
         m["grp"] = cur
 SIGMA = 4.0
-BEFORE, AFTER = 15, 3   # 변곡점 기준 뉴스 찾는 범위(분)
+BEFORE, AFTER = 15, 3   # 변곡점 기준 뉴스 찾는 범위(분) — 움직임이 이어지는 동안(최대 AFTER_MAX분)도 본다
+AFTER_MAX = 30
+# 주요 가격대(이 단위의 배수를 3분 넘게 넘어서 유지하면 '가격대 돌파'로 기록)
+LEVEL_STEP = {"WTI": 5, "BRENT": 5, "GOLD": 100, "NQ": 1000, "SP": 100, "K200": 50, "US10Y": 0.1, "DXY": 1}
+LEVEL_HOLD = 3          # 분
+LEVEL_BUF = 0.1         # % — 기준선을 이만큼 넘어야 돌파로 인정(기준선 근처 오르내림 거르기)
+LEVEL_GAP = 60          # 분 — 같은 가격대를 이 시간 안에 다시 넘으면 가장 최근 돌파만 남긴다
+
+
+def level_cross(code: str, name: str, unit: str, rows: list[tuple[int, float]], hold: int = LEVEL_HOLD) -> list[dict]:
+    """주요 가격대(LEVEL_STEP 배수) 돌파: 기준선을 넘은 뒤 hold분 동안 다시 돌아오지 않으면 기록."""
+    step = LEVEL_STEP.get(code)
+    if not step or len(rows) < hold + 2:
+        return []
+    out, i = [], 1
+    while i < len(rows) - hold:
+        a, b = rows[i - 1][1], rows[i][1]
+        lo, hi = min(a, b), max(a, b)
+        k = int(hi // step) * step if hi % step else hi
+        if lo < k <= hi and k > 0:                       # a→b 사이에 기준선 k 가 있다
+            up = b >= k > a
+            win = [c for _, c in rows[i:i + hold + 1]]
+            buf = k * LEVEL_BUF / 100 if unit != "bp" else 0.01
+            beyond = max(win) >= k + buf if up else min(win) <= k - buf
+            if all((c >= k) == up for c in win) and beyond:
+                lv = round(k, 4)
+                out = [o for o in out if not (o["level"] == lv and rows[i][0] - o["start"] < LEVEL_GAP * 60_000)]   # 같은 가격대를 다시 넘으면 최근 것만
+                out.append({"asset": code, "name": name, "unit": unit, "kind": "level", "level": lv, "start": rows[i][0],
+                            "end": rows[i + hold][0], "from": a, "to": rows[i + hold][1],
+                            "move": round(_chg(a, rows[i + hold][1], unit), 2), "ratio": 0.0})
+                i += hold
+        i += 1
+    return out
 
 
 def _post(body: dict):
@@ -130,7 +165,7 @@ def detect(asset, rows: list[tuple[int, float]]) -> list[dict]:
     if len(rows) < 60:
         return []
     flags: dict[int, tuple[bool, int, float]] = {}       # i → (상승?, 기준창, 평소폭)
-    for win, mult in ((WIN, 1.0), (30, 1.6)):
+    for win, mult in ((5, 0.6), (WIN, 1.0), (30, 1.6)):   # 5분(짧고 급한 움직임)·10분·30분
         base = _returns(rows, win)
         rets = [_chg(b[1], rows[i][1], unit) if b else 0.0 for i, b in enumerate(base)]
         absr = [abs(x) for x in rets if x]
@@ -188,9 +223,10 @@ def analyze(items: list[dict]) -> tuple[list[dict], dict]:
             else:
                 merged.append(m)
         moves += merged
+        moves += level_cross(a[0], a[1], a[4], data[a[0]])   # 주요 가격대 돌파(예: WTI $100)
     moves.sort(key=lambda m: -m["start"])
     for k, m in enumerate(moves):
-        m["id"] = f'{m["asset"]}-{m["start"] // 60000}'
+        m["id"] = f'{m["asset"]}-{"L" if m.get("kind") == "level" else ""}{m["start"] // 60000}'
         m["session"] = session_of(m["asset"], m["start"])
         if m["asset"] not in US_A and us_open_gap(m["start"]) is not None:
             m["session"] += " · 미국 개장 직후"
@@ -200,16 +236,17 @@ def analyze(items: list[dict]) -> tuple[list[dict], dict]:
         m["others"] = {x[1]: v for x in ASSETS if x[0] != m["asset"]
                        for v in [_move_between(data[x[0]], m["start"], m["end"], x[4])] if v is not None}
         cands = []
+        after = max(AFTER, min(AFTER_MAX, (m["end"] - m["start"]) / 60000 + 3))   # 움직이는 동안 나온 뉴스도
         for it in items:
             dt = (it["ts"] - m["start"]) / 60000
-            if it.get("kind") in ("시황 분석", "증권사 시황"):   # 긴 분석·정기 시황 글은 변곡점 후보에서 뺀다
+            if it.get("kind") in ("시황 분석", "증권사 시황", "관전 포인트", "섹터 시세"):   # 긴 분석 글·가격에서 만든 자동 집계는 뺀다
                 continue
             rg = region(it)
             if (m["asset"] in KR_A and rg != "KR") or (m["asset"] in US_A and rg == "KR"):
                 continue                                  # 코스피200은 한국 관련어가 확인된 뉴스만, 미국 지수엔 한국 뉴스 제외
             match = sum(t in rel for t in it.get("tags", []))
-            if -BEFORE <= dt <= AFTER and match:          # 그 자산과 관련된 분야의 뉴스만 후보
-                score = 3 * match + (1 if it.get("hot") else 0) + (1 - abs(dt) / 20)
+            if -BEFORE <= dt <= after and match:          # 그 자산과 관련된 분야의 뉴스만 후보
+                score = 3 * match + (1 if it.get("hot") else 0) + (1 - abs(dt) / 30) + (1 if KEY_RX.search(it["text"]) else 0)
                 if it.get("kind") in ("증권사 시황", "시황 분석"):
                     score -= 2                          # 긴 분석 글보다 속보가 직접 원인일 가능성이 높다
                 cands.append((score, it))
@@ -222,7 +259,8 @@ def analyze(items: list[dict]) -> tuple[list[dict], dict]:
             if len(picked) >= 3:
                 break
         m["news"] = [it["ts"] for it in picked]
-        m["items"] = [{k: it[k] for k in ("ts", "text", "src", "lang", "osrc") if k in it} for it in picked]   # 화면 표시용(같은 시각 다른 기사 구분)
+        m["items"] = [{**{k: it[k] for k in ("ts", "text", "src", "lang", "osrc") if k in it},
+                       "lag": round((it["ts"] - m["start"]) / 60000)} for it in picked]   # lag: 움직임 시작 대비 분(음수 = 뉴스가 먼저)
         for it in picked:
             it["pivot"] = True
             unit = "bp" if m["unit"] == "bp" else "%"
