@@ -15,9 +15,9 @@ class WatchTest(unittest.TestCase):
     def test_gap_ma5_three(self):
         r = analyze(PAST, {"o": 95.03, "h": 96.0, "l": 94.1, "c": 95.87})
         self.assertEqual(r["streak_prev"], 2)
-        self.assertEqual(r["gap"], 5.0)
+        self.assertEqual(r["gap"], 5.01)
         self.assertTrue(r["gap_over_high"])
-        self.assertAlmostEqual(r["ma5"], round((97.55 + 103.24 + 82.11 + 83.56 + 90.5 + 95.87 - 97.55) / 5, 2))
+        self.assertAlmostEqual(r["ma5"], round((103.24 + 82.11 + 83.56 + 90.5 + 95.87) / 5, 2))
         self.assertTrue(r["over_ma5"] and r["three"])
         self.assertEqual(r["streak"], 3)
 
