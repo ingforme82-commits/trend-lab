@@ -107,7 +107,8 @@ TAGS = [
                  r"아마존|Amazon|애플|Apple|테슬라|Tesla|스페이스X|SpaceX|xAI|\bAI\b|데이터센터|data center|GPU|IPO|상장"),
     ("반도체", r"반도체|하이닉스|삼성전자|마이크론|Micron|TSMC|HBM|메모리|D램|DRAM|낸드|NAND|SOX|램리서치|ASML|chip|semiconductor"),
     ("사이버보안", r"해킹|해커|유출|사이버|보안|랜섬|hack|breach|cyber|ransomware|security|시스코|Cisco|크라우드스트라이크|CrowdStrike|"
-                 r"팔로알토|Palo Alto|지스케일러|Zscaler|옥타|Okta|클라우드플레어|Cloudflare|포티넷|Fortinet|데이터도그|Datadog|센티넬원|SentinelOne"),
+                 r"팔로알토|Palo Alto|지스케일러|Zscaler|옥타|Okta|클라우드플레어|Cloudflare|포티넷|Fortinet|데이터도그|Datadog|센티넬원|SentinelOne|"
+                 r"루브릭|Rubrik|세일포인트|SailPoint"),
     ("코인", r"비트코인|이더리움|코인|암호화폐|가상자산|Coinbase|코인베이스|월렛|bitcoin|crypto|ether"),
     ("러·우", r"러시아|우크라|푸틴|젤렌스키|크렘린|스타링크|Russia|Ukrain|Putin|Kremlin"),
     ("한국", r"코스피|코스닥|한국|원/달러|원화|한은|KOSPI|Korea"),
