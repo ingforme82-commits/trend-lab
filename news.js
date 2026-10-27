@@ -333,6 +333,7 @@
     return `<div class="wt"><p class="spot-h">👀 ${esc(w.title || "운영자 관전 포인트")} <small>${hm(w.at)} 기준 · 1분마다 갱신</small></p>
       ${w.memo ? `<blockquote class="wt-memo">${esc(w.memo)}<cite>— 운영자 관전 포인트</cite></blockquote>` : ""}
       ${its.map(row).join("")}
+      ${(w.events || []).length ? `<p class="wt-n" style="margin-top:8px"><b>⏱ 변화 기록</b> <small class="dim">기준선(5일선·시가·전일 종가·가격대)을 ${"0.15"}% 넘게 넘을 때 기록</small></p><ul class="wt-ev">${w.events.slice(0, compact ? 6 : 15).map((e) => `<li><b>${hm(e.ts)}</b> <span class="${e.up ? "c-up" : "c-dn"}">${e.up ? "▲" : "▼"}</span> ${esc(e.text)}</li>`).join("")}</ul>` : ""}
       ${compact ? "" : `<p class="mm-f">자동 수치는 야후 정규장 시세 기준 · 적삼병 조건 = 3일 연속 양봉(시가보다 높게, 전일보다 높게 마감)으로 단순 판정 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`}</div>`;
   }
   function drawWatch() {

@@ -69,6 +69,54 @@ def analyze(past: list[dict], today: dict | None, level: float | None = None) ->
     return out
 
 
+MARGIN = 0.15        # % — 기준선을 이만큼 넘어야 '전환'으로 본다(1분 잡음 거르기)
+
+
+def conds(x: dict, m: float = MARGIN) -> dict[str, bool | None]:
+    """조건별 현재 상태(기준선 ±m% 안이면 None = 판단 보류)."""
+    def side(px, ref):
+        if px is None or not ref:
+            return None
+        r = (px / ref - 1) * 100
+        return True if r > m else False if r < -m else None
+    px = x.get("px")
+    out = {"ma5": side(px, x.get("ma5")), "bull": side(px, x.get("o")), "gap": side(px, x.get("prev"))}
+    if x.get("level"):
+        out["level"] = side(px, x["level"])
+    return out
+
+
+def flip_text(sym: str, k: str, v: bool, x: dict) -> str:
+    d = lambda n: f"${n:.2f}"
+    if k == "ma5":
+        return f"{sym} 5일선({d(x['ma5'])}) {'위로 다시 올라섬' if v else '아래로 내려감'} — {d(x['px'])}"
+    if k == "bull":
+        t = f"{sym} 시가({d(x['o'])}) {'위로 회복 — 오늘 양봉 진행' if v else '아래로 — 오늘 음봉 진행'} — {d(x['px'])}"
+        if x.get("streak_prev", 0) >= 2:
+            t += " · 3일 연속 양봉(적삼병) 조건 " + ("다시 충족 중" if v and x["px"] > x["prev"] else "무산 중(마감 전)")
+        return t
+    if k == "gap":
+        return f"{sym} 전일 종가({d(x['prev'])}) {'위로 회복' if v else '아래로 — 오늘 상승분 반납'} — {d(x['px'])}"
+    return f"{sym} {d(x['level'])} {'도달' if v else '아래로 다시 내려옴'} — {d(x['px'])}"
+
+
+def series_events(x: dict, series: list[tuple[int, float]], m: float = MARGIN) -> list[dict]:
+    """오늘 5분봉 종가를 처음부터 훑어 조건이 바뀐 시점을 찾는다(재시작·절전에도 같은 결과). 첫 판단은 기록만."""
+    if x.get("px") is None or not x.get("ma5") or not series:
+        return []
+    s4 = x["ma5"] * 5 - x["px"]                              # 직전 4일 종가 합
+    st, ev = {}, []
+    for ts, c in series:
+        y = dict(x, px=c, ma5=(s4 + c) / 5)
+        for k, v in conds(y, m).items():
+            if v is None:
+                continue
+            if k in st and st[k] != v:
+                ev.append({"ts": ts, "sym": x["sym"], "k": k, "up": v, "px": round(c, 2), "text": flip_text(x["sym"], k, v, y)})
+            st[k] = v
+    return ev
+
+
 def build(now: datetime | None = None) -> dict:
     now = now or datetime.now(timezone.utc)
     try:
@@ -102,12 +150,18 @@ def build(now: datetime | None = None) -> dict:
             row["day"] = tday
             row["at"] = (m.get("regularMarketTime") or 0) * 1000
             row["open"] = bool(today) and (now.timestamp() - (m.get("regularMarketTime") or 0) < 15 * 60)
+            if today:                                         # 오늘 5분봉 종가 흐름(마지막은 현재가)
+                ser = [(int(t) * 1000 + 5 * 60_000, c) for t, c in zip(ts, q.get("close") or []) if c]   # 봉이 끝난 시각
+                if ser:
+                    ser[-1] = (min(ser[-1][0], int(now.timestamp() * 1000)), today["c"])
+                row["_ev"] = series_events(row, ser)
         except Exception as e:  # noqa: BLE001
             row["err"] = type(e).__name__
         items.append(row)
     if not items:
         return {}
-    return {"date": cfg.get("date", ""), "title": cfg.get("title", ""), "memo": cfg.get("memo", ""),
+    events = sorted((e for it in items for e in it.pop("_ev", [])), key=lambda e: -e["ts"])
+    return {"date": cfg.get("date", ""), "events": events[:40], "title": cfg.get("title", ""), "memo": cfg.get("memo", ""),
             "items": items, "at": int(now.timestamp() * 1000)}
 
 

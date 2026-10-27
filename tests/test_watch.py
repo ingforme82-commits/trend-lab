@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from watch import analyze  # noqa: E402
+from watch import analyze, conds, series_events  # noqa: E402
 
 D = lambda d, o, h, l, c: {"d": d, "o": o, "h": h, "l": l, "c": c}
 PAST = [D("10-16", 101, 104, 93, 93.67), D("10-19", 104, 105, 98, 98.65), D("10-20", 94.5, 102.6, 91.4, 97.55),
@@ -33,6 +33,24 @@ class WatchTest(unittest.TestCase):
         self.assertNotIn("px", r)
         self.assertEqual([h["d"] for h in r["level_hits"]], ["a", "c"])
         self.assertAlmostEqual(r["to_level"], round((12 / 10.89 - 1) * 100, 2))
+
+
+class FlipTest(unittest.TestCase):
+    X = {"sym": "SOXL", "px": 94.9, "o": 95.0, "prev": 90.5, "ma5": 91.0, "streak_prev": 2}
+
+    def test_margin_holds_judgement(self):
+        self.assertIsNone(conds(dict(self.X, px=95.05))["bull"])          # 시가 ±0.15% 안 = 보류
+        self.assertFalse(conds(dict(self.X, px=94.5))["bull"])
+
+    def test_series_flip_below_open_breaks_three(self):
+        ser = [(1, 95.5), (2, 96.5), (3, 95.02), (4, 94.6), (5, 94.9)]
+        ev = series_events(dict(self.X, px=94.9), ser)
+        self.assertEqual([(e["ts"], e["k"], e["up"]) for e in ev], [(4, "bull", False)])
+        self.assertIn("무산 중", ev[0]["text"])
+
+    def test_ma5_break(self):
+        ev = series_events(dict(self.X, px=89.0), [(1, 93.0), (2, 89.0)])
+        self.assertIn(("ma5", False), [(e["k"], e["up"]) for e in ev])
 
 
 if __name__ == "__main__":

@@ -3,7 +3,26 @@
  "title": "오늘 밤 미국장 관전 포인트",
  "memo": "오늘 미국장 시작 SOXL이 5일선 위로 갭 상승하면서 적삼병으로 마감하는지가 가장 중요한 포인트. 내일 한국장 반도체 등에 큰 영향. KORU도 5일선 위지만 12달러 부근은 저항으로 보임.",
  "items": [
-  {"sym": "SOXL", "name": "SOXL (미국 반도체 3배)", "date": "2026-10-27", "focus": ["gap", "ma5", "three"]},
-  {"sym": "KORU", "name": "KORU (한국 3배)", "date": "2026-10-27", "focus": ["ma5", "level"], "level": 12}
+  {
+   "sym": "SOXL",
+   "name": "SOXL (미국 반도체 3배)",
+   "date": "2026-10-27",
+   "focus": [
+    "gap",
+    "ma5",
+    "three"
+   ]
+  },
+  {
+   "sym": "KORU",
+   "name": "KORU (한국 3배)",
+   "date": "2026-10-27",
+   "focus": [
+    "ma5",
+    "three",
+    "level"
+   ],
+   "level": 12
+  }
  ]
 }

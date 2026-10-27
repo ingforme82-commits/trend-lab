@@ -643,3 +643,4 @@ body{overflow-x:hidden}
 /* SOXL·KORU 점검 */
 .lvbox{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 12px}
 .lv{margin:6px 0 8px}.lv ul{margin:0;padding-left:18px;font-size:13.5px;line-height:1.65}
+.wt-ev{margin:0;padding-left:18px;font-size:13.5px;line-height:1.65}
