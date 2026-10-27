@@ -62,11 +62,15 @@ async function loadTicks() {
       }
       const x = map[t.k];
       const kr = (window.trlKr || {})[t.k];
+      const sg = (v) => `<b class="${v > 0.005 ? "c-up" : v < -0.005 ? "c-dn" : "c-fl"}">${v > 0 ? "+" : ""}${v.toFixed(2)}%</b>`;
+      const h24 = x && +x.prevDayPx ? (+x.markPx / +x.prevDayPx - 1) * 100 : null;
+      const meta = x && +x.dayNtlVlm > 0 ? `<p class="t-meta">24h 거래대금 $${fmtVol(+x.dayNtlVlm)}${x.oraclePx && +x.oraclePx ? ` · 기초가격 대비 ${sg((+x.markPx / +x.oraclePx - 1) * 100)}` : ""}</p>` : "";
       if (kr && kr.px && (kr.open || !x)) {               // 한국 정규장: 한국거래소 실시간 가격 · 전일 종가 대비(네이버)
         const ck = kr.chg > 0.005 ? "c-up" : kr.chg < -0.005 ? "c-dn" : "c-fl";
         const v = t.k === "KR200" ? kr.px.toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Math.round(kr.px).toLocaleString("ko-KR") + "원";
-        const hx = x ? `24시간 ${(t.u || "") + (+x.markPx).toLocaleString("ko-KR", { maximumFractionDigits: t.d })}` : "";
-        return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">${v}</p><p class="t-ch ${ck}">${kr.chg > 0 ? "▲" : kr.chg < 0 ? "▼" : ""} ${kr.chg > 0 ? "+" : ""}${kr.chg.toFixed(2)}%</p><p class="fine" style="margin:2px 0 0">전일 종가 대비 · 장중${hx ? " · " + hx : ""}</p></div>`;
+        const age = Date.now() - kr.at > 10 * 60000 ? ` · <b class="h-warn">${Math.round((Date.now() - kr.at) / 60000)}분 전 값</b>` : "";
+        return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">${v}</p><p class="t-ch ${ck}">${kr.chg > 0 ? "▲" : kr.chg < 0 ? "▼" : ""} ${kr.chg > 0 ? "+" : ""}${kr.chg.toFixed(2)}% <small>정규장</small></p>
+          <p class="t-meta">한국거래소 ${hhmm(KSTof(kr.at))}${age}${h24 != null ? ` · 24h 프록시 ${sg(h24)}` : ""}</p>${meta}</div>`;
       }
       if (!x) return "";
       const px = +x.markPx, prev = +x.prevDayPx, ch = prev ? (px / prev - 1) * 100 : 0;
@@ -75,17 +79,23 @@ async function loadTicks() {
       lastPx[t.k] = px;
       const val = (t.u || "") + px.toLocaleString("ko-KR", { minimumFractionDigits: t.d, maximumFractionDigits: t.d }) + (t.suf || "");
       const won = t.won && krw ? `<p class="fine" style="margin:2px 0 0">원화 환산 약 ${(Math.round(px * krw / 100) * 100).toLocaleString("ko-KR")}원</p>` : "";
-      const h24 = ["KR200", "SMSN", "SKHX"].includes(t.k) ? `<p class="fine" style="margin:2px 0 0">24시간 거래 · 24시간 전 대비</p>` : "";
-      return `<div class="tick${flash}" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">${val}</p><p class="t-ch ${cls}">${ch > 0 ? "▲" : ch < 0 ? "▼" : ""} ${ch > 0 ? "+" : ""}${ch.toFixed(2)}%</p>${won}${h24}</div>`;
+      // 정규장 기준(한국: 네이버 마감값, 미국: 야후) — 24시간 대비와 따로 표시
+      const rg = kr && kr.px ? { chg: kr.chg, at: kr.at, open: kr.open, src: "한국거래소" } : (window.trlReg || {})[t.k] ? { ...(window.trlReg || {})[t.k], src: "정규장" } : null;
+      const reg = rg ? `<p class="t-meta">정규장 ${sg(rg.chg)} ${rg.open ? "장중" : `마감 ${mdhm(rg.at)}`}</p>` : "";
+      return `<div class="tick${flash}" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">${val}</p><p class="t-ch ${cls}">${ch > 0 ? "▲" : ch < 0 ? "▼" : ""} ${ch > 0 ? "+" : ""}${ch.toFixed(2)}% <small>24시간</small></p>${won}${reg}${meta}</div>`;
     }).join("");
     $("#tickGrid").innerHTML = html;
     setTimeout(() => document.querySelectorAll(".tick.flash").forEach((e) => e.classList.remove("flash")), 900);
     const k = KST();
-    $("#tickStamp").textContent = `${k.getMonth() + 1}/${k.getDate()}(${DOW[k.getDay()]}) ${hhmm(k)} KST 갱신`;
+    $("#tickStamp").textContent = `${k.getMonth() + 1}/${k.getDate()}(${DOW[k.getDay()]}) ${hhmm(k)}:${String(k.getSeconds()).padStart(2, "0")} KST 수신 · 하이퍼리퀴드 24시간 선물 실시간`;
   } catch (e) {
     $("#tickStamp").textContent = "시세를 불러오지 못했습니다. 잠시 후 다시 시도합니다.";
   }
 }
+
+const fmtVol = (v) => (v >= 1e9 ? (v / 1e9).toFixed(1) + "B" : v >= 1e6 ? (v / 1e6).toFixed(1) + "M" : v >= 1e3 ? (v / 1e3).toFixed(0) + "K" : Math.round(v || 0) + "");
+const KSTof = (ms) => new Date(ms + (new Date().getTimezoneOffset() + 540) * 60000);
+const mdhm = (ms) => { const d = KSTof(ms); return `${d.getMonth() + 1}/${d.getDate()} ${hhmm(d)}`; };
 
 /* ───────── 2. 체크포인트 ───────── */
 async function loadChecks() {

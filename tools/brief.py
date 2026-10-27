@@ -131,9 +131,10 @@ def save(brief: dict) -> bool:
         hist = json.loads(BRIEFS.read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001
         hist = []
-    old = next((h for h in hist if h.get("day") == day), None)
+    noon = lambda h: h.get("day") == day and h.get("slot", "12:00") == "12:00"
+    old = next((h for h in hist if noon(h)), None)
     if old and datetime.fromtimestamp(old["at"] / 1000, KST).hour >= 11:
         return False                                      # 오늘 12시 기록이 이미 있음
-    hist = [{"day": day, **brief}] + [h for h in hist if h.get("day") != day]   # 이른 시각 임시 기록은 12시 기록으로 바꾼다
-    BRIEFS.write_text(json.dumps(hist[:60], ensure_ascii=False, indent=1), encoding="utf-8")
+    hist = [{"day": day, "slot": "12:00", **brief}] + [h for h in hist if not noon(h)]   # 다른 슬롯 기록은 그대로
+    BRIEFS.write_text(json.dumps(hist[:120], ensure_ascii=False, indent=1), encoding="utf-8")
     return True

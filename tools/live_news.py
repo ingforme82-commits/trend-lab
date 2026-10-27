@@ -418,11 +418,12 @@ def build() -> dict:
     except Exception as e:  # noqa: BLE001
         log(f"변곡점 감지 건너뜀: {type(e).__name__}: {e}")
     try:                                                  # 해외 지수·화제 종목·많이 나온 종목
-        from market_extra import dow, kr_now, trending, us10y, world_and_spot
+        from market_extra import dow, kr_now, reg_quotes, trending, us10y, world_and_spot
         out["world"], out["spot"] = world_and_spot()
         out["dow"] = dow()
         out["us10y"] = us10y()
         out["kr"] = kr_now()
+        out["reg"] = reg_quotes()
         out["trending"] = trending(items)
     except Exception as e:  # noqa: BLE001
         log(f"해외 지수·종목 건너뜀: {type(e).__name__}: {e}")

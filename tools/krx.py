@@ -33,7 +33,11 @@ def _parse(d: dict) -> dict | None:
         at = int(datetime.fromisoformat(t).timestamp() * 1000)
     except ValueError:
         at = 0
-    return {"px": px, "prev": prev, "chg": round((px / prev - 1) * 100, 2) if prev else 0.0, "at": at,
+    val = _num(d.get("accumulatedTradingValueRaw"))
+    if not val and d.get("accumulatedTradingValue"):                 # 종목은 '4,347억' 형식
+        t = str(d["accumulatedTradingValue"]).replace(",", "")
+        val = float(t[:-1]) * 1e8 if t.endswith("억") else float(t[:-2]) * 1e6 if t.endswith("백만") else _num(t)
+    return {"px": px, "prev": prev, "chg": round((px / prev - 1) * 100, 2) if prev else 0.0, "at": at, "val": val or None,
             "day": t[:10], "status": d.get("marketStatus", ""), "cur": "KRW"}
 
 
@@ -62,7 +66,7 @@ def merge(yq: dict[str, dict | None]) -> dict[str, dict | None]:
     kr = quotes([s for s in yq if s.endswith((".KS", ".KQ")) or s in INDEX])
     for sym, q in kr.items():
         base = dict(yq.get(sym) or {})
-        base.update(px=q["px"], prev=q["prev"], at=q["at"], day=q["day"], cur="KRW", stale=False, live=q["status"] == "OPEN")
+        base.update(px=q["px"], prev=q["prev"], at=q["at"], day=q["day"], cur="KRW", stale=False, live=q["status"] == "OPEN", val=q.get("val"))
         yq[sym] = base
     return yq
 

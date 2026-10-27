@@ -7,3 +7,6 @@ tools/translate_cache.json
 tools/world_cache.json
 tools/sector_state.json
 tools/seen_cache.json
+tools/reg_cache.json
+tools/brief_slot.log
+tools/brief_slot.lock

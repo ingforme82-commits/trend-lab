@@ -181,3 +181,33 @@ def kr_now() -> dict:
         return {}
     names = {"^KS11": "KOSPI", "^KQ11": "KOSDAQ", "^KS200": "KR200", "005930.KS": "SMSN", "000660.KS": "SKHX"}
     return {names[k]: {"px": v["px"], "prev": v["prev"], "chg": v["chg"], "at": v["at"], "open": v["status"] == "OPEN"} for k, v in q.items()}
+
+
+REG = {"SP500": "^GSPC", "XYZ100": "^NDX", "EWY": "EWY", "KORU": "KORU", "SOXL": "SOXL"}
+REG_CACHE = ROOT / "tools" / "reg_cache.json"
+
+
+def reg_quotes() -> dict:
+    """하이퍼리퀴드 24시간 종목의 '정규장 기준' 비교값(야후). 키: 하이퍼리퀴드 코드.
+    px·prev(전일 정규장 종가)·chg·at(마지막 정규장 체결)·open(지금 정규장 중인지). 5분마다만 새로 받는다."""
+    try:
+        c = json.loads(REG_CACHE.read_text(encoding="utf-8"))
+        if datetime.now(timezone.utc).timestamp() - c["at"] < 290:
+            return c["data"]
+    except Exception:  # noqa: BLE001
+        pass
+    out = {}
+    now = datetime.now(timezone.utc).timestamp()
+    for k, sym in REG.items():
+        u = f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.request.quote(sym)}?range=1d&interval=1m"
+        try:
+            m = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"}), timeout=10).read())["chart"]["result"][0]["meta"]
+            px, prev = m.get("regularMarketPrice"), m.get("chartPreviousClose") or m.get("previousClose")
+            r = m.get("currentTradingPeriod", {}).get("regular", {})
+            if px and prev:
+                out[k] = {"px": px, "prev": prev, "chg": round((px / prev - 1) * 100, 2), "at": int(m.get("regularMarketTime", 0)) * 1000,
+                          "open": bool(r) and r.get("start", 0) <= now < r.get("end", 0)}
+        except Exception:  # noqa: BLE001
+            continue
+    REG_CACHE.write_text(json.dumps({"at": now, "data": out}), encoding="utf-8")
+    return out

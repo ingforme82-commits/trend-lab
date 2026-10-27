@@ -86,7 +86,7 @@ def run() -> tuple[list[dict], list[dict]]:
             if to3m is not None and to3m > 0 and not d.get("stale"): flags.append("3개월 고점 돌파")
             rows.append({"sym": sym, "name": name, "px": round(d["px"], 2), "chg": round(chg, 2), "cur": d.get("cur", "USD"),
                          "to52": None if to52 is None else round(to52, 1), "to3m": None if to3m is None else round(to3m, 1),
-                         "flags": flags, "at": d["at"], "stale": bool(d.get("stale"))})
+                         "flags": flags, "at": d["at"], "stale": bool(d.get("stale"))} | ({"val": d["val"]} if d.get("val") else {}))
             fresh = now.timestamp() * 1000 - d["at"] < 30 * 60_000      # 장중(30분 안에 체결된 값)일 때만 신호
             for f in flags:
                 key = f"{d['day']}:{sym}:{f}"
