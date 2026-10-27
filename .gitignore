@@ -14,3 +14,4 @@ tools/leadership_hist.json
 tools/leadership_dry.json
 tools/flows_cache.json
 tools/spot_auto.log
+tools/xcheck_cache.json

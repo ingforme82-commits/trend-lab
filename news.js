@@ -464,13 +464,16 @@
       const lag = n.got && n.got - n.ts >= 2 * 60000 ? ` · 수집 ${hm(n.got)}<small>(+${Math.round((n.got - n.ts) / 60000)}분)</small>` : "";
       const v = VER[n.verify] ? `<span class="nw-v ${VER[n.verify][1]}">${VER[n.verify][0]}${n.nsrc > 1 ? ` ${n.nsrc}곳` : ""}</span>` : "";
       const tr = n.tr === "auto" ? `<span class="nw-v v-tr" title="${esc(n.orig || "")}">🌐 자동 번역</span>` : n.tr === "fail" ? `<span class="nw-v v-warn">🌐 번역 실패·원문</span>` : "";
+      const XC = { ok: ["🌐 외신 확인", "v-ok"], ref: ["🌐 해외 보도", "v-one"], diff: ["⚠ 외신과 수치 다름", "v-warn"] };
+      const xc = n.xc && XC[n.xc.st] ? `<span class="nw-v ${XC[n.xc.st][1]}">${XC[n.xc.st][0]} · ${n.xc.src.map(esc).join("·")}</span>` : "";
+      const xcl = n.xc && XC[n.xc.st] ? `<p class="nw-xc"><b>원문</b> ${esc(n.xc.en)} <small class="dim">— ${esc(n.xc.src[0])}${n.xc.ko ? ` · 번역: ${esc(n.xc.ko)}` : ""}</small></p>` : "";
       const also = (n.also || []).length ? `<span class="nw-also">후속: ${n.also.map((a) => `${esc(a.osrc ? a.osrc + "·" + a.src : a.src)} ${hm(a.ts)}`).join(", ")}</span>` : "";
       return `<li class="nw${n.pivot ? " piv" : ""}${sel === n.ts ? " sel" : ""}${n.verify === "unconfirmed" ? " unv" : ""}" data-ts="${n.ts}">
         <div class="nw-t"><b>${hm(n.ts)}</b><span>${ago(n.ts)}</span></div>
         <div class="nw-b"><p class="nw-txt${n.kind === "섹터 시세" ? " sector" : ""}">${n.pivot ? "🔴 " : ""}${esc(n.text)}</p>${n.sub ? `<p class="nw-sub">${esc(n.sub)}</p>` : ""}${pv}
-          <p class="nw-m">${n.tags.map((t) => `<span class="nw-tag">${esc(t)}</span>`).join("")}${isStrat(n) ? `<span class="nw-tag strat">${esc(n.kind)}</span>` : ""}${v}${tr}
+          <p class="nw-m">${n.tags.map((t) => `<span class="nw-tag">${esc(t)}</span>`).join("")}${isStrat(n) ? `<span class="nw-tag strat">${esc(n.kind)}</span>` : ""}${v}${xc}${tr}
           <span class="nw-src">${n.verify ? "최초 " : ""}${n.osrc ? `${esc(n.osrc)} · ${esc(n.src)} 경유` : esc(n.src)} ${hm(n.ts)}${lag}</span></p>
-          ${also ? `<p class="nw-m">${also}</p>` : ""}${rs ? `<p class="nw-m">${rs}</p>` : ""}</div></li>`;
+          ${xcl}${also ? `<p class="nw-m">${also}</p>` : ""}${rs ? `<p class="nw-m">${rs}</p>` : ""}</div></li>`;
     }).join("") || `<li class="empty">조건에 맞는 속보가 없습니다.</li>`;
     q("#newsMore").hidden = list.length <= shown;
   }

@@ -403,6 +403,11 @@ def build() -> dict:
             n_strat += 1
         else:
             n_other += 1
+    try:                                                  # 🌐 김치터미널 속보 ↔ 해외 언론 원문 헤드라인 교차 확인
+        from xcheck import run as xcheck
+        xcheck(items, rss, lambda en: fix_terms(en, _google_translate(en)))
+    except Exception as e:  # noqa: BLE001
+        log(f"외신 교차 확인 건너뜀: {type(e).__name__}: {e}")
     now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
     tg_last = max((i["ts"] for i in tg_items if i["src"] in {CHANNELS[c] for c in FAST if c in CHANNELS}), default=0)
     tg_got = max((i.get("got") or 0 for i in tg_items), default=0)
