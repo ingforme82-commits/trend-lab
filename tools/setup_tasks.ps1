@@ -1,4 +1,4 @@
-# 트렌드랩 예약 작업 등록(메인 PC, 운영자가 직접 실행)
+﻿# 트렌드랩 예약 작업 등록(메인 PC, 운영자가 직접 실행)
 #   powershell -ExecutionPolicy Bypass -File C:\projects\trend-lab-site\tools\setup_tasks.ps1
 # 1) 트렌드랩_깨어있기   : 로그온 시 시작, 전원 연결 중 자동 대기(절전) 방지 — 화면은 꺼짐, 배터리일 땐 동작 안 함
 # 2) 트렌드랩_브리핑0720 : 평일 07:20 밤사이 점검 브리핑(대기 중이면 PC를 깨워 실행)
