@@ -258,12 +258,12 @@
     const list = (m && m.sectors) || [];
     if (!list.length) return "";
     const bar = (v) => `<span class="mm-bar"><i style="width:${Math.max(2, Math.min(100, v))}%"></i></span>`;
-    const rows = list.map((s, i) => `<li><b class="mm-rk">${i + 1}</b><span class="mm-n">${s.us ? "🇺🇸 " : ""}${esc(s.name)}</span>${bar(s.momentum)}<b class="mm-v">${s.momentum.toFixed(0)}</b>
+    const rows = list.map((s, i) => `<li><b class="mm-rk" title="점수 순위">${s.rank ? s.rank + "위" : i + 1}</b><span class="mm-n">${s.us ? "🇺🇸 " : ""}${esc(s.name)}</span>${bar(s.momentum)}<b class="mm-v">${s.momentum.toFixed(0)}</b>
       ${compact ? "" : `<small class="dim">종목 중앙값 ${s.median.toFixed(0)} · 확산도 ${s.breadth.toFixed(0)} · 상승 ${s.up.toFixed(0)}%${s.share_shift != null ? ` · ${s.us ? "거래대금 가속도(QQQ 대비)" : "거래대금 점유율"} ×${s.share_shift.toFixed(2)}` : ""}${s.us ? " · 나스닥100 대비 상대강도 · 마지막 정규장 기준" : ""}</small>`}</li>`).join("");
     const st = m.at ? `${hm(m.at)} 기준${m.open ? "" : " · 장 마감·개장 전(전일 값 포함)"}${m.late ? ` · <b class="h-warn">지연 ${m.late}/${m.n}종목</b>` : ""}` : "";
     const usd = m.us_day ? ` · 🇺🇸 미국 ${+m.us_day.slice(5, 7)}/${+m.us_day.slice(8, 10)} 정규장` : "";
     return `<div class="mm"><p class="mm-h">📈 섹터 모멘텀 <small>${st}${usd}</small></p><ol class="mm-l">${rows}</ol>
-      ${compact ? "" : `<p class="mm-f">거래대금 가속도·상대강도·5일선·신고가 근접 4개 지표의 종목 간 순위(0~100)로 계산 · 수급 미반영 · 매수·매도 권유 아님</p>`}</div>`;
+      ${compact ? "" : `<p class="mm-f">순서는 고정(미국 반도체·한국 반도체·2차전지·방산·원전·조선), 왼쪽 'n위'는 점수 순위 · 거래대금 가속도·상대강도·5일선·신고가 근접 4개 지표의 종목 간 순위(0~100)로 계산 · 수급 미반영 · 매수·매도 권유 아님</p>`}</div>`;
   }
   // 🔬 SOXL · KORU 점검(레버리지 3배 ETF): 갭·5일선·20일선·연속 양봉·20일 고저·거래량·기초지수 ×3·24시간 시세
   function levHtml(L, compact) {

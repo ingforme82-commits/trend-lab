@@ -191,6 +191,15 @@ def build(cards: list[dict], idx: dict[str, dict], hist: dict[str, dict], now_ms
 
 
 US_SECTOR, US_IDX, US_MKT = "미국 반도체", "^NDX", "QQQ"
+ORDER = ["미국 반도체", "한국 반도체", "2차전지", "방산", "원전", "조선"]      # 화면 표시 순서(운영자 지정, 2026-10-27)
+
+
+def order_sectors(secs: list[dict], order: list[str] = ORDER) -> list[dict]:
+    """점수 순위(rank)를 붙인 뒤 정해진 순서로 다시 줄 세운다(목록에 없는 섹터는 뒤에 점수 순)."""
+    for i, s in enumerate(sorted(secs, key=lambda x: -x["momentum"]), 1):
+        s["rank"] = i
+    pos = {n: i for i, n in enumerate(order)}
+    return sorted(secs, key=lambda s: (pos.get(s["name"], len(order)), s["rank"]))
 US_CACHE = ROOT / "tools" / "leadership_us.json"
 
 
@@ -266,6 +275,7 @@ def public(cards: list[dict]) -> dict:
     for s in res["sectors"]:
         if s["name"] in extra:
             s["us"] = True
+    res["sectors"] = order_sectors(res["sectors"])
     late = sum(1 for x in res["stocks"] if x["note"] == "지연")
     return {"at": res["at"], "sectors": res["sectors"], "open": (idx.get("^KS11") or {}).get("status") == "OPEN",
             "late": late, "n": len(res["stocks"]), "hist_day": res["hist_day"], "us_day": us_day}

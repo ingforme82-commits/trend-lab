@@ -35,5 +35,15 @@ class MomentumRefTest(unittest.TestCase):
         self.assertEqual(out["미국 반도체"]["share_shift"], 2.0)       # (3/1) ÷ QQQ 1.5
 
 
+class OrderTest(unittest.TestCase):
+    def test_fixed_order_keeps_score_rank(self):
+        from leadership import order_sectors
+        secs = [{"name": n, "momentum": m} for n, m in (("조선", 65), ("한국 반도체", 61), ("미국 반도체", 56), ("방산", 54), ("2차전지", 52), ("원전", 30), ("기타", 70))]
+        out = order_sectors(secs)
+        self.assertEqual([s["name"] for s in out], ["미국 반도체", "한국 반도체", "2차전지", "방산", "원전", "조선", "기타"])
+        self.assertEqual({s["name"]: s["rank"] for s in out}["조선"], 2)
+        self.assertEqual(out[0]["rank"], 4)
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -611,7 +611,7 @@ body{overflow-x:hidden}
 .mm{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 12px}
 .mm-h{margin:0 0 6px;font-weight:700}.mm-h small{font-weight:400;color:var(--sub);font-size:12px}
 .mm-l{list-style:none;margin:0;padding:0}
-.mm-l li{display:grid;grid-template-columns:20px 84px 1fr 30px;align-items:center;gap:4px 8px;padding:3px 0;font-size:14px}
+.mm-l li{display:grid;grid-template-columns:30px 100px 1fr 30px;align-items:center;gap:4px 8px;padding:3px 0;font-size:14px}
 .mm-l li small{grid-column:2/-1;font-size:11.5px}
 .mm-rk{color:var(--sub);font-size:12px}.mm-v{text-align:right;font-variant-numeric:tabular-nums}
 .mm-bar{height:8px;background:var(--bg2);border-radius:4px;overflow:hidden}.mm-bar i{display:block;height:100%;background:var(--gold,#c9a14a);border-radius:4px}
