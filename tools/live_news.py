@@ -424,6 +424,11 @@ def build() -> dict:
         out["us10y"] = us10y()
         out["kr"] = kr_now()
         out["reg"] = reg_quotes()
+        try:
+            from leadership import public as momentum
+            out["momentum"] = momentum(sector_cards)
+        except Exception as e:  # noqa: BLE001
+            log(f"섹터 모멘텀 건너뜀: {type(e).__name__}: {e}")
         out["trending"] = trending(items)
     except Exception as e:  # noqa: BLE001
         log(f"해외 지수·종목 건너뜀: {type(e).__name__}: {e}")
@@ -466,7 +471,7 @@ def _upload(data: dict) -> bool:
             old = json.loads(base64.b64decode(j["content"]).decode("utf-8"))
         except Exception:  # noqa: BLE001
             old = None
-    if old and all(old.get(k) == data.get(k) for k in ("items", "moves", "world", "spot", "trending", "sectors", "dow", "us10y", "kr")):
+    if old and all(old.get(k) == data.get(k) for k in ("items", "moves", "world", "spot", "trending", "sectors", "dow", "us10y", "kr", "momentum")):
         return False                                   # 바뀐 글 없음 → 커밋 안 함
     body = {"message": f"속보 갱신 {datetime.now(KST):%m-%d %H:%M}", "branch": BRANCH,
             "content": base64.b64encode(json.dumps(data, ensure_ascii=False).encode("utf-8")).decode()}

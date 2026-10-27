@@ -97,6 +97,7 @@ def compose(slot: str, d: dict, day: str) -> dict:
             rec["checkpoints"] = []
     if slot == "1400":
         kr_secs = [c for c in d.get("sectors") or [] if any(r.get("cur") == "KRW" for r in c.get("rows", []))]
+        rec["momentum"] = (d.get("momentum") or {}).get("sectors", [])
         rec["kr_top"] = sorted(({"name": r["name"], "sector": c["name"], "chg": r["chg"], "val": r.get("val")}
                                 for c in kr_secs for r in c["rows"]), key=lambda x: -x["chg"])[:8]
     return rec

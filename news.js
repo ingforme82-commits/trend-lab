@@ -30,7 +30,7 @@
   let news = [], moves = [], series = {}, notes = [], candles = {}, candles1 = {}, sel = null, tag = "전체", shown = 15, health = null;
   // 속보 필터: 중요도·시간·검증·정렬(분류는 tag 칩)
   const flt = { imp: "all", hrs: 0, ver: "all", sort: "new" };
-  let world = [], spot = [], trend = [], sectors = [], brief = null, briefs = [], kwFilter = null;   // kwFilter: {label, rx}
+  let world = [], spot = [], trend = [], sectors = [], brief = null, briefs = [], kwFilter = null, momentum = null;   // kwFilter: {label, rx}
 
   /* ── 데이터 ── */
   let apiBlockedUntil = 0;
@@ -49,7 +49,7 @@
       const j = await fetchNews();
       news = j.items || []; moves = j.moves || []; series = j.series || {}; health = j.health || null;
       world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
-      window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
+      window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
       window.trlMoves = moves; window.trlSeries = series; window.trlNews = news;
       drawHealth(j.updated);
       drawTicker();
@@ -253,6 +253,17 @@
 
   /* ── 섹터: 처음엔 '섹터 이름 + 평균'만 한 줄로, 누르면 그 섹터 종목 등락이 펼쳐진다 ── */
   let openSector = null;
+  // 📈 섹터 모멘텀(국내): 4개 지표 순위 기반, 수급 미반영 — 섹터 단위만 공개
+  function momHtml(m, compact) {
+    const list = (m && m.sectors) || [];
+    if (!list.length) return "";
+    const bar = (v) => `<span class="mm-bar"><i style="width:${Math.max(2, Math.min(100, v))}%"></i></span>`;
+    const rows = list.map((s, i) => `<li><b class="mm-rk">${i + 1}</b><span class="mm-n">${esc(s.name)}</span>${bar(s.momentum)}<b class="mm-v">${s.momentum.toFixed(0)}</b>
+      ${compact ? "" : `<small class="dim">종목 중앙값 ${s.median.toFixed(0)} · 확산도 ${s.breadth.toFixed(0)} · 상승 ${s.up.toFixed(0)}%${s.share_shift != null ? ` · 거래대금 점유율 ×${s.share_shift.toFixed(2)}` : ""}</small>`}</li>`).join("");
+    const st = m.at ? `${hm(m.at)} 기준${m.open ? "" : " · 장 마감·개장 전(전일 값 포함)"}${m.late ? ` · <b class="h-warn">지연 ${m.late}/${m.n}종목</b>` : ""}` : "";
+    return `<div class="mm"><p class="mm-h">📈 섹터 모멘텀 <small>국내 · ${st}</small></p><ol class="mm-l">${rows}</ol>
+      ${compact ? "" : `<p class="mm-f">거래대금 가속도·상대강도·5일선·신고가 근접 4개 지표의 종목 간 순위(0~100)로 계산 · 수급 미반영 · 매수·매도 권유 아님</p>`}</div>`;
+  }
   function drawSectors() {
     const box = q("#sectorBox"); if (!box) return;
     if (!sectors.length) { box.hidden = true; return; }
@@ -273,7 +284,7 @@
           <small>${won(r) ? `${Math.round(r.px).toLocaleString("ko-KR")}원${r.val ? ` · 거래대금 ${eok(r.val)}` : ""}` : `$${r.px}`}${r.to3m != null && r.to3m > 0 ? " · 3개월 고점 돌파" : r.to52 != null ? ` · 52주 고가 ${r.to52 > 0 ? "+" : ""}${r.to52}%` : ""}</small>
           ${r.flags.length ? `<span class="sec-f">${r.flags.map(esc).join(" · ")}</span>` : ""}</div>`).join("")}</div>
       </div>` : "";
-    box.innerHTML = `<p class="spot-h">📊 섹터 시세 <small>섹터를 누르면 종목별 등락이 보입니다 · 주황 점은 신호(±3%·고점 돌파) 종목이 있는 섹터</small></p>
+    box.innerHTML = momHtml(momentum) + `<p class="spot-h">📊 섹터 시세 <small>섹터를 누르면 종목별 등락이 보입니다 · 주황 점은 신호(±3%·고점 돌파) 종목이 있는 섹터</small></p>
       <div class="sc-bar">${chips}</div>${panel}`;
   }
 
@@ -311,7 +322,8 @@
     const cps = (b.checkpoints || []).length ? `<div class="bcol"><h4>🗓️ 오늘 체크포인트</h4><ul class="bn">${b.checkpoints.map((c) => `<li>${c.time ? `<b>${esc(c.time)}</b> ` : ""}${esc(c.title)}</li>`).join("")}</ul></div>` : "";
     const ktop = (b.kr_top || []).length ? `<div class="bcol"><h4>🇰🇷 국내 감시 종목 상승 상위</h4><ul class="bn">${b.kr_top.map((r) => `<li>${esc(r.name)} ${sg(r.chg)} <small class="dim">${esc(r.sector)}${r.val ? ` · 거래대금 ${eok(r.val)}` : ""}</small></li>`).join("")}</ul></div>` : "";
     const rg = b.reg && b.reg.SP500 ? `<div class="bcol"><h4>🇺🇸 미국 정규장 마감</h4><div class="bfs">${[["SP500", "S&P500"], ["XYZ100", "나스닥100"], ["SOXL", "SOXL"], ["EWY", "EWY"]].filter(([k]) => b.reg[k]).map(([k, n]) => `<span class="bf"><small>${n}</small> ${sg(b.reg[k].chg)}</span>`).join("")}</div></div>` : "";
-    return top + cps + rg + ktop + `<div class="bcol"><h4>📍 가장 크게 움직인 순간</h4><ul>${mv || '<li class="dim">최근 24시간 변곡점 없음</li>'}</ul></div>
+    const mom = (b.momentum || []).length ? `<div class="bcol">${momHtml({ sectors: b.momentum }, true)}</div>` : "";
+    return top + cps + rg + mom + ktop + `<div class="bcol"><h4>📍 가장 크게 움직인 순간</h4><ul>${mv || '<li class="dim">최근 24시간 변곡점 없음</li>'}</ul></div>
       <div class="bcol"><h4>📊 섹터 강약</h4><ul>${sec || '<li class="dim">-</li>'}</ul></div>
       <div class="bcol"><h4>📈 뉴스에 많이 나온 종목</h4><div class="bts">${tr || '<span class="dim">-</span>'}</div>
         <h4 style="margin-top:12px">🌏 해외 지수</h4><p>상승 ${w.up || 0} · 하락 ${w.down || 0}${w.best ? ` · 최강 ${esc(w.best.name)} ${sg(w.best.chg)} · 최약 ${esc(w.worst.name)} ${sg(w.worst.chg)}` : ""}</p>

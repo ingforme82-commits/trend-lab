@@ -175,6 +175,20 @@ def build(cards: list[dict], idx: dict[str, dict], hist: dict[str, dict], now_ms
             "hist_day": max((h.get("last", "") for h in hist.values()), default="")}
 
 
+def public(cards: list[dict]) -> dict:
+    """사이트용: 섹터 모멘텀만(종목별 점수·순위는 넣지 않는다 — 종목 추천처럼 보이지 않게)."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from krx import quotes
+    syms = [r["sym"] for c in cards for r in c.get("rows", []) if r.get("cur") == "KRW"]
+    if not syms:
+        return {}
+    idx = quotes(["^KS11", "^KQ11"])
+    res = build(cards, idx, history(syms), int(datetime.now(timezone.utc).timestamp() * 1000))
+    late = sum(1 for x in res["stocks"] if x["note"] == "지연")
+    return {"at": res["at"], "sectors": res["sectors"], "open": (idx.get("^KS11") or {}).get("status") == "OPEN",
+            "late": late, "n": len(res["stocks"]), "hist_day": res["hist_day"]}
+
+
 def main() -> None:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from krx import quotes
