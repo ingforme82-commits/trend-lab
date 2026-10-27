@@ -452,6 +452,11 @@ def build() -> dict:
         out["dow"] = dow()
         out["us10y"] = us10y()
         out["ust"] = ust()
+        try:
+            from official import build as official
+            out["official"] = official()
+        except Exception as e:  # noqa: BLE001
+            log(f"공식 데이터 건너뜀: {type(e).__name__}: {e}")
         out["kr"] = kr_now()
         out["reg"] = reg_quotes()
         try:
@@ -525,7 +530,7 @@ def _upload(data: dict) -> bool:
             old = json.loads(base64.b64decode(j["content"]).decode("utf-8"))
         except Exception:  # noqa: BLE001
             old = None
-    if old and all(old.get(k) == data.get(k) for k in ("items", "moves", "world", "spot", "trending", "sectors", "dow", "us10y", "ust", "kr", "momentum", "flows", "watch", "lev")):
+    if old and all(old.get(k) == data.get(k) for k in ("items", "moves", "world", "spot", "trending", "sectors", "dow", "us10y", "ust", "kr", "momentum", "flows", "watch", "lev", "official")):
         return False                                   # 바뀐 글 없음 → 커밋 안 함
     body = {"message": f"속보 갱신 {datetime.now(KST):%m-%d %H:%M}", "branch": BRANCH,
             "content": base64.b64encode(json.dumps(data, ensure_ascii=False).encode("utf-8")).decode()}

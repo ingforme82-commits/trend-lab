@@ -441,6 +441,12 @@
       ${(b.macro || []).length ? `<div class="bcol"><h4>🧾 경제지표 발표 <small class="dim">최근 12시간</small></h4><ul class="bn">${b.macro.map(li).join("")}</ul></div>` : ""}
       ${(b.heads || []).length ? `<div class="bcol"><h4>📰 주요 속보 <small class="dim">최근 3시간</small></h4><ul class="bn">${b.heads.map(li).join("")}</ul></div>` : ""}
       ${(b.analysis || []).length ? `<div class="bcol"><h4>📝 텔레 시황 분석 <small class="dim">최근 12시간 · 중요도 순</small></h4><ul class="bn">${b.analysis.map((n) => `<li><b>${hm(n.ts)}</b> ${esc(n.text)}${n.sub ? `<br><small class="dim">${esc(n.sub)}</small>` : ""} <small class="dim">${esc(n.src)}</small></li>`).join("")}</ul></div>` : ""}` : "";
+    const of = b.official || {};
+    const ofh = (of.ust || of.eia || (of.bls || []).length) ? `<div class="bcol"><h4>🏛 공식 발표 데이터 <small class="dim">미 재무부·EIA·BLS 원자료</small></h4><ul class="bn">
+      ${of.ust ? `<li><b>미 국채 종가</b> <small class="dim">${esc(of.ust.date)}</small><br>${[["3M", "3개월"], ["2Y", "2년"], ["10Y", "10년"], ["30Y", "30년"]].filter(([k]) => of.ust.rates[k] && of.ust.rates[k].v != null).map(([k, n]) => `${n} ${of.ust.rates[k].v.toFixed(2)}%${of.ust.rates[k].bp ? ` <small class="${cls(of.ust.rates[k].bp)}">${of.ust.rates[k].bp > 0 ? "+" : ""}${of.ust.rates[k].bp}bp</small>` : ""}`).join(" · ")}${of.ust.s10_2 != null ? `<br><small class="dim">10년−2년 ${of.ust.s10_2}bp · 10년−3개월 ${of.ust.s10_3m}bp</small>` : ""}</li>` : ""}
+      ${of.eia ? `<li><b>EIA 주간 석유 재고</b> <small class="dim">${esc(of.eia.week)} 주 · 백만 배럴 · 전주 대비</small><br>${of.eia.items.map((x) => `${esc(x.name)} ${x.v.toFixed(1)} <small class="${cls(x.chg)}">${x.chg > 0 ? "+" : ""}${x.chg.toFixed(2)}</small>`).join(" · ")}</li>` : ""}
+      ${(of.bls || []).length ? `<li><b>BLS 물가·고용</b> <small class="dim">${esc(of.bls[0].period)}</small><br>${of.bls.filter((x) => x.v != null).map((x) => `${esc(x.name)} ${x.v > 0 && x.unit.startsWith("천") ? "+" : ""}${x.v}${x.unit.startsWith("%") ? "%" : x.unit.startsWith("천") ? "천 명" : ""}`).join(" · ")}<br><small class="dim">물가는 전년 같은 달 대비, 고용은 전월 대비 증감</small></li>` : ""}
+    </ul></div>` : "";
     const cps = (b.checkpoints || []).length ? `<div class="bcol"><h4>🗓️ 오늘 체크포인트</h4><ul class="bn">${b.checkpoints.map((c) => `<li>${c.time ? `<b>${esc(c.time)}</b> ` : ""}${esc(c.title)}</li>`).join("")}</ul></div>` : "";
     const ktop = (b.kr_top || []).length ? `<div class="bcol"><h4>🇰🇷 국내 감시 종목 상승 상위</h4><ul class="bn">${b.kr_top.map((r) => `<li>${esc(r.name)} ${sg(r.chg)} <small class="dim">${esc(r.sector)}${r.val ? ` · 거래대금 ${eok(r.val)}` : ""}</small></li>`).join("")}</ul></div>` : "";
     const rg = b.reg && b.reg.SP500 ? `<div class="bcol"><h4>🇺🇸 미국 정규장 마감</h4><div class="bfs">${[["SP500", "S&P500"], ["XYZ100", "나스닥100"], ["SOXL", "SOXL"], ["EWY", "EWY"]].filter(([k]) => b.reg[k]).map(([k, n]) => `<span class="bf"><small>${n}</small> ${sg(b.reg[k].chg)}</span>`).join("")}</div></div>` : "";
@@ -448,7 +454,7 @@
     const mom = (b.momentum || []).length ? `<div class="bcol">${momHtml({ sectors: b.momentum }, true)}</div>` : "";
     const lv = b.lev && (b.lev.items || []).length ? `<div class="bwide">${levHtml(b.lev, true)}</div>` : "";
     const ev = lv + (b.watch && (b.watch.items || []).length ? `<div class="bwide">${watchHtml(b.watch, true)}</div>` : "") + (b.eve && (b.eve.fut || []).length ? eveHtml(b.eve) : "");
-    return ev + top + cps + rg + mom + fl + ktop + `<div class="bcol"><h4>📍 가장 크게 움직인 순간</h4><ul>${mv || '<li class="dim">최근 24시간 변곡점 없음</li>'}</ul></div>
+    return ev + top + ofh + cps + rg + mom + fl + ktop + `<div class="bcol"><h4>📍 가장 크게 움직인 순간</h4><ul>${mv || '<li class="dim">최근 24시간 변곡점 없음</li>'}</ul></div>
       <div class="bcol"><h4>📊 섹터 강약</h4><ul>${sec || '<li class="dim">-</li>'}</ul></div>
       <div class="bcol"><h4>📈 뉴스에 많이 나온 종목</h4><div class="bts">${tr || '<span class="dim">-</span>'}</div>
         <h4 style="margin-top:12px">🌏 해외 지수</h4><p>상승 ${w.up || 0} · 하락 ${w.down || 0}${w.best ? ` · 최강 ${esc(w.best.name)} ${sg(w.best.chg)} · 최약 ${esc(w.worst.name)} ${sg(w.worst.chg)}` : ""}</p>
