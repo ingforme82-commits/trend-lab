@@ -237,7 +237,7 @@ def cmd_notes(a) -> None:
 
 def cmd_notice(a) -> None:
     site = load(SITE)
-    site["notice"] = {"text": "", "until": ""} if a.clear else {"text": a.text or "", "until": a.until or ""}
+    site["notice"] = {"text": "", "until": ""} if a.clear else {"text": a.text or "", "until": a.until or "", "pin": True}
     save(SITE, site)
     print("공지 삭제" if a.clear else f"공지: {a.text} (~{a.until or '계속'})")
     after(a, "공지 " + ("삭제" if a.clear else "변경"))

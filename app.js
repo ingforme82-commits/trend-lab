@@ -373,7 +373,9 @@ async function loadStudies() {
     const label = (s) => { const se = site.series[s.series] || {}; return `${se.emoji || ""} ${se.short || ""}${s.no ? ` ${s.no}회` : ""}`; };
 
     const nt = site.notice || {};
-    if (nt.text && (!nt.until || nt.until >= today)) { $("#notice").innerHTML = `<div class="wrap">📢 ${esc(nt.text)}</div>`; $("#notice").hidden = false; }
+    window.__pinNotice = !!(nt.pin && nt.text && (!nt.until || nt.until >= today));
+    if (window.__pinNotice) { $("#notice").innerHTML = `<div class="wrap">📢 ${esc(nt.text)}</div>`; $("#notice").hidden = false; }
+    else loadBand();                                       // 고정 공지(pin)가 없으면 맨 위 띠 = 최근 정시 브리핑 요약
 
     $("#heroStudy").innerHTML = `<p class="hc-tag">다음 그룹 스터디</p>` + ups.map((s, i) => `
       <a class="hc-item${i ? " sub" : ""}" href="study.html?id=${encodeURIComponent(s.id)}">
@@ -453,6 +455,54 @@ async function loadStudies() {
     }).join("");
   } catch (e) { console.error(e); }
 }
+
+/* ── 맨 위 띠: 하루 4번(07:20 오전 · 14:00 오후 · 20:05 저녁 · 22:15 밤·새벽) 정시 브리핑 기록에서 수치만 뽑아 고정 ── */
+const BAND = { "07:20": ["🌅", "오전"], "14:00": ["🕑", "오후"], "20:05": ["🌆", "저녁"], "22:15": ["🌙", "밤·새벽"] };
+const pc = (v) => v == null ? "" : `${v > 0 ? "+" : ""}${(+v).toFixed(2)}%`;
+function bandText(h) {
+  const P = [];
+  const fut = (n) => ((h.eve || {}).fut || []).find((f) => f.name === n) || {};
+  const oil = (n) => ((h.eve || {}).oil || []).find((f) => f.name === n) || {};
+  const reg = h.reg || {}, kr = h.kr || {}, u = h.ust || {};
+  const w = (h.watch || {}).items || [];
+  const wt = w.filter((x) => x.px != null).map((x) => `${x.sym} ${pc(x.chg)}${x.three ? (x.open ? " 적삼병 조건 충족 중" : " 적삼병 조건 충족 마감") : x.bull === false ? " 음봉" : ""}`);
+  if (h.slot === "07:20") {
+    if (reg.SP500) P.push(`미국 마감 S&P500 ${pc(reg.SP500.chg)} · 나스닥100 ${pc((reg.XYZ100 || {}).chg)}`);
+    if (reg.SOXL) P.push(`SOXL ${pc(reg.SOXL.chg)}`);
+    if (u["10Y"]) P.push(`미 10년물 ${u["10Y"].px.toFixed(3)}%`);
+    P.push(...wt);
+    if ((h.checkpoints || []).length) P.push(`오늘: ${h.checkpoints.slice(0, 2).map((c) => (c.time ? c.time + " " : "") + c.title).join(", ")}`);
+  } else if (h.slot === "14:00") {
+    if (kr.KOSPI) P.push(`코스피 ${pc(kr.KOSPI.chg)} · 코스닥 ${pc((kr.KOSDAQ || {}).chg)}`);
+    if (kr.SMSN) P.push(`삼성전자 ${pc(kr.SMSN.chg)} · SK하이닉스 ${pc((kr.SKHX || {}).chg)}`);
+    const m = (h.momentum || []).slice().sort((a, b) => b.momentum - a.momentum)[0];
+    if (m) P.push(`섹터 모멘텀 1위 ${m.name}`);
+  } else if (h.slot === "20:05") {
+    const nx = ((h.eve || {}).nxt || []).slice(0, 2);
+    if (nx.length) P.push(`넥장 마감 ${nx.map((r) => `${r.name} ${pc(r.chg)}`).join(" · ")}`);
+    if (fut("S&P500").kr != null) P.push(`15:30 이후 S&P500 선물 ${pc(fut("S&P500").kr)} · 나스닥100 ${pc(fut("나스닥100").kr)}`);
+    if (oil("WTI").kr != null) P.push(`WTI ${pc(oil("WTI").kr)}`);
+    if (((h.eve || {}).tonight || [])[0]) P.push(`오늘 밤: ${h.eve.tonight[0].time} ${h.eve.tonight[0].title}`);
+  } else {
+    if (fut("S&P500").reg != null) P.push(`미국 개장 전 S&P500 선물 ${pc(fut("S&P500").reg)} · 나스닥100 ${pc(fut("나스닥100").reg)}(전일 종가 대비)`);
+    if (oil("WTI").kr != null) P.push(`WTI ${pc(oil("WTI").kr)}(15:30 이후)`);
+    P.push(...wt);
+  }
+  return P.join(" · ");
+}
+async function loadBand() {
+  try {
+    const b = await fetch(`data/briefs.json?t=${Math.floor(Date.now() / 300000)}`).then((r) => r.json());
+    const h = b.find((x) => BAND[x.slot]);
+    if (!h) return;
+    const t = bandText(h);
+    if (!t) return;
+    const [ic, nm] = BAND[h.slot], d = h.day.slice(5).replace("-", "/").replace(/^0/, "");
+    $("#notice").innerHTML = `<div class="wrap"><a href="#brief" class="band-a">${ic} <b>${d} ${nm}</b> <small>(${h.slot} 정리)</small> · ${esc(t)}</a></div>`;
+    $("#notice").hidden = false;
+  } catch { /* 띠 없이 */ }
+}
+setInterval(() => { const nt = window.__pinNotice; if (!nt) loadBand(); }, 10 * 60000);
 
 function archCard(s, isNext, label) {
   const d = new Date(s.date + "T00:00:00");
