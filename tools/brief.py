@@ -120,6 +120,7 @@ def make(out: dict) -> dict:
     tnx = out.get("us10y") or {}
     return {"at": int(now), "session": session(datetime.now(timezone.utc)), "futures": fut, "kr": out.get("kr") or {},
             "us10y": {"px": tnx.get("px"), "bp": tnx.get("bp")} if tnx.get("px") else None,
+            "ust": {k: {"px": v["px"], "bp": v["bp"]} for k, v in (out.get("ust") or {}).items()},
             "macro": macro, "heads": heads, "moves": moves, "trending": [{"name": t["name"], "n": t["n"]} for t in out.get("trending", [])[:5]],
             "sectors": sectors, "world": w, "spot": [{"name": s["name"], "chg": s.get("chg")} for s in out.get("spot", [])]}
 

@@ -159,14 +159,45 @@ def dow() -> dict:
     return out
 
 
+_UST: dict = {}
+
+
+def ust() -> dict:
+    """미 국채 금리 2년·10년·30년(CNBC 실시간, 아시아 시간에도 갱신). 실패하면 10·30년은 야후(^TNX·^TYX). 변화는 bp."""
+    if _UST.get("t") and datetime.now(timezone.utc).timestamp() - _UST["t"] < 50:
+        return _UST["v"]
+    out = {}
+    u = ("https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?symbols=US2Y%7CUS10Y%7CUS30Y"
+         "&requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=1&output=json")
+    try:
+        qs = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"}), timeout=10).read())
+        for q in qs["FormattedQuoteResult"]["FormattedQuote"]:
+            px, prev = float(str(q["last"]).rstrip("%")), float(str(q["previous_day_closing"]).rstrip("%"))
+            at = int(datetime.fromisoformat(q["last_time"]).timestamp() * 1000)
+            out[q["symbol"].replace("US", "")] = {"px": round(px, 3), "bp": round((px - prev) * 100, 1), "prev": round(prev, 3), "at": at, "src": "CNBC"}
+    except Exception:  # noqa: BLE001
+        pass
+    for k, sym in (("10Y", "%5ETNX"), ("30Y", "%5ETYX")):
+        if k not in out:
+            y = _yield_yf(sym)
+            if y:
+                out[k] = y
+    _UST.update(t=datetime.now(timezone.utc).timestamp(), v=out)
+    return out
+
+
 def us10y() -> dict:
-    """미 10년물 국채 금리(^TNX, %). 전일 대비 변화는 bp. 미국 채권시장 시간에 갱신."""
-    u = "https://query1.finance.yahoo.com/v8/finance/chart/%5ETNX?range=1d&interval=1m"
+    """미 10년물 국채 금리(%). ust()의 10년물(CNBC) — 없으면 야후 ^TNX."""
+    return ust().get("10Y") or _yield_yf("%5ETNX") or {}
+
+
+def _yield_yf(sym: str) -> dict:
+    u = f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=1d&interval=1m"
     try:
         m = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"}), timeout=10).read())["chart"]["result"][0]["meta"]
         px, prev = m.get("regularMarketPrice"), m.get("previousClose") or m.get("chartPreviousClose")
         if px and prev:
-            return {"px": round(px, 3), "bp": round((px - prev) * 100, 1), "prev": round(prev, 3), "at": m.get("regularMarketTime", 0) * 1000}
+            return {"px": round(px, 3), "bp": round((px - prev) * 100, 1), "prev": round(prev, 3), "at": m.get("regularMarketTime", 0) * 1000, "src": "야후"}
     except Exception:  # noqa: BLE001
         pass
     return {}

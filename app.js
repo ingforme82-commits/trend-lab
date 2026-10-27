@@ -27,7 +27,9 @@ const TICKS = [
   { k: "BRENTOIL", n: "브렌트유", d: 2, u: "$" },
   { k: "GOLD", n: "금", d: 1, u: "$" },
   { k: "NATGAS", n: "천연가스", d: 3, u: "$" },
-  { k: "US10Y", n: "미 10년물 금리", srv: "tnx" },
+  { k: "UST2Y", n: "미 2년물 금리", srv: "tnx", t: "2Y" },
+  { k: "US10Y", n: "미 10년물 금리", srv: "tnx", t: "10Y" },
+  { k: "UST30Y", n: "미 30년물 금리", srv: "tnx", t: "30Y" },
 ];
 let lastPx = {};
 
@@ -43,12 +45,14 @@ async function loadTicks() {
     const krw = map.KRW ? +map.KRW.markPx : null;
     const html = TICKS.map((t) => {
       if (t.g) return `<p class="tick-group">${t.g}</p>`;
-      if (t.srv === "tnx") {                              // 미 10년물 금리(야후 ^TNX): 수준은 %, 변화는 bp
-        const r = window.trlTnx || {};
+      if (t.srv === "tnx") {                              // 미 국채 2·10·30년 금리(CNBC, 없으면 야후): 수준은 %, 변화는 bp
+        const U = window.trlUst || {};
+        const r = U[t.t] || (t.t === "10Y" ? window.trlTnx || {} : {});
+        const sp = t.t === "10Y" && U["2Y"] && r.px ? ` · 2년물과 차 ${Math.round((r.px - U["2Y"].px) * 100)}bp` : "";
         if (!r.px) return `<div class="tick"><p class="t-name">${t.n}</p><p class="t-px">-</p><p class="fine">불러오는 중</p></div>`;
         const c3 = r.bp > 0.05 ? "c-up" : r.bp < -0.05 ? "c-dn" : "c-fl";
         const old = Date.now() - r.at > 60 * 60000;
-        return `<div class="tick" data-k="US10Y"><p class="t-name">${t.n}</p><p class="t-px">${r.px.toFixed(3)}%</p><p class="t-ch ${c3}">${r.bp > 0 ? "▲" : r.bp < 0 ? "▼" : ""} ${r.bp > 0 ? "+" : ""}${r.bp.toFixed(1)}bp</p><p class="fine" style="margin:2px 0 0">전일 ${r.prev}%${old ? " · 장 마감" : ""}</p></div>`;
+        return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">${r.px.toFixed(3)}%</p><p class="t-ch ${c3}">${r.bp > 0 ? "▲" : r.bp < 0 ? "▼" : ""} ${r.bp > 0 ? "+" : ""}${r.bp.toFixed(1)}bp</p><p class="fine" style="margin:2px 0 0">전일 ${r.prev}%${sp}${old ? " · 장 마감" : ""}</p></div>`;
       }
       if (t.srv) {                                        // 다우존스: 사이트 속보 데이터(야후)에서 — 미국장엔 지수, 그 외엔 선물
         const dw = window.trlDow || {};
