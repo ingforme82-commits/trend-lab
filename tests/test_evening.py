@@ -42,6 +42,8 @@ class OilHeadsTest(unittest.TestCase):
                  {"ts": now - 3000, "text": "엔비디아 상승", "tags": ["반도체"], "src": "a"},
                  {"ts": now - 13 * 3600_000, "text": "오래된 유가 뉴스", "tags": ["중동·유가"], "src": "a"}]
         self.assertEqual(len(oil_heads(items, now)), 1)
+        items.append({"ts": now - 1500, "text": "카타르: 호르무즈 해협을 개방해야 함", "tags": ["중동·유가"], "src": "a"})
+        self.assertEqual(len(oil_heads(items, now)), 1)                      # 같은 발언자 15분 안
 
 
 class MiscTest(unittest.TestCase):

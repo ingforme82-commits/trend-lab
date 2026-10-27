@@ -83,7 +83,8 @@ def oil_heads(items: list[dict], now_ms: int) -> list[dict]:
             continue
         key = "".join(ch for ch in it["text"] if ch.isalnum())[:14]
         g = bigrams(it["text"])
-        if key in seen or any(similar(g, x) for x in grams):       # 같은 사건은 최신 한 건만
+        who = it["text"].split(":")[0][:12] if ":" in it["text"][:14] else None
+        if key in seen or any(similar(g, x) for x in grams)                 or (who and any(o["text"].startswith(who + ":") and o["ts"] - it["ts"] < 15 * 60_000 for o in out)):   # 같은 사건·같은 발언자 15분 안은 최신 한 건만
             continue
         seen.add(key)
         grams.append(g)
