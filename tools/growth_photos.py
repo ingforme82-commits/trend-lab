@@ -86,10 +86,11 @@ def grow(b: dict, W: int, H: int) -> tuple[int, int, int, int]:
 
 
 def mosaic(img, boxes: list[dict]):
-    """keep(본인)이 아닌 상자를 큰 칸 모자이크 + 흐림으로 덮는다."""
+    """keep(본인)이 아닌 상자를 큰 칸 모자이크 + 흐림으로 덮는다. src='me' 상자(본인 얼굴)는 다른 사람 모자이크가 덮지 않게 원본으로 되돌린다."""
     import cv2
     H, W = img.shape[:2]
     out = img.copy()
+    me = [protect(b, W, H) for b in boxes if b.get("src") == "me"]
     for b in boxes:
         if b.get("keep"):
             continue
@@ -101,7 +102,40 @@ def mosaic(img, boxes: list[dict]):
         small = cv2.resize(roi, (max(1, (x1 - x0) // cell), max(1, (y1 - y0) // cell)), interpolation=cv2.INTER_AREA)
         px = cv2.resize(small, (x1 - x0, y1 - y0), interpolation=cv2.INTER_NEAREST)
         out[y0:y1, x0:x1] = cv2.GaussianBlur(px, (0, 0), cell / 3)
+    if not me:
+        return out
+    for x0, y0, x1, y1 in me:                                   # 본인 얼굴·머리는 원본 그대로(넓힌 모자이크 가장자리만 걷힘)
+        out[y0:y1, x0:x1] = img[y0:y1, x0:x1]
+    for b in boxes:                                             # 다른 사람 얼굴 자체는 마지막에 다시 덮는다(본인 보호보다 우선)
+        if b.get("keep"):
+            continue
+        cx0, cy0 = max(0, int(b["x"] - b["w"] * 0.1)), max(0, int(b["y"] - b["h"] * 0.15))
+        cx1, cy1 = min(W, int(b["x"] + b["w"] * 1.1)), min(H, int(b["y"] + b["h"] * 1.1))
+        if any(cx0 < x1 and x0 < cx1 and cy0 < y1 and y0 < cy1 for x0, y0, x1, y1 in me):
+            cell = max(5, int(max(cx1 - cx0, cy1 - cy0) / 6))
+            roi = img[cy0:cy1, cx0:cx1]
+            small = cv2.resize(roi, (max(1, (cx1 - cx0) // cell), max(1, (cy1 - cy0) // cell)), interpolation=cv2.INTER_AREA)
+            out[cy0:cy1, cx0:cx1] = cv2.GaussianBlur(cv2.resize(small, (cx1 - cx0, cy1 - cy0), interpolation=cv2.INTER_NEAREST), (0, 0), cell / 3)
     return out
+
+
+def protect(b: dict, W: int, H: int) -> tuple[int, int, int, int]:
+    """본인 얼굴 보호 영역: 좌우 12%, 위 30%(머리카락), 아래 12%."""
+    return (max(0, int(b["x"] - b["w"] * 0.12)), max(0, int(b["y"] - b["h"] * 0.30)),
+            min(W, int(b["x"] + b["w"] * 1.12)), min(H, int(b["y"] + b["h"] * 1.12)))
+
+
+def finish(img, d: dict):
+    """사진 단위 보정: enhance(밝기·대비 살짝, 선명하게), crop([x, y, w, h] 원본 좌표)."""
+    from PIL import ImageEnhance, ImageOps
+    if d.get("crop"):
+        x, y, w, h = d["crop"]
+        img = img.crop((x, y, x + w, y + h))
+    if d.get("enhance"):
+        img = ImageOps.autocontrast(img, cutoff=0.5)
+        img = ImageEnhance.Brightness(img).enhance(1.04)
+        img = ImageEnhance.Sharpness(img).enhance(1.25)
+    return img
 
 
 # ── 명령 ──
@@ -241,7 +275,7 @@ def apply(src: Path, push: bool = False) -> None:
         day = d["date"] or "0000-00-00"
         per_day[day] = per_day.get(day, 0) + 1
         name = f"{day}_{per_day[day]}.jpg"
-        img = Image.fromarray(cv2.cvtColor(mosaic(_read(p), d["boxes"]), cv2.COLOR_BGR2RGB))
+        img = finish(Image.fromarray(cv2.cvtColor(mosaic(_read(p), d["boxes"]), cv2.COLOR_BGR2RGB)), d)
         big = img.copy()
         big.thumbnail((SIZE, SIZE), Image.LANCZOS)
         big.save(OUT / name, "JPEG", quality=82, optimize=True, progressive=True)        # exif 없이 저장

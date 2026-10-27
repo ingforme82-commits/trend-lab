@@ -41,5 +41,16 @@ class MosaicTest(unittest.TestCase):
         self.assertTrue(np.array_equal(img, img.copy()))                         # 원본은 안 건드림
 
 
+class ProtectTest(unittest.TestCase):
+    def test_owner_area_restored_but_other_face_stays_masked(self):
+        rng = np.random.default_rng(1)
+        img = rng.integers(0, 255, (300, 300, 3), dtype=np.uint8)
+        other = B(100, 40, 60, 60)                      # 본인 바로 뒤(위)에 앉은 사람
+        me = B(100, 120, 80, 80, keep=True, src="me")   # 본인
+        out = mosaic(img, [other, me])
+        self.assertTrue(np.array_equal(out[125:195, 105:175], img[125:195, 105:175]))   # 본인 얼굴: 원본
+        self.assertLess(out[45:95, 105:155].std(), img[45:95, 105:155].std() / 3)        # 다른 사람 얼굴: 여전히 모자이크
+
+
 if __name__ == "__main__":
     unittest.main()
