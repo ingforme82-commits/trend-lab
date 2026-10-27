@@ -29,6 +29,12 @@ $tr = @((New-ScheduledTaskTrigger -Daily -At '23:00'), (New-ScheduledTaskTrigger
 Register-ScheduledTask -TaskName '트렌드랩_종목군' -Force -Description '미국 개장 30분 뒤 오늘의 주요 종목군 자동 교체' `
   -Action (New-ScheduledTaskAction -Execute $pyw -Argument 'tools\spot_auto.py' -WorkingDirectory $dir) -Trigger $tr -Settings $wake | Out-Null
 
+# 6) 트렌드랩_깃풀 : 10분마다 깃허브 자동 받기(안전 모드 — 고치던 파일 있거나 갈라지면 건드리지 않음)
+$pull = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 5) -MultipleInstances IgnoreNew
+$tp = New-ScheduledTaskTrigger -Once -At (Get-Date).Date -RepetitionInterval (New-TimeSpan -Minutes 10)
+Register-ScheduledTask -TaskName '트렌드랩_깃풀' -Force -Description '깃허브 자동 받기(안전 모드)' `
+  -Action (New-ScheduledTaskAction -Execute $pyw -Argument 'toolsuto_pull.py' -WorkingDirectory $dir) -Trigger $tp -Settings $pull | Out-Null
+
 $t = Get-ScheduledTask -TaskName '트렌드랩_방문리포트'
 $t.Settings.WakeToRun = $true
 Set-ScheduledTask -InputObject $t | Out-Null
