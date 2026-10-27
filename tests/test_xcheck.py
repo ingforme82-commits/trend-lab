@@ -57,5 +57,24 @@ class JudgeTest(unittest.TestCase):
         self.assertEqual(r["st"], "diff")
 
 
+class RunTest(unittest.TestCase):
+    def test_every_checked_item_is_cached(self):
+        import tempfile
+        import time
+        import xcheck
+        tmp = Path(tempfile.mkdtemp()) / "c.json"
+        old, oldc = xcheck.CACHE, xcheck._check
+        xcheck.CACHE, xcheck._check = tmp, lambda it, rss: None
+        try:
+            now = int(time.time() * 1000)
+            items = [{"src": "김치터미널", "text": f"속보 {i}", "ts": now} for i in range(7)]
+            self.assertEqual(xcheck.run(items, []), 5)
+            import json
+            self.assertEqual(len(json.loads(tmp.read_text(encoding="utf-8"))), 5)
+            self.assertEqual(xcheck.run(items, []), 2)                       # 나머지 2건, 처음 5건은 10분 뒤 재시도
+        finally:
+            xcheck.CACHE, xcheck._check = old, oldc
+
+
 if __name__ == "__main__":
     unittest.main()

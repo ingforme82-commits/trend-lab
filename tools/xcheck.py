@@ -202,10 +202,10 @@ def run(items: list[dict], rss: list[dict], tr_ko=None) -> int:
                     pass
             c["res"] = res
             it["xc"] = res
+        cache[key] = c
     for it in items:                                          # 주요 외신·공식 자료와 일치하면 '복수 출처'로
         if (it.get("xc") or {}).get("st") == "ok" and it.get("verify") == "single":
             it["verify"], it["nsrc"] = "multi", max(2, (it.get("nsrc") or 1) + 1)
-        cache[key] = c
     cut = now - 2 * 86400_000
     cache = {k: v for k, v in cache.items() if v.get("first", now) > cut}
     try:
