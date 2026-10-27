@@ -281,7 +281,7 @@
           <button class="btn btn-ghost-dark btn-sm" data-sec-tag="${esc(c.tag)}">${esc(c.tag)} 관련 속보</button></div>
         <div class="sec-rows">${c.rows.map((r) => `<div class="sec-r${r.flags.length ? " flag" : ""}"><span class="sec-n">${esc(r.name)}</span>
           <b class="${cls(r.chg)}">${r.chg > 0 ? "+" : ""}${r.chg.toFixed(2)}%</b>${r.stale ? `<em class="stale">전일</em>` : ""}
-          <small>${won(r) ? `${Math.round(r.px).toLocaleString("ko-KR")}원${r.val ? ` · 거래대금 ${eok(r.val)}` : ""}` : `$${r.px}`}${r.to3m != null && r.to3m > 0 ? " · 3개월 고점 돌파" : r.to52 != null ? ` · 52주 고가 ${r.to52 > 0 ? "+" : ""}${r.to52}%` : ""}</small>
+          <small>${won(r) ? `${Math.round(r.px).toLocaleString("ko-KR")}원${r.val ? ` · 거래대금(통합) ${eok(r.val)}` : ""}` : `$${r.px}`}${r.to3m != null && r.to3m > 0 ? " · 3개월 고점 돌파" : r.to52 != null ? ` · 52주 고가 ${r.to52 > 0 ? "+" : ""}${r.to52}%` : ""}</small>
           ${r.flags.length ? `<span class="sec-f">${r.flags.map(esc).join(" · ")}</span>` : ""}</div>`).join("")}</div>
       </div>` : "";
     box.innerHTML = momHtml(momentum) + `<p class="spot-h">📊 섹터 시세 <small>섹터를 누르면 종목별 등락이 보입니다 · 주황 점은 신호(±3%·고점 돌파) 종목이 있는 섹터</small></p>
@@ -295,8 +295,8 @@
     const rows = [...g.rows].sort((a, b) => flowSort === "chg" && !compact ? b.chg - a.chg : (b.val || 0) - (a.val || 0)).slice(0, n);
     const invDay = (rows.find((r) => r.inv) || {}).inv;
     const head = compact ? "<tr><th>종목</th><th>등락</th><th>거래대금</th></tr>"
-      : `<tr><th>종목</th><th>등락</th><th>거래대금</th><th>외국계 창구<small>오늘</small></th><th>외국인<small>${invDay ? md(invDay.day) : ""}</small></th><th>기관<small>${invDay ? md(invDay.day) : ""}</small></th><th>외국인·기관<small>5일 합계</small></th><th>프로그램</th></tr>`;
-    const body = rows.map((r) => `<tr><td class="fl-n">${esc(r.name)}</td><td>${pct(r.chg)}</td><td>${r.val ? eok(r.val) : "-"}</td>${compact ? "" : `
+      : `<tr><th>종목</th><th>등락</th><th>거래대금<small>통합</small></th><th>외국계 창구<small>오늘</small></th><th>외국인<small>${invDay ? md(invDay.day) : ""}</small></th><th>기관<small>${invDay ? md(invDay.day) : ""}</small></th><th>외국인·기관<small>5일 합계</small></th><th>프로그램</th></tr>`;
+    const body = rows.map((r) => `<tr><td class="fl-n">${esc(r.name)}</td><td>${pct(r.chg)}</td><td>${r.val ? eok(r.val) : "-"}${!compact && r.val_krx && r.val - r.val_krx > 1e8 ? `<small class="fl-k">KRX ${eok(r.val_krx)}</small>` : ""}</td>${compact ? "" : `
       <td>${r.win ? eokS(r.win.amt) : "-"}</td><td>${r.inv ? eokS(r.inv.frgn) : "-"}</td><td>${r.inv ? eokS(r.inv.org) : "-"}</td>
       <td class="fl-5">${r.inv ? `${eokS(r.inv.frgn5)} / ${eokS(r.inv.org5)}` : "-"}</td><td class="dim">준비 중</td>`}</tr>`).join("");
     return `<div class="fl-g"><p class="fl-gh">${g.icon || ""} ${esc(g.name)}${g.n ? ` <small>상승 ${g.up}/${g.n}종목</small>` : ""}</p>
@@ -312,7 +312,7 @@
     box.innerHTML = `<p class="spot-h">💰 주도주 수급 <small>${st}</small></p>
       <div class="fl-sort">${btn("val", "거래대금순")}${btn("chg", "등락률순")}</div>
       ${gs.map((g) => flowTable(g, 8)).join("")}
-      <p class="mm-f">종목군 안에서 거래대금 상위·등락률 상위 종목 · 금액은 순매수 수량 × 종가(장중 현재가)로 계산한 추정치(억 원)<br>
+      <p class="mm-f">종목군 안에서 거래대금 상위·등락률 상위 종목 · 거래대금은 통합(KRX + 넥스트레이드 프리·애프터마켓), 작은 글씨는 KRX만 · 금액은 순매수 수량 × 종가(장중 현재가)로 계산한 추정치(억 원)<br>
       외국계 창구 = 외국계 증권사 창구 합계(장중, 다음 금융) — 외국인 투자자 수급과 다름 · 외국인·기관 = 거래소 확정치(네이버, 장 마감 후 확정되며 그 전에는 직전 거래일 값)<br>
       종목별 프로그램 매매는 무료 공개 출처가 없어 준비 중 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`;
   }

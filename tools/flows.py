@@ -2,7 +2,7 @@
 
   python tools/flows.py        # 지금 값을 한 번 계산해서 출력(확인용)
 
-- 시세·거래대금: 네이버 실시간(krx.quotes), 1분마다
+- 시세·거래대금: 네이버 실시간(krx.quotes), 1분마다. 거래대금은 통합(KRX + 넥스트레이드 프리·애프터마켓)
 - 외국계 창구 순매수(장중): 다음 금융 trader/histories — 외국계 '증권사 창구' 합계라 외국인 투자자 수급과 다르다. 2분마다
 - 외국인·기관·개인 순매수(확정): 네이버 investor-trend(KRX), 장 마감 후 확정된 일별 값. 30분마다(15:40~19:00 은 10분마다)
 - 프로그램 매매(종목별): 무료 공개 출처가 없어 비워 둔다 → 증권사 API 연결 후 추가
@@ -41,7 +41,7 @@ def _n(v) -> float:
 # ── 순수 함수(tests/test_flows.py) ──
 def pick_top(tickers: dict[str, str], q: dict[str, dict], n: int = TOP) -> list[dict]:
     """종목군에서 등락률 상위 n개 ∪ 거래대금 상위 n개(등락률 순). 시세 없는 종목은 뺀다."""
-    rows = [{"sym": s, "code": s.split(".")[0], "name": name, "px": q[s]["px"], "chg": q[s]["chg"], "val": q[s].get("val")}
+    rows = [{"sym": s, "code": s.split(".")[0], "name": name, "px": q[s]["px"], "chg": q[s]["chg"], "val": q[s].get("val"), "val_krx": q[s].get("val_krx")}
             for s, name in tickers.items() if q.get(s) and q[s].get("px")]
     by_chg = sorted(rows, key=lambda r: -r["chg"])[:n]
     by_val = sorted(rows, key=lambda r: -(r["val"] or 0))[:n]

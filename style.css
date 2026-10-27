@@ -628,3 +628,4 @@ body{overflow-x:hidden}
 .fl-t td{text-align:right;padding:4px 6px;border-bottom:1px solid var(--bg2)}
 .fl-t th:first-child,.fl-t td.fl-n{text-align:left;position:sticky;left:0;background:#fff}
 .fl-t td.fl-5{font-size:12px}
+.fl-t small.fl-k{display:block;font-size:10.5px;color:var(--sub)}

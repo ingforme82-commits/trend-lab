@@ -1,5 +1,7 @@
 """한국 증시 실시간 시세(네이버 금융 polling, 지연 없음). 야후는 한국 종목이 약 20분 늦다.
 
+거래대금: val = 통합(KRX + 넥스트레이드 프리·메인·애프터마켓), val_krx = KRX만(과거 일봉과 비교할 때 사용).
+
 주의: 네이버 등락률(fluctuationsRatio)·전일 대비(compareToPreviousClosePrice)는 부호가 없다.
 상승·하락은 compareToPreviousPrice.code 로만 판단한다(1 상한, 2 상승, 3 보합, 4 하한, 5 하락).
 """
@@ -37,7 +39,9 @@ def _parse(d: dict) -> dict | None:
     if not val and d.get("accumulatedTradingValue"):                 # 종목은 '4,347억' 형식
         t = str(d["accumulatedTradingValue"]).replace(",", "")
         val = float(t[:-1]) * 1e8 if t.endswith("억") else float(t[:-2]) * 1e6 if t.endswith("백만") else _num(t)
-    return {"px": px, "prev": prev, "chg": round((px / prev - 1) * 100, 2) if prev else 0.0, "at": at, "val": val or None,
+    tot = _num((d.get("integratedPriceInfo") or {}).get("accumulatedTradingValueRaw"))   # 통합(KRX+넥스트레이드 프리·애프터)
+    return {"px": px, "prev": prev, "chg": round((px / prev - 1) * 100, 2) if prev else 0.0, "at": at,
+            "val": max(tot, val) or None, "val_krx": val or None,
             "day": t[:10], "status": d.get("marketStatus", ""), "cur": "KRW"}
 
 
@@ -66,7 +70,7 @@ def merge(yq: dict[str, dict | None]) -> dict[str, dict | None]:
     kr = quotes([s for s in yq if s.endswith((".KS", ".KQ")) or s in INDEX])
     for sym, q in kr.items():
         base = dict(yq.get(sym) or {})
-        base.update(px=q["px"], prev=q["prev"], at=q["at"], day=q["day"], cur="KRW", stale=False, live=q["status"] == "OPEN", val=q.get("val"))
+        base.update(px=q["px"], prev=q["prev"], at=q["at"], day=q["day"], cur="KRW", stale=False, live=q["status"] == "OPEN", val=q.get("val"), val_krx=q.get("val_krx"))
         yq[sym] = base
     return yq
 

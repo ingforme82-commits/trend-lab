@@ -52,7 +52,7 @@ def pct_rank(vals: dict[str, float | None]) -> dict[str, float]:
 
 def indicators(row: dict, hist: dict | None, idx_chg: float | None) -> dict[str, float | None]:
     """종목 하나의 원값. hist: {"closes": [직전 거래일 종가들(오래된→최근)], "vals": [직전 거래대금들], "hi3m": 직전 3개월 고가}"""
-    px, chg, val = row.get("px"), row.get("chg"), row.get("val")
+    px, chg, val = row.get("px"), row.get("chg"), row.get("val_krx") or row.get("val")   # 과거 일봉(KRX)과 같은 기준
     h = hist or {}
     closes, vals = h.get("closes") or [], h.get("vals") or []
     avg20 = sum(vals[-20:]) / len(vals[-20:]) if len(vals) >= 10 else None
@@ -160,7 +160,7 @@ def build(cards: list[dict], idx: dict[str, dict], hist: dict[str, dict], now_ms
     for s, r in rows.items():
         h = hist.get(s) or {}
         avg20 = sum(h["vals"]) / len(h["vals"]) if h.get("vals") else None
-        stocks.append({"sym": s, "name": r["name"], "sector": sec_of[s], "chg": r.get("chg"), "val": r.get("val"),
+        stocks.append({"sym": s, "name": r["name"], "sector": sec_of[s], "chg": r.get("chg"), "val": r.get("val_krx") or r.get("val"),
                        "score": sc[s]["score"], "parts": sc[s]["parts"], "used": sc[s]["used"],
                        "raw": {k: (None if v is None else round(v, 2)) for k, v in raw[s].items()},
                        "note": notes.get(s, "" if len(sc[s]["used"]) == 4 else f"{4 - len(sc[s]['used'])}개 지표 누락"),
