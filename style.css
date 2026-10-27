@@ -639,3 +639,7 @@ body{overflow-x:hidden}
 .wt-memo{margin:4px 0 10px;padding:8px 12px;border-left:4px solid var(--gold,#c9a14a);background:#fff;font-size:14.5px;line-height:1.6}
 .wt-memo cite{display:block;font-style:normal;font-size:12px;color:var(--sub);margin-top:2px}
 .wt-i{margin:6px 0}.wt-n{margin:0 0 2px}.wt-i ul{margin:0;padding-left:18px;font-size:13.5px;line-height:1.6}
+
+/* SOXL·KORU 점검 */
+.lvbox{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 12px}
+.lv{margin:6px 0 8px}.lv ul{margin:0;padding-left:18px;font-size:13.5px;line-height:1.65}

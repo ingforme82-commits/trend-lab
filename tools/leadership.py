@@ -77,15 +77,21 @@ def score(raw: dict[str, dict[str, float | None]]) -> dict[str, dict]:
     return out
 
 
-def sector_momentum(sectors: dict[str, list[dict]]) -> list[dict]:
+def sector_momentum(sectors: dict[str, list[dict]], ref: dict[str, float] | None = None) -> list[dict]:
     """sectors: {섹터: [{"score","chg","above5","val","avgval"}]} → 모멘텀 내림차순.
-    = 0.4·종목 점수 중앙값 + 0.3·확산도(상승 비율·5일선 위 비율 평균) + 0.3·거래대금 점유율 변화(섹터끼리 백분위)"""
-    tot_v = sum(m["val"] or 0 for ms in sectors.values() for m in ms)
-    tot_a = sum(m["avgval"] or 0 for ms in sectors.values() for m in ms)
+    = 0.4·종목 점수 중앙값 + 0.3·확산도(상승 비율·5일선 위 비율 평균) + 0.3·거래대금 점유율 변화(섹터끼리 백분위)
+    ref: {섹터: 시장 거래대금 가속도} — 통화가 다른 섹터(미국 반도체)는 국내 합계에 섞지 않고 '섹터 가속도 ÷ 시장(QQQ) 가속도'로 본다."""
+    ref = ref or {}
+    dom = {n: ms for n, ms in sectors.items() if n not in ref}
+    tot_v = sum(m["val"] or 0 for ms in dom.values() for m in ms)
+    tot_a = sum(m["avgval"] or 0 for ms in dom.values() for m in ms)
     shift = {}
     for n, ms in sectors.items():
         v, a = sum(m["val"] or 0 for m in ms), sum(m["avgval"] or 0 for m in ms)
-        shift[n] = (v / tot_v) / (a / tot_a) if tot_v and tot_a and a else None
+        if n in ref:
+            shift[n] = (v / a) / ref[n] if a and ref[n] else None
+        else:
+            shift[n] = (v / tot_v) / (a / tot_a) if tot_v and tot_a and a else None
     shift_r = pct_rank(shift)
     out = []
     for n, ms in sectors.items():
@@ -138,19 +144,28 @@ def history(syms: list[str]) -> dict[str, dict]:
     return data
 
 
-def build(cards: list[dict], idx: dict[str, dict], hist: dict[str, dict], now_ms: int) -> dict:
-    """cards: sector_watch 섹터 카드, idx: {"^KS11": {chg, at, status}, "^KQ11": ...}"""
+def build(cards: list[dict], idx: dict[str, dict], hist: dict[str, dict], now_ms: int,
+          extra: dict[str, list[dict]] | None = None, ref: dict[str, float] | None = None) -> dict:
+    """cards: sector_watch 섹터 카드, idx: {"^KS11": {chg, at, status}, "^KQ11": ...}
+    extra: {섹터: [행]} 해외 섹터(행마다 idx_chg = 비교 지수 등락률), ref: 그 섹터의 시장 거래대금 가속도"""
     rows, sec_of = {}, {}
     for c in cards:
         for r in c.get("rows", []):
             if r.get("cur") == "KRW":
                 rows[r["sym"]] = r
                 sec_of.setdefault(r["sym"], c["name"])
+    for sname, rs in (extra or {}).items():
+        for r in rs:
+            rows[r["sym"]] = r
+            sec_of[r["sym"]] = sname
     raw, notes = {}, {}
     for s, r in rows.items():
-        late = r.get("stale") or (r.get("at") and now_ms - r["at"] > STALE_MS and (idx.get("^KS11") or {}).get("status") == "OPEN")
-        ix = idx.get("^KQ11" if s.endswith(".KQ") else "^KS11") or {}
-        ind = indicators(r, hist.get(s), ix.get("chg"))
+        if "idx_chg" in r:                         # 해외(미국): 마지막 정규장 기준, 지연 판정 없음
+            late, ixc = False, r["idx_chg"]
+        else:
+            late = r.get("stale") or (r.get("at") and now_ms - r["at"] > STALE_MS and (idx.get("^KS11") or {}).get("status") == "OPEN")
+            ixc = (idx.get("^KQ11" if s.endswith(".KQ") else "^KS11") or {}).get("chg")
+        ind = indicators(r, hist.get(s), ixc)
         if late:                                   # 지연·전일 값이면 오늘 값에 기대는 지표는 뺀다
             ind = {k: (None if k in ("tva", "rs") else v) for k, v in ind.items()}
             notes[s] = "지연"
@@ -170,23 +185,90 @@ def build(cards: list[dict], idx: dict[str, dict], hist: dict[str, dict], now_ms
     for x in stocks:
         by_sec.setdefault(x["sector"], []).append({"score": x["score"], "chg": x["chg"], "val": x["val"], "avgval": x["avgval"],
                                                    "above5": None if x["raw"]["ma5"] is None else x["raw"]["ma5"] > 0})
-    return {"at": now_ms, "weights": W, "stocks": stocks, "sectors": sector_momentum(by_sec),
+    return {"at": now_ms, "weights": W, "stocks": stocks, "sectors": sector_momentum(by_sec, ref),
             "idx": {k: {"chg": v.get("chg"), "at": v.get("at")} for k, v in idx.items()},
             "hist_day": max((h.get("last", "") for h in hist.values()), default="")}
 
 
+US_SECTOR, US_IDX, US_MKT = "미국 반도체", "^NDX", "QQQ"
+US_CACHE = ROOT / "tools" / "leadership_us.json"
+
+
+def _us(sym: str) -> tuple[dict, dict] | None:
+    """미국 종목: (오늘 행, 직전 거래일까지 일봉). 오늘 = 마지막 정규장(장중이면 진행 중 값)."""
+    u = f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.request.quote(sym)}?range=6mo&interval=1d"
+    try:
+        r = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"}), timeout=12).read())["chart"]["result"][0]
+    except Exception:  # noqa: BLE001
+        return None
+    m, q, off = r["meta"], r["indicators"]["quote"][0], r["meta"].get("gmtoffset", 0)
+    day = lambda t: datetime.fromtimestamp(t + off, timezone.utc).strftime("%Y-%m-%d")
+    sday = day(m.get("regularMarketTime") or 0)
+    rows = [(day(t), c, v, h) for t, c, v, h in zip(r["timestamp"], q["close"], q["volume"], q["high"]) if c and v is not None and day(t) < sday]
+    px, vol = m.get("regularMarketPrice"), m.get("regularMarketVolume")
+    if len(rows) < 10 or not px:
+        return None
+    cut = (datetime.fromisoformat(sday) - timedelta(days=92)).strftime("%Y-%m-%d")
+    hist = {"last": rows[-1][0], "closes": [x[1] for x in rows[-20:]], "vals": [x[1] * x[2] for x in rows[-20:]],
+            "hi3m": max(x[3] for x in rows if x[0] >= cut and x[3])}
+    row = {"sym": sym, "px": px, "chg": round((px / rows[-1][1] - 1) * 100, 2), "val": px * vol if vol else None, "cur": "USD", "day": sday}
+    return row, hist
+
+
+def us_sector() -> tuple[list[dict], dict[str, dict], float | None, str]:
+    """미국 반도체 행·일봉·QQQ 거래대금 가속도·기준일(2분 캐시)."""
+    now = datetime.now(timezone.utc).timestamp()
+    try:
+        c = json.loads(US_CACHE.read_text(encoding="utf-8"))
+        if now - c["t"] < 110:
+            return c["rows"], c["hist"], c["ref"], c["day"]
+    except Exception:  # noqa: BLE001
+        pass
+    tick = json.loads((ROOT / "data" / "sectors.json").read_text(encoding="utf-8")).get(US_SECTOR, {}).get("tickers", {})
+    syms = list(tick) + [US_IDX, US_MKT]
+    with ThreadPoolExecutor(max_workers=8) as ex:
+        got = dict(zip(syms, ex.map(_us, syms)))
+    ix, mk = got.get(US_IDX), got.get(US_MKT)
+    rows, hist = [], {}
+    for s, name in tick.items():
+        if got.get(s):
+            r, h = got[s]
+            rows.append(dict(r, name=name, idx_chg=ix[0]["chg"] if ix else None))
+            hist[s] = h
+    ref = None
+    if mk and mk[0].get("val") and mk[1]["vals"]:
+        ref = mk[0]["val"] / (sum(mk[1]["vals"]) / len(mk[1]["vals"]))
+    day = max((r["day"] for r in rows), default="")
+    US_CACHE.write_text(json.dumps({"t": now, "rows": rows, "hist": hist, "ref": ref, "day": day}, ensure_ascii=False), encoding="utf-8")
+    return rows, hist, ref, day
+
+
 def public(cards: list[dict]) -> dict:
-    """사이트용: 섹터 모멘텀만(종목별 점수·순위는 넣지 않는다 — 종목 추천처럼 보이지 않게)."""
+    """사이트용: 섹터 모멘텀만(종목별 점수·순위는 넣지 않는다 — 종목 추천처럼 보이지 않게). 미국 반도체 포함."""
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from krx import quotes
     syms = [r["sym"] for c in cards for r in c.get("rows", []) if r.get("cur") == "KRW"]
     if not syms:
         return {}
     idx = quotes(["^KS11", "^KQ11"])
-    res = build(cards, idx, history(syms), int(datetime.now(timezone.utc).timestamp() * 1000))
+    hist = dict(history(syms))
+    extra, ref, us_day = {}, {}, ""
+    try:
+        urows, uhist, uref, us_day = us_sector()
+        if urows:
+            extra[US_SECTOR] = urows
+            hist.update(uhist)
+            if uref:
+                ref[US_SECTOR] = uref
+    except Exception:  # noqa: BLE001
+        pass
+    res = build(cards, idx, hist, int(datetime.now(timezone.utc).timestamp() * 1000), extra, ref)
+    for s in res["sectors"]:
+        if s["name"] in extra:
+            s["us"] = True
     late = sum(1 for x in res["stocks"] if x["note"] == "지연")
     return {"at": res["at"], "sectors": res["sectors"], "open": (idx.get("^KS11") or {}).get("status") == "OPEN",
-            "late": late, "n": len(res["stocks"]), "hist_day": res["hist_day"]}
+            "late": late, "n": len(res["stocks"]), "hist_day": res["hist_day"], "us_day": us_day}
 
 
 def main() -> None:

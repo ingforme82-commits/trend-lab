@@ -436,6 +436,11 @@ def build() -> dict:
         except Exception as e:  # noqa: BLE001
             log(f"섹터 모멘텀 건너뜀: {type(e).__name__}: {e}")
         try:
+            from levetf import build as lev
+            out["lev"] = lev()
+        except Exception as e:  # noqa: BLE001
+            log(f"SOXL·KORU 점검 건너뜀: {type(e).__name__}: {e}")
+        try:
             from watch import build as watch
             out["watch"] = watch()
         except Exception as e:  # noqa: BLE001
@@ -487,7 +492,7 @@ def _upload(data: dict) -> bool:
             old = json.loads(base64.b64decode(j["content"]).decode("utf-8"))
         except Exception:  # noqa: BLE001
             old = None
-    if old and all(old.get(k) == data.get(k) for k in ("items", "moves", "world", "spot", "trending", "sectors", "dow", "us10y", "ust", "kr", "momentum", "flows", "watch")):
+    if old and all(old.get(k) == data.get(k) for k in ("items", "moves", "world", "spot", "trending", "sectors", "dow", "us10y", "ust", "kr", "momentum", "flows", "watch", "lev")):
         return False                                   # 바뀐 글 없음 → 커밋 안 함
     body = {"message": f"속보 갱신 {datetime.now(KST):%m-%d %H:%M}", "branch": BRANCH,
             "content": base64.b64encode(json.dumps(data, ensure_ascii=False).encode("utf-8")).decode()}

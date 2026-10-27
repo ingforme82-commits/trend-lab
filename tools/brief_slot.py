@@ -98,6 +98,8 @@ def compose(slot: str, d: dict, day: str) -> dict:
             rec["checkpoints"] = [{"time": c.get("time", ""), "title": c["title"]} for c in cps if c.get("date") == day][:8]
         except Exception:  # noqa: BLE001
             rec["checkpoints"] = []
+    if (d.get("lev") or {}).get("items"):
+        rec["lev"] = d["lev"]                             # SOXL·KORU 점검
     if (d.get("watch") or {}).get("items"):
         rec["watch"] = d["watch"]                         # 운영자 관전 포인트(07:20엔 마감 결과)
     if slot in EVE:
