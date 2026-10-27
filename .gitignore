@@ -10,3 +10,5 @@ tools/seen_cache.json
 tools/reg_cache.json
 tools/brief_slot.log
 tools/brief_slot.lock
+tools/leadership_hist.json
+tools/leadership_dry.json
