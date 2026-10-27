@@ -86,6 +86,7 @@ def save(items: list[dict]) -> None:
 
 
 def push(msg: str) -> None:
+    subprocess.run([sys.executable, str(ROOT / "tools" / "make_sitemap.py")], cwd=ROOT)   # 검색용 sitemap 갱신
     subprocess.run(["git", "add", "-A"], cwd=ROOT, check=True)
     if subprocess.run(["git", "diff", "--cached", "--quiet"], cwd=ROOT).returncode == 0:
         print("바뀐 내용 없음")

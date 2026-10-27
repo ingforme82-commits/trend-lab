@@ -441,8 +441,8 @@ async function loadStudies() {
 function archCard(s, isNext, label) {
   const d = new Date(s.date + "T00:00:00");
   const ph = s.photos || [];
-  const img = ph.length ? `<img src="${esc(ph[s.cover || 0].thumb)}" alt="" loading="lazy"><span class="arc-cnt">📷 ${ph.length}</span>`
-    : s.poster ? `<img src="${esc(s.poster.thumb)}" alt="" loading="lazy">`
+  const img = ph.length ? `<img src="${esc(ph[s.cover || 0].thumb)}" alt="${esc(s.title || "")} 현장 사진" loading="lazy"><span class="arc-cnt">📷 ${ph.length}</span>`
+    : s.poster ? `<img src="${esc(s.poster.thumb)}" alt="${esc(s.title || "")} 안내 포스터" loading="lazy">`
     : `<div class="arc-ph"><span>${isNext ? "🗓️" : "📚"}</span>${isNext ? `${dday(s.date)} · 다음 스터디` : "사진 정리 중"}</div>`;
   return `<a class="arc${isNext ? " next" : ""}" href="study.html?id=${encodeURIComponent(s.id)}">
     <div class="arc-img">${img}<span class="arc-month">${isNext ? "예정" : `${d.getFullYear() % 100}년 ${d.getMonth() + 1}월`}</span></div>
