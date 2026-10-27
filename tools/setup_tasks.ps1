@@ -33,7 +33,7 @@ Register-ScheduledTask -TaskName '트렌드랩_종목군' -Force -Description '�
 $pull = New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit (New-TimeSpan -Minutes 5) -MultipleInstances IgnoreNew
 $tp = New-ScheduledTaskTrigger -Once -At (Get-Date).Date -RepetitionInterval (New-TimeSpan -Minutes 10)
 Register-ScheduledTask -TaskName '트렌드랩_깃풀' -Force -Description '깃허브 자동 받기(안전 모드)' `
-  -Action (New-ScheduledTaskAction -Execute $pyw -Argument 'toolsuto_pull.py' -WorkingDirectory $dir) -Trigger $tp -Settings $pull | Out-Null
+  -Action (New-ScheduledTaskAction -Execute $pyw -Argument 'tools\auto_pull.py' -WorkingDirectory $dir) -Trigger $tp -Settings $pull | Out-Null
 
 $t = Get-ScheduledTask -TaskName '트렌드랩_방문리포트'
 $t.Settings.WakeToRun = $true
