@@ -105,7 +105,7 @@ TAGS = [
     ("연준·금리", r"연준|Fed\b|FOMC|파월|금리|국채|채권|CPI|PCE|물가|고용지표|비농업|실업|재무부|바이백|달러|Treasury|yield|inflation|payroll|Powell|rate cut|rate hike"),
     ("AI·빅테크", r"앤스로픽|앤트로픽|Anthropic|OpenAI|오픈AI|엔비디아|NVIDIA|Nvidia|마이크로소프트|Microsoft|MSFT|알파벳|Alphabet|구글|Google|메타|Meta\b|"
                  r"아마존|Amazon|애플|Apple|테슬라|Tesla|스페이스X|SpaceX|xAI|\bAI\b|데이터센터|data center|GPU|IPO|상장"),
-    ("반도체", r"반도체|하이닉스|삼성전자|마이크론|Micron|TSMC|HBM|메모리|D램|DRAM|낸드|NAND|SOX|램리서치|ASML|chip|semiconductor"),
+    ("반도체", r"반도체|하이닉스|삼성전자|이오테크닉스|디아이티|제주반도체|코미코|하나마이크론|SK스퀘어|마이크론|Micron|TSMC|HBM|메모리|D램|DRAM|낸드|NAND|SOX|램리서치|ASML|chip|semiconductor"),
     ("사이버보안", r"해킹|해커|유출|사이버|보안|랜섬|hack|breach|cyber|ransomware|security|시스코|Cisco|크라우드스트라이크|CrowdStrike|"
                  r"팔로알토|Palo Alto|지스케일러|Zscaler|옥타|Okta|클라우드플레어|Cloudflare|포티넷|Fortinet|데이터도그|Datadog|센티넬원|SentinelOne|"
                  r"루브릭|Rubrik|세일포인트|SailPoint"),
