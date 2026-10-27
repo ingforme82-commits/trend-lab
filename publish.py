@@ -1,4 +1,6 @@
-"""블로그 글(txt+html)을 사이트 '시황 업데이트' '블로그 분석 글' 칸에 올린다.
+"""⛔ 2026-10-28 운영자 결정: 블로그 분석 글은 사이트에 싣지 않는다. 이 명령은 실행되지 않게 막아 두었다.
+
+블로그 글(txt+html)을 사이트 '시황 업데이트' '블로그 분석 글' 칸에 올린다.
 
   python publish.py "C:\\...\\블로그시황\\20261026_xxx.txt"          # 피드에 추가(같은 글이면 갱신)
   python publish.py <txt> [<txt> ...] --push                        # 추가 후 git commit·push(사이트 반영)
@@ -98,7 +100,11 @@ def push(msg: str) -> None:
     print("push 완료 — 1~2분 뒤 사이트에 반영됩니다")
 
 
-def main() -> None:
+def main():
+    raise SystemExit('블로그 분석 글은 사이트에 싣지 않기로 했습니다(2026-10-28). publish.py 는 꺼져 있습니다.')
+
+
+def _main_disabled() -> None:
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
     do_push = "--push" in sys.argv
     items = load()

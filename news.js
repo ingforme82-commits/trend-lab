@@ -1,6 +1,6 @@
 /* 실시간 속보 · 변곡점 — 뉴스(live 브랜치 news.json)와 가격 변화를 시각으로 연결
    - 빨간 점(🔴)은 '변곡점(평소보다 크게 움직이기 시작한 구간) 직전 뉴스'에만 붙는다.
-   - 해석은 사람이 쓴 '💡 해석' 노트(data/notes.json)로만 싣고 블로그 분석 글로 잇는다. */
+   - 해석은 사람이 쓴 '💡 해석' 노트(data/notes.json)로만 싣는다(블로그 글 연결은 2026-10-28 뺌). */
 "use strict";
 (() => {
   const NEWS_URL = "https://raw.githubusercontent.com/ingforme82-commits/trend-lab/live/news.json";
@@ -179,7 +179,7 @@
         ${others ? `<p class="mv-o">같은 구간 ${others}</p>` : ""}
         ${ns.length ? `<ul class="mv-n">${ns.slice(0, 4).map((n) => `<li><span class="mv-dot"></span><b>${hm(n.ts)}</b> ${n.lang === "en" ? "🌐 " : ""}${esc(n.text)} <small>${n.osrc ? `${esc(n.osrc)} · ${esc(n.src)} 경유` : esc(n.src)}${co.length ? ` · ${esc(n._a)} 쪽` : ""}${n.lag != null ? ` · <b class="mv-lag">${n.lag < 0 ? `움직임 ${-n.lag}분 전` : n.lag === 0 ? "움직임과 같은 분" : `가격이 먼저 움직이고 ${n.lag}분 뒤`}</b>` : ""}</small></li>`).join("")}</ul>`
           : `<p class="mv-none">직전 15분 안에 관련 분야 뉴스가 없습니다(수급·기술적 움직임일 수 있음).</p>`}
-        ${nt ? `<div class="mv-note"><b>💡 ${esc(nt.title)}</b><p>${esc(nt.text)}</p>${nt.post ? `<a href="posts/${encodeURIComponent(nt.post)}.html" target="_blank" rel="noopener">블로그 분석 글 보기 →</a>` : ""}</div>` : ""}
+        ${nt ? `<div class="mv-note"><b>💡 ${esc(nt.title)}</b><p>${esc(nt.text)}</p></div>` : ""}
       </article>`;
     }).join("");
   }

@@ -6,6 +6,7 @@
 - `main`에 push하면 1~2분 뒤 사이트에 반영됩니다. 빌드 과정이 없는 정적 사이트(HTML·CSS·JS + JSON)입니다.
 
 ## 반드시 지킬 것
+0. **블로그 분석 글·시황 리포트는 사이트에서 뺐습니다(2026-10-28 운영자 결정).** `publish.py`는 꺼져 있고, posts/·report.js 는 지웠습니다. 다시 넣지 않습니다.
 1. **답변·문구는 한국어.** 사이트 문구는 쉬운 말로 씁니다.
 2. **투자 권유 금지(유사투자자문).** 매수·매도 권유, 목표가, 종목 추천, 수익 보장 표현은 쓰지 않습니다. 사실·수치·일정·교육 내용만 씁니다.
 3. **개인정보.** 참석자 이름은 '참석자'로 익명 처리하고, 운영자 본인 코멘트는 '운영자'로 표시합니다. 아이만 나온 사진은 올리지 않습니다. 사진을 내려 달라는 요청이 오면 바로 내립니다(`study.py hide-photo`).
@@ -27,17 +28,14 @@
 | `data/curriculum.json` | 정기 스터디 연간 커리큘럼 |
 | `data/books.json` | 독서 토론 선정 도서 10권(`study`에 회차 id를 넣으면 날짜가 연결됨) |
 | `data/checkpoints.json` | 이번 주 시장 체크포인트(지난 날짜는 자동으로 숨김) |
-| `data/posts.json` · `posts/` | 블로그 시황 글 피드(`publish.py`로 추가) |
 | `study/<id>/` | 회차별 사진(웹용 1600px, 메타데이터 제거) |
 | `data/growth.json` · `study/growth/` · `tools/growth_photos.py` | 📒 가치 투자 성장 스토리(아카이브 칩, `study.html?id=growth`): 운영자 개인 공부 사진. **운영자 외 얼굴은 모두 모자이크**. `detect` → `review`(내 PC 확인 페이지에서 본인 상자만 지움·놓친 얼굴 추가) → `apply --push`. 원본·작업 파일(boxes.json)은 저장소 밖 |
-| `publish.py` | 블로그 글(txt+html)을 피드에 추가 |
 | `study.py` | 일정 수정, 새 회차, 사진·후기 올리기, 공지 띠 |
 | `tools/make_cta.py` | 블로그 글 끝 그룹 스터디 안내(CTA)를 데이터로 생성 |
 | `tools/make_intro.py` | 그룹 스터디 소개 블로그 글 생성 |
 | `tools/moves.py` | 변곡점 감지(1분봉 10분·30분 급변, 평소 변동폭의 4배 이상) + 직전 15분 관련 뉴스 연결. 🔴 빨간 점은 이 뉴스에만 |
 | `data/site.json` spotlight · `spot.py` | 🔥 이번 주 화제 종목(주 단위로 on/off, 추천 아님 표시). `python spot.py on TSLA --name 테슬라 ... --push` / `off` |
 | `data/sectors.json` · `tools/sector_watch.py` | 섹터 시세 감시(사이버보안·미국/한국 반도체·원전·미국 원전SMR·방산·2차전지·조선 8개 섹터, 92종목(사이버보안은 ETF 3개 포함), 사이트에서는 접힌 카드 → 누르면 종목). 하루 ±3%·3개월 고점 돌파·52주 신고가 3% 이내가 생기면 속보 목록에 '섹터 시세'로. 섹터를 늘리려면 sectors.json에 추가 |
-| `report.js` | 🔎 시황 리포트 만들기(블로그 분석 글 칸 입력창): 주제어 → 시세·변곡점·속보·섹터·해석 노트·블로그 글·체크포인트를 블로그 형식으로 자동 정리(AI 문장 생성 없음, 해석·전망 없음). `?q=유가` 주소로 바로 열림. 입력하면 블로그 글 목록도 검색 |
 | `tools/brief.py` · `data/briefs.json` | 📋 시장 브리핑: 실시간 요약(news.json brief) + 매일 12시 기록(visit_report가 저장·push). 사이트에서 지난 기록·연속 화제·섹터 평균 변화로 후속 확인 |
 | `tools/market_extra.py` | 해외 지수(니케이·상하이·CSI300·항셍·대만EWT·DAX·CAC40·유로스톡스50), 화제 종목 시세, 최근 24시간 많이 나온 종목 |
 | `data/notes.json` · `note.py` | 변곡점 '💡 해석' 노트(운영자가 쓴 해석 → 블로그 분석 글 연결). 자동 화면은 사실·수치만, 해석은 노트로만 |
@@ -57,7 +55,6 @@ python study.py photos 2026-11-14 "사진폴더" --cover 3 --push   # 촬영 시
 python study.py notes 2026-11-14 후기.txt --push               # '## 소제목', '! 핵심', '> 참석자: 말'
 python study.py hide-photo 2026-08-08 5 --push                 # 5번째 사진 내리기
 python study.py notice "📢 안내 문구" --until 2026-11-21 --push / notice --clear --push
-python publish.py "블로그시황/20261027_xxx.txt" --push         # 같은 이름 .html 필요
 python note.py add --from "2026-10-27 00:40" --to "2026-10-27 01:00" --assets WTI BRENT --title "..." --text "..." --post 블로그글파일이름 --push
 ```
 JSON을 직접 고쳐도 됩니다. 고친 뒤에는 `python -m json.tool data/studies.json > /dev/null`으로 형식을 확인하고 커밋·push 합니다.

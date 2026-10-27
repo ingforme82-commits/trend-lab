@@ -16,7 +16,7 @@ BASE = "https://ingforme82-commits.github.io/trend-lab/"
 
 def main() -> None:
     pages = [("", "hourly", "1.0"), ("study.html", "weekly", "0.6")]
-    pages += [(f"posts/{urllib.parse.quote(p.name)}", "monthly", "0.7") for p in sorted((ROOT / "posts").glob("*.html"), reverse=True)]
+    # 블로그 분석 글(posts/)은 2026-10-28 사이트에서 뺌
     def lastmod(rel: str) -> str:
         f = ROOT / urllib.parse.unquote(rel or "index.html")
         return datetime.fromtimestamp(f.stat().st_mtime, timezone.utc).strftime("%Y-%m-%d") if f.exists() else ""

@@ -114,63 +114,7 @@ async function loadChecks() {
   } catch { /* 체크포인트 없으면 섹션만 비움 */ }
 }
 
-/* ───────── 3. 블로그 분석 글 피드 ───────── */
-let posts = [], cat = "전체", shown = 8, knownSlugs = null;
-
-async function loadFeed() {
-  try {
-    const data = await (await fetch(`data/posts.json?t=${Date.now()}`)).json();
-    const fresh = new Set();
-    if (knownSlugs) data.forEach((p) => { if (!knownSlugs.has(p.slug)) fresh.add(p.slug); });
-    knownSlugs = new Set(data.map((p) => p.slug));
-    posts = data.map((p) => ({ ...p, fresh: fresh.has(p.slug) }));
-    window.trlPosts = posts;
-    posts.sort((a, b) => (b.date + b.time).localeCompare(a.date + a.time));
-    renderChips(); renderFeed();
-    if (posts[0]) $("#feedStamp").textContent = `마지막 글 ${posts[0].date.slice(5).replace("-", "/")} ${posts[0].time}`;
-  } catch {
-    $("#feedList").innerHTML = `<p class="empty">글 목록을 불러오지 못했습니다.</p>`;
-  }
-}
-
-function renderChips() {
-  const cats = ["전체", ...new Set(posts.flatMap((p) => p.cats || []))];
-  $("#chips").innerHTML = cats.map((c) => `<button class="chip${c === cat ? " on" : ""}" data-c="${esc(c)}">${esc(c)}</button>`).join("");
-}
-
-window.trlRenderFeed = () => renderFeed();
-function renderFeed() {
-  // 위쪽 '시황 리포트 만들기' 입력창에 쓴 말로 블로그 글도 함께 검색
-  const fq = (window.trlFeedQuery || "").trim();
-  let frx = null;
-  if (fq) { try { frx = new RegExp(fq.split(/[\s,]+/).map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|"), "i"); } catch { frx = null; } }
-  const list = posts.filter((p) => (cat === "전체" || (p.cats || []).includes(cat)) && (!frx || frx.test(`${p.title} ${p.summary} ${(p.tags || []).join(" ")} ${(p.sections || []).join(" ")}`)));
-  const today = ymd(KST());
-  $("#feedList").innerHTML = list.slice(0, shown).map((p) => {
-    const d = new Date(p.date + "T00:00:00");
-    const isNew = p.fresh || p.date === today;
-    return `<article class="post">
-      <div class="p-date"><b>${d.getMonth() + 1}/${d.getDate()}</b>${DOW[d.getDay()]}요일 ${esc(p.time)}${isNew ? `<br><span class="p-new">NEW</span>` : ""}</div>
-      <div>
-        <h3 class="p-title"><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.title)}</a></h3>
-        <p class="p-sum clamp">${esc(p.summary)}</p>
-        ${p.sections && p.sections.length ? `<ul class="p-secs">${p.sections.slice(0, 6).map((s) => `<li>${esc(s)}</li>`).join("")}</ul>` : ""}
-        <div class="p-foot"><a href="${esc(p.url)}" target="_blank" rel="noopener">전문 읽기 →</a><button class="p-toggle">요약 펼치기</button><span class="p-cat">${esc((p.cats || []).join(" · "))}</span></div>
-      </div></article>`;
-  }).join("") || `<p class="empty">이 분류의 글이 아직 없습니다.</p>`;
-  $("#moreBtn").hidden = list.length <= shown;
-}
-
-$("#chips").addEventListener("click", (e) => {
-  const b = e.target.closest(".chip"); if (!b) return;
-  cat = b.dataset.c; shown = 8; renderChips(); renderFeed();
-});
-$("#feedList").addEventListener("click", (e) => {
-  const b = e.target.closest(".p-toggle"); if (!b) return;
-  const s = b.closest(".post").querySelector(".p-sum");
-  s.classList.toggle("clamp"); b.textContent = s.classList.contains("clamp") ? "요약 펼치기" : "요약 접기";
-});
-$("#moreBtn").addEventListener("click", () => { shown += 8; renderFeed(); });
+/* ───────── 3. (블로그 분석 글 피드 — 2026-10-28 운영자 결정으로 사이트에서 뺌) ───────── */
 
 /* ───────── 4. 투자 스타일 테스트 ───────── */
 // 점수 축: T 추세추종 · C 역발상 · S 단기매매 · L 장기보유 · N 뉴스·테마 / r 위험(1~4) / h 습관 플래그 / g 좋은 습관
@@ -517,6 +461,6 @@ function archCard(s, isNext, label) {
 }
 
 /* ───────── 시작 ───────── */
-loadTicks(); loadChecks(); loadFeed(); loadStudies();
+loadTicks(); loadChecks(); loadStudies();   // 블로그 분석 글 피드는 2026-10-28 운영자 결정으로 뺌
 setInterval(loadTicks, 30000);
-setInterval(loadFeed, 5 * 60000);
+
