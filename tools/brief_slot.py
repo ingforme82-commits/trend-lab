@@ -1,6 +1,6 @@
-"""⏰ 정시 브리핑 발행: 07:20(밤사이 점검) · 14:00(국내 장중 점검) → data/briefs.json 에 기록하고 push.
+"""⏰ 정시 브리핑 발행: 07:20(밤사이 점검) · 14:00(국내 장중 점검) · 20:05(넥장 마감·프리장 선물·유가) · 22:15(미국 개장 전) → data/briefs.json 에 기록하고 push.
 
-  python tools/brief_slot.py 0720      # 또는 1400
+  python tools/brief_slot.py 0720      # 또는 1400 / 2005 / 2215
   python tools/brief_slot.py 1400 --dry   # 검증만(기록·push 안 함)
 
 - 중복 방지: 같은 날 같은 슬롯 기록이 있으면 건너뜀 + 실행 잠금 파일(10분 지나면 무효)
@@ -20,13 +20,16 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "tools"))
 BRIEFS = ROOT / "data" / "briefs.json"
 CHECKS = ROOT / "data" / "checkpoints.json"
 LOCK = ROOT / "tools" / "brief_slot.lock"
 LOG = ROOT / "tools" / "brief_slot.log"
 KST = timezone(timedelta(hours=9))
 REPO = "ingforme82-commits/trend-lab"
-SLOTS = {"0720": ("07:20", "밤사이 점검 · 미국 마감 · 오늘 체크포인트"), "1400": ("14:00", "국내 장중 점검 · 섹터 · 주요 종목")}
+SLOTS = {"0720": ("07:20", "밤사이 점검 · 미국 마감 · 오늘 체크포인트"), "1400": ("14:00", "국내 장중 점검 · 섹터 · 주요 종목"),
+         "2005": ("20:05", "넥스트레이드 마감 · 미국 프리장 선물·유가 점검"), "2215": ("22:15", "미국 개장 전 선물·유가 점검")}
+EVE = {"2005", "2215"}
 MIN = 60_000
 
 
@@ -95,6 +98,8 @@ def compose(slot: str, d: dict, day: str) -> dict:
             rec["checkpoints"] = [{"time": c.get("time", ""), "title": c["title"]} for c in cps if c.get("date") == day][:8]
         except Exception:  # noqa: BLE001
             rec["checkpoints"] = []
+    if slot in EVE:
+        rec["eve"] = d.get("eve") or {}
     if slot == "1400":
         kr_secs = [c for c in d.get("sectors") or [] if any(r.get("cur") == "KRW" for r in c.get("rows", []))]
         rec["momentum"] = (d.get("momentum") or {}).get("sectors", [])
@@ -153,6 +158,10 @@ def main() -> int:
                 log(f"{label} 시도 {n + 1}/3 실패: {bad[0]}")
                 continue
             bad = validate(slot, d, int(time.time() * 1000))
+            if not bad and slot in EVE:
+                from evening import check, make as evening
+                d["eve"] = evening(d)
+                bad = check(d["eve"])
             if not bad:
                 break
             log(f"{label} 시도 {n + 1}/3 검증 실패: " + " / ".join(bad))

@@ -322,6 +322,21 @@
     try { briefs = await (await fetch(`data/briefs.json?t=${Math.floor(Date.now() / 600000)}`)).json(); } catch { briefs = []; }
   }
   const sg = (v, u = "%") => `<b class="${cls(v)}">${v > 0 ? "+" : ""}${(+v).toFixed(2)}${u}</b>`;
+  // 🌙 저녁 점검(20:05·22:15): 선물·유가를 한국장 마감(15:30)·넥장 마감(20:00)·1시간 전 대비로
+  function eveHtml(e) {
+    const p = (v) => v == null ? '<span class="dim">-</span>' : sg(v);
+    const fv = (r, v) => v == null ? "-" : (r.u === "$" ? "$" : "") + v.toLocaleString("ko-KR", { maximumFractionDigits: 2 }) + (r.u === "원" ? "원" : "");
+    const tbl = (rows, reg) => `<div class="fl-scroll"><table class="fl-t"><tr><th>종목</th><th>현재</th>${reg ? "<th>미국 종가<small>대비</small></th>" : ""}<th>15:30<small>한국 마감 후</small></th><th>20:00<small>넥장 마감 후</small></th><th>1시간</th><th>24시간</th><th>15:30 이후<small>저가~고가</small></th></tr>
+      ${rows.map((r) => `<tr><td class="fl-n">${esc(r.name)}</td><td>${fv(r, r.px)}</td>${reg ? `<td>${p(r.reg)}</td>` : ""}<td>${p(r.kr)}</td><td>${p(r.nx)}</td><td>${p(r.h1)}</td><td>${p(r.d24)}</td><td class="fl-5">${r.lo != null ? `${fv(r, r.lo)}~${fv(r, r.hi)}` : "-"}</td></tr>`).join("")}</table></div>`;
+    const li = (n) => `<li><b>${hm(n.ts)}</b> ${esc(n.text)} <small class="dim">${esc(n.src)}${n.verify === "multi" ? " · 복수 출처" : n.verify === "unconfirmed" ? " · 미확인" : ""}</small></li>`;
+    return `<div class="bwide"><h4>🌙 선물·유가 점검 <small class="dim">${hm(e.at)} 기준 · 하이퍼리퀴드 24시간 선물 · 미국 개장 ${esc(e.us_open || "")} KST</small></h4>
+        <p class="fl-gh">📈 지수·반도체 선물</p>${tbl(e.fut || [], true)}
+        <p class="fl-gh" style="margin-top:10px">🛢️ 유가·금·달러</p>${tbl(e.oil || [], false)}
+        <p class="mm-f">미국 종가 대비 = 현물 지수 종가와 24시간 선물 비교(기초 차이 포함) · 삼성전자·SK하이닉스 선물은 달러 표시</p></div>
+      ${(e.nxt || []).length ? `<div class="bcol"><h4>🌆 넥스트레이드 애프터마켓</h4><ul class="bn">${e.nxt.map((r) => `<li>${esc(r.name)} ${Math.round(r.px).toLocaleString("ko-KR")}원 ${sg(r.chg)} <small class="dim">KRX 종가 대비 ${r.vs_krx != null ? `${r.vs_krx > 0 ? "+" : ""}${r.vs_krx.toFixed(2)}%` : "-"}${r.val ? ` · NXT 거래대금 ${eok(r.val)}` : ""}${r.status === "CLOSE" ? " · 마감" : ""}</small></li>`).join("")}</ul></div>` : ""}
+      ${(e.oil_heads || []).length ? `<div class="bcol"><h4>🛢️ 유가·중동 속보 <small class="dim">최근 12시간</small></h4><ul class="bn">${e.oil_heads.map(li).join("")}</ul></div>` : ""}
+      ${(e.tonight || []).length ? `<div class="bcol"><h4>🗓️ 오늘 밤 일정</h4><ul class="bn">${e.tonight.map((c) => `<li><b>${esc(c.time)}</b> ${esc(c.title)}</li>`).join("")}</ul></div>` : ""}`;
+  }
   function briefHtml(b, hist) {
     if (!b) return "";
     // 후속 확인: 지난 기록에서 같은 종목이 며칠 연속 화제였는지, 섹터 평균이 어떻게 바뀌었는지
@@ -353,7 +368,8 @@
     const rg = b.reg && b.reg.SP500 ? `<div class="bcol"><h4>🇺🇸 미국 정규장 마감</h4><div class="bfs">${[["SP500", "S&P500"], ["XYZ100", "나스닥100"], ["SOXL", "SOXL"], ["EWY", "EWY"]].filter(([k]) => b.reg[k]).map(([k, n]) => `<span class="bf"><small>${n}</small> ${sg(b.reg[k].chg)}</span>`).join("")}</div></div>` : "";
     const fl = (b.flows || []).length ? `<div class="bcol">${b.flows.map((g) => flowTable(g, 5, true)).join("")}</div>` : "";
     const mom = (b.momentum || []).length ? `<div class="bcol">${momHtml({ sectors: b.momentum }, true)}</div>` : "";
-    return top + cps + rg + mom + fl + ktop + `<div class="bcol"><h4>📍 가장 크게 움직인 순간</h4><ul>${mv || '<li class="dim">최근 24시간 변곡점 없음</li>'}</ul></div>
+    const ev = b.eve && (b.eve.fut || []).length ? eveHtml(b.eve) : "";
+    return ev + top + cps + rg + mom + fl + ktop + `<div class="bcol"><h4>📍 가장 크게 움직인 순간</h4><ul>${mv || '<li class="dim">최근 24시간 변곡점 없음</li>'}</ul></div>
       <div class="bcol"><h4>📊 섹터 강약</h4><ul>${sec || '<li class="dim">-</li>'}</ul></div>
       <div class="bcol"><h4>📈 뉴스에 많이 나온 종목</h4><div class="bts">${tr || '<span class="dim">-</span>'}</div>
         <h4 style="margin-top:12px">🌏 해외 지수</h4><p>상승 ${w.up || 0} · 하락 ${w.down || 0}${w.best ? ` · 최강 ${esc(w.best.name)} ${sg(w.best.chg)} · 최약 ${esc(w.worst.name)} ${sg(w.worst.chg)}` : ""}</p>
