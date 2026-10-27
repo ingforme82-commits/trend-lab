@@ -29,6 +29,7 @@
 | `data/checkpoints.json` | 이번 주 시장 체크포인트(지난 날짜는 자동으로 숨김) |
 | `data/posts.json` · `posts/` | 블로그 시황 글 피드(`publish.py`로 추가) |
 | `study/<id>/` | 회차별 사진(웹용 1600px, 메타데이터 제거) |
+| `data/growth.json` · `study/growth/` · `tools/growth_photos.py` | 📒 가치 투자 성장 스토리(아카이브 칩, `study.html?id=growth`): 운영자 개인 공부 사진. **운영자 외 얼굴은 모두 모자이크**. `detect` → `review`(내 PC 확인 페이지에서 본인 상자만 지움·놓친 얼굴 추가) → `apply --push`. 원본·작업 파일(boxes.json)은 저장소 밖 |
 | `publish.py` | 블로그 글(txt+html)을 피드에 추가 |
 | `study.py` | 일정 수정, 새 회차, 사진·후기 올리기, 공지 띠 |
 | `tools/make_cta.py` | 블로그 글 끝 그룹 스터디 안내(CTA)를 데이터로 생성 |
