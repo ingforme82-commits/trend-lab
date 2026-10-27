@@ -616,3 +616,15 @@ body{overflow-x:hidden}
 .mm-rk{color:var(--sub);font-size:12px}.mm-v{text-align:right;font-variant-numeric:tabular-nums}
 .mm-bar{height:8px;background:var(--bg2);border-radius:4px;overflow:hidden}.mm-bar i{display:block;height:100%;background:var(--gold,#c9a14a);border-radius:4px}
 .mm-f{margin:6px 0 0;font-size:11.5px;color:var(--sub)}
+
+/* 주도주 수급 */
+.flow-box{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 16px}.flow-box[hidden]{display:none}
+.fl-sort{display:flex;gap:6px;margin:0 0 8px}
+.fl-g{margin:0 0 10px}.fl-gh{margin:0 0 4px;font-weight:700}.fl-gh small{font-weight:400;color:var(--sub);font-size:12px}
+.fl-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch}
+.fl-t{border-collapse:collapse;width:100%;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.fl-t th{font-weight:600;color:var(--sub);font-size:11.5px;text-align:right;padding:4px 6px;border-bottom:1px solid var(--line)}
+.fl-t th small{display:block;font-weight:400;font-size:10.5px}
+.fl-t td{text-align:right;padding:4px 6px;border-bottom:1px solid var(--bg2)}
+.fl-t th:first-child,.fl-t td.fl-n{text-align:left;position:sticky;left:0;background:#fff}
+.fl-t td.fl-5{font-size:12px}

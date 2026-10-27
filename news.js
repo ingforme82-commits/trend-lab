@@ -30,7 +30,7 @@
   let news = [], moves = [], series = {}, notes = [], candles = {}, candles1 = {}, sel = null, tag = "전체", shown = 15, health = null;
   // 속보 필터: 중요도·시간·검증·정렬(분류는 tag 칩)
   const flt = { imp: "all", hrs: 0, ver: "all", sort: "new" };
-  let world = [], spot = [], trend = [], sectors = [], brief = null, briefs = [], kwFilter = null, momentum = null;   // kwFilter: {label, rx}
+  let world = [], spot = [], trend = [], sectors = [], brief = null, briefs = [], kwFilter = null, momentum = null, flows = null, flowSort = "val";   // kwFilter: {label, rx}
 
   /* ── 데이터 ── */
   let apiBlockedUntil = 0;
@@ -49,7 +49,7 @@
       const j = await fetchNews();
       news = j.items || []; moves = j.moves || []; series = j.series || {}; health = j.health || null;
       world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
-      window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
+      window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; flows = j.flows || null; if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
       window.trlMoves = moves; window.trlSeries = series; window.trlNews = news;
       drawHealth(j.updated);
       drawTicker();
@@ -288,6 +288,35 @@
       <div class="sc-bar">${chips}</div>${panel}`;
   }
 
+  /* ── 💰 주도주 수급: 반도체·국내 보안 상위 종목 거래대금·수급(사실 집계) ── */
+  const eokS = (v) => v == null ? "-" : `<b class="${cls(v / 1e8)}">${v > 0 ? "+" : v < 0 ? "−" : ""}${eok(Math.abs(v))}</b>`;
+  const md = (d) => d ? `${+d.slice(5, 7)}/${+d.slice(8, 10)}` : "";
+  function flowTable(g, n, compact) {
+    const rows = [...g.rows].sort((a, b) => flowSort === "chg" && !compact ? b.chg - a.chg : (b.val || 0) - (a.val || 0)).slice(0, n);
+    const invDay = (rows.find((r) => r.inv) || {}).inv;
+    const head = compact ? "<tr><th>종목</th><th>등락</th><th>거래대금</th></tr>"
+      : `<tr><th>종목</th><th>등락</th><th>거래대금</th><th>외국계 창구<small>오늘</small></th><th>외국인<small>${invDay ? md(invDay.day) : ""}</small></th><th>기관<small>${invDay ? md(invDay.day) : ""}</small></th><th>외국인·기관<small>5일 합계</small></th><th>프로그램</th></tr>`;
+    const body = rows.map((r) => `<tr><td class="fl-n">${esc(r.name)}</td><td>${pct(r.chg)}</td><td>${r.val ? eok(r.val) : "-"}</td>${compact ? "" : `
+      <td>${r.win ? eokS(r.win.amt) : "-"}</td><td>${r.inv ? eokS(r.inv.frgn) : "-"}</td><td>${r.inv ? eokS(r.inv.org) : "-"}</td>
+      <td class="fl-5">${r.inv ? `${eokS(r.inv.frgn5)} / ${eokS(r.inv.org5)}` : "-"}</td><td class="dim">준비 중</td>`}</tr>`).join("");
+    return `<div class="fl-g"><p class="fl-gh">${g.icon || ""} ${esc(g.name)}${g.n ? ` <small>상승 ${g.up}/${g.n}종목</small>` : ""}</p>
+      <div class="fl-scroll"><table class="fl-t">${head}${body}</table></div></div>`;
+  }
+  function drawFlows() {
+    const box = q("#flowBox"); if (!box) return;
+    const gs = (flows && flows.groups) || [];
+    if (!gs.length) { box.hidden = true; return; }
+    box.hidden = false;
+    const st = `${hm(flows.at)} 기준${flows.open ? " · 1분마다 갱신" : " · 장 마감(시간외 포함 시세)"}`;
+    const btn = (k, l) => `<button class="sc-chip${flowSort === k ? " on" : ""}" data-flow-sort="${k}">${l}</button>`;
+    box.innerHTML = `<p class="spot-h">💰 주도주 수급 <small>${st}</small></p>
+      <div class="fl-sort">${btn("val", "거래대금순")}${btn("chg", "등락률순")}</div>
+      ${gs.map((g) => flowTable(g, 8)).join("")}
+      <p class="mm-f">종목군 안에서 거래대금 상위·등락률 상위 종목 · 금액은 순매수 수량 × 종가(장중 현재가)로 계산한 추정치(억 원)<br>
+      외국계 창구 = 외국계 증권사 창구 합계(장중, 다음 금융) — 외국인 투자자 수급과 다름 · 외국인·기관 = 거래소 확정치(네이버, 장 마감 후 확정되며 그 전에는 직전 거래일 값)<br>
+      종목별 프로그램 매매는 무료 공개 출처가 없어 준비 중 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`;
+  }
+
   /* ── 📋 시장 브리핑(실시간 + 매일 12시 기록) ── */
   async function loadBriefs() {
     try { briefs = await (await fetch(`data/briefs.json?t=${Math.floor(Date.now() / 600000)}`)).json(); } catch { briefs = []; }
@@ -322,8 +351,9 @@
     const cps = (b.checkpoints || []).length ? `<div class="bcol"><h4>🗓️ 오늘 체크포인트</h4><ul class="bn">${b.checkpoints.map((c) => `<li>${c.time ? `<b>${esc(c.time)}</b> ` : ""}${esc(c.title)}</li>`).join("")}</ul></div>` : "";
     const ktop = (b.kr_top || []).length ? `<div class="bcol"><h4>🇰🇷 국내 감시 종목 상승 상위</h4><ul class="bn">${b.kr_top.map((r) => `<li>${esc(r.name)} ${sg(r.chg)} <small class="dim">${esc(r.sector)}${r.val ? ` · 거래대금 ${eok(r.val)}` : ""}</small></li>`).join("")}</ul></div>` : "";
     const rg = b.reg && b.reg.SP500 ? `<div class="bcol"><h4>🇺🇸 미국 정규장 마감</h4><div class="bfs">${[["SP500", "S&P500"], ["XYZ100", "나스닥100"], ["SOXL", "SOXL"], ["EWY", "EWY"]].filter(([k]) => b.reg[k]).map(([k, n]) => `<span class="bf"><small>${n}</small> ${sg(b.reg[k].chg)}</span>`).join("")}</div></div>` : "";
+    const fl = (b.flows || []).length ? `<div class="bcol">${b.flows.map((g) => flowTable(g, 5, true)).join("")}</div>` : "";
     const mom = (b.momentum || []).length ? `<div class="bcol">${momHtml({ sectors: b.momentum }, true)}</div>` : "";
-    return top + cps + rg + mom + ktop + `<div class="bcol"><h4>📍 가장 크게 움직인 순간</h4><ul>${mv || '<li class="dim">최근 24시간 변곡점 없음</li>'}</ul></div>
+    return top + cps + rg + mom + fl + ktop + `<div class="bcol"><h4>📍 가장 크게 움직인 순간</h4><ul>${mv || '<li class="dim">최근 24시간 변곡점 없음</li>'}</ul></div>
       <div class="bcol"><h4>📊 섹터 강약</h4><ul>${sec || '<li class="dim">-</li>'}</ul></div>
       <div class="bcol"><h4>📈 뉴스에 많이 나온 종목</h4><div class="bts">${tr || '<span class="dim">-</span>'}</div>
         <h4 style="margin-top:12px">🌏 해외 지수</h4><p>상승 ${w.up || 0} · 하락 ${w.down || 0}${w.best ? ` · 최강 ${esc(w.best.name)} ${sg(w.best.chg)} · 최약 ${esc(w.worst.name)} ${sg(w.worst.chg)}` : ""}</p>
@@ -456,7 +486,7 @@
     });
   }
 
-  const redraw = () => { drawHeroLive(); drawWorld(); drawSpot(); drawSectors(); drawBrief(); if (full) { drawCharts(); drawMoves(); drawTrend(); drawList(); } };
+  const redraw = () => { drawHeroLive(); drawWorld(); drawSpot(); drawSectors(); drawFlows(); drawBrief(); if (full) { drawCharts(); drawMoves(); drawTrend(); drawList(); } };
   const setKw = (label, pat) => {
     try { kwFilter = { label, rx: new RegExp(pat, "i") }; } catch { kwFilter = null; }
     tag = "전체"; shown = 30; drawTrend(); drawList(); q("#news").scrollIntoView({ behavior: "smooth" });
@@ -468,6 +498,7 @@
       return;
     }
     if (e.target.closest("[data-clear-kw]")) { kwFilter = null; drawTrend(); drawList(); return; }
+    const fs = e.target.closest("[data-flow-sort]"); if (fs) { flowSort = fs.dataset.flowSort; drawFlows(); return; }
     const tg = e.target.closest("[data-sec-toggle]");
     if (tg) { const n = tg.dataset.secToggle; openSector = openSector === n ? null : n; drawSectors(); return; }
     const st = e.target.closest("[data-sec-tag]"); if (st && q("#news")) { kwFilter = null; tag = st.dataset.secTag; shown = 30; drawTrend(); drawList(); q("#news").scrollIntoView({ behavior: "smooth" }); return; }
