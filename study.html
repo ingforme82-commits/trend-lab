@@ -109,7 +109,7 @@ let shots = [], cur = 0;
     ${photos.length ? `<h2 class="sv-h">현장 사진 <small style="font-size:14px;color:#5b6474;font-weight:400">촬영 시각 순</small></h2>
       <div class="gal">${photos.map((p, k2) => `<button class="gal-i" data-k="${k2}"><img src="${esc(p.thumb)}" alt="${esc(p.caption || s.title)}" loading="lazy">${p.time ? `<span class="gal-t">${esc(p.time)}</span>` : ""}</button>`).join("")}</div>`
       : !isUp ? `<div class="sv-empty">📷 사진과 후기를 정리하고 있습니다.</div>` : ""}
-    ${s.poster ? `<div class="sv-poster"><img src="${esc(s.poster.thumb)}" alt="안내 포스터" data-k="${posterIdx}"><p><b>안내 포스터</b><br>단톡방과 블로그에 공유했던 이날의 스터디 안내입니다.</p></div>` : ""}
+    ${s.poster ? `<div class="sv-poster"><img src="${esc(s.poster.thumb)}" alt="안내 포스터" data-k="${posterIdx}"><p><b>안내 포스터</b><br>단톡방에 공유했던 이날의 스터디 안내입니다.</p></div>` : ""}
     ${(s.reviews || []).length ? `<h2 class="sv-h">참석자 한마디</h2><div class="rv">${s.reviews.map((r) => `<blockquote>${esc(r.text)}<cite>— ${esc(r.who || "참석자")}</cite></blockquote>`).join("")}</div>` : ""}
     ${(s.materials || []).length ? `<h2 class="sv-h">자료</h2><ul class="sv-mat">${s.materials.map((m) => `<li><a href="${esc(m.url)}" target="_blank" rel="noopener">📎 ${esc(m.name)}</a></li>`).join("")}</ul>` : ""}
     <div class="sv-pn">

@@ -1,6 +1,6 @@
 """스터디 일정·아카이브 관리 (사이트 data/studies.json, data/site.json)
 
-일정·주제 바꾸기 (사이트 메인 카드, 상세 페이지, 커리큘럼 표시, 블로그 CTA가 모두 따라 바뀜)
+일정·주제 바꾸기 (사이트 메인 카드, 상세 페이지, 커리큘럼 표시가 모두 따라 바뀜)
   python study.py edit 2026-11-14 --date 2026-11-21 --push        # 날짜 변경(id는 그대로)
   python study.py edit 2026-11-30 --time 19:30 --place "장소" --push
   python study.py edit 2026-11-30 --date-note "11/23로 앞당겨질 수 있습니다" --push   # 미정 안내('' 이면 지움)
@@ -95,12 +95,6 @@ def push(msg: str) -> None:
 
 
 def after(a, msg: str) -> None:
-    try:
-        sys.path.insert(0, str(ROOT / "tools"))
-        from make_cta import main as cta
-        cta(quiet=True)                      # 블로그 글 끝 모임 안내도 같이 갱신
-    except Exception as e:  # noqa: BLE001
-        print(f"(블로그 CTA 갱신 건너뜀: {e})")
     if getattr(a, "push", False):
         push(msg)
 
