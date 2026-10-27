@@ -65,6 +65,7 @@ let shots = [], cur = 0;
   try {
     [list, site] = await Promise.all(["studies", "site"].map((f) => fetch(`data/${f}.json?t=${Date.now()}`).then((r) => r.json())));
   } catch { /* 아래에서 안내 */ }
+  if (id === "growth") return growthView();
   const s = list.find((x) => x.id === id);
   if (!s) { $("#sv").innerHTML = `<p class="empty">스터디 기록을 찾지 못했습니다. <a href="index.html#archive">아카이브로 돌아가기</a></p>`; return; }
   const se = (site.series || {})[s.series] || {};
@@ -117,6 +118,26 @@ let shots = [], cur = 0;
     </div>
     <div class="sv-cta"><p>${esc(se.name || "모임")}은 ${esc(se.rule || "매달")} 열립니다. 일정 안내와 참여 신청은 카카오톡 오픈채팅에서 받습니다.</p><a class="btn btn-kakao" href="${esc(kakao)}" target="_blank" rel="noopener">💬 오픈채팅 참여하기</a></div>`;
 })();
+
+// 📒 가치 투자 성장 스토리: 운영자 개인 공부 기록(운영자 외 얼굴 모자이크) — 연도별 날짜 순
+async function growthView() {
+  let g = null;
+  try { g = await fetch(`data/growth.json?t=${Date.now()}`).then((r) => r.json()); } catch { /* 아래 안내 */ }
+  if (!g || !(g.photos || []).length) { $("#sv").innerHTML = `<p class="empty">기록을 찾지 못했습니다. <a href="index.html#archive">아카이브로 돌아가기</a></p>`; return; }
+  document.title = `${g.title} | Trend Research Lab`;
+  shots = g.photos.map((p) => ({ src: p.src, cap: fmt(p.date) }));
+  const years = [...new Set(g.photos.map((p) => p.date.slice(0, 4)))];
+  const first = g.photos[0].date, last = g.photos[g.photos.length - 1].date;
+  $("#sv").innerHTML = `
+    <p class="sv-back"><a href="index.html#archive">← 스터디 아카이브</a></p>
+    <span class="sv-kind">📒 개인 공부 기록</span>
+    <h1 class="sv-title">${esc(g.title)}</h1>
+    <p class="sv-theme">${esc(g.intro || "")}</p>
+    <ul class="sv-meta"><li>🗓️ ${fmt(first)} ~ ${fmt(last)}</li><li>📷 사진 ${g.photos.length}장</li></ul>
+    ${years.map((y) => `<h2 class="sv-h">${y}년</h2><div class="gal">${g.photos.map((p, k2) => p.date.startsWith(y) ? `<button class="gal-i" data-k="${k2}"><img src="${esc(p.thumb)}" alt="${esc(g.title)} ${esc(p.date)}" loading="lazy"><span class="gal-t">${+p.date.slice(5, 7)}/${+p.date.slice(8, 10)}</span></button>` : "").join("")}</div>`).join("")}`;
+  const p = +new URLSearchParams(location.search).get("p");
+  if (new URLSearchParams(location.search).has("p") && p >= 0 && p < shots.length) openLb(p);
+}
 
 function openLb(n) {
   if (!shots.length) return;

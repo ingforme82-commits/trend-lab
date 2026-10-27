@@ -410,8 +410,20 @@ async function loadStudies() {
       [nPhoto + "장", "현장 사진"],
       [fd ? `${fd.getFullYear() % 100}.${fd.getMonth() + 1}~` : "-", "함께한 기간"],
     ].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join("");
-    $("#archChips").innerHTML = [["all", "전체"], ["regular", "📈 정기 스터디"], ["book", "📚 독서 토론"]].map(([k, l]) => `<button class="chip${k === archCat ? " on" : ""}" data-k="${k}">${l}</button>`).join("");
+    let growth = null;                                    // 📒 가치 투자 성장 스토리(운영자 개인 공부 기록, 운영자 외 얼굴 모자이크)
+    try { growth = await fetch(`data/growth.json?t=${Date.now()}`).then((r) => (r.ok ? r.json() : null)); } catch { growth = null; }
+    const hasG = growth && (growth.photos || []).length;
+    $("#archChips").innerHTML = [["all", "전체"], ["regular", "📈 정기 스터디"], ["book", "📚 독서 토론"], ...(hasG ? [["growth", "📒 " + growth.title]] : [])].map(([k, l]) => `<button class="chip${k === archCat ? " on" : ""}" data-k="${k}">${l}</button>`).join("");
     const draw = () => {
+      if (archCat === "growth" && hasG) {
+        $("#archList").innerHTML = `<p class="arc-intro">${esc(growth.intro || "")}</p>` + growth.photos.map((p, i) => {
+          const d = new Date(p.date + "T00:00:00");
+          return `<a class="arc" href="study.html?id=growth&p=${i}">
+            <div class="arc-img"><img src="${esc(p.thumb)}" alt="${esc(growth.title)} ${esc(p.date)} 사진" loading="lazy"><span class="arc-month">${d.getFullYear() % 100}년 ${d.getMonth() + 1}월</span></div>
+            <div class="arc-body"><p class="arc-date">📒 ${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]})</p><h3 class="arc-title">${esc(growth.title)}</h3></div></a>`;
+        }).join("");
+        return;
+      }
       const pick = (s) => archCat === "all" || s.series === archCat;
       $("#archList").innerHTML = ups.filter(pick).map((s) => archCard(s, true, label)).join("") + past.filter(pick).map((s) => archCard(s, false, label)).join("");
     };
