@@ -30,7 +30,7 @@
   let news = [], moves = [], series = {}, notes = [], candles = {}, candles1 = {}, sel = null, tag = "전체", shown = 15, health = null;
   // 속보 필터: 중요도·시간·검증·정렬(분류는 tag 칩)
   const flt = { imp: "all", hrs: 0, ver: "all", sort: "new" };
-  let world = [], spot = [], trend = [], sectors = [], brief = null, briefs = [], kwFilter = null, momentum = null, flows = null, flowSort = "val";   // kwFilter: {label, rx}
+  let world = [], spot = [], trend = [], sectors = [], brief = null, briefs = [], kwFilter = null, momentum = null, flows = null, flowSort = "val", flowOpen = null;   // kwFilter: {label, rx}
 
   /* ── 데이터 ── */
   let apiBlockedUntil = 0;
@@ -182,7 +182,7 @@
   /* ── 🔥 화제 종목(종목군): 한 칸에서 번갈아 보이기 ── */
   let spotIdx = 0, spotHold = false, spotTimer = null, memOpen = null;   // memOpen: "종목군id:심볼"
   // 하이퍼리퀴드에서 1분봉을 볼 수 있는 종목(그 외는 차트 버튼 대신 정규장 수치만)
-  const HL_SYMS = new Set(["LITE", "CRWV", "NBIS", "IREN", "AAOI", "GLW", "INTC", "NVDA", "AMD", "MU", "TSM", "TSLA", "SPCX", "META", "MSFT", "GOOGL", "AMZN", "AAPL", "ORCL", "PLTR", "AVGO", "ARM", "MRVL", "QCOM", "LRCX", "AMAT", "ASML", "SMH", "SOXL", "COIN", "HOOD", "NFLX", "NET", "CRWD", "DELL", "IBM", "WDC", "SNDK", "GEV", "BE"]);
+  const HL_SYMS = new Set(["LITE", "CRWV", "NBIS", "IREN", "AAOI", "GLW", "INTC", "NVDA", "AMD", "MU", "TSM", "TSLA", "SPCX", "META", "MSFT", "GOOGL", "AMZN", "AAPL", "ORCL", "PLTR", "AVGO", "ARM", "MRVL", "QCOM", "LRCX", "AMAT", "ASML", "SMH", "SOXL", "COIN", "HOOD", "NFLX", "NET", "CRWD", "DELL", "IBM", "WDC", "SNDK", "GEV", "BE", "MAGS", "URNM", "XLE", "LLY", "RKLB", "MSTR", "CRCL", "BMNR", "RIVN", "HIMS", "MRNA", "CVX", "NOW", "SKHX", "SMSN"]);
   function spotCard(s) {
     let rx; try { rx = new RegExp(s.kw || s.name, "i"); } catch { rx = /$^/; }
     const rel = news.filter((n) => rx.test(n.text + " " + (n.orig || "") + " " + (n.sub || "")));
@@ -235,7 +235,7 @@
     spotIdx = ((spotIdx % spot.length) + spot.length) % spot.length;
     const nav = spot.length > 1 ? `<div class="spot-nav"><button class="spot-arrow" data-spot-step="-1" aria-label="이전">‹</button>${spot.map((x, i) =>
       `<button class="spot-dot${i === spotIdx ? " on" : ""}" data-spot-go="${i}" title="${esc(x.name)}">${esc(x.name)}</button>`).join("")}<button class="spot-arrow" data-spot-step="1" aria-label="다음">›</button></div>` : "";
-    box.innerHTML = `<p class="spot-h">🔥 오늘의 주요 종목군 <small>뉴스·가격 움직임이 많은 종목 · 추천 아님 · ${spot.length}개가 번갈아 보입니다</small></p>${nav}${spotCard(spot[spotIdx])}`;
+    box.innerHTML = `<p class="spot-h">🔥 오늘의 주요 종목군 <small>미국 개장 30분 뒤 가격·뉴스 움직임으로 매일 자동 선정 · 추천 아님 · ${spot.length}개가 번갈아 보입니다</small></p>${nav}${spotCard(spot[spotIdx])}`;
     if (!spotTimer && spot.length > 1) {
       spotTimer = setInterval(() => { if (!spotHold && !memOpen) { spotIdx++; drawSpot(); } }, 8000);
       box.addEventListener("mouseenter", () => { spotHold = true; });
@@ -309,12 +309,17 @@
     box.hidden = false;
     const st = `${hm(flows.at)} 기준${flows.open ? " · 1분마다 갱신" : " · 장 마감(시간외 포함 시세)"}`;
     const btn = (k, l) => `<button class="sc-chip${flowSort === k ? " on" : ""}" data-flow-sort="${k}">${l}</button>`;
-    box.innerHTML = `<p class="spot-h">💰 주도주 수급 <small>${st}</small></p>
-      <div class="fl-sort">${btn("val", "거래대금순")}${btn("chg", "등락률순")}</div>
-      ${gs.map((g) => flowTable(g, 8)).join("")}
+    const sum = (rows, f) => rows.reduce((a, r) => a + (f(r) || 0), 0);
+    const chips = gs.map((g) => { const v = g.val || sum(g.rows, (r) => r.val), w = sum(g.rows, (r) => r.win && r.win.amt);
+      return `<button class="sc-chip fl-chip${flowOpen === g.name ? " on" : ""}" data-flow-open="${esc(g.name)}" aria-expanded="${flowOpen === g.name}">
+        ${g.icon || ""} ${esc(g.name)} <small>상승 ${g.up}/${g.n}</small> <small>대금 ${eok(v)}</small> <small>외국계 창구 ${eokS(w)}</small></button>`; }).join("");
+    const g = gs.find((x) => x.name === flowOpen);
+    box.innerHTML = `<p class="spot-h">💰 주도주 수급 <small>${st} · 종목군을 누르면 종목별 거래대금·수급이 보입니다</small></p>
+      <div class="sc-bar">${chips}</div>
+      ${g ? `<div class="sc-panel"><div class="fl-sort">${btn("val", "거래대금순")}${btn("chg", "등락률순")}</div>${flowTable(g, 8)}
       <p class="mm-f">종목군 안에서 거래대금 상위·등락률 상위 종목 · 거래대금은 통합(KRX + 넥스트레이드 프리·애프터마켓), 작은 글씨는 KRX만 · 금액은 순매수 수량 × 종가(장중 현재가)로 계산한 추정치(억 원)<br>
       외국계 창구 = 외국계 증권사 창구 합계(장중, 다음 금융) — 외국인 투자자 수급과 다름 · 외국인·기관 = 거래소 확정치(네이버, 장 마감 후 확정되며 그 전에는 직전 거래일 값)<br>
-      종목별 프로그램 매매는 무료 공개 출처가 없어 준비 중 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`;
+      종목별 프로그램 매매는 무료 공개 출처가 없어 준비 중 · 사실 집계이며 매수·매도 권유가 아닙니다</p></div>` : ""}`;
   }
 
   /* ── 📋 시장 브리핑(실시간 + 매일 12시 기록) ── */
@@ -515,6 +520,7 @@
     }
     if (e.target.closest("[data-clear-kw]")) { kwFilter = null; drawTrend(); drawList(); return; }
     const fs = e.target.closest("[data-flow-sort]"); if (fs) { flowSort = fs.dataset.flowSort; drawFlows(); return; }
+    const fo = e.target.closest("[data-flow-open]"); if (fo) { const n = fo.dataset.flowOpen; flowOpen = flowOpen === n ? null : n; drawFlows(); return; }
     const tg = e.target.closest("[data-sec-toggle]");
     if (tg) { const n = tg.dataset.secToggle; openSector = openSector === n ? null : n; drawSectors(); return; }
     const st = e.target.closest("[data-sec-tag]"); if (st && q("#news")) { kwFilter = null; tag = st.dataset.secTag; shown = 30; drawTrend(); drawList(); q("#news").scrollIntoView({ behavior: "smooth" }); return; }

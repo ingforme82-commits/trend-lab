@@ -629,3 +629,5 @@ body{overflow-x:hidden}
 .fl-t th:first-child,.fl-t td.fl-n{text-align:left;position:sticky;left:0;background:#fff}
 .fl-t td.fl-5{font-size:12px}
 .fl-t small.fl-k{display:block;font-size:10.5px;color:var(--sub)}
+.fl-chip small{font-size:11.5px;color:var(--sub);margin-left:2px}.fl-chip small b{font-weight:600}
+.flow-box .sc-panel{margin-top:8px}

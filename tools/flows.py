@@ -136,7 +136,8 @@ def build() -> dict:
             r["win"] = parse_trader((cache["trader"].get(r["code"]) or {}).get("data") or [], today, r["px"])
             r.pop("sym")
         out.append({"name": name, "icon": groups[name].get("icon", ""), "n": len(groups[name]["tickers"]),
-                    "up": sum(1 for s in groups[name]["tickers"] if (q.get(s) or {}).get("chg", 0) > 0), "rows": rows})
+                    "up": sum(1 for s in groups[name]["tickers"] if (q.get(s) or {}).get("chg", 0) > 0),
+                    "val": sum((q.get(s) or {}).get("val") or 0 for s in groups[name]["tickers"]), "rows": rows})
     return {"at": int(t * 1000), "open": is_open, "groups": out, "prog": None}
 
 

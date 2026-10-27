@@ -24,6 +24,11 @@ foreach ($s in @(@('0720','07:20'), @('1400','14:00'), @('2005','20:05'), @('221
     -Trigger (New-ScheduledTaskTrigger -Weekly -DaysOfWeek $days -At $s[1]) -Settings $wake | Out-Null
 }
 
+# 5) 트렌드랩_종목군 : 매일 23:00·00:00 — 미국 개장 후 20~75분일 때만 '오늘의 주요 종목군' 자동 교체(서머타임 자동)
+$tr = @((New-ScheduledTaskTrigger -Daily -At '23:00'), (New-ScheduledTaskTrigger -Daily -At '00:00'))
+Register-ScheduledTask -TaskName '트렌드랩_종목군' -Force -Description '미국 개장 30분 뒤 오늘의 주요 종목군 자동 교체' `
+  -Action (New-ScheduledTaskAction -Execute $pyw -Argument 'tools\spot_auto.py' -WorkingDirectory $dir) -Trigger $tr -Settings $wake | Out-Null
+
 $t = Get-ScheduledTask -TaskName '트렌드랩_방문리포트'
 $t.Settings.WakeToRun = $true
 Set-ScheduledTask -InputObject $t | Out-Null
