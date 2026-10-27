@@ -10,13 +10,15 @@
 from __future__ import annotations
 
 import json
+import re
 import statistics
 import urllib.request
 from datetime import datetime, timezone
 
 # (코드, 이름, 출처, 심볼, 단위, 10분 최소 기준, 관련 태그)
 ASSETS = [
-    ("NQ", "나스닥100", "hl", "xyz:XYZ100", "pct", 0.50, ("AI·빅테크", "반도체", "지수", "연준·금리", "사이버보안")),
+    ("NQ", "나스닥100", "hl", "xyz:XYZ100", "pct", 0.50, ("AI·빅테크", "반도체", "지수", "연준·금리", "사이버보안", "원전")),
+    ("SP", "S&P500", "hl", "xyz:SP500", "pct", 0.40, ("AI·빅테크", "반도체", "지수", "연준·금리", "원전", "중동·유가")),
     ("K200", "코스피200", "hl", "xyz:KR200", "pct", 0.60, ("한국", "반도체", "지수", "원전", "방산", "2차전지", "조선")),
     ("WTI", "WTI", "hl", "xyz:CL", "pct", 0.80, ("중동·유가", "러·우")),
     ("BRENT", "브렌트", "hl", "xyz:BRENTOIL", "pct", 0.80, ("중동·유가", "러·우")),
@@ -25,6 +27,62 @@ ASSETS = [
     ("DXY", "달러인덱스", "yf", "DX-Y.NYB", "pct", 0.20, ("연준·금리",)),
 ]
 WIN = 10            # 분
+US_A, KR_A = {"NQ", "SP"}, {"K200"}
+US_RX = re.compile(r"미국|나스닥|S&P|다우|뉴욕|월가|연준|파월|엔비디아|브로드컴|인텔|AMD|마이크론|테슬라|애플|오클로|뉴스케일|"
+                   r"\$[A-Z]{1,5}\b|Nasdaq|Wall Street|\bFed\b|NYSE")
+KR_RX = re.compile(r"코스피|코스닥|한국|국내|삼성|하이닉스|한은|원/달러|원화|KOSPI|KOSDAQ|Korea|외국인|기관|국민성장")
+
+
+def region(it: dict) -> str:
+    """뉴스 지역: 'US' / 'KR' / ''(둘 다 또는 판단 불가). 섹터 시세는 섹터 이름으로."""
+    t = it.get("text", "")
+    if it.get("kind") == "섹터 시세":
+        return "US" if "미국" in t[:12] else "KR"
+    us, kr = bool(US_RX.search(t)), bool(KR_RX.search(t))
+    return "US" if us and not kr else "KR" if kr and not us else ""
+
+
+def session_of(code: str, ts: int) -> str:
+    """그 시각의 거래 시간대(한국 시각 기준, 미국은 서머타임 자동)."""
+    from zoneinfo import ZoneInfo
+    k = datetime.fromtimestamp(ts / 1000, ZoneInfo("Asia/Seoul"))
+    km = k.hour * 60 + k.minute
+    if code == "K200":
+        if k.weekday() < 5 and 9 * 60 <= km < 15 * 60 + 30:
+            return "정규장"
+        if (k.weekday() < 5 and km >= 18 * 60) or (k.weekday() in (1, 2, 3, 4, 5) and km < 5 * 60):
+            return "야간선물 시간"
+        return "장외(24시간 지수)"
+    if code in US_A:
+        n = datetime.fromtimestamp(ts / 1000, ZoneInfo("America/New_York"))
+        nm = n.hour * 60 + n.minute
+        if n.weekday() < 5 and 9 * 60 + 30 <= nm < 16 * 60:
+            return "미국 정규장"
+        if n.weekday() < 5 and 4 * 60 <= nm < 9 * 60 + 30:
+            return "프리마켓"
+        if n.weekday() < 5 and 16 * 60 <= nm < 20 * 60:
+            return "애프터마켓"
+        return "선물 야간(24시간)"
+    return "24시간" if code in ("WTI", "BRENT", "GOLD") else ""
+
+
+def us_open_gap(ts: int) -> int | None:
+    """미국 정규장 개장(09:30 ET) 뒤 0~15분이면 그 분, 아니면 None."""
+    from zoneinfo import ZoneInfo
+    n = datetime.fromtimestamp(ts / 1000, ZoneInfo("America/New_York"))
+    d = n.hour * 60 + n.minute - (9 * 60 + 30)
+    return d if n.weekday() < 5 and 0 <= d <= 15 else None
+
+
+def group_moments(moves: list[dict], gap_min: int = 6) -> None:
+    """시작 시각이 gap_min 분 안인 변곡점끼리 같은 '순간'(grp)으로 묶는다(제자리 수정)."""
+    for m in sorted(moves, key=lambda m: m["start"]):
+        m.pop("grp", None)
+    cur, anchor = None, None
+    for m in sorted(moves, key=lambda m: m["start"]):
+        if anchor is None or m["start"] - anchor > gap_min * 60_000:
+            cur, anchor = m["id"], m["start"]
+        m["grp"] = cur
 SIGMA = 4.0
 BEFORE, AFTER = 15, 3   # 변곡점 기준 뉴스 찾는 범위(분)
 
@@ -133,6 +191,9 @@ def analyze(items: list[dict]) -> tuple[list[dict], dict]:
     moves.sort(key=lambda m: -m["start"])
     for k, m in enumerate(moves):
         m["id"] = f'{m["asset"]}-{m["start"] // 60000}'
+        m["session"] = session_of(m["asset"], m["start"])
+        if m["asset"] not in US_A and us_open_gap(m["start"]) is not None:
+            m["session"] += " · 미국 개장 직후"
         a = next(x for x in ASSETS if x[0] == m["asset"])
         rel = a[6]
         # 같은 구간 다른 자산의 변화(시장 전체가 움직였는지 보기)
@@ -143,6 +204,9 @@ def analyze(items: list[dict]) -> tuple[list[dict], dict]:
             dt = (it["ts"] - m["start"]) / 60000
             if it.get("kind") in ("시황 분석", "증권사 시황"):   # 긴 분석·정기 시황 글은 변곡점 후보에서 뺀다
                 continue
+            rg = region(it)
+            if (m["asset"] in KR_A and rg != "KR") or (m["asset"] in US_A and rg == "KR"):
+                continue                                  # 코스피200은 한국 관련어가 확인된 뉴스만, 미국 지수엔 한국 뉴스 제외
             match = sum(t in rel for t in it.get("tags", []))
             if -BEFORE <= dt <= AFTER and match:          # 그 자산과 관련된 분야의 뉴스만 후보
                 score = 3 * match + (1 if it.get("hot") else 0) + (1 - abs(dt) / 20)
@@ -166,6 +230,7 @@ def analyze(items: list[dict]) -> tuple[list[dict], dict]:
             it.setdefault("pv", [])
             if tag not in it["pv"]:
                 it["pv"].append(tag)
+    group_moments(moves)
     # 화면용: 금리·달러 5분 간격 시계열(하이퍼리퀴드에 없는 것)
     series = {}
     for code in ("US10Y", "DXY"):

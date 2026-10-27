@@ -11,7 +11,7 @@
     { k: "srv:US10Y", n: "미 10년물 금리", d: 3, bp: true }, { k: "srv:DXY", n: "달러인덱스", d: 2 },
   ];
   // 변곡점 자산 코드(서버 news.json의 moves.asset)
-  const CODE = { "xyz:XYZ100": "NQ", "xyz:KR200": "K200", "xyz:CL": "WTI", "xyz:BRENTOIL": "BRENT", "xyz:GOLD": "GOLD", "srv:US10Y": "US10Y", "srv:DXY": "DXY" };
+  const CODE = { "xyz:XYZ100": "NQ", "xyz:SP500": "SP", "xyz:KR200": "K200", "xyz:CL": "WTI", "xyz:BRENTOIL": "BRENT", "xyz:GOLD": "GOLD", "srv:US10Y": "US10Y", "srv:DXY": "DXY" };
   const RANGES = [[60, "1시간"], [180, "3시간"], [360, "6시간"], [720, "12시간"], [1440, "24시간"]];
   const KAKAO = "https://invite.kakao.com/tc/p7OX5rMjd0";
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));

@@ -13,7 +13,7 @@
     { code: "US10Y", k: "srv:US10Y", n: "미 10년물 금리", d: 3, suf: "%", bp: true },
     { code: "DXY", k: "srv:DXY", n: "달러인덱스", d: 2 },
   ];
-  const COIN = { NQ: "xyz:XYZ100", K200: "xyz:KR200", WTI: "xyz:CL", BRENT: "xyz:BRENTOIL", GOLD: "xyz:GOLD", US10Y: "srv:US10Y", DXY: "srv:DXY" };
+  const COIN = { NQ: "xyz:XYZ100", SP: "xyz:SP500", K200: "xyz:KR200", WTI: "xyz:CL", BRENT: "xyz:BRENTOIL", GOLD: "xyz:GOLD", US10Y: "srv:US10Y", DXY: "srv:DXY" };
   const REACT = CARDS.slice(0, 3);   // 목록의 '이후' 변화: 나스닥100·코스피200·WTI
   const H = 24;
   const q = (s) => document.querySelector(s);
@@ -151,17 +151,33 @@
   /* ── 시장을 움직인 순간(변곡점 카드) ── */
   function drawMoves() {
     const box = q("#moveList"); if (!box) return;
-    const list = moves.filter((m) => Date.now() - m.start < 24 * 3600e3).slice(0, 8);
+    const recent = moves.filter((m) => Date.now() - m.start < 24 * 3600e3);
+    // 같은 순간(시작 6분 안)은 카드 하나로: 평소 대비 배수가 가장 큰 자산이 제목, 나머지는 '함께 움직임'
+    const groups = [];
+    for (const m of recent) {
+      const g = groups.find((x) => x.grp && x.grp === m.grp);
+      if (g) g.list.push(m); else groups.push({ grp: m.grp, list: [m] });
+    }
+    const list = groups.slice(0, 8);
     if (!list.length) { box.innerHTML = `<p class="empty">최근 24시간 동안 평소보다 크게 움직인 구간이 없습니다.</p>`; return; }
-    box.innerHTML = list.map((m) => {
+    const px = (m) => m.unit === "bp" ? `${(+m.from).toFixed(3)}% → ${(+m.to).toFixed(3)}%` : `${(+m.from).toLocaleString("ko-KR", { maximumFractionDigits: 2 })} → ${(+m.to).toLocaleString("ko-KR", { maximumFractionDigits: 2 })}`;
+    box.innerHTML = list.map(({ list: ms }) => {
+      ms.sort((a, b) => b.ratio - a.ratio);
+      const m = ms[0], co = ms.slice(1);
       const nt = noteFor(m);
-      const ns = m.items || (m.news || []).map((ts) => news.find((n) => n.ts === ts)).filter(Boolean);
-      const others = Object.entries(m.others || {}).slice(0, 4).map(([k, v]) => `${esc(k)} <b class="${cls(v)}">${v > 0 ? "+" : ""}${v}${k.includes("금리") ? "bp" : "%"}</b>`).join(" · ");
+      const seenTs = new Set(), ns = [];
+      for (const x of ms) for (const n of (x.items || (x.news || []).map((ts) => news.find((y) => y.ts === ts)).filter(Boolean))) {
+        if (!seenTs.has(n.ts + n.text)) { seenTs.add(n.ts + n.text); ns.push({ ...n, _a: x.name }); }
+      }
+      ns.sort((a, b) => a.ts - b.ts);
+      const inGrp = new Set(ms.map((x) => x.name));
+      const others = Object.entries(m.others || {}).filter(([k]) => !inGrp.has(k)).slice(0, 4).map(([k, v]) => `${esc(k)} <b class="${cls(v)}">${v > 0 ? "+" : ""}${v}${k.includes("금리") ? "bp" : "%"}</b>`).join(" · ");
       return `<article class="mv" data-asset="${m.asset}" data-start="${m.start}">
         <div class="mv-h"><span class="mv-a ${m.move > 0 ? "pos" : "neg"}">${esc(m.name)} ${m.move > 0 ? "▲" : "▼"} ${fmtMove(m)}</span>
-          <span class="mv-t">${hm(m.start)}–${hm(m.end)} · 평소 변동폭의 ${m.ratio}배</span></div>
+          <span class="mv-t">${hm(m.start)}–${hm(m.end)}${m.session ? ` · ${esc(m.session)}` : ""} · 평소 변동폭의 ${m.ratio}배</span></div>
+        <p class="mv-o">${px(m)}${co.length ? ` · <b>함께 움직임</b> ${co.map((x) => `${esc(x.name)} <b class="${cls(x.move)}">${x.move > 0 ? "+" : ""}${fmtMove(x)}</b> <small>(${hm(x.start)}–${hm(x.end)}${x.session ? ", " + esc(x.session) : ""})</small>`).join(" · ")}` : ""}</p>
         ${others ? `<p class="mv-o">같은 구간 ${others}</p>` : ""}
-        ${ns.length ? `<ul class="mv-n">${ns.map((n) => `<li><span class="mv-dot"></span><b>${hm(n.ts)}</b> ${n.lang === "en" ? "🌐 " : ""}${esc(n.text)} <small>${n.osrc ? `${esc(n.osrc)} · ${esc(n.src)} 경유` : esc(n.src)}</small></li>`).join("")}</ul>`
+        ${ns.length ? `<ul class="mv-n">${ns.slice(0, 4).map((n) => `<li><span class="mv-dot"></span><b>${hm(n.ts)}</b> ${n.lang === "en" ? "🌐 " : ""}${esc(n.text)} <small>${n.osrc ? `${esc(n.osrc)} · ${esc(n.src)} 경유` : esc(n.src)}${co.length ? ` · ${esc(n._a)} 쪽` : ""}</small></li>`).join("")}</ul>`
           : `<p class="mv-none">직전 15분 안에 관련 분야 뉴스가 없습니다(수급·기술적 움직임일 수 있음).</p>`}
         ${nt ? `<div class="mv-note"><b>💡 ${esc(nt.title)}</b><p>${esc(nt.text)}</p>${nt.post ? `<a href="posts/${encodeURIComponent(nt.post)}.html" target="_blank" rel="noopener">블로그 분석 글 보기 →</a>` : ""}</div>` : ""}
       </article>`;
