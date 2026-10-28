@@ -514,6 +514,16 @@ def build() -> dict:
         importance(out["items"])
         from newsgroup import series                      # 🧹 같은 발언자·기관 연속 속보는 한 줄로(맥클럼 기자회견 등)
         out["items"] = series(out["items"])
+        try:                                              # 🔎 묶이지 않고 남은 연속 앞머리 → tools/dupcheck.log (시간당 같은 열쇠는 한 번)
+            from newsgroup import dup_report
+            dl = Path(__file__).resolve().parent / "dupcheck.log"
+            hr = datetime.now().strftime("%m-%d %H")
+            old = dl.read_text(encoding="utf-8") if dl.exists() else ""
+            new = [f"{hr}시 {k} {n}건" for k, n in dup_report(out["items"], int(datetime.now(timezone.utc).timestamp() * 1000)) if f"{hr}시 {k} " not in old]
+            if new:
+                dl.write_text("\n".join((old.splitlines() + new)[-300:]) + "\n", encoding="utf-8")
+        except Exception:  # noqa: BLE001
+            pass
     except Exception as e:  # noqa: BLE001
         log(f"중요도 건너뜀: {type(e).__name__}: {e}")
     try:                                                  # 📋 시장 브리핑(사이트 표시용 요약)

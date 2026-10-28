@@ -148,3 +148,17 @@ def series(items: list[dict]) -> list[dict]:
             r["hot"] = any(x.get("hot") for x in run)
             out.append(r)
     return sorted(out, key=lambda x: -x["ts"])
+
+
+def dup_report(items: list[dict], now_ms: int, hours: float = 1.0, min_n: int = 3) -> list[tuple[str, int]]:
+    """묶은 뒤에도 최근 hours 시간 안에 같은 앞머리('○○: …' / '○○, …')가 min_n 건 넘게 남은 것 — 묶음 목록(ALIAS) 보강 후보."""
+    cnt: dict[str, int] = {}
+    for it in items:
+        if now_ms - it["ts"] > hours * 3600_000 or it.get("series_n") or it.get("kind") in ("섹터 시세", "관전 포인트", "주도 섹터"):
+            continue
+        m = re.match(r"^\W*([^:：,，\"“]{2,20})[:：,，]", it.get("text", ""))
+        if m:
+            k = re.sub(r"[^0-9A-Za-z가-힣]", "", m.group(1).split()[0])
+            if len(k) >= 2:
+                cnt[k] = cnt.get(k, 0) + 1
+    return sorted(((k, n) for k, n in cnt.items() if n >= min_n), key=lambda x: -x[1])

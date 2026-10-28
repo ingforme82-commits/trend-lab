@@ -25,3 +25,4 @@ tools/s7_cache.json
 tools/leaders_cache.json
 tools/leaders_state.json
 tools/kbprog_cache.json
+tools/dupcheck.log
