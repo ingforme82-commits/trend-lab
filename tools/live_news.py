@@ -492,7 +492,7 @@ def build() -> dict:
             out["watch"] = watch()
             for e in (out["watch"] or {}).get("events", [])[:12]:          # 관전 포인트 조건 전환 → 속보 목록에도
                 out["items"].append({"ts": e["ts"], "got": e["ts"], "src": "트렌드랩 자동 집계", "kind": "관전 포인트",
-                                     "text": "👀 " + e["text"], "tags": ["반도체" if e["sym"] == "SOXL" else "한국", "지수"], "hot": True})
+                                     "text": "👀 " + e["text"] + (f" · 오늘 {e['n']}번째 전환" if e.get("n", 1) > 1 else ""), "tags": ["반도체" if e["sym"] == "SOXL" else "한국", "지수"], "hot": True})
             out["items"].sort(key=lambda i: -i["ts"])
         except Exception as e:  # noqa: BLE001
             log(f"관전 포인트 건너뜀: {type(e).__name__}: {e}")

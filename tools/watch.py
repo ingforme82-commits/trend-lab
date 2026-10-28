@@ -117,6 +117,18 @@ def series_events(x: dict, series: list[tuple[int, float]], m: float = MARGIN) -
     return ev
 
 
+def latest_events(evs: list[dict]) -> list[dict]:
+    """종목·조건(sym, k)마다 가장 최근 전환 하나만 남긴다 — 이후에 되돌려진 옛 기록(예: 22:50 '102달러 아래로' 뒤 22:55 '도달')은 지운다.
+    n = 오늘 그 조건이 바뀐 횟수(최신순 정렬, 순수 함수 tests/test_watch.py)."""
+    last: dict[tuple, dict] = {}
+    cnt: dict[tuple, int] = {}
+    for e in sorted(evs, key=lambda e: e["ts"]):
+        key = (e["sym"], e["k"])
+        cnt[key] = cnt.get(key, 0) + 1
+        last[key] = dict(e, n=cnt[key])
+    return sorted(last.values(), key=lambda e: -e["ts"])
+
+
 def build(now: datetime | None = None) -> dict:
     now = now or datetime.now(timezone.utc)
     try:
@@ -160,7 +172,7 @@ def build(now: datetime | None = None) -> dict:
         items.append(row)
     if not items:
         return {}
-    events = sorted((e for it in items for e in it.pop("_ev", [])), key=lambda e: -e["ts"])
+    events = latest_events([e for it in items for e in it.pop("_ev", [])])
     return {"date": cfg.get("date", ""), "events": events[:40], "title": cfg.get("title", ""), "memo": cfg.get("memo", ""),
             "items": items, "at": int(now.timestamp() * 1000)}
 

@@ -53,5 +53,15 @@ class FlipTest(unittest.TestCase):
         self.assertIn(("ma5", False), [(e["k"], e["up"]) for e in ev])
 
 
+class LatestEventsTest(unittest.TestCase):
+    def test_superseded_removed(self):
+        from watch import latest_events
+        ev = [{"ts": 1, "sym": "SOXL", "k": "level", "up": False, "text": "아래로"}, {"ts": 2, "sym": "SOXL", "k": "level", "up": True, "text": "도달"},
+              {"ts": 3, "sym": "SOXL", "k": "bull", "up": False, "text": "음봉"}, {"ts": 2, "sym": "KORU", "k": "bull", "up": True, "text": "양봉"}]
+        out = latest_events(ev)
+        self.assertEqual([(e["sym"], e["k"], e["text"]) for e in out], [("SOXL", "bull", "음봉"), ("SOXL", "level", "도달"), ("KORU", "bull", "양봉")])
+        self.assertEqual([e["n"] for e in out], [1, 2, 1])
+
+
 if __name__ == "__main__":
     unittest.main()

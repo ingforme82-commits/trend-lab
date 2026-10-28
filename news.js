@@ -97,6 +97,26 @@
 
   /* ── 맨 위 띠: 변곡점 뉴스 먼저, 그다음 최신 속보 ── */
   let tickerKey = "";
+  // 중복 거르기: 같은 분(hh:mm)은 하나, 내용이 비슷하면(글자 2개씩 묶음 겹침 45% 이상) 하나 — 앞(중요한 것)이 남는다
+  const bigr = (t) => { const x = String(t || "").replace(/^\s*(\[[^\]]{1,14}\]|[^\p{L}\p{N}]+)\s*/u, "").replace(/[^\p{L}\p{N}]/gu, "").toLowerCase(); const b = new Set(); for (let i = 0; i < x.length - 1; i++) b.add(x.slice(i, i + 2)); return b; };
+  const simTxt = (a, b) => { if (!a.size || !b.size) return 0; let n = 0; for (const x of a) if (b.has(x)) n++; return n / Math.min(a.size, b.size); };
+  function dedupe(list, sameMinute = true) {
+    const out = [], mins = new Set();
+    for (const n of list) {
+      const m = hm(n.ts), g = bigr(n.text);
+      if (sameMinute && mins.has(m)) continue;
+      if (out.some((o) => simTxt(o._g, g) >= 0.45)) continue;
+      mins.add(m); out.push(Object.assign(Object.create(null), n, { _g: g }));
+    }
+    return out;
+  }
+  let tickIdx = 0, tickPick = [], tickTimer = null;
+  function tickShow() {
+    const box = q("#ticker"); if (!box || !tickPick.length) return;
+    const n = tickPick[tickIdx % tickPick.length];
+    const v = box.querySelector(".tk-view");
+    if (v) v.innerHTML = `<a class="tk-i tk-one${n.pivot ? " hot" : ""}" href="${q("#news") ? "#news" : "index.html#news"}" data-ts="${n.ts}"><b>${hm(n.ts)}</b>${n.pivot ? "🔴 " : ""}${n.lang === "en" ? "🌐 " : ""}${esc(gist(n.text, 110))}</a><small class="tk-n">${tickIdx % tickPick.length + 1}/${tickPick.length}</small>`;
+  }
   function drawTicker() {
     const box = q("#ticker"); if (!box) return;
     // 최근 1시간 안의 주요 뉴스 위주(중요도 순으로 고른 뒤 시간 순으로 흘림). 1시간 안에 5건이 안 되면 3시간까지 넓힌다
@@ -106,13 +126,14 @@
     let span = 1;
     let recent = news.filter((n) => Date.now() - n.ts < 3600e3);
     if (recent.length < 5) { span = 3; recent = news.filter((n) => Date.now() - n.ts < 3 * 3600e3); }
-    const pick = recent.map((n) => [score(n), n]).sort((a, b) => b[0] - a[0] || b[1].ts - a[1].ts).slice(0, 12).map((x) => x[1]).sort((a, b) => b.ts - a.ts);
+    const pick = dedupe(recent.map((n) => [score(n), n]).sort((a, b) => b[0] - a[0] || b[1].ts - a[1].ts).map((x) => x[1])).slice(0, 12).sort((a, b) => b.ts - a.ts);
     const key = span + ":" + pick.map((n) => n.ts + (n.pivot ? "p" : "")).join(",");
     if (!pick.length || key === tickerKey) return;
     tickerKey = key;
-    const row = pick.map((n) => `<a class="tk-i${n.pivot ? " hot" : ""}" href="${q("#news") ? "#news" : "index.html#news"}" data-ts="${n.ts}"><b>${hm(n.ts)}</b>${n.pivot ? "🔴 " : ""}${n.lang === "en" ? "🌐 " : ""}${esc(n.text)}</a>`).join("");
-    box.innerHTML = `<span class="tk-label">📡 주요 시황 <small>${span === 1 ? "최근 1시간" : "최근 3시간"}</small></span><div class="tk-view"><div class="tk-track" style="animation-duration:${Math.max(40, pick.length * 9)}s">${row}${row}</div></div>`;
-    box.hidden = false;
+    tickPick = pick; tickIdx = 0;
+    box.innerHTML = `<span class="tk-label">📡 주요 시황 <small>${span === 1 ? "최근 1시간" : "최근 3시간"} · 5초마다 다음 소식</small></span><div class="tk-view"></div>`;
+    box.hidden = false; tickShow();
+    if (!tickTimer) tickTimer = setInterval(() => { if (!box.matches(":hover")) { tickIdx++; tickShow(); } }, 5000);
   }
 
   /* ── '이후' 변화(5분봉) ── */
@@ -379,7 +400,7 @@
     return `<div class="wt"><p class="spot-h">👀 ${esc(w.title || "운영자 관전 포인트")} <small>${hm(w.at)} 기준 · 1분마다 갱신</small></p>
       ${w.memo ? `<blockquote class="wt-memo">${esc(w.memo)}<cite>— 운영자 관전 포인트</cite></blockquote>` : ""}
       ${its.map(row).join("")}
-      ${(w.events || []).length ? `<p class="wt-n" style="margin-top:8px"><b>⏱ 변화 기록</b> <small class="dim">기준선(5일선·시가·전일 종가·가격대)을 ${"0.15"}% 넘게 넘을 때 기록</small></p><ul class="wt-ev">${w.events.slice(0, compact ? 6 : 15).map((e) => `<li><b>${hm(e.ts)}</b> <span class="${e.up ? "c-up" : "c-dn"}">${e.up ? "▲" : "▼"}</span> ${esc(e.text)}</li>`).join("")}</ul>` : ""}
+      ${(w.events || []).length ? `<p class="wt-n" style="margin-top:8px"><b>⏱ 지금 상태(마지막 전환)</b> <small class="dim">기준선(5일선·시가·전일 종가·가격대)을 0.15% 넘게 넘을 때 · 조건마다 가장 최근 것만(되돌려진 옛 기록은 지움)</small></p><ul class="wt-ev">${w.events.slice(0, compact ? 6 : 15).map((e) => `<li><b>${hm(e.ts)}</b> <span class="${e.up ? "c-up" : "c-dn"}">${e.up ? "▲" : "▼"}</span> ${esc(e.text)}${e.n > 1 ? ` <small class="dim">· 오늘 ${e.n}번째 전환</small>` : ""}</li>`).join("")}</ul>` : ""}
       ${compact ? "" : `<p class="mm-f">자동 수치는 야후 정규장 시세 기준 · 적삼병 조건 = 3일 연속 양봉(시가보다 높게, 전일보다 높게 마감)으로 단순 판정 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`}</div>`;
   }
   /* ── 🕗 시간대 관전 포인트(자동): 한국장 08~18시 / 미국장 18~08시(KST) — 1분마다 지금 수치로 다시 쓴다 ── */
@@ -624,16 +645,10 @@
   }
   const normT = (t) => String(t || "").replace(/^\[[^\]]*\]\s*/, "").replace(/[^0-9A-Za-z가-힣]/g, "").slice(0, 18);
   function mainNews() {
-    const now = Date.now(), seen = new Set(), out = [];
+    const now = Date.now();
     const pool = news.filter((n) => n.text && now - n.ts < 6 * 3600e3 && !isStrat(n) && impScore(n) >= 55)
       .sort((a, b) => impScore(b) - impScore(a) || b.ts - a.ts);
-    for (const n of pool) {
-      const k = normT(n.text);
-      if (seen.has(k)) continue;
-      seen.add(k); out.push(n);
-      if (out.length >= 6) break;
-    }
-    return out.sort((a, b) => b.ts - a.ts);
+    return dedupe(pool, false).slice(0, 6).sort((a, b) => b.ts - a.ts);
   }
   // 메인 뉴스 한 줄 요약: 앞머리 [속보]·❗·◈ 같은 꼬리표, 날짜·시각, 끝의 [작성자]·(종합) 제거 → 첫 문장 → 80자 안쪽
   function gist(t, max = 80) {
