@@ -36,6 +36,13 @@ class NumTest(unittest.TestCase):
         self.assertTrue(num_conflict("나스닥 선물 0.5% 상승", "Nasdaq futures rise 1.5%"))
         self.assertFalse(num_conflict("나스닥 선물 상승", "Nasdaq futures rise 1.5%"))           # 한쪽에만 수치
 
+    def test_compound_dollars(self):
+        self.assertEqual(nums_ko("1억 7,600만 달러")["usd"], {176_000_000})
+        self.assertEqual(nums_ko("2조 3억 4,500만 달러")["usd"], {2_000_345_000_000})
+        self.assertFalse(num_conflict("1억 7,600만 달러", "$176M"))
+        self.assertFalse(num_conflict("1억 7,600만 달러", "$176,000,000"))
+        self.assertTrue(num_conflict("1억 7,600만 달러", "$160M"))
+
 
 class JudgeTest(unittest.TestCase):
     EN = "Yemeni Houthi rebels launch attack on Saudi Arabia's RAS Tanura refinery in the Gulf"
@@ -58,6 +65,29 @@ class JudgeTest(unittest.TestCase):
 
 
 class RunTest(unittest.TestCase):
+    def test_cached_numeric_result_is_rechecked(self):
+        import json
+        import tempfile
+        import time
+        from unittest.mock import patch
+        import xcheck
+
+        text = "비트코인 ETF 순유입액 1억 7,600만 달러"
+        now = int(time.time() * 1000)
+        with tempfile.TemporaryDirectory() as tmp:
+            cache = Path(tmp) / "cache.json"
+            for tier, expected in (("other", "ref"), ("major", "ok")):
+                cache.write_text(json.dumps({text[:100]: {"first": now, "n": 1, "res": {
+                    "st": "diff", "en": "Bitcoin ETF: $176M Net Inflow", "tier": tier,
+                    "src": ["Reuters" if tier == "major" else "blockchain.news"], "score": 0.57,
+                }}}), encoding="utf-8")
+                items = [{"src": "김치터미널", "text": text, "ts": now, "verify": "single"}]
+                with patch.object(xcheck, "CACHE", cache), patch.object(xcheck, "_check") as check:
+                    self.assertEqual(xcheck.run(items, []), 0)
+                    check.assert_not_called()
+                self.assertEqual(items[0]["xc"]["st"], expected)
+                self.assertEqual(items[0]["verify"], "multi" if tier == "major" else "single")
+
     def test_every_checked_item_is_cached(self):
         import tempfile
         import time

@@ -69,18 +69,22 @@ _MUL_EN = {"trillion": 1e12, "tn": 1e12, "billion": 1e9, "bn": 1e9, "million": 1
 
 
 def nums_ko(s: str) -> dict[str, set[float]]:
+    s = re.sub(r"(?<=\d),(?=\d)", "", s)
     s = re.sub(r"\d{4}년|\d+월\s*\d+일|\d+분기|\d+번째|\d+척|\d+명|\d+시|\d+분(?!기)", " ", s)
     out = {"pct": set(), "usd": set()}
     for v in re.findall(r"(\d+(?:\.\d+)?)\s*%", s):
         out["pct"].add(float(v))
     for v in re.findall(r"\$\s?(\d+(?:\.\d+)?)", s):
         out["usd"].add(float(v))
-    for v, mul in re.findall(r"(\d+(?:\.\d+)?)\s*(조|억|만|천)\s*달러", s):
-        out["usd"].add(float(v) * _MUL_KO[mul])
+    for amount in re.findall(r"((?:\d+(?:\.\d+)?\s*[조억만천]\s*)+\d*(?:\.\d+)?)\s*달러", s):
+        parts = re.findall(r"(\d+(?:\.\d+)?)\s*([조억만천])", amount)
+        tail = re.sub(r"\d+(?:\.\d+)?\s*[조억만천]\s*", "", amount).strip()
+        out["usd"].add(sum(float(v) * _MUL_KO[mul] for v, mul in parts) + (float(tail) if tail else 0))
     return out
 
 
 def nums_en(s: str) -> dict[str, set[float]]:
+    s = re.sub(r"(?<=\d),(?=\d)", "", s)
     out = {"pct": set(), "usd": set()}
     for v in re.findall(r"(\d+(?:\.\d+)?)\s*(?:%|percent|pct)", s, re.I):
         out["pct"].add(float(v))
@@ -171,7 +175,9 @@ def run(items: list[dict], rss: list[dict], tr_ko=None) -> int:
         key = it["text"][:100]
         c = cache.get(key)
         if c and c.get("res"):
-            it["xc"] = c["res"]
+            res = dict(c["res"])
+            res["st"] = "diff" if num_conflict(it["text"], res["en"]) else "ok" if res["tier"] in {"major", "official"} else "ref"
+            c["res"] = it["xc"] = res
             continue
         if now - it["ts"] > 3 * 3600_000:
             continue
