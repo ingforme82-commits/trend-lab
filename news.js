@@ -495,10 +495,21 @@
     return `<div class="ses"><p class="spot-h">${md_ === "kr" ? "🇰🇷 오늘 한국장 관전 포인트" : "🇺🇸 오늘 밤 미국장 관전 포인트"} <small>${hm(Date.now())} 기준 · 1분마다 갱신 · 한국장 08~18시 / 미국장 18~08시 자동 전환</small></p>
       <ul class="ses-l">${L.map((t) => `<li>${t}</li>`).join("")}</ul></div>`;
   }
+  function oilWatchHtml() {
+    const oil = (brief && brief.futures || []).find((x) => x.name === "WTI");
+    if (!oil || !Number.isFinite(oil.px) || oil.px <= 0) return "";
+    const distance = (oil.px / 100 - 1) * 100;
+    const side = distance > 0 ? "위" : distance < 0 ? "아래" : "부근";
+    const stale = !brief.at || Date.now() - brief.at > 5 * 60000;
+    return `<div class="ses"><p class="spot-h">🛢 WTI 100달러 기준 <small>${brief.at ? hm(brief.at) + " 기준" : "시각 미확인"}${stale ? " · 시세 지연" : ""} · 하이퍼리퀴드</small></p>
+      <p>WTI <b>${oil.px.toFixed(2)}</b> · 100달러 ${side} · 기준 대비 <b class="${cls(distance)}">${distance > 0 ? "+" : ""}${distance.toFixed(2)}%</b></p>
+      <p class="fine">WTI 1·3시간 순변화 ±1% 감지 · 100달러 통과는 별도 확인 · 주요 지수 반응과 관련 뉴스는 아래 변곡점 카드에서 확인</p></div>`;
+  }
+
   function drawWatch() {
     const box = q("#watchBox"); if (!box) return;
     const wh = watchHtml(watch);
-    const h = sessionHtml() + (wh || levHtml(lev));
+    const h = oilWatchHtml() + sessionHtml() + (wh || levHtml(lev));
     box.hidden = !h; box.innerHTML = h;
   }
 

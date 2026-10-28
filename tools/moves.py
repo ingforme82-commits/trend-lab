@@ -2,7 +2,7 @@
 
 - 1분봉 24시간: 하이퍼리퀴드(나스닥100·코스피200·WTI·브렌트·금), 야후(미 10년물 금리 ^TNX, 달러인덱스 DXY)
 - 5·10·30분 변화가 평소 변화폭(중앙값)의 4배와 자산별 최소 기준을 동시에 넘으면 급변으로 본다.
-- WTI·브렌트는 60분 1.5% 또는 180분 2.5% 이상인 방향성 있는 누적 움직임도 찾는다.
+- WTI는 60·180분 순변화 ±1%, 브렌트는 60분 1.5%·180분 2.5% 누적 움직임도 찾는다.
 - 이어지는 급변 분을 하나의 구간으로 묶고, 그 직전 저점(상승)·고점(하락)을 변곡점으로 잡는다.
 - 시작 15분 전부터 급변 구간(최대 30분), 누적 움직임은 구간 끝까지 관련 뉴스 후보를 최대 3건 연결한다.
 인과관계를 단정하지 않는다 — 화면에는 '시각이 겹친 뉴스'로만 표시한다.
@@ -21,7 +21,7 @@ ASSETS = [
     ("NQ", "나스닥100", "hl", "xyz:XYZ100", "pct", 0.50, ("AI·빅테크", "반도체", "지수", "연준·금리", "사이버보안", "원전")),
     ("SP", "S&P500", "hl", "xyz:SP500", "pct", 0.40, ("AI·빅테크", "반도체", "지수", "연준·금리", "원전", "중동·유가")),
     ("K200", "코스피200", "hl", "xyz:KR200", "pct", 0.60, ("한국", "반도체", "지수", "원전", "방산", "2차전지", "조선")),
-    ("WTI", "WTI", "hl", "xyz:CL", "pct", 0.80, ("중동·유가", "러·우")),
+    ("WTI", "WTI", "hl", "xyz:CL", "pct", 1.00, ("중동·유가", "러·우")),
     ("BRENT", "브렌트", "hl", "xyz:BRENTOIL", "pct", 0.80, ("중동·유가", "러·우")),
     ("GOLD", "금", "hl", "xyz:GOLD", "pct", 0.45, ("연준·금리", "중동·유가")),
     ("US10Y", "미 10년물 금리", "yf", "^TNX", "bp", 4.0, ("연준·금리",)),
@@ -205,6 +205,7 @@ def detect(asset, rows: list[tuple[int, float]]) -> list[dict]:
 
 # 유가 누적 움직임은 평소폭 배수 대신 절대 변화율과 방향성을 확인한다.
 OIL_TREND_WINDOWS = ((60, 1.5), (180, 2.5))
+WTI_TREND_WINDOWS = ((60, 1.0), (180, 1.0))
 
 
 def merge_moves(events: list[dict]) -> list[dict]:
@@ -231,7 +232,7 @@ def cumulative_moves(asset, rows: list[tuple[int, float]]) -> list[dict]:
         return []
     out = []
     for i in range(1, len(rows)):
-        for minutes, threshold in OIL_TREND_WINDOWS:
+        for minutes, threshold in (WTI_TREND_WINDOWS if code == "WTI" else OIL_TREND_WINDOWS):
             j = i - minutes
             if j < 0:
                 continue
@@ -245,7 +246,8 @@ def cumulative_moves(asset, rows: list[tuple[int, float]]) -> list[dict]:
             change = _chg(segment[0][1], segment[-1][1], unit)
             path = sum(abs(b[1] - a[1]) for a, b in zip(segment, segment[1:]))
             efficiency = abs(segment[-1][1] - segment[0][1]) / path if path else 0
-            if abs(change) + 1e-9 < threshold or efficiency < 0.6:
+            # WTI는 순변화 1% 자체를 신호로 삼는다(중간 흔들림으로 누락시키지 않음).
+            if abs(change) + 1e-9 < threshold or (code != "WTI" and efficiency < 0.6):
                 continue
             event = {"asset": code, "name": name, "unit": unit, "kind": "cumulative",
                      "start": segment[0][0], "end": segment[-1][0],

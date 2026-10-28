@@ -37,7 +37,24 @@ class CumulativeTest(unittest.TestCase):
         self.assertEqual(moves.cumulative_moves(moves.ASSETS[0], trend()), [])
 
     def test_small_moves_ignored(self):
-        self.assertEqual(moves.cumulative_moves(WTI, trend(1, 180)), [])
+        self.assertEqual(moves.cumulative_moves(WTI, trend(0.9, 180)), [])
+
+    def test_wti_exact_one_percent_both_windows_and_directions(self):
+        for minutes in (60, 180):
+            for change in (1.0, -1.0):
+                result = moves.cumulative_moves(WTI, trend(change, minutes))
+                self.assertTrue(result)
+                self.assertEqual(result[-1]["move"], change)
+
+    def test_wti_one_percent_with_intermediate_noise(self):
+        rows = [(T+i*M, 100+i/60 + (0.1 if i%2 else 0)) for i in range(61)]
+        result = moves.cumulative_moves(WTI, rows)
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["move"], 1.0)
+
+    def test_brent_threshold_not_lowered(self):
+        brent = next(a for a in moves.ASSETS if a[0] == "BRENT")
+        self.assertEqual(moves.cumulative_moves(brent, trend(1.0, 60)), [])
 
     def test_empty_and_flat(self):
         self.assertEqual(moves.cumulative_moves(WTI, []), [])
@@ -48,7 +65,7 @@ class CumulativeTest(unittest.TestCase):
         self.assertEqual(moves.cumulative_moves(WTI, rows), [])
 
     def test_oscillation_not_a_trend(self):
-        rows = [(T + i*M, 100 + i/60 + (1 if i%2 else -1)) for i in range(181)]
+        rows = [(T + i*M, 100 + (1 if i%2 else -1)) for i in range(181)]
         self.assertEqual(moves.cumulative_moves(WTI, rows), [])
 
     def test_non_positive_price_ignored(self):
