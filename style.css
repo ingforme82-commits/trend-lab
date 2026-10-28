@@ -721,3 +721,8 @@ body{overflow-x:hidden}
 /* ⏱ 시간대별 강세 */
 .hr{margin:0 0 14px}
 .hr-sec{font-size:13px;margin:4px 0 8px;line-height:1.7}
+/* 📡 주요 시황: 끊김 없이 흐름(목록 한 번만, 오른쪽 끝에서 들어와 왼쪽으로 다 빠져나가면 다시) */
+.tk-track.tk-flow{flex:none;padding-left:100%;animation-name:tkflow;animation-timing-function:linear;animation-iteration-count:infinite}
+.ticker:hover .tk-track.tk-flow{animation-play-state:running}
+@keyframes tkflow{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+@media (prefers-reduced-motion:reduce){.tk-track.tk-flow{animation-duration:240s !important}}

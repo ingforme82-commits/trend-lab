@@ -110,12 +110,16 @@
     }
     return out;
   }
-  let tickIdx = 0, tickPick = [], tickTimer = null;
-  function tickShow() {
-    const box = q("#ticker"); if (!box || !tickPick.length) return;
-    const n = tickPick[tickIdx % tickPick.length];
-    const v = box.querySelector(".tk-view");
-    if (v) v.innerHTML = `<a class="tk-i tk-one${n.pivot ? " hot" : ""}" href="${q("#news") ? "#news" : "index.html#news"}" data-ts="${n.ts}"><b>${hm(n.ts)}</b>${n.pivot ? "🔴 " : ""}${n.lang === "en" ? "🌐 " : ""}${esc(gist(n.text, 110))}${n.series_n > 1 ? ` <small>· 같은 발언 외 ${n.series_n - 1}건</small>` : ""}</a><small class="tk-n">${tickIdx % tickPick.length + 1}/${tickPick.length}</small>`;
+  // 📡 주요 시황: 끊김 없이 계속 흐른다. 목록은 한 번만 넣고(같은 소식이 한 화면에 두 번 안 보임), 새 소식은 한 바퀴가 끝날 때 바꿔 넣는다
+  let tickPick = [], tickPending = null;
+  const tickRow = (pick) => pick.map((n) => `<a class="tk-i${n.pivot ? " hot" : ""}" href="${q("#news") ? "#news" : "index.html#news"}" data-ts="${n.ts}"><b>${hm(n.ts)}</b>${n.pivot ? "🔴 " : ""}${n.lang === "en" ? "🌐 " : ""}${esc(gist(n.text, 110))}${n.series_n > 1 ? ` <small>· 같은 발언 외 ${n.series_n - 1}건</small>` : ""}</a>`).join("");
+  function tickShow(pick) {
+    const box = q("#ticker"); if (!box) return;
+    const tr = box.querySelector(".tk-track");
+    if (!tr) return;
+    tickPick = pick;
+    tr.innerHTML = tickRow(pick);
+    tr.style.animationDuration = `${Math.max(30, pick.reduce((a, n) => a + Math.min(110, n.text.length), 0) * 0.28)}s`;   // 글 길이에 맞춘 일정한 속도
   }
   function drawTicker() {
     const box = q("#ticker"); if (!box) return;
@@ -130,10 +134,20 @@
     const key = span + ":" + pick.map((n) => n.ts + (n.pivot ? "p" : "")).join(",");
     if (!pick.length || key === tickerKey) return;
     tickerKey = key;
-    tickPick = pick; tickIdx = 0;
-    box.innerHTML = `<span class="tk-label">📡 주요 시황 <small>${span === 1 ? "최근 1시간" : "최근 3시간"} · 5초마다 다음 소식</small></span><div class="tk-view"></div>`;
-    box.hidden = false; tickShow();
-    if (!tickTimer) tickTimer = setInterval(() => { if (!box.matches(":hover")) { tickIdx++; tickShow(); } }, 5000);
+    const lab = `📡 주요 시황 <small>${span === 1 ? "최근 1시간" : "최근 3시간"} · ${pick.length}건 · 중복 없이</small>`;
+    const tr = box.querySelector(".tk-track");
+    if (!tr) {                                             // 처음: 바로 흘리기 시작
+      box.innerHTML = `<span class="tk-label">${lab}</span><div class="tk-view"><div class="tk-track tk-flow"></div></div>`;
+      box.hidden = false;
+      tickShow(pick);
+      const t2 = box.querySelector(".tk-track");
+      if (t2) t2.addEventListener("animationiteration", () => {   // 한 바퀴 끝 → 기다리던 새 목록으로
+        if (tickPending) { const p = tickPending; tickPending = null; tickShow(p); const l = box.querySelector(".tk-label"); if (l) l.innerHTML = p.lab; }
+      });
+    } else {
+      pick.lab = lab;
+      tickPending = pick;                                  // 흐르는 중에는 끊지 않고 다음 바퀴부터
+    }
   }
 
   /* ── '이후' 변화(5분봉) ── */
@@ -413,10 +427,10 @@
       if (x.focus.includes("gap")) L.push(`갭: 시가 ${$$(x.o)} — 전일 종가 대비 ${sgn(x.gap)} · 전일 고가 ${$$(x.prev_h)} ${x.gap_over_high ? "위" : "아래"}에서 시작`);
       if (x.focus.includes("ma5")) L.push(`5일선 ${$$(x.ma5)}: 현재 ${x.over_ma5 ? "위" : "아래"} ${sgn(x.vs_ma5)}${x.focus.includes("gap") ? ` · 시가도 5일선(${$$(x.ma5_prev)}) ${x.open_over_ma5 ? "위" : "아래"}` : ""}`);
       if (x.focus.includes("three")) L.push(`연속 양봉: 전일까지 ${x.streak_prev}일 → 오늘 ${x.bull ? `양봉 ${st} = ${x.streak}일째` : `양봉 아님(${st})`}${x.three ? ` · <b>적삼병 조건 ${x.open ? "충족 중(마감 전)" : "충족 마감"}</b>` : ""}`);
-      if (x.level) L.push(`${$$(x.level)} 구간: 현재가에서 ${sgn(x.to_level)} 남음${x.level_touched ? " · 오늘 고가가 도달" : ""}${(x.level_hits || []).length ? ` · 최근 10거래일 중 ${$$(x.level)} 이상 올랐다 아래에서 마감: ${x.level_hits.map((h) => `${md(h.d)}(고가 ${$$(h.h)}, 종가 ${$$(h.c)})`).join(", ")}` : ""}`);
+      if (x.level) L.push(`${$$(x.level)} 구간: ${(() => { const d = (x.px / x.level - 1) * 100; return Math.abs(d) < 0.15 ? "현재가가 그 부근" : `현재가가 ${sgn(d)} ${d > 0 ? "위" : "아래"}`; })()}${x.level_touched ? " · 오늘 고가가 도달" : ""}${(x.level_hits || []).length ? ` · 최근 10거래일 중 ${$$(x.level)} 이상 올랐다 아래에서 마감: ${x.level_hits.map((h) => `${md(h.d)}(고가 ${$$(h.h)}, 종가 ${$$(h.c)})`).join(", ")}` : ""}`);
       return `<div class="wt-i"><p class="wt-n"><b>${esc(x.name)}</b> ${$$(x.px)} ${sgn(x.chg)} <small class="dim">${md(x.day)} 정규장 ${st} · 고가 ${$$(x.h)} 저가 ${$$(x.l)}</small></p><ul>${L.map((t) => `<li>${t}</li>`).join("")}</ul></div>`;
     };
-    return `<div class="wt"><p class="spot-h">👀 ${esc(w.title || "운영자 관전 포인트")} <small>${hm(w.at)} 기준 · 1분마다 갱신</small></p>
+    return `<div class="wt"><p class="spot-h">👀 ${compact ? esc(w.title || "운영자 관전 포인트") : "운영자 메모·가격대"} <small>${esc(its.map((x) => x.sym).join("·"))} · ${hm(w.at)} 기준 · 1분마다 갱신</small></p>
       ${w.memo ? `<blockquote class="wt-memo">${esc(w.memo)}<cite>— 운영자 관전 포인트</cite></blockquote>` : ""}
       ${its.map(row).join("")}
       ${(w.events || []).length ? `<p class="wt-n" style="margin-top:8px"><b>⏱ 지금 상태(마지막 전환)</b> <small class="dim">기준선(5일선·시가·전일 종가·가격대)을 0.15% 넘게 넘을 때 · 조건마다 가장 최근 것만(되돌려진 옛 기록은 지움)</small></p><ul class="wt-ev">${w.events.slice(0, compact ? 6 : 15).map((e) => `<li><b>${hm(e.ts)}</b> <span class="${e.up ? "c-up" : "c-dn"}">${e.up ? "▲" : "▼"}</span> ${esc(e.text)}${e.n > 1 ? ` <small class="dim">· 오늘 ${e.n}번째 전환</small>` : ""}</li>`).join("")}</ul>` : ""}
@@ -445,13 +459,13 @@
       if (u && (u.industry || []).length) L.push(`🏁 미국 주도 업종${u.open ? "(장중)" : "(직전 장 기준)"}: ${top3(u.industry)}`);
       const f = ["나스닥100", "S&P500", "WTI", "브렌트", "달러인덱스"].map(fv).filter(Boolean);
       if (f.length) L.push(`📈 지수·유가(24시간 선물): ${f.join(" · ")}${brief && brief.us10y ? ` · 미 10년물 ${(+brief.us10y.px).toFixed(3)}%` : ""}`);
-      const lv = lvl(); if (lv) L.push(`🎯 ${lv}`);
       const hu = leaders && leaders.hourly && leaders.hourly.us && (leaders.hourly.us.slots || [])[0];
       if (hu && hu.live) L.push(`⏱ 이번 시간(${hu.h}시~) 강세: ${(hu.sectors || []).slice(0, 2).map((g) => `${esc(g.name)} ${sg2(g.slot)}`).join(" · ")} | ${(hu.stocks || []).slice(0, 3).map((r) => `${esc(r.name)} ${sg2(r.slot)}`).join(" · ")}`);
       const k = ["코스피200", "삼성전자", "SK하이닉스", "원/달러"].map(fv).filter(Boolean);
       if (k.length) L.push(`🇰🇷 내일 한국장 연결(24시간 시세): ${k.join(" · ")}`);
-      const cs = (checks || []).filter((c) => (c.date === today && c.time && c.time >= "18:00") || (c.date === tmr && c.time && c.time < "08:00"));
-      if (cs.length) L.push(`🗓️ 오늘 밤 일정: ${cs.slice(0, 4).map((c) => `${c.time ? `<b>${esc(c.time)}</b> ` : ""}${esc(c.title)}`).join(" · ")}`);
+      const evT = (c) => new Date(`${c.date}T${c.time}:00+09:00`).getTime();
+      const cs = (checks || []).filter((c) => c.time && evT(c) >= Date.now() - 30 * 60000 && evT(c) <= Date.now() + 12 * 3600e3).sort((a, b) => evT(a) - evT(b));
+      if (cs.length) L.push(`🗓️ 앞으로 12시간 일정: ${cs.slice(0, 4).map((c) => `<b>${c.date !== today ? `${+c.date.slice(5, 7)}/${+c.date.slice(8)} ` : ""}${esc(c.time)}</b> ${esc(c.title)}`).join(" · ")}`);
     } else {
       const r = (k, n) => reg[k] ? `${n} ${sg2(reg[k].chg)}` : "";
       const us_ = [r("SP500", "S&P500"), r("XYZ100", "나스닥100"), r("SOXL", "SOXL"), r("KORU", "KORU"), r("EWY", "EWY")].filter(Boolean);
@@ -468,7 +482,6 @@
         const kk = s7.kospi || {};
         L.push(`🏛️ S7 지수 기여 ${s7.s7.pts > 0 ? "+" : ""}${s7.s7.pts}p${s7.s7.share != null ? `(지수 변화의 ${s7.s7.share}%)` : ""} · S7 제외 코스피 ${sg2(s7.s7.ex_chg)} · 코스피 외국인 ${kk.frgn != null ? Math.round(kk.frgn).toLocaleString("ko-KR") + "억" : "-"} · 기관 ${kk.org != null ? Math.round(kk.org).toLocaleString("ko-KR") + "억" : "-"} · 프로그램 ${kk.prog != null ? Math.round(kk.prog).toLocaleString("ko-KR") + "억" : "-"}`);
       }
-      const lv = lvl(); if (lv) L.push(`🎯 ${lv}`);
       const cs = (checks || []).filter((c) => c.date === today);
       if (cs.length) L.push(`🗓️ 오늘 일정: ${cs.slice(0, 4).map((c) => `${c.time ? `<b>${esc(c.time)}</b> ` : ""}${esc(c.title)}`).join(" · ")}`);
     }
