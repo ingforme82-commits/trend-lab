@@ -501,13 +501,29 @@
     }
     return out.sort((a, b) => b.ts - a.ts);
   }
+  // 메인 뉴스 한 줄 요약: 앞머리 [속보]·❗·◈ 같은 꼬리표, 날짜·시각, 끝의 [작성자]·(종합) 제거 → 첫 문장 → 80자 안쪽
+  function gist(t, max = 80) {
+    let s = String(t || "").replace(/\s+/g, " ").trim();
+    s = s.replace(/\d{4}[.\-/]\d{1,2}[.\-/]\d{1,2}\.?\s*\d{1,2}:\d{2}(:\d{2})?/g, " ");
+    for (let k = 0; k < 3; k++) s = s.replace(/^\s*(\[[^\]]{1,14}\]|【[^】]{1,14}】|[❗❕‼️⚠🔴🟥🚨⚡📢📣◈◆◇■□▶▷●○※•·\-–—>\uFE0F]+)\s*/u, "");
+    s = s.replace(/\s*(\[[^\]]{2,30}\]|\((종합|상보|속보)\d?\))\s*$/u, "").replace(/…$/, "").trim();
+    const m = s.match(/^(.{18,}?)(?:\.{2,}|…|[.!?。])(\s|$)/u);
+    if (m && m[1].length < s.length) s = m[1];
+    s = s.replace(/[.。…\s]+$/, "");
+    if (s.length > max) {
+      const cut = s.slice(0, max), sp = Math.max(cut.lastIndexOf(" "), cut.lastIndexOf(","));
+      s = (sp > max * 0.6 ? cut.slice(0, sp) : cut).replace(/[,\s]+$/, "") + "…";
+    }
+    return s;
+  }
   function drawHeroLive() {
     const box = q("#heroLive"); if (!box) return;
     const pins = headline.map((x) => `<li class="mn-pin"><a href="#headline"><span class="mn-t">📌 ${esc(x.tag || "주요 이슈")}</span> <b>${esc(x.title)}</b>${x.when ? ` <small>${esc(x.when)}</small>` : ""}</a></li>`);
     const live = mainNews().map((n) => {
-      const t = n.text.length > 90 ? n.text.slice(0, 90) + "…" : n.text;
+      const g = gist(n.text), full = n.text.replace(/…$/, "");
+      const t = g !== full ? `<span class="mn-x" data-open="0" title="눌러서 전체 보기">${esc(g)}</span><span class="mn-full" hidden>${esc(full)}</span>` : esc(g);
       const v = n.verify === "official" ? " · 🏛 공식" : n.verify === "multi" ? " · ✔ 복수 출처" : n.verify === "unconfirmed" ? " · ⚠ 미확인" : "";
-      return `<li><span class="mn-t">${hm(n.ts)}</span> ${esc(t)} <small>${esc(n.src || "")}${v}</small></li>`;
+      return `<li><span class="mn-t">${hm(n.ts)}</span> ${t} <small>${esc(n.src || "")}${v}</small></li>`;
     });
     if (!pins.length && !live.length) { box.hidden = true; return; }
     box.hidden = false;
@@ -618,6 +634,8 @@
     tag = "전체"; shown = 30; drawTrend(); drawList(); q("#news").scrollIntoView({ behavior: "smooth" });
   };
   document.addEventListener("click", (e) => {
+    const mx = e.target.closest(".mn-x, .mn-full");
+    if (mx) { const li = mx.closest("li"), x = li.querySelector(".mn-x"), f = li.querySelector(".mn-full"), open = f.hidden; f.hidden = !open; x.hidden = open; return; }
     const t = e.target.closest("[data-kw]");
     if (t && q("#trendBox") && q("#trendBox").contains(t)) {
       if (kwFilter && kwFilter.label === t.dataset.name) { kwFilter = null; drawTrend(); drawList(); } else setKw(t.dataset.name, t.dataset.kw);

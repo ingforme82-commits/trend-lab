@@ -675,3 +675,6 @@ body{overflow-x:hidden}
 .mn-pin a{color:#fff;text-decoration:none;margin:0}
 .mn-pin a:hover b{text-decoration:underline}
 .mn-pin .mn-t{min-width:0}
+.mn-x,.mn-full{cursor:pointer}
+.mn-x:hover{text-decoration:underline dotted}
+.mn-full{color:#fff}
