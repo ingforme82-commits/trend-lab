@@ -4,6 +4,7 @@
 - 20일 고가·저가 대비 위치, 거래량(오늘 누적 ÷ 직전 20일 평균, 장중엔 누적이라 작게 나옴)
 - 기초: SOXL ↔ 필라델피아 반도체지수(^SOX), KORU ↔ EWY(MSCI 한국 ETF). 기초 등락 ×3 과 실제 등락 차이
 - 24시간 시세(하이퍼리퀴드 xyz:SOXL·xyz:KORU): 정규장 마감 후 움직임
+- 🌙 시간외(프리·애프터마켓) 체결: tools/extended.py — 정규장 값과 따로 표시(EWY 는 KORU 행에)
 - SOXL 구성 대형주(사이트 '미국 반도체' 섹터 13종목) 상승·하락 상위
 수치·사실만(해석·추천 없음).
 """
@@ -82,6 +83,13 @@ def build() -> dict:
                 row["x3_gap"] = round(row["chg"] - b["chg"] * 3, 2)
         except Exception as e:  # noqa: BLE001
             row["err"] = type(e).__name__
+        from extended import quote as ext_quote
+        for k, s in (("ext", sym), ("base_ext", "EWY" if sym == "KORU" else None)):
+            if s:
+                try:
+                    row[k] = ext_quote(s)
+                except Exception:  # noqa: BLE001
+                    row[k] = None
         x = hl.get(f"xyz:{code}")
         if x and row.get("px"):
             p24 = float(x["markPx"])

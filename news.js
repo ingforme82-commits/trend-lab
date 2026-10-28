@@ -282,6 +282,7 @@
       ${compact ? "" : `<p class="mm-f">순서는 고정(미국 반도체·한국 반도체·2차전지·방산·원전·조선), 왼쪽 'n위'는 점수 순위 · 거래대금 가속도·상대강도·5일선·신고가 근접 4개 지표의 종목 간 순위(0~100)로 계산 · 수급 미반영 · 매수·매도 권유 아님</p>`}</div>`;
   }
   // 🔬 SOXL · KORU 점검(레버리지 3배 ETF): 갭·5일선·20일선·연속 양봉·20일 고저·거래량·기초지수 ×3·24시간 시세
+  const md2 = (ms) => { const d = kst(ms); return `${d.getMonth() + 1}/${d.getDate()}`; };
   function levHtml(L, compact) {
     const its = (L && L.items) || [];
     if (!its.length) return "";
@@ -297,13 +298,20 @@
         `20일 범위: 고가 ${$$(x.hi20)} 대비 ${sgn(x.from_hi20)} · 저가 ${$$(x.lo20)} 대비 ${sgn(x.from_lo20)}${x.vol_ratio != null ? ` · 거래량 20일 평균의 ×${x.vol_ratio}${x.open ? "(장중 누적)" : ""}` : ""}`,
         `기초: ${esc(x.base)} ${sgn(x.base_chg)}${x.base_over_ma5 != null ? ` (5일선 ${x.base_over_ma5 ? "위" : "아래"})` : ""}${x.x3 != null ? ` · ×3 = ${sgn(x.x3)} → 실제와 차이 ${x.x3_gap > 0 ? "+" : ""}${x.x3_gap}%p` : ""}${x.kr200 != null ? ` · 코스피200 야간(24시간) ${sgn(x.kr200)}` : ""}`,
       ];
+      const ex = (e, nm) => {
+        if (!e) return "";
+        const ss = e.sess === "pre" ? "프리마켓" : "애프터마켓";
+        return `🌙 ${nm ? esc(nm) + " " : ""}${ss} ${$$(e.px)} · 정규장 종가 ${$$(e.base)} 대비 ${sgn(e.chg)} <small class="dim">${e.stale ? `마지막 체결 ${md2(e.at)} ${hm(e.at)}${e.live ? " · 15분 넘게 체결 없음" : " · 지금은 시간외 거래 시간 아님"}` : `${hm(e.at)} 체결`} · 야후 1분봉</small>`;
+      };
+      if (x.ext) L2.unshift(ex(x.ext));
+      if (x.base_ext) L2.splice(1, 0, ex(x.base_ext, "EWY"));
       if (x.h24) L2.push(`24시간 시세(하이퍼리퀴드): ${$$(x.h24.px)} · 정규장 가격 대비 ${sgn(x.h24.vs_reg)}`);
       if (x.members) L2.push(`구성 대형주 ${x.members.n}종목 중 ${x.members.n_up}종목 상승 · 강 ${x.members.up.map((m) => `${esc(m.name)} ${sgn(m.chg)}`).join(", ")} · 약 ${x.members.down.map((m) => `${esc(m.name)} ${sgn(m.chg)}`).join(", ")}`);
       return `<div class="lv"><p class="wt-n"><b>${esc(x.sym)}</b> <small class="dim">${esc(x.name)}</small> ${$$(x.px)} ${sgn(x.chg)} <small class="dim">${+x.day.slice(5, 7)}/${+x.day.slice(8, 10)} 정규장 ${st}</small></p>
         <ul>${(compact ? L2.slice(0, 3) : L2).map((t) => `<li>${t}</li>`).join("")}</ul></div>`;
     };
     return `<div class="lvbox"><p class="mm-h">🔬 SOXL · KORU 점검 <small>${hm(L.at)} 기준 · 2분마다 갱신</small></p>${its.map(one).join("")}
-      ${compact ? "" : `<p class="mm-f">야후 정규장 시세 기준(시가는 5분봉 첫 봉) · 적삼병 조건 = 3일 연속 양봉(시가보다 높게, 전일보다 높게 마감)으로 단순 판정 · 3배 ETF는 하루 단위로 3배를 따라가 여러 날 누적 수익률은 3배와 다름 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`}</div>`;
+      ${compact ? "" : `<p class="mm-f">야후 정규장 시세 기준(시가는 5분봉 첫 봉) · 🌙 시간외 = 프리·애프터마켓 마지막 1분봉 체결, 정규장 종가 대비(하이퍼리퀴드 24시간 가격과 다른 상품) · 적삼병 조건 = 3일 연속 양봉(시가보다 높게, 전일보다 높게 마감)으로 단순 판정 · 3배 ETF는 하루 단위로 3배를 따라가 여러 날 누적 수익률은 3배와 다름 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`}</div>`;
   }
   function drawSectors() {
     const box = q("#sectorBox"); if (!box) return;
