@@ -5,6 +5,25 @@
 - 저장소: https://github.com/ingforme82-commits/trend-lab (공개)
 - `main`에 push하면 1~2분 뒤 사이트에 반영됩니다. 빌드 과정이 없는 정적 사이트(HTML·CSS·JS + JSON)입니다.
 
+## 🛠 Claude 사용량이 다 찼을 때 — Codex가 PowerShell로 이어받기
+**실시간 갱신은 Claude 없이도 돈다.** 속보·시세·주도 섹터·시간대별 강세·수급·프로그램 매매는 Windows 예약 작업 '트렌드랩_속보갱신'(1분마다 `tools/live_news.py`)이 만든다. Claude 사용량 초과로 멈추는 것은 사람이 하던 일(주요 이슈 작성, 관전 포인트 가격대, 중복 묶음 보강, 장애 점검)뿐이고, 아래 명령으로 이어서 한다.
+
+```powershell
+$o = "C:\projects\trend-lab-site\scripts\ops.ps1"
+powershell -NoProfile -ExecutionPolicy Bypass -File $o status        # ① 먼저: 예약 작업·사이트 갱신 시각(5분 넘으면 ⚠)·묶이지 않은 중복·KB 키 유무
+powershell -NoProfile -ExecutionPolicy Bypass -File $o run           # 갱신이 멈췄으면 수집 1회(그래도 안 되면 예약 작업 '트렌드랩_속보갱신' 확인)
+powershell -NoProfile -ExecutionPolicy Bypass -File $o watch -Memo "운영자 문장 그대로" -Soxl 102 -Koru 12 -Push   # 관전 포인트(운영자 메모·가격대)
+powershell -NoProfile -ExecutionPolicy Bypass -File $o issue -Tag "📊 오늘 시황" -Title "한 줄 제목" -Points "사실1|사실2|사실3" -Source "출처 이름" -Until 2026-10-30 -Push
+powershell -NoProfile -ExecutionPolicy Bypass -File $o issue-remove -Tag "📊 오늘 시황" -Push
+powershell -NoProfile -ExecutionPolicy Bypass -File $o alias -Pattern "젤렌스키" -Name "젤렌스키" -Push   # status 의 '묶이지 않은 연속 앞머리'가 실제 발언자일 때만
+powershell -NoProfile -ExecutionPolicy Bypass -File $o test
+powershell -NoProfile -ExecutionPolicy Bypass -File $o push -Message "무엇을 바꿨는지"
+```
+- 주요 이슈(`data/headline.json`)는 **사실·수치·출처 이름만**. 매수·매도 권유·목표가는 `issue` 명령이 막는다. 운영자 의견은 `watch -Memo` 로만(운영자 이름으로 표시).
+- 묶음(`alias`)은 발언자·기관만. 나라·회사 이름('영국', '엔비디아')은 서로 다른 뉴스가 사라지므로 넣지 않는다(같은 분·비슷한 문장·같은 발언자 2시간 규칙).
+- 키·토큰(KB_APP_KEY 등) 값은 출력·커밋 금지. `status` 는 있다/없다만 보여 준다. live 브랜치는 직접 고치지 않는다.
+- 시황 업데이트 요청을 받으면: `status` → 사이트의 🏁 주도 섹터·⏱ 시간대별 강세·💰 주도주 수급(외국인·기관·프로그램)·S7 을 보고 한국/미국을 나눠 `issue` 로 올린다.
+
 ## 최신 운영 인계
 - 매매·계좌·자동매매(NH·KB) 관련 인계는 **공개 저장소에 두지 않습니다** → 비공개 market-site `docs/` (2026-10-28 코덱스 인계도 그쪽으로 옮김).
 - 사이트 개선 남은 일(2026-10-28 점검):
