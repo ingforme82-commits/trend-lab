@@ -114,6 +114,24 @@ async function loadChecks() {
   } catch { /* 체크포인트 없으면 섹션만 비움 */ }
 }
 
+/* ───────── 2-1. 📌 주요 이슈(data/headline.json, 운영자가 올림 · 사실·수치만 · 외부 링크 없음) ───────── */
+async function loadHeadline() {
+  try {
+    const h = await (await fetch(`data/headline.json?t=${Date.now()}`)).json();
+    const today = ymd(KST());
+    const items = (h.items || []).filter((x) => !x.until || x.until >= today);
+    if (!items.length) return;
+    $("#hlList").innerHTML = items.map((x) => `<article class="hl-card">
+      <p class="hl-tag">${esc(x.tag || "")}${x.when ? ` <small>${esc(x.when)}</small>` : ""}</p>
+      <h3 class="hl-title">${esc(x.title)}</h3>
+      <ul class="hl-pts">${(x.points || []).map((p) => `<li>${esc(p)}</li>`).join("")}</ul>
+      ${x.source ? `<p class="hl-src">출처: ${esc(x.source)}</p>` : ""}
+    </article>`).join("");
+    $("#hlStamp").textContent = h.updated ? `${h.updated} 정리` : "";
+    $("#headline").hidden = false;
+  } catch { /* 주요 이슈 없으면 칸 숨김 */ }
+}
+
 /* ───────── 3. (블로그 분석 글 피드 — 2026-10-28 운영자 결정으로 사이트에서 뺌) ───────── */
 
 /* ───────── 4. 투자 스타일 테스트 ───────── */
@@ -461,6 +479,6 @@ function archCard(s, isNext, label) {
 }
 
 /* ───────── 시작 ───────── */
-loadTicks(); loadChecks(); loadStudies();   // 블로그 분석 글 피드는 2026-10-28 운영자 결정으로 뺌
+loadHeadline(); loadTicks(); loadChecks(); loadStudies();   // 블로그 분석 글 피드는 2026-10-28 운영자 결정으로 뺌
 setInterval(loadTicks, 30000);
 
