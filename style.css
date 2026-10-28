@@ -678,3 +678,14 @@ body{overflow-x:hidden}
 .mn-x,.mn-full{cursor:pointer}
 .mn-x:hover{text-decoration:underline dotted}
 .mn-full{color:#fff}
+
+/* 🏛️ S7 */
+.s7-box{background:#fff;border:1px solid var(--line);border-left:4px solid var(--navy);border-radius:12px;padding:10px 12px;margin:0 0 16px}.s7-box[hidden]{display:none}
+.s7-sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,210px),1fr));gap:6px 14px;margin:4px 0 10px;font-size:13.5px;font-variant-numeric:tabular-nums}
+.s7-sum>div{background:var(--bg2);border-radius:8px;padding:7px 10px}
+.s7-sum span{display:block;font-size:11.5px;color:var(--sub)}
+.s7-sum small{color:var(--sub);font-size:11.5px}
+.s7-c{min-width:120px}
+.s7-bar{display:inline-block;width:48px;height:6px;margin-left:6px;background:var(--bg2);border-radius:3px;vertical-align:middle;overflow:hidden}
+.s7-bar i{display:block;height:100%}
+.s7-bar .s7-u{background:var(--up)}.s7-bar .s7-d{background:var(--down)}

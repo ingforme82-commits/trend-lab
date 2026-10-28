@@ -49,7 +49,7 @@
       const j = await fetchNews();
       news = j.items || []; moves = j.moves || []; series = j.series || {}; health = j.health || null;
       world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
-      window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlUst = j.ust || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; flows = j.flows || null; watch = j.watch || null; lev = j.lev || null; if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
+      window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlUst = j.ust || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; flows = j.flows || null; s7 = j.s7 || null; watch = j.watch || null; lev = j.lev || null; if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
       window.trlMoves = moves; window.trlSeries = series; window.trlNews = news;
       drawHealth(j.updated);
       drawTicker();
@@ -372,6 +372,36 @@
     return `<div class="fl-g"><p class="fl-gh">${g.icon || ""} ${esc(g.name)}${g.n ? ` <small>상승 ${g.up}/${g.n}종목</small>` : ""}</p>
       <div class="fl-scroll"><table class="fl-t">${head}${body}</table></div></div>`;
   }
+  /* ── 🏛️ S7: 코스피 영향 큰 삼성·SK 7종목 — 지수 기여 포인트, S7 제외 코스피, 수급 ── */
+  let s7 = null;
+  function drawS7() {
+    const box = q("#s7Box"); if (!box) return;
+    if (!s7 || !(s7.rows || []).length) { box.hidden = true; return; }
+    box.hidden = false;
+    const k = s7.kospi || {}, s = s7.s7 || {};
+    const pt = (v) => v == null ? "-" : `<b class="${cls(v)}">${v > 0 ? "+" : ""}${(+v).toFixed(1)}p</b>`;
+    const ek = (v) => v == null ? "-" : `<b class="${cls(v)}">${v > 0 ? "+" : ""}${Math.round(v).toLocaleString("ko-KR")}억</b>`;
+    const mx = Math.max(...s7.rows.map((r) => Math.abs(r.pts || 0)), 1);
+    const bar = (v) => `<span class="s7-bar"><i class="${v >= 0 ? "s7-u" : "s7-d"}" style="width:${Math.round(Math.abs(v || 0) / mx * 100)}%"></i></span>`;
+    const st = `${hm(s7.at)} 기준${s7.open ? " · 1분마다 갱신" : " · 장 마감"}`;
+    const body = s7.rows.map((r) => `<tr><td class="fl-n">${esc(r.name)}</td><td>${pct(r.chg)}</td>
+      <td class="s7-c">${r.w == null ? '<span class="dim">지수 미포함</span>' : `${pt(r.pts)}${bar(r.pts)}`}</td><td>${r.w == null ? "-" : r.w.toFixed(1) + "%"}</td>
+      <td>${r.val ? eok(r.val) : "-"}</td><td>${r.win ? eokS(r.win.amt) : "-"}</td><td>${r.inv ? eokS(r.inv.frgn) : "-"}</td><td>${r.inv ? eokS(r.inv.org) : "-"}</td>
+      <td class="fl-5">${r.inv ? `${eokS(r.inv.frgn5)} / ${eokS(r.inv.org5)}` : "-"}</td></tr>`).join("");
+    const invDay = (s7.rows.find((r) => r.inv) || {}).inv;
+    box.innerHTML = `<p class="spot-h">🏛️ S7 · 코스피 영향 큰 7종목 <small>${st} · 삼성전자·삼성전자우·SK하이닉스·SK스퀘어·삼성전기·삼성생명·삼성물산</small></p>
+      <div class="s7-sum">
+        <div><span>코스피</span><b>${(+k.px).toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b> ${pct(k.chg)} ${pt(k.pts)}</div>
+        <div><span>S7 기여</span>${pt(s.pts)} <small>${s.share != null ? `지수 변화의 ${s.share}%` : ""} · 비중 ${s.w}%</small></div>
+        <div><span>S7 제외 코스피</span>${s.ex_chg != null ? pct(s.ex_chg) : "-"} ${pt(s.ex_pts)}</div>
+        <div><span>상승·하락 종목</span><b>${k.up != null ? `${k.up} / ${k.dn}` : "-"}</b></div>
+        <div><span>코스피 투자자 <small>${k.flow_day ? md(k.flow_day.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")) : ""}</small></span>개인 ${ek(k.ind)} · 외국인 ${ek(k.frgn)} · 기관 ${ek(k.org)}</div>
+        <div><span>프로그램 매매</span>차익 ${ek(k.arb)} · 비차익 ${ek(k.nonarb)} · 합계 ${ek(k.prog)}</div>
+      </div>
+      <div class="fl-scroll"><table class="fl-t"><tr><th>종목</th><th>등락</th><th>지수 기여<small>포인트</small></th><th>코스피 비중<small>전일 시총</small></th><th>거래대금<small>통합</small></th><th>외국계 창구<small>오늘</small></th><th>외국인<small>${invDay ? md(invDay.day) : ""}</small></th><th>기관<small>${invDay ? md(invDay.day) : ""}</small></th><th>외국인·기관<small>5일 합계</small></th></tr>${body}</table></div>
+      <p class="mm-f">지수 기여 = 코스피 전일 종가 × 종목 비중(전일 시가총액 ÷ 코스피 보통주 시가총액 합계) × 등락률 — 근사치 · 코스피는 보통주로만 계산해 삼성전자우는 지수에 들어가지 않음<br>
+      S7 제외 코스피 = 코스피 변화 − S7 기여 · 투자자·프로그램은 코스피 전체(억 원, 장중 잠정) · 외국계 창구는 외국계 증권사 창구 합계로 외국인 수급과 다름 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`;
+  }
   function drawFlows() {
     const box = q("#flowBox"); if (!box) return;
     const gs = (flows && flows.groups) || [];
@@ -628,7 +658,7 @@
     });
   }
 
-  const redraw = () => { drawHeroLive(); drawWorld(); drawSpot(); drawWatch(); drawSectors(); drawFlows(); drawBrief(); if (full) { drawCharts(); drawMoves(); drawTrend(); drawList(); } };
+  const redraw = () => { drawHeroLive(); drawWorld(); drawSpot(); drawWatch(); drawSectors(); drawS7(); drawFlows(); drawBrief(); if (full) { drawCharts(); drawMoves(); drawTrend(); drawList(); } };
   const setKw = (label, pat) => {
     try { kwFilter = { label, rx: new RegExp(pat, "i") }; } catch { kwFilter = null; }
     tag = "전체"; shown = 30; drawTrend(); drawList(); q("#news").scrollIntoView({ behavior: "smooth" });

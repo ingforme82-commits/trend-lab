@@ -483,6 +483,11 @@ def build() -> dict:
             out["flows"] = flows()
         except Exception as e:  # noqa: BLE001
             log(f"주도주 수급 건너뜀: {type(e).__name__}: {e}")
+        try:
+            from s7 import build as s7
+            out["s7"] = s7()
+        except Exception as e:  # noqa: BLE001
+            log(f"S7 건너뜀: {type(e).__name__}: {e}")
         out["trending"] = trending(items)
     except Exception as e:  # noqa: BLE001
         log(f"해외 지수·종목 건너뜀: {type(e).__name__}: {e}")
@@ -530,7 +535,7 @@ def _upload(data: dict) -> bool:
             old = json.loads(base64.b64decode(j["content"]).decode("utf-8"))
         except Exception:  # noqa: BLE001
             old = None
-    if old and all(old.get(k) == data.get(k) for k in ("items", "moves", "world", "spot", "trending", "sectors", "dow", "us10y", "ust", "kr", "momentum", "flows", "watch", "lev", "official")):
+    if old and all(old.get(k) == data.get(k) for k in ("items", "moves", "world", "spot", "trending", "sectors", "dow", "us10y", "ust", "kr", "momentum", "flows", "s7", "watch", "lev", "official")):
         return False                                   # 바뀐 글 없음 → 커밋 안 함
     body = {"message": f"속보 갱신 {datetime.now(KST):%m-%d %H:%M}", "branch": BRANCH,
             "content": base64.b64encode(json.dumps(data, ensure_ascii=False).encode("utf-8")).decode()}
