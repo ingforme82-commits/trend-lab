@@ -411,6 +411,12 @@ def build() -> dict:
         from leaders import build as leaders_build, changes as leaders_changes
         leaders = leaders_build()
         umap = (leaders.get("us") or {}).pop("map", {}) or {}
+        (leaders.get("us") or {}).pop("all", None)
+        try:                                              # ⏱ 시간대별 강세 종목·섹터(한국·미국 매시)
+            from hourly import build as hourly_build
+            leaders["hourly"] = hourly_build()
+        except Exception as e:  # noqa: BLE001
+            log(f"시간대별 강세 건너뜀: {type(e).__name__}: {e}")
         for c in sector_cards:                            # 미국 종목에도 시가총액·거래대금(네이버) → 화면 정렬
             for r in c.get("rows", []):
                 m = umap.get(r.get("sym"))

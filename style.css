@@ -717,3 +717,7 @@ body{overflow-x:hidden}
 .nw-ser ul{margin:4px 0 0;padding-left:16px}
 .nw-ser li{margin:2px 0}
 .nw-ser li b{color:var(--gold-d);margin-right:4px;font-variant-numeric:tabular-nums}
+
+/* ⏱ 시간대별 강세 */
+.hr{margin:0 0 14px}
+.hr-sec{font-size:13px;margin:4px 0 8px;line-height:1.7}

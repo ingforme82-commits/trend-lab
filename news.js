@@ -334,6 +334,25 @@
     return `<div class="lvbox"><p class="mm-h">🔬 SOXL · KORU 점검 <small>${hm(L.at)} 기준 · 2분마다 갱신</small></p>${its.map(one).join("")}
       ${compact ? "" : `<p class="mm-f">야후 정규장 시세 기준(시가는 5분봉 첫 봉) · 🌙 시간외 = 프리·애프터마켓 마지막 1분봉 체결, 정규장 종가 대비(하이퍼리퀴드 24시간 가격과 다른 상품) · 적삼병 조건 = 3일 연속 양봉(시가보다 높게, 전일보다 높게 마감)으로 단순 판정 · 3배 ETF는 하루 단위로 3배를 따라가 여러 날 누적 수익률은 3배와 다름 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`}</div>`;
   }
+  /* ── ⏱ 시간대별 강세: 매시(KST) '이번 시간 상승률' 상위 종목·업종 — 한국·미국 구분 ── */
+  function hourlyHtml() {
+    const H = leaders && leaders.hourly; if (!H || (!H.kr && !H.us)) return "";
+    const order = mode() === "us" ? ["us", "kr"] : ["kr", "us"];
+    const tab = hrTab && H[hrTab] ? hrTab : order.find((k) => H[k]);
+    const blk = H[tab] || {}, slots = blk.slots || [];
+    const cur = slots.find((x) => x.h === hrSlot) || slots[0];
+    if (!cur) return "";
+    const lab = (x) => `${x.h}시${x.live ? " 진행 중" : ""}`;
+    const money = (v) => tab === "us" ? usd(v) : v ? eok(v) : "-";
+    const rows = sortRows(cur.stocks || [], "hr").map((r) => `<tr><td class="fl-n">${esc(r.name)}</td><td>${pct(r.slot)}</td><td>${pct(r.chg)}</td><td>${money(r.val)}</td><td class="fl-5">${esc(r.sec || "")}</td></tr>`).join("");
+    return `<div class="hr"><p class="spot-h">⏱ 시간대별 강세 종목·업종 <small>${hm(H.at)} 기준 · 매시(한국시간) 첫 값부터 지금까지 · ${blk.open ? "장중 3분마다" : "장 마감 기준"}</small></p>
+      <div class="fl-sort">${order.filter((k) => H[k]).map((k) => `<button class="sc-chip${tab === k ? " on" : ""}" data-hr-tab="${k}">${k === "kr" ? "🇰🇷 한국" : "🇺🇸 미국"}</button>`).join("")}
+        <span class="dim">시간대</span>${slots.map((x) => `<button class="sc-chip${x === cur ? " on" : ""}" data-hr-slot="${x.h}">${lab(x)}</button>`).join("")}</div>
+      <p class="hr-sec"><b>${lab(cur)} 강한 업종</b> ${(cur.sectors || []).map((g) => `${esc(g.name)} ${pct(g.slot)} <small class="dim">상승 ${g.up}/${g.n} · ${g.top.map(esc).join(", ")}</small>`).join(" · ") || '<span class="dim">-</span>'}
+        <small class="dim">· 전체 ${cur.up}/${cur.n}종목 상승</small></p>
+      <div class="fl-scroll"><table class="fl-t"><tr>${sth("hr", "name", "종목")}${sth("hr", "slot", "이번 시간", cur.gap ? "전일 종가부터" : `${cur.h}시부터`)}${sth("hr", "chg", "오늘")}${sth("hr", "val", "거래대금")}<th>업종</th></tr>${rows}</table></div>
+      <p class="mm-f">${tab === "kr" ? "코스피·코스닥 전 종목 중 오늘 거래대금 30억 원 이상(ETF·우선주 제외)" : "나스닥·뉴욕거래소 시가총액 상위 600종목"} · 업종은 네이버 분류, 걸러진 종목 3개 이상인 업종만 평균 · 첫 시간대는 전일 종가부터라 시가 갭 포함 · 사실 집계이며 매수·매도 권유가 아닙니다</p></div>`;
+  }
   function leadersHtml() {
     if (!leaders || (!leaders.kr && !leaders.us)) return "";
     const tabs = [["kr.industry", "🇰🇷 한국 업종"], ["kr.theme", "🇰🇷 한국 테마"], ["us.industry", "🇺🇸 미국 업종"]];
@@ -375,7 +394,7 @@
           <small>${won(r) ? `${Math.round(r.px).toLocaleString("ko-KR")}원${r.val ? ` · 거래대금(통합) ${eok(r.val)}` : ""}${r.mcap ? ` · 시총 ${eok(r.mcap)}` : ""}` : `$${r.px}`}${r.to3m != null && r.to3m > 0 ? " · 3개월 고점 돌파" : r.to52 != null ? ` · 52주 고가 ${r.to52 > 0 ? "+" : ""}${r.to52}%` : ""}</small>
           ${r.flags.length ? `<span class="sec-f">${r.flags.map(esc).join(" · ")}</span>` : ""}</div>`).join("")}</div>
       </div>` : "";
-    box.innerHTML = leadersHtml() + momHtml(momentum) + levHtml(lev) + `<p class="fl-sort"><button class="sc-chip${fixSecOpen ? " on" : ""}" data-fixsec="1">📌 관심 섹터(고정) 시세 ${fixSecOpen ? "접기" : "보기"}</button></p>
+    box.innerHTML = leadersHtml() + hourlyHtml() + momHtml(momentum) + levHtml(lev) + `<p class="fl-sort"><button class="sc-chip${fixSecOpen ? " on" : ""}" data-fixsec="1">📌 관심 섹터(고정) 시세 ${fixSecOpen ? "접기" : "보기"}</button></p>
       ${fixSecOpen ? `<p class="spot-h">📊 관심 섹터 시세 <small>섹터를 누르면 종목별 등락이 보입니다 · 주황 점은 신호(±3%·고점 돌파) 종목이 있는 섹터</small></p>
       <div class="sc-bar">${chips}</div>${panel}` : ""}`;
   }
@@ -404,7 +423,7 @@
       ${compact ? "" : `<p class="mm-f">자동 수치는 야후 정규장 시세 기준 · 적삼병 조건 = 3일 연속 양봉(시가보다 높게, 전일보다 높게 마감)으로 단순 판정 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`}</div>`;
   }
   /* ── 🕗 시간대 관전 포인트(자동): 한국장 08~18시 / 미국장 18~08시(KST) — 1분마다 지금 수치로 다시 쓴다 ── */
-  let leaders = null, ldTab = null, ldOpen = null, fixSecOpen = false;
+  let leaders = null, ldTab = null, ldOpen = null, fixSecOpen = false, hrTab = null, hrSlot = null;
   const mode = () => { const h = kst(Date.now()).getHours(); return h >= 8 && h < 18 ? "kr" : "us"; };
   const sg2 = (v) => v == null ? "-" : `<b class="${cls(v)}">${v > 0 ? "+" : ""}${(+v).toFixed(2)}%</b>`;
   const usd = (v) => v == null ? "-" : `${(v / 1e8).toLocaleString("ko-KR", { maximumFractionDigits: v >= 1e10 ? 0 : 1 })}억 달러`;
@@ -427,6 +446,8 @@
       const f = ["나스닥100", "S&P500", "WTI", "브렌트", "달러인덱스"].map(fv).filter(Boolean);
       if (f.length) L.push(`📈 지수·유가(24시간 선물): ${f.join(" · ")}${brief && brief.us10y ? ` · 미 10년물 ${(+brief.us10y.px).toFixed(3)}%` : ""}`);
       const lv = lvl(); if (lv) L.push(`🎯 ${lv}`);
+      const hu = leaders && leaders.hourly && leaders.hourly.us && (leaders.hourly.us.slots || [])[0];
+      if (hu && hu.live) L.push(`⏱ 이번 시간(${hu.h}시~) 강세: ${(hu.sectors || []).slice(0, 2).map((g) => `${esc(g.name)} ${sg2(g.slot)}`).join(" · ")} | ${(hu.stocks || []).slice(0, 3).map((r) => `${esc(r.name)} ${sg2(r.slot)}`).join(" · ")}`);
       const k = ["코스피200", "삼성전자", "SK하이닉스", "원/달러"].map(fv).filter(Boolean);
       if (k.length) L.push(`🇰🇷 내일 한국장 연결(24시간 시세): ${k.join(" · ")}`);
       const cs = (checks || []).filter((c) => (c.date === today && c.time && c.time >= "18:00") || (c.date === tmr && c.time && c.time < "08:00"));
@@ -441,6 +462,8 @@
       const k = leaders && leaders.kr;
       if (k && (k.industry || []).length) L.push(`🏁 한국 주도 업종${k.open ? "(장중)" : "(직전 장 기준)"}: ${top3(k.industry)}`);
       if (k && (k.theme || []).length) L.push(`🏷️ 한국 주도 테마: ${top3(k.theme)}`);
+      const hk = leaders && leaders.hourly && leaders.hourly.kr && (leaders.hourly.kr.slots || [])[0];
+      if (hk && hk.live) L.push(`⏱ 이번 시간(${hk.h}시~) 강세: ${(hk.sectors || []).slice(0, 2).map((g) => `${esc(g.name)} ${sg2(g.slot)}`).join(" · ")} | ${(hk.stocks || []).slice(0, 3).map((r) => `${esc(r.name)} ${sg2(r.slot)}`).join(" · ")}`);
       if (s7 && s7.s7 && s7.day === today) {
         const kk = s7.kospi || {};
         L.push(`🏛️ S7 지수 기여 ${s7.s7.pts > 0 ? "+" : ""}${s7.s7.pts}p${s7.s7.share != null ? `(지수 변화의 ${s7.s7.share}%)` : ""} · S7 제외 코스피 ${sg2(s7.s7.ex_chg)} · 코스피 외국인 ${kk.frgn != null ? Math.round(kk.frgn).toLocaleString("ko-KR") + "억" : "-"} · 기관 ${kk.org != null ? Math.round(kk.org).toLocaleString("ko-KR") + "억" : "-"} · 프로그램 ${kk.prog != null ? Math.round(kk.prog).toLocaleString("ko-KR") + "억" : "-"}`);
@@ -460,11 +483,11 @@
   }
 
   /* ── ↕ 표 정렬(등락률·거래대금·시가총액·수급 …): 머리글이나 정렬 버튼을 누르면 순서가 바뀐다. 같은 걸 다시 누르면 반대로 ── */
-  const sortSt = { flow: { k: "chg", d: -1 }, s7: { k: null, d: -1 }, sec: { k: "chg", d: -1 }, ld: { k: "score", d: -1 }, ldm: { k: "val", d: -1 } };
+  const sortSt = { flow: { k: "chg", d: -1 }, s7: { k: null, d: -1 }, sec: { k: "chg", d: -1 }, ld: { k: "score", d: -1 }, ldm: { k: "val", d: -1 }, hr: { k: "slot", d: -1 } };
   const SORTK = {
     name: (r) => r.name, chg: (r) => r.chg, val: (r) => r.val, mcap: (r) => r.mcap, pts: (r) => r.pts, w: (r) => r.w,
     win: (r) => r.win ? r.win.amt : null, frgn: (r) => r.inv ? r.inv.frgn : null, org: (r) => r.inv ? r.inv.org : null,
-    s5: (r) => r.inv ? (r.inv.frgn5 || 0) + (r.inv.org5 || 0) : null, score: (r) => r.score, breadth: (r) => r.breadth, prog: (r) => r.prog ? r.prog.amt : null, prog5: (r) => r.prog ? r.prog.amt5 : null,
+    s5: (r) => r.inv ? (r.inv.frgn5 || 0) + (r.inv.org5 || 0) : null, score: (r) => r.score, breadth: (r) => r.breadth, slot: (r) => r.slot, prog: (r) => r.prog ? r.prog.amt : null, prog5: (r) => r.prog ? r.prog.amt5 : null,
   };
   function sortRows(rows, t) {
     const st = sortSt[t]; if (!st.k) return rows;
@@ -793,6 +816,8 @@
       return;
     }
     if (e.target.closest("[data-clear-kw]")) { kwFilter = null; drawTrend(); drawList(); return; }
+    const ht = e.target.closest("[data-hr-tab]"); if (ht) { hrTab = ht.dataset.hrTab; hrSlot = null; drawSectors(); return; }
+    const hs = e.target.closest("[data-hr-slot]"); if (hs) { hrSlot = hs.dataset.hrSlot; drawSectors(); return; }
     const lt = e.target.closest("[data-ld-tab]"); if (lt) { ldTab = lt.dataset.ldTab; ldOpen = null; drawSectors(); return; }
     const lo = e.target.closest("[data-ld-open]"); if (lo) { const n = lo.dataset.ldOpen; ldOpen = ldOpen === n ? null : n; drawSectors(); return; }
     if (e.target.closest("[data-fixsec]")) { fixSecOpen = !fixSecOpen; drawSectors(); return; }
