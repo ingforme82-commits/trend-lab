@@ -22,3 +22,5 @@ tools/linktitle_cache.json
 tools/official_cache.json
 tools/auto_pull.log
 tools/s7_cache.json
+tools/leaders_cache.json
+tools/leaders_state.json

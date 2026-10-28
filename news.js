@@ -49,7 +49,7 @@
       const j = await fetchNews();
       news = j.items || []; moves = j.moves || []; series = j.series || {}; health = j.health || null;
       world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
-      window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlUst = j.ust || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; flows = j.flows || null; s7 = j.s7 || null; watch = j.watch || null; lev = j.lev || null; if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
+      window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlUst = j.ust || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; flows = j.flows || null; s7 = j.s7 || null; leaders = j.leaders || null; watch = j.watch || null; lev = j.lev || null; if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
       window.trlMoves = moves; window.trlSeries = series; window.trlNews = news;
       drawHealth(j.updated);
       drawTicker();
@@ -313,9 +313,29 @@
     return `<div class="lvbox"><p class="mm-h">🔬 SOXL · KORU 점검 <small>${hm(L.at)} 기준 · 2분마다 갱신</small></p>${its.map(one).join("")}
       ${compact ? "" : `<p class="mm-f">야후 정규장 시세 기준(시가는 5분봉 첫 봉) · 🌙 시간외 = 프리·애프터마켓 마지막 1분봉 체결, 정규장 종가 대비(하이퍼리퀴드 24시간 가격과 다른 상품) · 적삼병 조건 = 3일 연속 양봉(시가보다 높게, 전일보다 높게 마감)으로 단순 판정 · 3배 ETF는 하루 단위로 3배를 따라가 여러 날 누적 수익률은 3배와 다름 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`}</div>`;
   }
+  function leadersHtml() {
+    if (!leaders || (!leaders.kr && !leaders.us)) return "";
+    const tabs = [["kr.industry", "🇰🇷 한국 업종"], ["kr.theme", "🇰🇷 한국 테마"], ["us.industry", "🇺🇸 미국 업종"]];
+    if (mode() === "us") tabs.unshift(tabs.pop());
+    const tab = ldTab || tabs[0][0];
+    const [mk, kd] = tab.split("."), blk = leaders[mk] || {}, isUs = mk === "us";
+    const money = (v) => isUs ? usd(v) : v ? eok(v) : "-";
+    const gs = sortRows(blk[kd] || [], "ld");
+    const chips = gs.map((g) => `<button class="sc-chip ld-chip${ldOpen === g.name ? " on" : ""}" data-ld-open="${esc(g.name)}" aria-expanded="${ldOpen === g.name}">
+      ${esc(g.name)} ${sg2(g.chg)} <small>상승 ${g.up}/${g.n} · 대금 ${money(g.val)} · 점수 ${g.score}</small></button>`).join("");
+    const g = gs.find((x) => x.name === ldOpen);
+    const mem = g ? `<div class="sc-panel"><div class="fl-scroll"><table class="fl-t"><tr>${sth("ldm", "name", "종목")}${sth("ldm", "chg", "등락")}${sth("ldm", "val", "거래대금")}${sth("ldm", "mcap", "시가총액")}</tr>
+      ${sortRows(g.rows || [], "ldm").map((r) => `<tr><td class="fl-n">${esc(r.name)}</td><td>${pct(r.chg)}</td><td>${money(r.val)}</td><td>${money(r.mcap)}</td></tr>`).join("")}</table></div>
+      <p class="mm-f">${esc(g.name)} 구성 ${g.n}종목 중 거래대금 상위 ${(g.rows || []).length}종목 · 머리글을 누르면 정렬</p></div>` : "";
+    return `<div class="ld"><p class="spot-h">🏁 오늘의 주도 섹터 <small>자동 · ${hm(blk.at || leaders.at)} 기준 · ${blk.open ? "장중 3분마다 갱신" : "장 마감 기준"} · 섹터를 누르면 종목이 보입니다</small></p>
+      <div class="fl-sort">${tabs.map(([k, l]) => `<button class="sc-chip${tab === k ? " on" : ""}" data-ld-tab="${k}">${l}</button>`).join("")}</div>
+      ${sortChips("ld", [["score", "주도 점수순"], ["chg", "등락률순"], ["val", "거래대금순"], ["mcap", "시가총액순"], ["breadth", "상승 비율순"]])}
+      <div class="sc-bar">${chips || '<span class="dim">자료를 불러오는 중</span>'}</div>${mem}
+      <p class="mm-f">네이버 금융 ${isUs ? "해외(나스닥·뉴욕거래소 시가총액 상위 각 300종목, 업종별 시가총액 가중 등락률)" : kd === "theme" ? "국내 테마(등락률 상위 후보 16개 중)" : "국내 업종(등락률 상위 후보 12개 중)"} · 주도 점수 = 등락률 순위 50 + 거래대금 순위 30 + 상승 종목 비율 20(후보끼리 비교) · 순위일 뿐 매수·매도 권유가 아닙니다</p></div>`;
+  }
   function drawSectors() {
     const box = q("#sectorBox"); if (!box) return;
-    if (!sectors.length) { box.hidden = true; return; }
+    if (!sectors.length && !leaders) { box.hidden = true; return; }
     box.hidden = false;
     const won = (r) => r.cur === "KRW";
     const chips = sectors.map((c) => {
@@ -334,8 +354,9 @@
           <small>${won(r) ? `${Math.round(r.px).toLocaleString("ko-KR")}원${r.val ? ` · 거래대금(통합) ${eok(r.val)}` : ""}${r.mcap ? ` · 시총 ${eok(r.mcap)}` : ""}` : `$${r.px}`}${r.to3m != null && r.to3m > 0 ? " · 3개월 고점 돌파" : r.to52 != null ? ` · 52주 고가 ${r.to52 > 0 ? "+" : ""}${r.to52}%` : ""}</small>
           ${r.flags.length ? `<span class="sec-f">${r.flags.map(esc).join(" · ")}</span>` : ""}</div>`).join("")}</div>
       </div>` : "";
-    box.innerHTML = momHtml(momentum) + levHtml(lev) + `<p class="spot-h">📊 섹터 시세 <small>섹터를 누르면 종목별 등락이 보입니다 · 주황 점은 신호(±3%·고점 돌파) 종목이 있는 섹터</small></p>
-      <div class="sc-bar">${chips}</div>${panel}`;
+    box.innerHTML = leadersHtml() + momHtml(momentum) + levHtml(lev) + `<p class="fl-sort"><button class="sc-chip${fixSecOpen ? " on" : ""}" data-fixsec="1">📌 관심 섹터(고정) 시세 ${fixSecOpen ? "접기" : "보기"}</button></p>
+      ${fixSecOpen ? `<p class="spot-h">📊 관심 섹터 시세 <small>섹터를 누르면 종목별 등락이 보입니다 · 주황 점은 신호(±3%·고점 돌파) 종목이 있는 섹터</small></p>
+      <div class="sc-bar">${chips}</div>${panel}` : ""}`;
   }
 
   /* ── 👀 운영자 관전 포인트(data/watch.json): 운영자 메모 + 장중 수치(갭·5일선·연속 양봉·가격대) ── */
@@ -361,18 +382,68 @@
       ${(w.events || []).length ? `<p class="wt-n" style="margin-top:8px"><b>⏱ 변화 기록</b> <small class="dim">기준선(5일선·시가·전일 종가·가격대)을 ${"0.15"}% 넘게 넘을 때 기록</small></p><ul class="wt-ev">${w.events.slice(0, compact ? 6 : 15).map((e) => `<li><b>${hm(e.ts)}</b> <span class="${e.up ? "c-up" : "c-dn"}">${e.up ? "▲" : "▼"}</span> ${esc(e.text)}</li>`).join("")}</ul>` : ""}
       ${compact ? "" : `<p class="mm-f">자동 수치는 야후 정규장 시세 기준 · 적삼병 조건 = 3일 연속 양봉(시가보다 높게, 전일보다 높게 마감)으로 단순 판정 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`}</div>`;
   }
+  /* ── 🕗 시간대 관전 포인트(자동): 한국장 08~18시 / 미국장 18~08시(KST) — 1분마다 지금 수치로 다시 쓴다 ── */
+  let leaders = null, ldTab = null, ldOpen = null, fixSecOpen = false;
+  const mode = () => { const h = kst(Date.now()).getHours(); return h >= 8 && h < 18 ? "kr" : "us"; };
+  const sg2 = (v) => v == null ? "-" : `<b class="${cls(v)}">${v > 0 ? "+" : ""}${(+v).toFixed(2)}%</b>`;
+  const usd = (v) => v == null ? "-" : `${(v / 1e8).toLocaleString("ko-KR", { maximumFractionDigits: v >= 1e10 ? 0 : 1 })}억 달러`;
+  function sessionHtml() {
+    const md_ = mode(), now = kst(Date.now());
+    const today = kstDay(Date.now()), tmr = kstDay(Date.now() + 86400e3);
+    const fut = {}; ((brief && brief.futures) || []).forEach((f) => { fut[f.name] = f; });
+    const fv = (n) => { const f = fut[n]; return f ? `${esc(n)} ${f.u === "$" ? "$" : ""}${(+f.px).toLocaleString("ko-KR", { maximumFractionDigits: 2 })}${f.u === "원" ? "원" : ""} ${sg2(f.chg)}` : ""; };
+    const top3 = (gs) => (gs || []).slice(0, 3).map((g) => `${esc(g.name)} ${sg2(g.chg)} <small class="dim">상승 ${g.up}/${g.n}</small>`).join(" · ");
+    const reg = window.trlReg || {}, kr = window.trlKr || {};
+    const L = [];
+    const lvl = () => ((watch && watch.items) || []).filter((x) => x.px != null).map((x) => {
+      const e = ((lev && lev.items) || []).find((y) => y.sym === x.sym);
+      const ext = e && e.ext && !e.ext.stale ? ` · ${e.ext.sess === "pre" ? "프리" : "애프터"} $${e.ext.px} ${sg2(e.ext.chg)}` : "";
+      return `${esc(x.sym)} $${(+x.px).toFixed(2)} ${sg2(x.chg)}${x.level ? (() => { const d = (x.px / x.level - 1) * 100; return ` (운영자 가격대 $${x.level} ${Math.abs(d) < 0.15 ? "부근" : `대비 ${sg2(d)} ${d > 0 ? "위" : "아래"}`})`; })() : ""}${ext}`;
+    }).join(" · ");
+    if (md_ === "us") {
+      const u = leaders && leaders.us;
+      if (u && (u.industry || []).length) L.push(`🏁 미국 주도 업종${u.open ? "(장중)" : "(직전 장 기준)"}: ${top3(u.industry)}`);
+      const f = ["나스닥100", "S&P500", "WTI", "브렌트", "달러인덱스"].map(fv).filter(Boolean);
+      if (f.length) L.push(`📈 지수·유가(24시간 선물): ${f.join(" · ")}${brief && brief.us10y ? ` · 미 10년물 ${(+brief.us10y.px).toFixed(3)}%` : ""}`);
+      const lv = lvl(); if (lv) L.push(`🎯 ${lv}`);
+      const k = ["코스피200", "삼성전자", "SK하이닉스", "원/달러"].map(fv).filter(Boolean);
+      if (k.length) L.push(`🇰🇷 내일 한국장 연결(24시간 시세): ${k.join(" · ")}`);
+      const cs = (checks || []).filter((c) => (c.date === today && c.time && c.time >= "18:00") || (c.date === tmr && c.time && c.time < "08:00"));
+      if (cs.length) L.push(`🗓️ 오늘 밤 일정: ${cs.slice(0, 4).map((c) => `${c.time ? `<b>${esc(c.time)}</b> ` : ""}${esc(c.title)}`).join(" · ")}`);
+    } else {
+      const r = (k, n) => reg[k] ? `${n} ${sg2(reg[k].chg)}` : "";
+      const us_ = [r("SP500", "S&P500"), r("XYZ100", "나스닥100"), r("SOXL", "SOXL"), r("KORU", "KORU"), r("EWY", "EWY")].filter(Boolean);
+      if (us_.length) L.push(`🌙 간밤 미국 정규장: ${us_.join(" · ")}`);
+      const ki = [["KOSPI", "코스피"], ["KOSDAQ", "코스닥"], ["KR200", "코스피200"]].filter(([k]) => kr[k]).map(([k, n]) => `${n} ${(+kr[k].px).toLocaleString("ko-KR", { maximumFractionDigits: 2 })} ${sg2(kr[k].chg)}`);
+      if (now.getHours() < 9 && fut["코스피200"]) L.push(`⏰ 개장 전 코스피200 야간(24시간): ${fv("코스피200")}`);
+      if (ki.length) L.push(`🇰🇷 지수: ${ki.join(" · ")}`);
+      const k = leaders && leaders.kr;
+      if (k && (k.industry || []).length) L.push(`🏁 한국 주도 업종${k.open ? "(장중)" : "(직전 장 기준)"}: ${top3(k.industry)}`);
+      if (k && (k.theme || []).length) L.push(`🏷️ 한국 주도 테마: ${top3(k.theme)}`);
+      if (s7 && s7.s7 && s7.day === today) {
+        const kk = s7.kospi || {};
+        L.push(`🏛️ S7 지수 기여 ${s7.s7.pts > 0 ? "+" : ""}${s7.s7.pts}p${s7.s7.share != null ? `(지수 변화의 ${s7.s7.share}%)` : ""} · S7 제외 코스피 ${sg2(s7.s7.ex_chg)} · 코스피 외국인 ${kk.frgn != null ? Math.round(kk.frgn).toLocaleString("ko-KR") + "억" : "-"} · 기관 ${kk.org != null ? Math.round(kk.org).toLocaleString("ko-KR") + "억" : "-"} · 프로그램 ${kk.prog != null ? Math.round(kk.prog).toLocaleString("ko-KR") + "억" : "-"}`);
+      }
+      const lv = lvl(); if (lv) L.push(`🎯 ${lv}`);
+      const cs = (checks || []).filter((c) => c.date === today);
+      if (cs.length) L.push(`🗓️ 오늘 일정: ${cs.slice(0, 4).map((c) => `${c.time ? `<b>${esc(c.time)}</b> ` : ""}${esc(c.title)}`).join(" · ")}`);
+    }
+    if (!L.length) return "";
+    return `<div class="ses"><p class="spot-h">${md_ === "kr" ? "🇰🇷 오늘 한국장 관전 포인트" : "🇺🇸 오늘 밤 미국장 관전 포인트"} <small>${hm(Date.now())} 기준 · 1분마다 갱신 · 한국장 08~18시 / 미국장 18~08시 자동 전환</small></p>
+      <ul class="ses-l">${L.map((t) => `<li>${t}</li>`).join("")}</ul></div>`;
+  }
   function drawWatch() {
     const box = q("#watchBox"); if (!box) return;
-    const h = watchHtml(watch);
+    const h = sessionHtml() + watchHtml(watch);
     box.hidden = !h; box.innerHTML = h;
   }
 
   /* ── ↕ 표 정렬(등락률·거래대금·시가총액·수급 …): 머리글이나 정렬 버튼을 누르면 순서가 바뀐다. 같은 걸 다시 누르면 반대로 ── */
-  const sortSt = { flow: { k: "chg", d: -1 }, s7: { k: null, d: -1 }, sec: { k: "chg", d: -1 } };
+  const sortSt = { flow: { k: "chg", d: -1 }, s7: { k: null, d: -1 }, sec: { k: "chg", d: -1 }, ld: { k: "score", d: -1 }, ldm: { k: "val", d: -1 } };
   const SORTK = {
     name: (r) => r.name, chg: (r) => r.chg, val: (r) => r.val, mcap: (r) => r.mcap, pts: (r) => r.pts, w: (r) => r.w,
     win: (r) => r.win ? r.win.amt : null, frgn: (r) => r.inv ? r.inv.frgn : null, org: (r) => r.inv ? r.inv.org : null,
-    s5: (r) => r.inv ? (r.inv.frgn5 || 0) + (r.inv.org5 || 0) : null,
+    s5: (r) => r.inv ? (r.inv.frgn5 || 0) + (r.inv.org5 || 0) : null, score: (r) => r.score, breadth: (r) => r.breadth,
   };
   function sortRows(rows, t) {
     const st = sortSt[t]; if (!st.k) return rows;
@@ -542,8 +613,9 @@
   }
 
   /* ── 첫 화면 '📰 메인 뉴스' — 운영자 주요 이슈(data/headline.json) + 최근 중요 속보(1분마다 갱신) ── */
-  let headline = [];
+  let headline = [], checks = [];
   async function loadHeadline() {
+    try { checks = await (await fetch(`data/checkpoints.json?t=${Math.floor(Date.now() / 600000)}`)).json(); } catch { /* 없음 */ }
     try {
       const h = await (await fetch(`data/headline.json?t=${Math.floor(Date.now() / 60000)}`)).json();
       const today = kstDay(Date.now());
@@ -704,6 +776,9 @@
       return;
     }
     if (e.target.closest("[data-clear-kw]")) { kwFilter = null; drawTrend(); drawList(); return; }
+    const lt = e.target.closest("[data-ld-tab]"); if (lt) { ldTab = lt.dataset.ldTab; ldOpen = null; drawSectors(); return; }
+    const lo = e.target.closest("[data-ld-open]"); if (lo) { const n = lo.dataset.ldOpen; ldOpen = ldOpen === n ? null : n; drawSectors(); return; }
+    if (e.target.closest("[data-fixsec]")) { fixSecOpen = !fixSecOpen; drawSectors(); return; }
     const so = e.target.closest("[data-sort]");
     if (so) {
       const [t, k] = so.dataset.sort.split(":"), st = sortSt[t];

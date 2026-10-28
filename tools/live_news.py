@@ -406,6 +406,22 @@ def build() -> dict:
         sector_items, sector_cards = sector_run()
     except Exception as e:  # noqa: BLE001
         log(f"섹터 감시 건너뜀: {type(e).__name__}: {e}")
+    leaders = None
+    try:                                                  # 🏁 오늘의 주도 섹터(자동, 한국 업종·테마 / 미국 업종)
+        from leaders import build as leaders_build, changes as leaders_changes
+        leaders = leaders_build()
+        umap = (leaders.get("us") or {}).pop("map", {}) or {}
+        for c in sector_cards:                            # 미국 종목에도 시가총액·거래대금(네이버) → 화면 정렬
+            for r in c.get("rows", []):
+                m = umap.get(r.get("sym"))
+                if m and r.get("cur") != "KRW":
+                    r.setdefault("mcap", m["mcap"]); r.setdefault("val", m["val"])
+        t_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        for ch in leaders_changes(leaders):
+            sector_items.append({"ts": t_ms, "got": t_ms, "src": "트렌드랩 자동 집계", "kind": "주도 섹터", "text": ch["text"],
+                                 "tags": ["한국" if ch["mkt"] == "kr" else "미국"], "hot": True})
+    except Exception as e:  # noqa: BLE001
+        log(f"주도 섹터 건너뜀: {type(e).__name__}: {e}")
     tg_items = from_telegram()
     mark_seen(rss)
     from newsgroup import group
@@ -438,7 +454,7 @@ def build() -> dict:
     tg_last = max((i["ts"] for i in tg_items if i["src"] in {CHANNELS[c] for c in FAST if c in CHANNELS}), default=0)
     tg_got = max((i.get("got") or 0 for i in tg_items), default=0)
     en = [i for i in items if i.get("lang") == "en"]
-    out = {"updated": now_ms, "items": items, "moves": [], "series": {}, "sectors": sector_cards,
+    out = {"updated": now_ms, "items": items, "moves": [], "series": {}, "sectors": sector_cards, "leaders": leaders,
            "health": {"tg": {"last": tg_last, "got": tg_got, "refresh": REFRESH.get("ok"), "n": len(tg_items)},
                       "rss": dict(RSS_HEALTH), "tr": {"auto": sum(1 for i in en if i.get("tr") == "auto"), "fail": sum(1 for i in en if i.get("tr") == "fail")},
                       "groups": sum(1 for i in items if i.get("also"))}}
@@ -537,7 +553,7 @@ def _upload(data: dict) -> bool:
             old = json.loads(base64.b64decode(j["content"]).decode("utf-8"))
         except Exception:  # noqa: BLE001
             old = None
-    if old and all(old.get(k) == data.get(k) for k in ("items", "moves", "world", "spot", "trending", "sectors", "dow", "us10y", "ust", "kr", "momentum", "flows", "s7", "watch", "lev", "official")):
+    if old and all(old.get(k) == data.get(k) for k in ("items", "moves", "world", "spot", "trending", "sectors", "dow", "us10y", "ust", "kr", "momentum", "flows", "s7", "leaders", "watch", "lev", "official")):
         return False                                   # 바뀐 글 없음 → 커밋 안 함
     body = {"message": f"속보 갱신 {datetime.now(KST):%m-%d %H:%M}", "branch": BRANCH,
             "content": base64.b64encode(json.dumps(data, ensure_ascii=False).encode("utf-8")).decode()}
