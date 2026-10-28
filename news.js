@@ -464,7 +464,7 @@
   const SORTK = {
     name: (r) => r.name, chg: (r) => r.chg, val: (r) => r.val, mcap: (r) => r.mcap, pts: (r) => r.pts, w: (r) => r.w,
     win: (r) => r.win ? r.win.amt : null, frgn: (r) => r.inv ? r.inv.frgn : null, org: (r) => r.inv ? r.inv.org : null,
-    s5: (r) => r.inv ? (r.inv.frgn5 || 0) + (r.inv.org5 || 0) : null, score: (r) => r.score, breadth: (r) => r.breadth,
+    s5: (r) => r.inv ? (r.inv.frgn5 || 0) + (r.inv.org5 || 0) : null, score: (r) => r.score, breadth: (r) => r.breadth, prog: (r) => r.prog ? r.prog.amt : null, prog5: (r) => r.prog ? r.prog.amt5 : null,
   };
   function sortRows(rows, t) {
     const st = sortSt[t]; if (!st.k) return rows;
@@ -490,10 +490,10 @@
     const invDay = (rows.find((r) => r.inv) || {}).inv;
     const dd = invDay ? md(invDay.day) : "";
     const head = compact ? "<tr><th>종목</th><th>등락</th><th>거래대금</th></tr>"
-      : `<tr>${sth("flow", "name", "종목")}${sth("flow", "chg", "등락")}${sth("flow", "val", "거래대금", "통합")}${sth("flow", "mcap", "시가총액")}${sth("flow", "win", "외국계 창구", "오늘")}${sth("flow", "frgn", "외국인", dd)}${sth("flow", "org", "기관", dd)}${sth("flow", "s5", "외국인·기관", "5일 합계")}<th>프로그램</th></tr>`;
+      : `<tr>${sth("flow", "name", "종목")}${sth("flow", "chg", "등락")}${sth("flow", "val", "거래대금", "통합")}${sth("flow", "mcap", "시가총액")}${sth("flow", "win", "외국계 창구", "오늘")}${sth("flow", "frgn", "외국인", dd)}${sth("flow", "org", "기관", dd)}${sth("flow", "s5", "외국인·기관", "5일 합계")}${sth("flow", "prog", "프로그램", "오늘")}${sth("flow", "prog5", "프로그램", "5일 합계")}</tr>`;
     const body = rows.map((r) => `<tr><td class="fl-n">${esc(r.name)}</td><td>${pct(r.chg)}</td><td>${r.val ? eok(r.val) : "-"}${!compact && r.val_krx && r.val - r.val_krx > 1e8 ? `<small class="fl-k">KRX ${eok(r.val_krx)}</small>` : ""}</td>${compact ? "" : `
       <td>${mcapS(r.mcap)}</td><td>${r.win ? eokS(r.win.amt) : "-"}</td><td>${r.inv ? eokS(r.inv.frgn) : "-"}</td><td>${r.inv ? eokS(r.inv.org) : "-"}</td>
-      <td class="fl-5">${r.inv ? `${eokS(r.inv.frgn5)} / ${eokS(r.inv.org5)}` : "-"}</td><td class="dim">준비 중</td>`}</tr>`).join("");
+      <td class="fl-5">${r.inv ? `${eokS(r.inv.frgn5)} / ${eokS(r.inv.org5)}` : "-"}</td><td>${r.prog ? eokS(r.prog.amt) : '<span class="dim">-</span>'}</td><td>${r.prog ? eokS(r.prog.amt5) : '<span class="dim">-</span>'}</td>`}</tr>`).join("");
     return `<div class="fl-g"><p class="fl-gh">${g.icon || ""} ${esc(g.name)}${g.n ? ` <small>상승 ${g.up}/${g.n}종목</small>` : ""}</p>
       <div class="fl-scroll"><table class="fl-t">${head}${body}</table></div></div>`;
   }
@@ -512,7 +512,7 @@
     const body = sortRows(s7.rows, "s7").map((r) => `<tr><td class="fl-n">${esc(r.name)}</td><td>${pct(r.chg)}</td>
       <td class="s7-c">${r.w == null ? '<span class="dim">지수 미포함</span>' : `${pt(r.pts)}${bar(r.pts)}`}</td><td>${r.w == null ? "-" : r.w.toFixed(1) + "%"}</td>
       <td>${r.val ? eok(r.val) : "-"}</td><td>${r.win ? eokS(r.win.amt) : "-"}</td><td>${r.inv ? eokS(r.inv.frgn) : "-"}</td><td>${r.inv ? eokS(r.inv.org) : "-"}</td>
-      <td class="fl-5">${r.inv ? `${eokS(r.inv.frgn5)} / ${eokS(r.inv.org5)}` : "-"}</td></tr>`).join("");
+      <td class="fl-5">${r.inv ? `${eokS(r.inv.frgn5)} / ${eokS(r.inv.org5)}` : "-"}</td><td>${r.prog ? eokS(r.prog.amt) : "-"}</td></tr>`).join("");
     const invDay = (s7.rows.find((r) => r.inv) || {}).inv;
     box.innerHTML = `<p class="spot-h">🏛️ S7 · 코스피 영향 큰 7종목 <small>${st} · 삼성전자·삼성전자우·SK하이닉스·SK스퀘어·삼성전기·삼성생명·삼성물산</small></p>
       <div class="s7-sum">
@@ -523,7 +523,7 @@
         <div><span>코스피 투자자 <small>${k.flow_day ? md(k.flow_day.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")) : ""}</small></span>개인 ${ek(k.ind)} · 외국인 ${ek(k.frgn)} · 기관 ${ek(k.org)}</div>
         <div><span>프로그램 매매</span>차익 ${ek(k.arb)} · 비차익 ${ek(k.nonarb)} · 합계 ${ek(k.prog)}</div>
       </div>
-      <div class="fl-scroll"><table class="fl-t"><tr>${sth("s7", "name", "종목")}${sth("s7", "chg", "등락")}${sth("s7", "pts", "지수 기여", "포인트")}${sth("s7", "w", "코스피 비중", "전일 시총")}${sth("s7", "val", "거래대금", "통합")}${sth("s7", "win", "외국계 창구", "오늘")}${sth("s7", "frgn", "외국인", invDay ? md(invDay.day) : "")}${sth("s7", "org", "기관", invDay ? md(invDay.day) : "")}${sth("s7", "s5", "외국인·기관", "5일 합계")}</tr>${body}</table></div>
+      <div class="fl-scroll"><table class="fl-t"><tr>${sth("s7", "name", "종목")}${sth("s7", "chg", "등락")}${sth("s7", "pts", "지수 기여", "포인트")}${sth("s7", "w", "코스피 비중", "전일 시총")}${sth("s7", "val", "거래대금", "통합")}${sth("s7", "win", "외국계 창구", "오늘")}${sth("s7", "frgn", "외국인", invDay ? md(invDay.day) : "")}${sth("s7", "org", "기관", invDay ? md(invDay.day) : "")}${sth("s7", "s5", "외국인·기관", "5일 합계")}${sth("s7", "prog", "프로그램", "오늘")}</tr>${body}</table></div>
       <p class="mm-f">지수 기여 = 코스피 전일 종가 × 종목 비중(전일 시가총액 ÷ 코스피 보통주 시가총액 합계) × 등락률 — 근사치 · 코스피는 보통주로만 계산해 삼성전자우는 지수에 들어가지 않음<br>
       S7 제외 코스피 = 코스피 변화 − S7 기여 · 투자자·프로그램은 코스피 전체(억 원, 장중 잠정) · 외국계 창구는 외국계 증권사 창구 합계로 외국인 수급과 다름 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`;
   }
@@ -540,10 +540,10 @@
     const g = gs.find((x) => x.name === flowOpen);
     box.innerHTML = `<p class="spot-h">💰 주도주 수급 <small>${st} · 종목군을 누르면 종목별 거래대금·수급이 보입니다</small></p>
       <div class="sc-bar">${chips}</div>
-      ${g ? `<div class="sc-panel">${sortChips("flow", [["chg", "등락률순"], ["val", "거래대금순"], ["mcap", "시가총액순"], ["frgn", "외국인순"], ["org", "기관순"], ["win", "외국계 창구순"], ["name", "이름순"]])}${flowTable(g, 99)}
+      ${g ? `<div class="sc-panel">${sortChips("flow", [["chg", "등락률순"], ["val", "거래대금순"], ["mcap", "시가총액순"], ["frgn", "외국인순"], ["org", "기관순"], ["win", "외국계 창구순"], ["prog", "프로그램순"], ["name", "이름순"]])}${flowTable(g, 99)}
       <p class="mm-f">종목군 전 종목 · 정렬 버튼이나 표 머리글을 누르면 순서가 바뀌고, 다시 누르면 반대로 · 외국계 창구는 종목군 상위 종목만 2분마다 · 거래대금은 통합(KRX + 넥스트레이드 프리·애프터마켓), 작은 글씨는 KRX만 · 금액은 순매수 수량 × 종가(장중 현재가)로 계산한 추정치(억 원)<br>
       외국계 창구 = 외국계 증권사 창구 합계(장중, 다음 금융) — 외국인 투자자 수급과 다름 · 외국인·기관 = 거래소 확정치(네이버, 장 마감 후 확정되며 그 전에는 직전 거래일 값)<br>
-      종목별 프로그램 매매는 무료 공개 출처가 없어 준비 중 · 사실 집계이며 매수·매도 권유가 아닙니다</p></div>` : ""}`;
+      프로그램 = 종목별 프로그램 순매수(KB증권 Open API, 오늘 값은 장중 누적·주요 종목 3분마다) · 사실 집계이며 매수·매도 권유가 아닙니다</p></div>` : ""}`;
   }
 
   /* ── 📋 시장 브리핑(실시간 + 매일 12시 기록) ── */

@@ -181,7 +181,13 @@ def build() -> dict:
         CACHE.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
     except OSError:
         pass
+    try:
+        from kbprog import fetch as kb_prog
+        prog = kb_prog(list(S7), set(S7))
+    except Exception:  # noqa: BLE001
+        prog = {}
     for r in rows:
+        r["prog"] = prog.get(r["code"])
         r["inv"] = parse_trend((tr_c.get(r["code"]) or {}).get("items") or [])
         r["win"] = parse_trader((wd_c.get(r["code"]) or {}).get("data") or [], today, r["px"])
         r.pop("pmcap", None)
