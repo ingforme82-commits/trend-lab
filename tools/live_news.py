@@ -99,7 +99,9 @@ BROKER = re.compile(r"목표주가|목표가|TP\s|투자의견|BUY|매수\(유�
                     r"\[[^\]\n]*증권|상향 조정|하향 조정|비중\s?확대|비중\s?축소|Overweight|Underweight|Outperform|등급|"
                     r"price target|upgrade|downgrade|initiates|reiterate|Buy rating|Sell rating|top pick|stocks? to buy|"
                     r"should you buy|buy now|best stocks|stock to watch|stock picks?|stocks with|how to invest|dividend stocks|undervalued", re.I)
-JUNK = re.compile(r"광고|이벤트|구독|무료\s?리딩|수익\s?보장|가입|추천주|급등주|리딩방|쿠폰|할인|sponsored|podcast|webinar|at close of trade|stocks (?:higher|lower) at close", re.I)
+JUNK = re.compile(r"광고|이벤트|구독|무료\s?리딩|수익\s?보장|가입|추천주|급등주|리딩방|쿠폰|할인|sponsored|podcast|webinar|at close of trade|stocks (?:higher|lower) at close"
+                  # 자기 홍보 말투(2026-10-28): 채널 오픈 안내 · "저희가/저희 채널" · 관심·참여 부탁 · 입장 링크
+                  r"|채널\s*(?:을|를)?\s*(?:새로\s*)?오픈|오픈했습니다|저희\s?(?:채널|팀)|저희가\s*이번에|관심\s*부탁|많관부|입장\s*(?:하기|링크|방법)|문의\s*주세요", re.I)
 TAGS = [
     ("중동·유가", r"이란|이스라엘|호르무즈|후티|사우디|카타르|레바논|헤즈볼라|유가|원유|WTI|브렌트|OPEC|오펙|천연가스|LNG|정유|핵무기|핵 활동|NPT|우라늄|"
                 r"\bIran|Israel|Hormuz|Houthi|Saudi|\boil\b|crude|Brent|OPEC|natural gas"),
