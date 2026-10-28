@@ -479,23 +479,39 @@
       `<button class="trend-i${kwFilter && kwFilter.label === t.name ? " on" : ""}" data-kw="${esc(t.kw)}" data-name="${esc(t.name)}">${esc(t.name)} <b>${t.n}</b></button>`).join("") : "";
   }
 
-  /* ── 첫 화면 '지금 시장' 한 줄 ── */
+  /* ── 첫 화면 '📰 메인 뉴스' — 운영자 주요 이슈(data/headline.json) + 최근 중요 속보(1분마다 갱신) ── */
+  let headline = [];
+  async function loadHeadline() {
+    try {
+      const h = await (await fetch(`data/headline.json?t=${Math.floor(Date.now() / 60000)}`)).json();
+      const today = kstDay(Date.now());
+      headline = (h.items || []).filter((x) => !x.until || x.until >= today);
+    } catch { /* 없음 */ }
+  }
+  const normT = (t) => String(t || "").replace(/^\[[^\]]*\]\s*/, "").replace(/[^0-9A-Za-z가-힣]/g, "").slice(0, 18);
+  function mainNews() {
+    const now = Date.now(), seen = new Set(), out = [];
+    const pool = news.filter((n) => n.text && now - n.ts < 6 * 3600e3 && !isStrat(n) && impScore(n) >= 55)
+      .sort((a, b) => impScore(b) - impScore(a) || b.ts - a.ts);
+    for (const n of pool) {
+      const k = normT(n.text);
+      if (seen.has(k)) continue;
+      seen.add(k); out.push(n);
+      if (out.length >= 6) break;
+    }
+    return out.sort((a, b) => b.ts - a.ts);
+  }
   function drawHeroLive() {
     const box = q("#heroLive"); if (!box) return;
-    const parts = [];
-    if (watch && (watch.items || []).length) {
-      const x = watch.items.find((i) => i.px != null);
-      parts.push(`<a href="#watchBox">👀 <b>${esc(watch.title || "운영자 관전 포인트")}</b>${x ? ` · ${esc(x.sym)} ${x.chg > 0 ? "+" : ""}${(+x.chg).toFixed(2)}%${x.three ? " · 적삼병 조건 " + (x.open ? "충족 중" : "충족 마감") : ""}` : ""}</a>`);
-    }
-    const m = moves.find((x) => Date.now() - x.end < 6 * 3600e3);
-    if (m) parts.push(`📍 최근 변곡점 <b>${esc(m.name)} ${m.move > 0 ? "▲" : "▼"}${fmtMove(m)}</b> (${hm(m.start)}–${hm(m.end)})`);
-    const hot = news.find((n) => n.pivot);
-    if (hot) parts.push(`🔴 ${hm(hot.ts)} ${esc(hot.text.length > 44 ? hot.text.slice(0, 44) + "…" : hot.text)}`);
-    if (spot[0] && spot[0].chg != null) parts.push(`🔥 ${esc(spot[0].name)} ${spot[0].chg > 0 ? "+" : ""}${(+spot[0].chg).toFixed(2)}%`);
-    if (trend[0]) parts.push(`📈 화제 ${esc(trend[0].name)} ${trend[0].n}건`);
-    if (!parts.length) { box.hidden = true; return; }
+    const pins = headline.map((x) => `<li class="mn-pin"><a href="#headline"><span class="mn-t">📌 ${esc(x.tag || "주요 이슈")}</span> <b>${esc(x.title)}</b>${x.when ? ` <small>${esc(x.when)}</small>` : ""}</a></li>`);
+    const live = mainNews().map((n) => {
+      const t = n.text.length > 90 ? n.text.slice(0, 90) + "…" : n.text;
+      const v = n.verify === "official" ? " · 🏛 공식" : n.verify === "multi" ? " · ✔ 복수 출처" : n.verify === "unconfirmed" ? " · ⚠ 미확인" : "";
+      return `<li><span class="mn-t">${hm(n.ts)}</span> ${esc(t)} <small>${esc(n.src || "")}${v}</small></li>`;
+    });
+    if (!pins.length && !live.length) { box.hidden = true; return; }
     box.hidden = false;
-    box.innerHTML = `<span class="hl-dot"></span><b>지금 시장</b> ${parts.map((x) => `<span>${x}</span>`).join("")}<a href="#news">속보 보기 →</a>`;
+    box.innerHTML = `<p class="mn-h"><span class="hl-dot"></span><b>📰 메인 뉴스</b> <small>최근 6시간 중요 속보 · 1분마다 갱신</small><a href="#news">속보 전체 →</a></p><ul class="mn-list">${pins.join("")}${live.join("")}</ul>`;
   }
 
   /* ── 속보 목록 ── */
@@ -616,9 +632,10 @@
     const sk = e.target.closest("[data-spot-kw]"); if (sk && q("#news")) { setKw(sk.dataset.spotName, sk.dataset.spotKw); return; }
     const sc = e.target.closest("[data-spot-chart]"); if (sc && window.trlChart) window.trlChart.open({ coin: sc.dataset.spotChart, name: sc.dataset.spotName, sel: null, news });
   });
-  (async () => { await Promise.all([loadNews(), loadNotes(), loadBriefs(), full ? loadCandles() : null]); redraw(); })();
+  (async () => { await Promise.all([loadNews(), loadNotes(), loadHeadline(), loadBriefs(), full ? loadCandles() : null]); redraw(); })();
   setInterval(loadBriefs, 600000);
   setInterval(async () => { await loadNews(); redraw(); }, 60000);                 // 속보·변곡점 1분마다
   setInterval(loadNotes, 600000);
+  setInterval(async () => { await loadHeadline(); drawHeroLive(); }, 300000);   // 주요 이슈 5분마다
   if (full) setInterval(async () => { await loadCandles(); redraw(); }, 120000);  // 지수 2분마다
 })();
