@@ -34,7 +34,7 @@
       <div class="cm-chart" id="cmChart"><p class="fine" style="padding:20px">불러오는 중…</p></div>
       <div class="cm-tip" id="cmTip" hidden></div>
       <div class="cm-news" id="cmNews"></div>
-      <p class="fine cm-src">Hyperliquid 24시간 선물 1분봉·Yahoo(금리·달러) 참고용 · 색칠=변곡점, 🔴=직전 뉴스(시각이 겹친다는 뜻이며 인과관계를 단정하지 않음) · 매매 권유가 아닙니다.</p>
+      <p class="fine cm-src">Hyperliquid 24시간 선물 1분봉·Yahoo(금리·달러) 참고용 · 색칠=변곡점, 🔴=관련 뉴스(시각이 겹친다는 뜻이며 인과관계를 단정하지 않음) · 매매 권유가 아닙니다.</p>
     </div>`;
     document.body.appendChild(root);
     root.addEventListener("click", (e) => {
@@ -112,7 +112,7 @@
       s += `<rect x="${cx - bw / 2}" y="${H - pad.b - vh}" width="${bw}" height="${vh}" class="${c} v"/>`;
     });
     const inWin = st.news.filter((n) => n.ts >= t0 && n.ts <= t1 + 60000);
-    // 변곡점 구간 색칠 + 그 직전 뉴스에만 빨간 점(이 자산 기준). 나머지 속보는 구간이 짧을 때만 회색 작은 점
+    // 변곡점 구간 색칠 + 그 관련 뉴스에만 빨간 점(이 자산 기준). 나머지 속보는 구간이 짧을 때만 회색 작은 점
     const myMoves = (window.trlMoves || []).filter((m) => m.asset === CODE[st.coin] && m.end >= t0 && m.start <= t1);
     const piv = new Set(myMoves.flatMap((m) => m.news || []));
     myMoves.forEach((m) => { const x0 = X(Math.max(m.start, t0)), x1 = X(Math.min(m.end, t1)); s += `<rect x="${x0}" y="${pad.t - 2}" width="${Math.max(3, x1 - x0)}" height="${ph + 4}" class="cm-zone ${m.move > 0 ? "up" : "dn"}"/>`; });
@@ -132,19 +132,19 @@
       info = `<b>${piv.has(st.sel) ? "🔴 " : ""}${hm(st.sel)}</b> ${n ? esc(n.text) : ""}${n ? ` <small>${esc(n.src || "")}</small>` : ""}<br>이후 <b class="${cls(a1)}">${chgTxt(a1)}</b> · 최고 <b class="${cls(a2)}">${chgTxt(a2)}</b> · 최저 <b class="${cls(a3)}">${chgTxt(a3)}</b>`;
       const mv = myMoves.find((m) => (m.news || []).includes(st.sel)) || myMoves.find((m) => st.sel >= m.start - 15 * 60000 && st.sel <= m.end);
       if (mv) {
-        info += `<br><span class="cm-mv">변곡점 ${hm(mv.start)}–${hm(mv.end)} ${esc(mv.name)} ${mv.move > 0 ? "+" : ""}${mv.move}${mv.unit === "bp" ? "bp" : "%"}</span>`;
+        info += `<br><span class="cm-mv">변곡점 ${hm(mv.start)}–${hm(mv.end)} ${mv.kind === "cumulative" ? "누적 " : ""}${esc(mv.name)} ${mv.move > 0 ? "+" : ""}${mv.move}${mv.unit === "bp" ? "bp" : "%"}</span>`;
         const nt = (window.trlNotes || []).find((x) => x.assets.includes(mv.asset) && Date.parse(x.from) <= mv.end + 300000 && Date.parse(x.to) >= mv.start - 300000);
         if (nt) info += `<span class="cm-note"><b>💡 ${esc(nt.title)}</b> ${esc(nt.text)}</span>`;
       }
     } else {
-      info = `최근 ${RANGES.find(([m]) => m === st.range)[1]} <b class="${cls(chg)}">${chgTxt(chg)}</b> · 색칠한 구간은 변곡점, 빨간 점(🔴)은 그 직전 뉴스입니다. 점을 누르면 그 뉴스 이후 변화를 보여 줍니다.`;
+      info = `최근 ${RANGES.find(([m]) => m === st.range)[1]} <b class="${cls(chg)}">${chgTxt(chg)}</b> · 색칠한 구간은 변곡점, 빨간 점(🔴)은 그 관련 뉴스입니다. 점을 누르면 그 뉴스 이후 변화를 보여 줍니다.`;
     }
     root.querySelector("#cmTitle").innerHTML = `${meta.n} <span>${fmt(last)}</span> <b class="${cls(chg)}">${chgTxt(chg)}</b> <small>${st.coin.startsWith("srv:") ? "5분 간격" : "1분봉"}</small>`;
     root.querySelector("#cmInfo").innerHTML = info;
     box.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${s}<g id="cmHover"></g></svg>`;
     // 차트 구간의 속보 목록(누르면 선택)
     const ordered = [...inWin.filter((n) => piv.has(n.ts)), ...inWin.filter((n) => !piv.has(n.ts))];
-    root.querySelector("#cmNews").innerHTML = inWin.length ? `<p class="cm-nh">이 구간의 속보 ${inWin.length}건${piv.size ? ` · 🔴 변곡점 직전 뉴스 ${inWin.filter((n) => piv.has(n.ts)).length}건` : ""}</p>` + ordered.slice(0, 30).map((n) =>
+    root.querySelector("#cmNews").innerHTML = inWin.length ? `<p class="cm-nh">이 구간의 속보 ${inWin.length}건${piv.size ? ` · 🔴 변곡점 관련 뉴스 ${inWin.filter((n) => piv.has(n.ts)).length}건` : ""}</p>` + ordered.slice(0, 30).map((n) =>
       `<button class="cm-ni${n.ts === st.sel ? " on" : ""}${piv.has(n.ts) ? " hot" : ""}" data-sel="${n.ts}"><b>${piv.has(n.ts) ? "🔴 " : ""}${hm(n.ts)}</b> ${esc(n.text)} <small>${esc(n.src || "")}</small></button>`).join("") : "";
     drawHover();
   }

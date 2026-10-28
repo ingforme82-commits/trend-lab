@@ -1,9 +1,10 @@
 """변곡점(평소보다 크게 움직이기 시작한 구간) 감지 + 직전 뉴스 연결.
 
 - 1분봉 24시간: 하이퍼리퀴드(나스닥100·코스피200·WTI·브렌트·금), 야후(미 10년물 금리 ^TNX, 달러인덱스 DXY)
-- 10분 변화가 '평소 10분 변화폭(중앙값 기준)의 3배'와 '자산별 최소 기준'을 동시에 넘으면 급변 분으로 본다.
+- 5·10·30분 변화가 평소 변화폭(중앙값)의 4배와 자산별 최소 기준을 동시에 넘으면 급변으로 본다.
+- WTI·브렌트는 60분 1.5% 또는 180분 2.5% 이상인 방향성 있는 누적 움직임도 찾는다.
 - 이어지는 급변 분을 하나의 구간으로 묶고, 그 직전 저점(상승)·고점(하락)을 변곡점으로 잡는다.
-- 변곡점 15분 전 ~ 3분 뒤에 나온 뉴스 중 관련성이 높은 것(최대 3건)을 '직전 뉴스 후보'로 붙인다.
+- 시작 15분 전부터 급변 구간(최대 30분), 누적 움직임은 구간 끝까지 관련 뉴스 후보를 최대 3건 연결한다.
 인과관계를 단정하지 않는다 — 화면에는 '시각이 겹친 뉴스'로만 표시한다.
 """
 
@@ -202,6 +203,64 @@ def detect(asset, rows: list[tuple[int, float]]) -> list[dict]:
     return out
 
 
+# 유가 누적 움직임은 평소폭 배수 대신 절대 변화율과 방향성을 확인한다.
+OIL_TREND_WINDOWS = ((60, 1.5), (180, 2.5))
+
+
+def merge_moves(events: list[dict]) -> list[dict]:
+    """같은 방향의 겹친 신호를 통합하고 시작·끝 가격에 맞게 변화율을 계산한다."""
+    out = []
+    for m in sorted(events, key=lambda x: (x["start"], x["end"])):
+        p = out[-1] if out else None
+        if p and (m["move"] > 0) == (p["move"] > 0) and m["start"] <= p["end"] + 2 * 60_000:
+            last = p if p["end"] >= m["end"] else m
+            out[-1] = {**p, "end": last["end"], "to": last["to"],
+                       "move": round(_chg(p["from"], last["to"], m["unit"]), 2),
+                       "ratio": max(p["ratio"], m["ratio"])}
+            if p.get("kind") == "cumulative" or m.get("kind") == "cumulative":
+                out[-1]["kind"] = "cumulative"
+        else:
+            out.append(dict(m))
+    return out
+
+
+def cumulative_moves(asset, rows: list[tuple[int, float]]) -> list[dict]:
+    """유가 1·3시간 누적 등락. 데이터 공백과 방향성 없는 왕복 등락은 제외한다."""
+    code, name, _, _, unit, _, _ = asset
+    if code not in ("WTI", "BRENT"):
+        return []
+    out = []
+    for i in range(1, len(rows)):
+        for minutes, threshold in OIL_TREND_WINDOWS:
+            j = i - minutes
+            if j < 0:
+                continue
+            segment = rows[j:i + 1]
+            elapsed = (segment[-1][0] - segment[0][0]) / 60_000
+            if not minutes - 1 <= elapsed <= minutes + 1:
+                continue
+            if any(b[0] - a[0] > 2 * 60_000 or b[0] <= a[0] or a[1] <= 0 or b[1] <= 0
+                   for a, b in zip(segment, segment[1:])):
+                continue
+            change = _chg(segment[0][1], segment[-1][1], unit)
+            path = sum(abs(b[1] - a[1]) for a, b in zip(segment, segment[1:]))
+            efficiency = abs(segment[-1][1] - segment[0][1]) / path if path else 0
+            if abs(change) + 1e-9 < threshold or efficiency < 0.6:
+                continue
+            event = {"asset": code, "name": name, "unit": unit, "kind": "cumulative",
+                     "start": segment[0][0], "end": segment[-1][0],
+                     "from": segment[0][1], "to": segment[-1][1],
+                     "move": round(change, 2), "ratio": 0.0}
+            if out and event["start"] <= out[-1]["end"]:
+                previous = out[-1]
+                if (change > 0) == (previous["move"] > 0) and event["end"] - previous["start"] <= 180 * 60_000:
+                    out[-1] = {**previous, "end": event["end"], "to": event["to"],
+                               "move": round(_chg(previous["from"], event["to"], unit), 2)}
+                continue
+            out.append(event)
+    return out
+
+
 def _move_between(rows, t0, t1, unit):
     a = next((c for t, c in reversed(rows) if t <= t0), None)
     b = next((c for t, c in reversed(rows) if t <= t1), None)
@@ -213,20 +272,12 @@ def analyze(items: list[dict]) -> tuple[list[dict], dict]:
     data = {a[0]: fetch(a) for a in ASSETS}
     moves = []
     for a in ASSETS:
-        eps = sorted(detect(a, data[a[0]]), key=lambda m: m["start"])
-        merged: list[dict] = []
-        for m in eps:                                     # 같은 방향으로 겹치는 구간은 하나로(큰 쪽 기준)
-            p = merged[-1] if merged else None
-            if p and (m["move"] > 0) == (p["move"] > 0) and m["start"] <= p["end"] + 2 * 60_000:
-                big = m if abs(m["move"]) > abs(p["move"]) else p
-                merged[-1] = {**big, "start": min(p["start"], m["start"]), "end": max(p["end"], m["end"])}
-            else:
-                merged.append(m)
-        moves += merged
+        rows = data[a[0]]
+        moves += merge_moves(detect(a, rows) + cumulative_moves(a, rows))
         moves += level_cross(a[0], a[1], a[4], data[a[0]])   # 주요 가격대 돌파(예: WTI $100)
     moves.sort(key=lambda m: -m["start"])
     for k, m in enumerate(moves):
-        m["id"] = f'{m["asset"]}-{"L" if m.get("kind") == "level" else ""}{m["start"] // 60000}'
+        m["id"] = f'{m["asset"]}-{"L" if m.get("kind") == "level" else "C" if m.get("kind") == "cumulative" else ""}{m["start"] // 60000}'
         m["session"] = session_of(m["asset"], m["start"])
         if m["asset"] not in US_A and us_open_gap(m["start"]) is not None:
             m["session"] += " · 미국 개장 직후"
@@ -236,7 +287,8 @@ def analyze(items: list[dict]) -> tuple[list[dict], dict]:
         m["others"] = {x[1]: v for x in ASSETS if x[0] != m["asset"]
                        for v in [_move_between(data[x[0]], m["start"], m["end"], x[4])] if v is not None}
         cands = []
-        after = max(AFTER, min(AFTER_MAX, (m["end"] - m["start"]) / 60000 + 3))   # 움직이는 동안 나온 뉴스도
+        after = ((m["end"] - m["start"]) / 60000 if m.get("kind") == "cumulative"
+                 else max(AFTER, min(AFTER_MAX, (m["end"] - m["start"]) / 60000 + 3)))   # 움직이는 동안 나온 뉴스도
         for it in items:
             dt = (it["ts"] - m["start"]) / 60000
             if it.get("kind") in ("시황 분석", "증권사 시황", "관전 포인트", "섹터 시세"):   # 긴 분석 글·가격에서 만든 자동 집계는 뺀다
@@ -246,7 +298,7 @@ def analyze(items: list[dict]) -> tuple[list[dict], dict]:
                 continue                                  # 코스피200은 한국 관련어가 확인된 뉴스만, 미국 지수엔 한국 뉴스 제외
             match = sum(t in rel for t in it.get("tags", []))
             if -BEFORE <= dt <= after and match:          # 그 자산과 관련된 분야의 뉴스만 후보
-                score = 3 * match + (1 if it.get("hot") else 0) + (1 - abs(dt) / 30) + (1 if KEY_RX.search(it["text"]) else 0)
+                score = 3 * match + (1 if it.get("hot") else 0) + (1 - abs(dt) / max(30, after)) + (1 if KEY_RX.search(it["text"]) else 0)
                 if it.get("kind") in ("증권사 시황", "시황 분석"):
                     score -= 2                          # 긴 분석 글보다 속보가 직접 원인일 가능성이 높다
                 cands.append((score, it))
