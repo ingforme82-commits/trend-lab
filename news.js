@@ -408,7 +408,7 @@
           <small>${won(r) ? `${Math.round(r.px).toLocaleString("ko-KR")}원${r.val ? ` · 거래대금(통합) ${eok(r.val)}` : ""}${r.mcap ? ` · 시총 ${eok(r.mcap)}` : ""}` : `$${r.px}`}${r.to3m != null && r.to3m > 0 ? " · 3개월 고점 돌파" : r.to52 != null ? ` · 52주 고가 ${r.to52 > 0 ? "+" : ""}${r.to52}%` : ""}</small>
           ${r.flags.length ? `<span class="sec-f">${r.flags.map(esc).join(" · ")}</span>` : ""}</div>`).join("")}</div>
       </div>` : "";
-    box.innerHTML = leadersHtml() + hourlyHtml() + momHtml(momentum) + levHtml(lev) + `<p class="fl-sort"><button class="sc-chip${fixSecOpen ? " on" : ""}" data-fixsec="1">📌 관심 섹터(고정) 시세 ${fixSecOpen ? "접기" : "보기"}</button></p>
+    box.innerHTML = leadersHtml() + hourlyHtml() + momHtml(momentum) + `<p class="fl-sort"><button class="sc-chip${fixSecOpen ? " on" : ""}" data-fixsec="1">📌 관심 섹터(고정) 시세 ${fixSecOpen ? "접기" : "보기"}</button></p>
       ${fixSecOpen ? `<p class="spot-h">📊 관심 섹터 시세 <small>섹터를 누르면 종목별 등락이 보입니다 · 주황 점은 신호(±3%·고점 돌파) 종목이 있는 섹터</small></p>
       <div class="sc-bar">${chips}</div>${panel}` : ""}`;
   }
@@ -425,16 +425,22 @@
       const st = x.open ? "진행 중" : "마감";
       const L = [];
       if (x.focus.includes("gap")) L.push(`갭: 시가 ${$$(x.o)} — 전일 종가 대비 ${sgn(x.gap)} · 전일 고가 ${$$(x.prev_h)} ${x.gap_over_high ? "위" : "아래"}에서 시작`);
-      if (x.focus.includes("ma5")) L.push(`5일선 ${$$(x.ma5)}: 현재 ${x.over_ma5 ? "위" : "아래"} ${sgn(x.vs_ma5)}${x.focus.includes("gap") ? ` · 시가도 5일선(${$$(x.ma5_prev)}) ${x.open_over_ma5 ? "위" : "아래"}` : ""}`);
+      const e = ((lev && lev.items) || []).find((y) => y.sym === x.sym) || {};
+      if (x.focus.includes("ma5")) L.push(`이동평균: 5일선 ${$$(x.ma5)} ${x.over_ma5 ? "위" : "아래"} ${sgn(x.vs_ma5)}${e.ma20 ? ` · 20일선 ${$$(e.ma20)} ${e.over_ma20 ? "위" : "아래"} ${sgn(e.vs_ma20)}` : ""}${x.focus.includes("gap") ? ` · 시가도 5일선 ${x.open_over_ma5 ? "위" : "아래"}` : ""}`);
       if (x.focus.includes("three")) L.push(`연속 양봉: 전일까지 ${x.streak_prev}일 → 오늘 ${x.bull ? `양봉 ${st} = ${x.streak}일째` : `양봉 아님(${st})`}${x.three ? ` · <b>적삼병 조건 ${x.open ? "충족 중(마감 전)" : "충족 마감"}</b>` : ""}`);
-      if (x.level) L.push(`${$$(x.level)} 구간: ${(() => { const d = (x.px / x.level - 1) * 100; return Math.abs(d) < 0.15 ? "현재가가 그 부근" : `현재가가 ${sgn(d)} ${d > 0 ? "위" : "아래"}`; })()}${x.level_touched ? " · 오늘 고가가 도달" : ""}${(x.level_hits || []).length ? ` · 최근 10거래일 중 ${$$(x.level)} 이상 올랐다 아래에서 마감: ${x.level_hits.map((h) => `${md(h.d)}(고가 ${$$(h.h)}, 종가 ${$$(h.c)})`).join(", ")}` : ""}`);
+      if (x.level) L.push(`${$$(x.level)} 구간: ${(() => { const d = (x.px / x.level - 1) * 100; return Math.abs(d) < 0.15 ? "현재가가 그 부근" : `현재가가 ${sgn(d)} ${d > 0 ? "위" : "아래"}`; })()}${x.level_touched ? " · 오늘 고가가 도달" : ""}${(x.level_hits || []).length ? ` · 최근 10거래일 중 넘었다가 아래에서 마감한 날 ${x.level_hits.map((h) => md(h.d)).join("·")}` : ""}`);
+      if (!compact) {
+        if (e.ext) L.push(`🌙 ${e.ext.sess === "pre" ? "프리마켓" : "애프터마켓"} ${$$(e.ext.px)} · 정규장 종가 ${$$(e.ext.base)} 대비 ${sgn(e.ext.chg)} <small class="dim">${e.ext.stale ? `마지막 체결 ${hm(e.ext.at)}` : `${hm(e.ext.at)} 체결`}</small>`);
+        if (e.base_chg != null) L.push(`기초: ${esc(e.base || "")} ${sgn(e.base_chg)}${e.x3 != null ? ` · ×3 = ${sgn(e.x3)}, 실제와 차이 ${e.x3_gap > 0 ? "+" : ""}${e.x3_gap}%p` : ""}${e.kr200 != null ? ` · 코스피200 야간 ${sgn(e.kr200)}` : ""}${e.members ? ` · 구성 대형주 ${e.members.n_up}/${e.members.n} 상승` : ""}`);
+        if (e.h24 && !x.open) L.push(`24시간 시세(하이퍼리퀴드) ${$$(e.h24.px)} · 정규장 가격 대비 ${sgn(e.h24.vs_reg)}`);
+      }
       return `<div class="wt-i"><p class="wt-n"><b>${esc(x.name)}</b> ${$$(x.px)} ${sgn(x.chg)} <small class="dim">${md(x.day)} 정규장 ${st} · 고가 ${$$(x.h)} 저가 ${$$(x.l)}</small></p><ul>${L.map((t) => `<li>${t}</li>`).join("")}</ul></div>`;
     };
     return `<div class="wt"><p class="spot-h">👀 ${compact ? esc(w.title || "운영자 관전 포인트") : "운영자 메모·가격대"} <small>${esc(its.map((x) => x.sym).join("·"))} · ${hm(w.at)} 기준 · 1분마다 갱신</small></p>
       ${w.memo ? `<blockquote class="wt-memo">${esc(w.memo)}<cite>— 운영자 관전 포인트</cite></blockquote>` : ""}
       ${its.map(row).join("")}
-      ${(w.events || []).length ? `<p class="wt-n" style="margin-top:8px"><b>⏱ 지금 상태(마지막 전환)</b> <small class="dim">기준선(5일선·시가·전일 종가·가격대)을 0.15% 넘게 넘을 때 · 조건마다 가장 최근 것만(되돌려진 옛 기록은 지움)</small></p><ul class="wt-ev">${w.events.slice(0, compact ? 6 : 15).map((e) => `<li><b>${hm(e.ts)}</b> <span class="${e.up ? "c-up" : "c-dn"}">${e.up ? "▲" : "▼"}</span> ${esc(e.text)}${e.n > 1 ? ` <small class="dim">· 오늘 ${e.n}번째 전환</small>` : ""}</li>`).join("")}</ul>` : ""}
-      ${compact ? "" : `<p class="mm-f">자동 수치는 야후 정규장 시세 기준 · 적삼병 조건 = 3일 연속 양봉(시가보다 높게, 전일보다 높게 마감)으로 단순 판정 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`}</div>`;
+      ${(w.events || []).filter((e) => e.k === "level" || e.k === "ma5").length ? `<p class="wt-n" style="margin-top:8px"><b>⏱ 가격대·5일선 마지막 전환</b> <small class="dim">0.15% 넘게 넘을 때 · 조건마다 가장 최근 것만</small></p><ul class="wt-ev">${w.events.filter((e) => e.k === "level" || e.k === "ma5").slice(0, compact ? 6 : 15).map((e) => `<li><b>${hm(e.ts)}</b> <span class="${e.up ? "c-up" : "c-dn"}">${e.up ? "▲" : "▼"}</span> ${esc(e.text)}${e.n > 1 ? ` <small class="dim">· 오늘 ${e.n}번째 전환</small>` : ""}</li>`).join("")}</ul>` : ""}
+      ${compact ? "" : `<p class="mm-f">자동 수치는 야후 정규장 시세 기준(🌙 시간외는 1분봉 마지막 체결) · 3배 ETF는 하루 단위로 3배를 따라감 · 적삼병 조건 = 3일 연속 양봉(시가보다 높게, 전일보다 높게 마감)으로 단순 판정 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`}</div>`;
   }
   /* ── 🕗 시간대 관전 포인트(자동): 한국장 08~18시 / 미국장 18~08시(KST) — 1분마다 지금 수치로 다시 쓴다 ── */
   let leaders = null, ldTab = null, ldOpen = null, fixSecOpen = false, hrTab = null, hrSlot = null;
@@ -491,7 +497,8 @@
   }
   function drawWatch() {
     const box = q("#watchBox"); if (!box) return;
-    const h = sessionHtml() + watchHtml(watch);
+    const wh = watchHtml(watch);
+    const h = sessionHtml() + (wh || levHtml(lev));
     box.hidden = !h; box.innerHTML = h;
   }
 
