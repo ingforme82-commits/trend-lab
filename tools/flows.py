@@ -1,4 +1,4 @@
-"""💰 주도주 수급 — 반도체·국내 보안주 상승 상위 종목의 거래대금·수급(data/flows.json 에 종목군).
+"""💰 주도주 수급 — 종목군(data/flows.json) 전 종목의 등락·거래대금·시가총액·수급. 화면에서 머리글을 눌러 정렬.
 
   python tools/flows.py        # 지금 값을 한 번 계산해서 출력(확인용)
 
@@ -47,6 +47,13 @@ def pick_top(tickers: dict[str, str], q: dict[str, dict], n: int = TOP) -> list[
     by_val = sorted(rows, key=lambda r: -(r["val"] or 0))[:n]
     keep = {r["sym"] for r in by_chg + by_val}
     return [r for r in sorted(rows, key=lambda r: -r["chg"]) if r["sym"] in keep]
+
+
+def all_rows(tickers: dict[str, str], q: dict[str, dict]) -> list[dict]:
+    """종목군 전 종목(시세 없는 종목은 뺌), 등락률 순. 화면에서 다시 정렬한다."""
+    rows = [{"sym": s, "code": s.split(".")[0], "name": name, "px": q[s]["px"], "chg": q[s]["chg"], "val": q[s].get("val"),
+             "val_krx": q[s].get("val_krx"), "mcap": q[s].get("mcap")} for s, name in tickers.items() if q.get(s) and q[s].get("px")]
+    return sorted(rows, key=lambda r: -r["chg"])
 
 
 def parse_trend(items: list[dict]) -> dict | None:
@@ -106,14 +113,16 @@ def build() -> dict:
     is_open = any(v.get("status") == "OPEN" for v in q.values()) and 900 <= hhmm < 1535
     cache = _load()
     tops = {name: pick_top(g["tickers"], q) for name, g in groups.items()}
-    codes = sorted({r["code"] for rows in tops.values() for r in rows})
+    alls = {name: all_rows(g["tickers"], q) for name, g in groups.items()}
+    codes = sorted({r["code"] for rows in alls.values() for r in rows})          # 확정 수급: 전 종목(30분마다)
+    hot = sorted({r["code"] for rows in tops.values() for r in rows})            # 외국계 창구(장중 2분마다): 상위 종목만
 
     # 확정 수급: 30분마다, 장 마감 직후(15:40~19:00)에는 오늘 값이 나올 때까지 10분마다
     trend_age = 600 if 1540 <= hhmm < 1900 else 1800
     need_tr = [c for c in codes if t - (cache["trend"].get(c) or {}).get("t", 0) > trend_age
                and (cache["trend"].get(c) or {}).get("day") != today or c not in cache["trend"]]
     # 외국계 창구: 장중 2분마다, 장 끝난 뒤에는 오늘 값 한 번 더
-    need_wd = [c for c in codes if c not in cache["trader"] or (t - cache["trader"][c].get("t", 0) > 120
+    need_wd = [c for c in hot if c not in cache["trader"] or (t - cache["trader"][c].get("t", 0) > 120
                and (is_open or cache["trader"][c].get("day") != today or cache["trader"][c].get("t", 0) < _close_ts(now)))]
     with ThreadPoolExecutor(max_workers=6) as ex:
         tr = dict(zip(need_tr, ex.map(lambda c: _safe(_trend, c), need_tr)))
@@ -130,7 +139,7 @@ def build() -> dict:
         pass
 
     out = []
-    for name, rows in tops.items():
+    for name, rows in alls.items():
         for r in rows:
             r["inv"] = parse_trend((cache["trend"].get(r["code"]) or {}).get("items") or [])
             r["win"] = parse_trader((cache["trader"].get(r["code"]) or {}).get("data") or [], today, r["px"])

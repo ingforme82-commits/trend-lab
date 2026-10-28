@@ -689,3 +689,10 @@ body{overflow-x:hidden}
 .s7-bar{display:inline-block;width:48px;height:6px;margin-left:6px;background:var(--bg2);border-radius:3px;vertical-align:middle;overflow:hidden}
 .s7-bar i{display:block;height:100%}
 .s7-bar .s7-u{background:var(--up)}.s7-bar .s7-d{background:var(--down)}
+
+/* ↕ 정렬 */
+.fl-t th.srt{cursor:pointer;user-select:none}
+.fl-t th.srt:hover{color:var(--ink)}
+.fl-t th.srt.on{color:var(--gold-d)}
+.fl-sort{flex-wrap:wrap;align-items:center}
+.fl-sort .dim{font-size:12px;margin-right:2px}

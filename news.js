@@ -30,7 +30,7 @@
   let news = [], moves = [], series = {}, notes = [], candles = {}, candles1 = {}, sel = null, tag = "전체", shown = 15, health = null;
   // 속보 필터: 중요도·시간·검증·정렬(분류는 tag 칩)
   const flt = { imp: "all", hrs: 0, ver: "all", sort: "new" };
-  let world = [], spot = [], trend = [], sectors = [], brief = null, briefs = [], kwFilter = null, momentum = null, watch = null, lev = null, flows = null, flowSort = "val", flowOpen = null;   // kwFilter: {label, rx}
+  let world = [], spot = [], trend = [], sectors = [], brief = null, briefs = [], kwFilter = null, momentum = null, watch = null, lev = null, flows = null, flowOpen = null;   // kwFilter: {label, rx}
 
   /* ── 데이터 ── */
   let apiBlockedUntil = 0;
@@ -328,9 +328,10 @@
         <div class="sc-ph"><b>${c.icon} ${esc(c.name)}</b> 평균 <b class="${cls(c.avg)}">${c.avg > 0 ? "+" : ""}${c.avg.toFixed(2)}%</b>
           ${c.rows.length && Date.now() - Math.max(...c.rows.map((r) => r.at)) > 3 * 3600e3 ? '<span class="dim">· 장 마감 기준</span>' : ""}
           <button class="btn btn-ghost-dark btn-sm" data-sec-tag="${esc(c.tag)}">${esc(c.tag)} 관련 속보</button></div>
-        <div class="sec-rows">${c.rows.map((r) => `<div class="sec-r${r.flags.length ? " flag" : ""}"><span class="sec-n">${esc(r.name)}</span>
+        ${sortChips("sec", [["chg", "등락률순"], ["val", "거래대금순"], ["mcap", "시가총액순"], ["name", "이름순"]])}
+        <div class="sec-rows">${sortRows(c.rows, "sec").map((r) => `<div class="sec-r${r.flags.length ? " flag" : ""}"><span class="sec-n">${esc(r.name)}</span>
           <b class="${cls(r.chg)}">${r.chg > 0 ? "+" : ""}${r.chg.toFixed(2)}%</b>${r.stale ? `<em class="stale">전일</em>` : ""}
-          <small>${won(r) ? `${Math.round(r.px).toLocaleString("ko-KR")}원${r.val ? ` · 거래대금(통합) ${eok(r.val)}` : ""}` : `$${r.px}`}${r.to3m != null && r.to3m > 0 ? " · 3개월 고점 돌파" : r.to52 != null ? ` · 52주 고가 ${r.to52 > 0 ? "+" : ""}${r.to52}%` : ""}</small>
+          <small>${won(r) ? `${Math.round(r.px).toLocaleString("ko-KR")}원${r.val ? ` · 거래대금(통합) ${eok(r.val)}` : ""}${r.mcap ? ` · 시총 ${eok(r.mcap)}` : ""}` : `$${r.px}`}${r.to3m != null && r.to3m > 0 ? " · 3개월 고점 돌파" : r.to52 != null ? ` · 52주 고가 ${r.to52 > 0 ? "+" : ""}${r.to52}%` : ""}</small>
           ${r.flags.length ? `<span class="sec-f">${r.flags.map(esc).join(" · ")}</span>` : ""}</div>`).join("")}</div>
       </div>` : "";
     box.innerHTML = momHtml(momentum) + levHtml(lev) + `<p class="spot-h">📊 섹터 시세 <small>섹터를 누르면 종목별 등락이 보입니다 · 주황 점은 신호(±3%·고점 돌파) 종목이 있는 섹터</small></p>
@@ -366,16 +367,40 @@
     box.hidden = !h; box.innerHTML = h;
   }
 
-  /* ── 💰 주도주 수급: 반도체·국내 보안 상위 종목 거래대금·수급(사실 집계) ── */
+  /* ── ↕ 표 정렬(등락률·거래대금·시가총액·수급 …): 머리글이나 정렬 버튼을 누르면 순서가 바뀐다. 같은 걸 다시 누르면 반대로 ── */
+  const sortSt = { flow: { k: "chg", d: -1 }, s7: { k: null, d: -1 }, sec: { k: "chg", d: -1 } };
+  const SORTK = {
+    name: (r) => r.name, chg: (r) => r.chg, val: (r) => r.val, mcap: (r) => r.mcap, pts: (r) => r.pts, w: (r) => r.w,
+    win: (r) => r.win ? r.win.amt : null, frgn: (r) => r.inv ? r.inv.frgn : null, org: (r) => r.inv ? r.inv.org : null,
+    s5: (r) => r.inv ? (r.inv.frgn5 || 0) + (r.inv.org5 || 0) : null,
+  };
+  function sortRows(rows, t) {
+    const st = sortSt[t]; if (!st.k) return rows;
+    const f = SORTK[st.k];
+    return [...rows].sort((a, b) => {
+      const x = f(a), y = f(b);
+      if (x == null || x === "") return y == null || y === "" ? 0 : 1;      // 값 없는 종목은 항상 아래
+      if (y == null || y === "") return -1;
+      return (typeof x === "string" ? x.localeCompare(y, "ko") : x - y) * st.d;
+    });
+  }
+  const arrow = (t, k) => sortSt[t].k === k ? (sortSt[t].d < 0 ? " ▼" : " ▲") : "";
+  const sth = (t, k, label, sub) => `<th class="srt${sortSt[t].k === k ? " on" : ""}" data-sort="${t}:${k}" title="눌러서 정렬">${label}${arrow(t, k)}${sub ? `<small>${sub}</small>` : ""}</th>`;
+  const sortChips = (t, list) => `<div class="fl-sort"><span class="dim">정렬</span>${list.map(([k, l]) =>
+    `<button class="sc-chip${sortSt[t].k === k ? " on" : ""}" data-sort="${t}:${k}">${l}${arrow(t, k)}</button>`).join("")}</div>`;
+  const mcapS = (v) => v ? eok(v) : "-";
+
+  /* ── 💰 주도주 수급: 종목군 전 종목 등락·거래대금·시가총액·수급(사실 집계) ── */
   const eokS = (v) => v == null ? "-" : `<b class="${cls(v / 1e8)}">${v > 0 ? "+" : v < 0 ? "−" : ""}${eok(Math.abs(v))}</b>`;
   const md = (d) => d ? `${+d.slice(5, 7)}/${+d.slice(8, 10)}` : "";
   function flowTable(g, n, compact) {
-    const rows = [...g.rows].sort((a, b) => flowSort === "chg" && !compact ? b.chg - a.chg : (b.val || 0) - (a.val || 0)).slice(0, n);
+    const rows = compact ? [...g.rows].sort((a, b) => (b.val || 0) - (a.val || 0)).slice(0, n) : sortRows(g.rows, "flow").slice(0, n);
     const invDay = (rows.find((r) => r.inv) || {}).inv;
+    const dd = invDay ? md(invDay.day) : "";
     const head = compact ? "<tr><th>종목</th><th>등락</th><th>거래대금</th></tr>"
-      : `<tr><th>종목</th><th>등락</th><th>거래대금<small>통합</small></th><th>외국계 창구<small>오늘</small></th><th>외국인<small>${invDay ? md(invDay.day) : ""}</small></th><th>기관<small>${invDay ? md(invDay.day) : ""}</small></th><th>외국인·기관<small>5일 합계</small></th><th>프로그램</th></tr>`;
+      : `<tr>${sth("flow", "name", "종목")}${sth("flow", "chg", "등락")}${sth("flow", "val", "거래대금", "통합")}${sth("flow", "mcap", "시가총액")}${sth("flow", "win", "외국계 창구", "오늘")}${sth("flow", "frgn", "외국인", dd)}${sth("flow", "org", "기관", dd)}${sth("flow", "s5", "외국인·기관", "5일 합계")}<th>프로그램</th></tr>`;
     const body = rows.map((r) => `<tr><td class="fl-n">${esc(r.name)}</td><td>${pct(r.chg)}</td><td>${r.val ? eok(r.val) : "-"}${!compact && r.val_krx && r.val - r.val_krx > 1e8 ? `<small class="fl-k">KRX ${eok(r.val_krx)}</small>` : ""}</td>${compact ? "" : `
-      <td>${r.win ? eokS(r.win.amt) : "-"}</td><td>${r.inv ? eokS(r.inv.frgn) : "-"}</td><td>${r.inv ? eokS(r.inv.org) : "-"}</td>
+      <td>${mcapS(r.mcap)}</td><td>${r.win ? eokS(r.win.amt) : "-"}</td><td>${r.inv ? eokS(r.inv.frgn) : "-"}</td><td>${r.inv ? eokS(r.inv.org) : "-"}</td>
       <td class="fl-5">${r.inv ? `${eokS(r.inv.frgn5)} / ${eokS(r.inv.org5)}` : "-"}</td><td class="dim">준비 중</td>`}</tr>`).join("");
     return `<div class="fl-g"><p class="fl-gh">${g.icon || ""} ${esc(g.name)}${g.n ? ` <small>상승 ${g.up}/${g.n}종목</small>` : ""}</p>
       <div class="fl-scroll"><table class="fl-t">${head}${body}</table></div></div>`;
@@ -392,7 +417,7 @@
     const mx = Math.max(...s7.rows.map((r) => Math.abs(r.pts || 0)), 1);
     const bar = (v) => `<span class="s7-bar"><i class="${v >= 0 ? "s7-u" : "s7-d"}" style="width:${Math.round(Math.abs(v || 0) / mx * 100)}%"></i></span>`;
     const st = `${hm(s7.at)} 기준${s7.open ? " · 1분마다 갱신" : " · 장 마감"}`;
-    const body = s7.rows.map((r) => `<tr><td class="fl-n">${esc(r.name)}</td><td>${pct(r.chg)}</td>
+    const body = sortRows(s7.rows, "s7").map((r) => `<tr><td class="fl-n">${esc(r.name)}</td><td>${pct(r.chg)}</td>
       <td class="s7-c">${r.w == null ? '<span class="dim">지수 미포함</span>' : `${pt(r.pts)}${bar(r.pts)}`}</td><td>${r.w == null ? "-" : r.w.toFixed(1) + "%"}</td>
       <td>${r.val ? eok(r.val) : "-"}</td><td>${r.win ? eokS(r.win.amt) : "-"}</td><td>${r.inv ? eokS(r.inv.frgn) : "-"}</td><td>${r.inv ? eokS(r.inv.org) : "-"}</td>
       <td class="fl-5">${r.inv ? `${eokS(r.inv.frgn5)} / ${eokS(r.inv.org5)}` : "-"}</td></tr>`).join("");
@@ -406,7 +431,7 @@
         <div><span>코스피 투자자 <small>${k.flow_day ? md(k.flow_day.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")) : ""}</small></span>개인 ${ek(k.ind)} · 외국인 ${ek(k.frgn)} · 기관 ${ek(k.org)}</div>
         <div><span>프로그램 매매</span>차익 ${ek(k.arb)} · 비차익 ${ek(k.nonarb)} · 합계 ${ek(k.prog)}</div>
       </div>
-      <div class="fl-scroll"><table class="fl-t"><tr><th>종목</th><th>등락</th><th>지수 기여<small>포인트</small></th><th>코스피 비중<small>전일 시총</small></th><th>거래대금<small>통합</small></th><th>외국계 창구<small>오늘</small></th><th>외국인<small>${invDay ? md(invDay.day) : ""}</small></th><th>기관<small>${invDay ? md(invDay.day) : ""}</small></th><th>외국인·기관<small>5일 합계</small></th></tr>${body}</table></div>
+      <div class="fl-scroll"><table class="fl-t"><tr>${sth("s7", "name", "종목")}${sth("s7", "chg", "등락")}${sth("s7", "pts", "지수 기여", "포인트")}${sth("s7", "w", "코스피 비중", "전일 시총")}${sth("s7", "val", "거래대금", "통합")}${sth("s7", "win", "외국계 창구", "오늘")}${sth("s7", "frgn", "외국인", invDay ? md(invDay.day) : "")}${sth("s7", "org", "기관", invDay ? md(invDay.day) : "")}${sth("s7", "s5", "외국인·기관", "5일 합계")}</tr>${body}</table></div>
       <p class="mm-f">지수 기여 = 코스피 전일 종가 × 종목 비중(전일 시가총액 ÷ 코스피 보통주 시가총액 합계) × 등락률 — 근사치 · 코스피는 보통주로만 계산해 삼성전자우는 지수에 들어가지 않음<br>
       S7 제외 코스피 = 코스피 변화 − S7 기여 · 투자자·프로그램은 코스피 전체(억 원, 장중 잠정) · 외국계 창구는 외국계 증권사 창구 합계로 외국인 수급과 다름 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`;
   }
@@ -416,7 +441,6 @@
     if (!gs.length) { box.hidden = true; return; }
     box.hidden = false;
     const st = `${hm(flows.at)} 기준${flows.open ? " · 1분마다 갱신" : " · 장 마감(시간외 포함 시세)"}`;
-    const btn = (k, l) => `<button class="sc-chip${flowSort === k ? " on" : ""}" data-flow-sort="${k}">${l}</button>`;
     const sum = (rows, f) => rows.reduce((a, r) => a + (f(r) || 0), 0);
     const chips = gs.map((g) => { const v = g.val || sum(g.rows, (r) => r.val), w = sum(g.rows, (r) => r.win && r.win.amt);
       return `<button class="sc-chip fl-chip${flowOpen === g.name ? " on" : ""}" data-flow-open="${esc(g.name)}" aria-expanded="${flowOpen === g.name}">
@@ -424,8 +448,8 @@
     const g = gs.find((x) => x.name === flowOpen);
     box.innerHTML = `<p class="spot-h">💰 주도주 수급 <small>${st} · 종목군을 누르면 종목별 거래대금·수급이 보입니다</small></p>
       <div class="sc-bar">${chips}</div>
-      ${g ? `<div class="sc-panel"><div class="fl-sort">${btn("val", "거래대금순")}${btn("chg", "등락률순")}</div>${flowTable(g, 8)}
-      <p class="mm-f">종목군 안에서 거래대금 상위·등락률 상위 종목 · 거래대금은 통합(KRX + 넥스트레이드 프리·애프터마켓), 작은 글씨는 KRX만 · 금액은 순매수 수량 × 종가(장중 현재가)로 계산한 추정치(억 원)<br>
+      ${g ? `<div class="sc-panel">${sortChips("flow", [["chg", "등락률순"], ["val", "거래대금순"], ["mcap", "시가총액순"], ["frgn", "외국인순"], ["org", "기관순"], ["win", "외국계 창구순"], ["name", "이름순"]])}${flowTable(g, 99)}
+      <p class="mm-f">종목군 전 종목 · 정렬 버튼이나 표 머리글을 누르면 순서가 바뀌고, 다시 누르면 반대로 · 외국계 창구는 종목군 상위 종목만 2분마다 · 거래대금은 통합(KRX + 넥스트레이드 프리·애프터마켓), 작은 글씨는 KRX만 · 금액은 순매수 수량 × 종가(장중 현재가)로 계산한 추정치(억 원)<br>
       외국계 창구 = 외국계 증권사 창구 합계(장중, 다음 금융) — 외국인 투자자 수급과 다름 · 외국인·기관 = 거래소 확정치(네이버, 장 마감 후 확정되며 그 전에는 직전 거래일 값)<br>
       종목별 프로그램 매매는 무료 공개 출처가 없어 준비 중 · 사실 집계이며 매수·매도 권유가 아닙니다</p></div>` : ""}`;
   }
@@ -680,7 +704,13 @@
       return;
     }
     if (e.target.closest("[data-clear-kw]")) { kwFilter = null; drawTrend(); drawList(); return; }
-    const fs = e.target.closest("[data-flow-sort]"); if (fs) { flowSort = fs.dataset.flowSort; drawFlows(); return; }
+    const so = e.target.closest("[data-sort]");
+    if (so) {
+      const [t, k] = so.dataset.sort.split(":"), st = sortSt[t];
+      if (st.k === k) st.d = -st.d; else { st.k = k; st.d = k === "name" ? 1 : -1; }
+      if (t === "flow") drawFlows(); else if (t === "s7") drawS7(); else drawSectors();
+      return;
+    }
     const fo = e.target.closest("[data-flow-open]"); if (fo) { const n = fo.dataset.flowOpen; flowOpen = flowOpen === n ? null : n; drawFlows(); return; }
     const tg = e.target.closest("[data-sec-toggle]");
     if (tg) { const n = tg.dataset.secToggle; openSector = openSector === n ? null : n; drawSectors(); return; }

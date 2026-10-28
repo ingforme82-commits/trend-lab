@@ -41,7 +41,7 @@ def _parse(d: dict) -> dict | None:
         val = float(t[:-1]) * 1e8 if t.endswith("억") else float(t[:-2]) * 1e6 if t.endswith("백만") else _num(t)
     tot = _num((d.get("integratedPriceInfo") or {}).get("accumulatedTradingValueRaw"))   # 통합(KRX+넥스트레이드 프리·애프터)
     return {"px": px, "prev": prev, "chg": round((px / prev - 1) * 100, 2) if prev else 0.0, "at": at,
-            "val": max(tot, val) or None, "val_krx": val or None,
+            "val": max(tot, val) or None, "val_krx": val or None, "mcap": _num(d.get("marketValueFullRaw")) or None,
             "day": t[:10], "status": d.get("marketStatus", ""), "cur": "KRW"}
 
 
@@ -70,7 +70,7 @@ def merge(yq: dict[str, dict | None]) -> dict[str, dict | None]:
     kr = quotes([s for s in yq if s.endswith((".KS", ".KQ")) or s in INDEX])
     for sym, q in kr.items():
         base = dict(yq.get(sym) or {})
-        base.update(px=q["px"], prev=q["prev"], at=q["at"], day=q["day"], cur="KRW", stale=False, live=q["status"] == "OPEN", val=q.get("val"), val_krx=q.get("val_krx"))
+        base.update(px=q["px"], prev=q["prev"], at=q["at"], day=q["day"], cur="KRW", stale=False, live=q["status"] == "OPEN", val=q.get("val"), val_krx=q.get("val_krx"), mcap=q.get("mcap"))
         yq[sym] = base
     return yq
 
