@@ -76,3 +76,24 @@ class GroupTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class SeriesTest(unittest.TestCase):
+    def test_speaker_series(self):
+        from newsgroup import series, speaker_key
+        H = 3600_000
+        it = [{"ts": 10 * H, "src": "k", "text": "맥클럼 캐나다은행 총재: 금리 경로 없음", "imp": 46},
+              {"ts": 10 * H - 60_000, "src": "k", "text": "매클럼, 결정은 매번 따로", "imp": 23},
+              {"ts": 10 * H - 120_000, "src": "k", "text": "BoC: 성장 전망 상향", "imp": 61},
+              {"ts": 10 * H - 180_000, "src": "k", "text": "삼성전자, 신제품 공개", "imp": 30},
+              {"ts": 10 * H - 240_000, "src": "k", "text": "SK하이닉스, 배당 발표", "imp": 30},
+              {"ts": 5 * H, "src": "k", "text": "맥클럼 캐나다은행 총재: 오래전 발언", "imp": 5}]
+        self.assertEqual(speaker_key(it[1]), "캐나다은행(BoC)")
+        self.assertIsNone(speaker_key(it[3]))                 # '회사명, …' 헤드라인은 묶지 않음
+        self.assertIsNone(speaker_key({"text": "영국: 국채 발행"}))   # 나라 이름만으로는 묶지 않음
+        out = series(it)
+        boc = [x for x in out if x.get("series_key") == "캐나다은행(BoC)"]
+        self.assertEqual(len(boc), 1)
+        self.assertEqual(boc[0]["series_n"], 3)
+        self.assertEqual(boc[0]["text"], "BoC: 성장 전망 상향")      # 중요도 가장 높은 것이 대표
+        self.assertEqual(len(out), 4)                          # 묶음 1 + 회사 헤드라인 2 + 2시간 넘게 떨어진 옛 발언 1

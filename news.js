@@ -115,7 +115,7 @@
     const box = q("#ticker"); if (!box || !tickPick.length) return;
     const n = tickPick[tickIdx % tickPick.length];
     const v = box.querySelector(".tk-view");
-    if (v) v.innerHTML = `<a class="tk-i tk-one${n.pivot ? " hot" : ""}" href="${q("#news") ? "#news" : "index.html#news"}" data-ts="${n.ts}"><b>${hm(n.ts)}</b>${n.pivot ? "🔴 " : ""}${n.lang === "en" ? "🌐 " : ""}${esc(gist(n.text, 110))}</a><small class="tk-n">${tickIdx % tickPick.length + 1}/${tickPick.length}</small>`;
+    if (v) v.innerHTML = `<a class="tk-i tk-one${n.pivot ? " hot" : ""}" href="${q("#news") ? "#news" : "index.html#news"}" data-ts="${n.ts}"><b>${hm(n.ts)}</b>${n.pivot ? "🔴 " : ""}${n.lang === "en" ? "🌐 " : ""}${esc(gist(n.text, 110))}${n.series_n > 1 ? ` <small>· 같은 발언 외 ${n.series_n - 1}건</small>` : ""}</a><small class="tk-n">${tickIdx % tickPick.length + 1}/${tickPick.length}</small>`;
   }
   function drawTicker() {
     const box = q("#ticker"); if (!box) return;
@@ -672,7 +672,7 @@
       const g = gist(n.text), full = n.text.replace(/…$/, "");
       const t = g !== full ? `<span class="mn-x" data-open="0" title="눌러서 전체 보기">${esc(g)}</span><span class="mn-full" hidden>${esc(full)}</span>` : esc(g);
       const v = n.verify === "official" ? " · 🏛 공식" : n.verify === "multi" ? " · ✔ 복수 출처" : n.verify === "unconfirmed" ? " · ⚠ 미확인" : "";
-      return `<li><span class="mn-t">${hm(n.ts)}</span> ${t} <small>${esc(n.src || "")}${v}</small></li>`;
+      return `<li><span class="mn-t">${hm(n.ts)}</span> ${t}${n.series_n > 1 ? ` <small>· 같은 발언 외 ${n.series_n - 1}건</small>` : ""} <small>${esc(n.src || "")}${v}</small></li>`;
     });
     if (!pins.length && !live.length) { box.hidden = true; return; }
     box.hidden = false;
@@ -680,6 +680,8 @@
   }
 
   /* ── 속보 목록 ── */
+  const serOpen = new Set();
+  document.addEventListener("toggle", (e) => { const d = e.target; if (d && d.matches && d.matches(".nw-ser")) { if (d.open) serOpen.add(d.dataset.ser); else serOpen.delete(d.dataset.ser); } }, true);
   const VER = { official: ["🏛 공식 발표", "v-ok"], multi: ["✔ 복수 출처", "v-ok"], single: ["단일 출처", "v-one"], unconfirmed: ["⚠ 미확인·보도 인용", "v-warn"] };
   const isStrat = (n) => n.kind === "증권사 시황" || n.kind === "시황 분석";
   // 중요도: 서버가 매긴 imp(0~100, 상 60↑·중 35↑) — 없으면 예전 계산
@@ -740,7 +742,7 @@
         <div class="nw-b"><p class="nw-txt${n.kind === "섹터 시세" ? " sector" : ""}">${n.pivot ? "🔴 " : ""}${esc(n.text)}</p>${n.sub ? `<p class="nw-sub">${esc(n.sub)}</p>` : ""}${pv}
           <p class="nw-m">${n.tags.map((t) => `<span class="nw-tag">${esc(t)}</span>`).join("")}${isStrat(n) ? `<span class="nw-tag strat">${esc(n.kind)}</span>` : ""}${lvb}${v}${xc}${tr}
           <span class="nw-src">${n.verify ? "최초 " : ""}${n.osrc ? `${esc(n.osrc)} · ${esc(n.src)} 경유` : esc(n.src)} ${hm(n.ts)}${lag}</span></p>
-          ${xcl}${also ? `<p class="nw-m">${also}</p>` : ""}${rs ? `<p class="nw-m">${rs}</p>` : ""}</div></li>`;
+          ${xcl}${also ? `<p class="nw-m">${also}</p>` : ""}${n.series_n > 1 ? `<details class="nw-ser" data-ser="${n.ts}"${serOpen.has(String(n.ts)) ? " open" : ""}><summary>🧹 같은 ${esc(n.series_key)} 발언·발표 ${n.series_n - 1}건 더(2시간 안 연속, 한 줄로 묶음)</summary><ul>${(n.series || []).map((x) => `<li><b>${hm(x.ts)}</b> ${esc(x.text)}</li>`).join("")}</ul></details>` : ""}${rs ? `<p class="nw-m">${rs}</p>` : ""}</div></li>`;
     }).join("") || `<li class="empty">조건에 맞는 속보가 없습니다.</li>`;
     q("#newsMore").hidden = list.length <= shown;
   }

@@ -512,6 +512,8 @@ def build() -> dict:
     try:                                                  # 📊 중요도 최종(변곡점 pivot·관전 포인트 반영)
         from importance import apply as importance
         importance(out["items"])
+        from newsgroup import series                      # 🧹 같은 발언자·기관 연속 속보는 한 줄로(맥클럼 기자회견 등)
+        out["items"] = series(out["items"])
     except Exception as e:  # noqa: BLE001
         log(f"중요도 건너뜀: {type(e).__name__}: {e}")
     try:                                                  # 📋 시장 브리핑(사이트 표시용 요약)
