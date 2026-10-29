@@ -49,7 +49,7 @@
       const j = await fetchNews();
       news = j.items || []; moves = j.moves || []; series = j.series || {}; health = j.health || null;
       world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
-      window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlUst = j.ust || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; flows = j.flows || null; s7 = j.s7 || null; leaders = j.leaders || null; watch = j.watch || null; lev = j.lev || null; if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
+      window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlUst = j.ust || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; flows = j.flows || null; s7 = normalizeS7(j); leaders = j.leaders || null; watch = j.watch || null; lev = j.lev || null; if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
       window.trlMoves = moves; window.trlSeries = series; window.trlNews = news;
       drawHealth(j.updated);
       drawTicker();
@@ -553,6 +553,30 @@
   }
   /* ── 🏛️ S7: 코스피 영향 큰 삼성·SK 7종목 — 지수 기여 포인트, S7 제외 코스피, 수급 ── */
   let s7 = null;
+  function normalizeS7(j) {
+    const raw = j.s7, live = (j.kr || {}).KOSPI, base = raw && raw.kospi;
+    if (!raw || !live || !base || Math.abs(live.chg || 0) < 0.5 || Math.sign(base.chg || 0) === Math.sign(live.chg || 0)) return raw;
+    const copy = JSON.parse(JSON.stringify(raw)), quotes = new Map();
+    for (const g of ((j.flows || {}).groups || [])) for (const r of (g.rows || [])) if (r.code) quotes.set(String(r.code), r);
+    const kr = j.kr || {};
+    if (kr.SMSN) quotes.set("005930", kr.SMSN);
+    if (kr.SKHX) quotes.set("000660", kr.SKHX);
+    let verified = 0;
+    for (const r of copy.rows || []) {
+      const q = quotes.get(String(r.code));
+      r.indexUnverified = !q;
+      r.pts = null; r.w = null;
+      if (q && Number.isFinite(+q.px) && Number.isFinite(+q.chg)) {
+        r.px = +q.px; r.chg = +q.chg;
+        if (q.val != null) r.val = q.val;
+        verified++;
+      } else { r.px = null; r.chg = null; r.val = null; }
+    }
+    copy.kospi = { ...copy.kospi, px: live.px, prev: live.prev, pts: live.px - live.prev, chg: live.chg, up: null, dn: null };
+    copy.s7 = { pts: null, w: null, share: null, ex_pts: null, ex_chg: null };
+    copy.reconcile = { verified, total: (copy.rows || []).length };
+    return copy;
+  }
   function drawS7() {
     const box = q("#s7Box"); if (!box) return;
     if (!s7 || !(s7.rows || []).length) { box.hidden = true; return; }
@@ -562,24 +586,24 @@
     const ek = (v) => v == null ? "-" : `<b class="${cls(v)}">${v > 0 ? "+" : ""}${Math.round(v).toLocaleString("ko-KR")}억</b>`;
     const mx = Math.max(...s7.rows.map((r) => Math.abs(r.pts || 0)), 1);
     const bar = (v) => `<span class="s7-bar"><i class="${v >= 0 ? "s7-u" : "s7-d"}" style="width:${Math.round(Math.abs(v || 0) / mx * 100)}%"></i></span>`;
-    const st = `${hm(s7.at)} 기준${s7.open ? " · 1분마다 갱신" : " · 장 마감"}`;
+    const partial = s7.reconcile, st = `${hm(s7.at)} 기준${s7.open ? " · 1분마다 갱신" : " · 장 마감"}${partial ? ` · 부호 대조 ${partial.verified}/${partial.total}종목` : ""}`;
     const body = sortRows(s7.rows, "s7").map((r) => `<tr><td class="fl-n">${esc(r.name)}</td><td>${pct(r.chg)}</td>
-      <td class="s7-c">${r.w == null ? '<span class="dim">지수 미포함</span>' : `${pt(r.pts)}${bar(r.pts)}`}</td><td>${r.w == null ? "-" : r.w.toFixed(1) + "%"}</td>
+      <td class="s7-c">${partial ? (r.indexUnverified ? '<span class="dim">대조 중</span>' : r.code === "005935" ? '<span class="dim">지수 미포함</span>' : '<span class="dim">재계산 중</span>') : r.w == null ? '<span class="dim">지수 미포함</span>' : `${pt(r.pts)}${bar(r.pts)}`}</td><td>${partial ? (r.code === "005935" ? "-" : '<span class="dim">대조 중</span>') : r.w == null ? "-" : r.w.toFixed(1) + "%"}</td>
       <td>${r.val ? eok(r.val) : "-"}</td><td>${r.win ? eokS(r.win.amt) : "-"}</td><td>${r.inv ? eokS(r.inv.frgn) : "-"}</td><td>${r.inv ? eokS(r.inv.org) : "-"}</td>
       <td class="fl-5">${r.inv ? `${eokS(r.inv.frgn5)} / ${eokS(r.inv.org5)}` : "-"}</td><td>${r.prog ? eokS(r.prog.amt) : "-"}</td></tr>`).join("");
     const invDay = (s7.rows.find((r) => r.inv) || {}).inv;
     box.innerHTML = `<p class="spot-h">🏛️ S7 · 코스피 영향 큰 7종목 <small>${st} · 삼성전자·삼성전자우·SK하이닉스·SK스퀘어·삼성전기·삼성생명·삼성물산</small></p>
       <div class="s7-sum">
         <div><span>코스피</span><b>${(+k.px).toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b> ${pct(k.chg)} ${pt(k.pts)}</div>
-        <div><span>S7 기여</span>${pt(s.pts)} <small>${s.share != null ? `지수 변화의 ${s.share}%` : ""} · 비중 ${s.w}%</small></div>
-        <div><span>S7 제외 코스피</span>${s.ex_chg != null ? pct(s.ex_chg) : "-"} ${pt(s.ex_pts)}</div>
+        <div><span>S7 기여</span>${partial ? '<b class="dim">재검증 중</b>' : `${pt(s.pts)} <small>${s.share != null ? `지수 변화의 ${s.share}%` : ""} · 비중 ${s.w}%</small>`}</div>
+        <div><span>S7 제외 코스피</span>${partial ? '<b class="dim">재검증 중</b>' : `${s.ex_chg != null ? pct(s.ex_chg) : "-"} ${pt(s.ex_pts)}`}</div>
         <div><span>상승·하락 종목</span><b>${k.up != null ? `${k.up} / ${k.dn}` : "-"}</b></div>
         <div><span>코스피 투자자 <small>${k.flow_day ? md(k.flow_day.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")) : ""}</small></span>개인 ${ek(k.ind)} · 외국인 ${ek(k.frgn)} · 기관 ${ek(k.org)}</div>
         <div><span>프로그램 매매</span>차익 ${ek(k.arb)} · 비차익 ${ek(k.nonarb)} · 합계 ${ek(k.prog)}</div>
       </div>
       <div class="fl-scroll"><table class="fl-t"><tr>${sth("s7", "name", "종목")}${sth("s7", "chg", "등락")}${sth("s7", "pts", "지수 기여", "포인트")}${sth("s7", "w", "코스피 비중", "전일 시총")}${sth("s7", "val", "거래대금", "통합")}${sth("s7", "win", "외국계 창구", "오늘")}${sth("s7", "frgn", "외국인", invDay ? md(invDay.day) : "")}${sth("s7", "org", "기관", invDay ? md(invDay.day) : "")}${sth("s7", "s5", "외국인·기관", "5일 합계")}${sth("s7", "prog", "프로그램", "오늘")}</tr>${body}</table></div>
       <p class="mm-f">지수 기여 = 코스피 전일 종가 × 종목 비중(전일 시가총액 ÷ 코스피 보통주 시가총액 합계) × 등락률 — 근사치 · 코스피는 보통주로만 계산해 삼성전자우는 지수에 들어가지 않음<br>
-      S7 제외 코스피 = 코스피 변화 − S7 기여 · 투자자·프로그램은 코스피 전체(억 원, 장중 잠정) · 외국계 창구는 외국계 증권사 창구 합계로 외국인 수급과 다름 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`;
+      ${partial ? `부호 불일치가 감지되어 ${partial.verified}/${partial.total}종목의 등락만 대조 표시합니다. 지수 기여·비중은 전체 재계산 전까지 보류합니다.<br>` : "S7 제외 코스피 = 코스피 변화 − S7 기여 · "}투자자·프로그램은 코스피 전체(억 원, 장중 잠정) · 한국 주식 색상: 상승 빨강·하락 파랑 · 외국계 창구는 외국계 증권사 창구 합계로 외국인 수급과 다름 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`;
   }
   function drawFlows() {
     const box = q("#flowBox"); if (!box) return;
