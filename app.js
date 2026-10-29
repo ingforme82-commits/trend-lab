@@ -455,7 +455,7 @@ function bandText(h) {
 }
 async function loadBand() {
   try {
-    const b = await fetch(`data/briefs.json?t=${Math.floor(Date.now() / 300000)}`).then((r) => r.json());
+    const b = await fetch(`data/briefs.json?t=${Math.floor(Date.now() / 60000)}`).then((r) => r.json());
     const h = b.find((x) => BAND[x.slot]);
     if (!h) return;
     const t = bandText(h);
@@ -466,7 +466,7 @@ async function loadBand() {
     $("#notice").hidden = false;
   } catch { /* 띠 없이 */ }
 }
-setInterval(() => { const nt = window.__pinNotice; if (!nt) loadBand(); }, 10 * 60000);
+setInterval(() => { const nt = window.__pinNotice; if (!nt) loadBand(); }, 60000);
 
 function archCard(s, isNext, label) {
   const d = new Date(s.date + "T00:00:00");
