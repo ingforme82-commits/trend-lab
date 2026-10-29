@@ -55,7 +55,7 @@ def is_common(code: str) -> bool:
 
 # ── 순수 계산(tests/test_s7.py) ──
 def prev_mcap(mcap: float, px: float, diff: float, sign: int) -> float:
-    prev = px - sign * diff
+    prev = px - sign * abs(diff)
     return mcap * prev / px if px and prev > 0 else mcap
 
 
@@ -104,7 +104,7 @@ def _total_prev() -> float:
         for s in r.get("stocks", []):
             if s.get("stockEndType") == "stock" and is_common(s.get("itemCode", "")):
                 tot += prev_mcap(_n(s.get("marketValueRaw")), _n(s.get("closePriceRaw")),
-                                 _n(s.get("compareToPreviousClosePriceRaw")), _sign(s))
+                                 abs(_n(s.get("compareToPreviousClosePriceRaw"))), _sign(s))
     return tot
 
 
@@ -116,7 +116,7 @@ def build() -> dict:
     base = "https://polling.finance.naver.com/api/realtime/domestic"
     sd = _get(f"{base}/stock/{','.join(S7)}").get("datas", [])
     kd = (_get(f"{base}/index/KOSPI").get("datas") or [{}])[0]
-    kpx, kdiff = _n(kd.get("closePriceRaw")), _n(kd.get("compareToPreviousClosePriceRaw"))
+    kpx, kdiff = _n(kd.get("closePriceRaw")), abs(_n(kd.get("compareToPreviousClosePriceRaw")))
     if not kpx or not sd:
         return {}
     ksign = _sign(kd)
@@ -133,7 +133,7 @@ def build() -> dict:
     rows = []
     for d in sd:
         code = d.get("itemCode")
-        px, diff, sg = _n(d.get("closePriceRaw")), _n(d.get("compareToPreviousClosePriceRaw")), _sign(d)
+        px, diff, sg = _n(d.get("closePriceRaw")), abs(_n(d.get("compareToPreviousClosePriceRaw"))), _sign(d)
         if code not in S7 or not px:
             continue
         prev = px - sg * diff
