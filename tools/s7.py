@@ -55,6 +55,7 @@ def is_common(code: str) -> bool:
 
 # ── 순수 계산(tests/test_s7.py) ──
 def prev_mcap(mcap: float, px: float, diff: float, sign: int) -> float:
+    # Naver provides a signed difference and a separate direction code; use the magnitude only once.
     prev = px - sign * abs(diff)
     return mcap * prev / px if px and prev > 0 else mcap
 
