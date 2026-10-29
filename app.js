@@ -419,7 +419,7 @@ async function loadStudies() {
 }
 
 /* ── 맨 위 띠: 하루 4번(07:20 오전 · 14:00 오후 · 20:05 저녁 · 22:15 밤·새벽) 정시 브리핑 기록에서 수치만 뽑아 고정 ── */
-const BAND = { "07:20": ["🌅", "오전"], "14:00": ["🕑", "오후"], "20:05": ["🌆", "저녁"], "22:15": ["🌙", "밤·새벽"] };
+const BAND = { "07:20": ["🌅", "오전장 핵심 뉴스"], "14:00": ["🕑", "오후"], "20:05": ["🌆", "저녁"], "22:15": ["🌙", "밤·새벽"] };
 const pc = (v) => v == null ? "" : `${v > 0 ? "+" : ""}${(+v).toFixed(2)}%`;
 function bandText(h) {
   const P = [];
@@ -429,6 +429,7 @@ function bandText(h) {
   const w = (h.watch || {}).items || [];
   const wt = w.filter((x) => x.px != null).map((x) => `${x.sym} ${pc(x.chg)}${x.three ? (x.open ? " 적삼병 조건 충족 중" : " 적삼병 조건 충족 마감") : x.bull === false ? " 음봉" : ""}`);
   if (h.slot === "07:20") {
+    if (h.headline) return h.headline;
     if (reg.SP500) P.push(`미국 마감 S&P500 ${pc(reg.SP500.chg)} · 나스닥100 ${pc((reg.XYZ100 || {}).chg)}`);
     if (reg.SOXL) P.push(`SOXL ${pc(reg.SOXL.chg)}`);
     if (u["10Y"]) P.push(`미 10년물 ${u["10Y"].px.toFixed(3)}%`);
@@ -460,7 +461,8 @@ async function loadBand() {
     const t = bandText(h);
     if (!t) return;
     const [ic, nm] = BAND[h.slot], d = h.day.slice(5).replace("-", "/").replace(/^0/, "");
-    $("#notice").innerHTML = `<div class="wrap"><a href="#brief" class="band-a">${ic} <b>${d} ${nm}</b> <small>(${h.slot} 정리)</small> · ${esc(t)}</a></div>`;
+    const slotLabel = h.headline ? "사용자 제공 · 10/29" : `(${h.slot} 정리)`;
+    $("#notice").innerHTML = `<div class="wrap"><a href="#brief" class="band-a">${ic} <b>${d} ${nm}</b> <small>${slotLabel}</small> · ${esc(t)}</a></div>`;
     $("#notice").hidden = false;
   } catch { /* 띠 없이 */ }
 }
