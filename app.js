@@ -453,20 +453,98 @@ function bandText(h) {
   }
   return P.join(" · ");
 }
+
+function liveBand() {
+  const now = new Date(), k = KST(now), minute = k.getHours() * 60 + k.getMinutes();
+  const weekday = k.getDay() > 0 && k.getDay() < 6;
+  if (!weekday) return null;
+  const etParts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(now);
+  const part = (name) => (etParts.find((x) => x.type === name) || {}).value || "";
+  const etMinute = (+part("hour")) * 60 + (+part("minute"));
+  const etWeekday = !["Sat", "Sun"].includes(part("weekday"));
+  const usRegular = etWeekday && etMinute >= 570 && etMinute < 960;
+  const usAfter = etWeekday && etMinute >= 960 && etMinute < 1200;
+  const kr = window.trlKr || {}, idx = kr.KOSPI || {}, kosdaq = kr.KOSDAQ || {};
+  const s7 = window.trlS7 || {}, flows = window.trlFlows || {}, brief = window.trlBrief || {};
+  const reg = window.trlReg || {}, lev = (window.trlLev || {}).items || [];
+  const out = [], pcLive = (v) => v == null ? "" : (v > 0 ? "+" : "") + Number(v).toFixed(2) + "%";
+  const cash = (v) => v == null ? "" : "$" + Number(v).toFixed(2);
+  const won = (v) => v == null ? "" : Math.round(v).toLocaleString("ko-KR") + "원";
+  const money = (v) => v >= 1e12 ? (v / 1e12).toFixed(1) + "조" : Math.round(v / 1e8).toLocaleString("ko-KR") + "억";
+  const latest = () => {
+    const hs = brief.heads || [];
+    const h = hs.find((x) => /코스피|코스닥|삼성|하이닉스|반도체|미국|연준|나스닥|S&P|PCE|금리|일본|중국|실적|선물/.test(x.text || ""));
+    return h ? "속보 " + String(h.text).replace(/\\s+/g, " ").slice(0, 74) + (h.src ? " · " + h.src : "") : "";
+  };
+  const stockEt = () => {
+    const rows = new Map();
+    for (const g of (flows.groups || [])) for (const r of (g.rows || [])) if (r.code) rows.set(r.code, r);
+    let total = 0;
+    for (const r of rows.values()) if (r.val != null && r.val_krx != null) total += Math.max(0, r.val - r.val_krx);
+    return total;
+  };
+  const etfExt = () => lev.filter((x) => x.ext && x.ext.px != null).map((x) => {
+    const e = x.ext, status = e.live ? (e.sess === "pre" ? "프리장" : "애프터") : "마지막 체결";
+    return x.sym + " " + status + " " + cash(e.px) + " (" + pcLive(e.chg) + ")";
+  });
+  let icon = "", title = "", at = window.trlUpdated || Date.now();
+  if (minute >= 930 && minute < 1200) {
+    icon = "🏁"; title = "KRX 마감";
+    if (idx.px != null) out.push("코스피 " + Number(idx.px).toLocaleString("ko-KR", { maximumFractionDigits: 2 }) + " (" + pcLive(idx.chg) + ")");
+    if (kosdaq.px != null) out.push("코스닥 " + Number(kosdaq.px).toLocaleString("ko-KR", { maximumFractionDigits: 2 }) + " (" + pcLive(kosdaq.chg) + ")");
+    if (s7.reconcile) out.push("S7 시세 확인 중");
+    else if (s7.s7) out.push("S7 기여 " + Number(s7.s7.pts).toFixed(1) + "p (" + s7.s7.share + "%)");
+    const breadth = s7.kospi || {};
+    if (breadth.up != null && breadth.dn != null) out.push("상승/하락 " + breadth.up + "/" + breadth.dn);
+    if (breadth.frgn != null && breadth.org != null) out.push("외국인 " + Math.round(breadth.frgn).toLocaleString("ko-KR") + "억 · 기관 " + Math.round(breadth.org).toLocaleString("ko-KR") + "억");
+    if (latest()) out.push(latest());
+    at = idx.at || s7.at || at;
+  } else if (usRegular) {
+    icon = "🇺🇸"; title = "미국 정규장";
+    if (reg.SP500) out.push("S&P500 " + pcLive(reg.SP500.chg));
+    if (reg.XYZ100) out.push("나스닥100 " + pcLive(reg.XYZ100.chg));
+    for (const x of lev) if (["SOXL", "KORU"].includes(x.sym) && x.px != null) out.push(x.sym + " " + cash(x.px) + " (" + pcLive(x.chg) + ")");
+    if (latest()) out.push(latest());
+    at = Math.max(reg.SP500 && reg.SP500.at || 0, reg.XYZ100 && reg.XYZ100.at || 0, window.trlLev && window.trlLev.at || 0) || at;
+  } else if (minute >= 1200 && !usRegular) {
+    icon = "🌆"; title = usAfter ? "미국 마감·애프터장" : "넥스트레이드 마감 · 미국 프리장";
+    if (idx.px != null) out.push("코스피 종가 " + Number(idx.px).toLocaleString("ko-KR", { maximumFractionDigits: 2 }) + " (" + pcLive(idx.chg) + ")");
+    const nxt = stockEt();
+    if (nxt > 0) out.push("관심 종목 NXT 거래대금 " + money(nxt));
+    out.push(...etfExt());
+    const fs = brief.futures || [];
+    const sp = fs.find((x) => x.name === "S&P500"), nq = fs.find((x) => x.name === "나스닥100");
+    if (sp || nq) out.push("24시간 지수 참고 " + (sp ? "S&P500 " + pcLive(sp.chg) : "") + (sp && nq ? " · " : "") + (nq ? "나스닥100 " + pcLive(nq.chg) : ""));
+    if (latest()) out.push(latest());
+    at = Math.max(idx.at || 0, window.trlLev && window.trlLev.at || 0, brief.at || 0) || at;
+  } else return null;
+  const time = hhmm(KST(new Date(at))) + " 기준";
+  return { icon, title, text: out.filter(Boolean).join(" · "), date: (k.getMonth() + 1) + "/" + k.getDate(), time };
+}
 async function loadBand() {
+  if (window.__pinNotice) return;
   try {
-    const b = await fetch(`data/briefs.json?t=${Math.floor(Date.now() / 60000)}`).then((r) => r.json());
+    const live = liveBand();
+    if (live) {
+      const node = $("#notice");
+      if (!node) return;
+      node.innerHTML = '<div class="wrap"><a href="#brief" class="band-a">' + live.icon + ' <b>' + live.date + ' ' + live.title + '</b> <small>(' + live.time + ')</small> · ' + esc(live.text) + '</a></div>';
+      node.hidden = false;
+      return;
+    }
+    const b = await fetch('data/briefs.json?t=' + Math.floor(Date.now() / 60000)).then((r) => r.json());
     const h = b.find((x) => BAND[x.slot]);
     if (!h) return;
     const t = bandText(h);
     if (!t) return;
-    const [ic, nm] = BAND[h.slot], d = h.day.slice(5).replace("-", "/").replace(/^0/, "");
-    const slotLabel = h.headline ? `${hhmm(KST(new Date(h.at)))} KST 기준` : `(${h.slot} 정리)`;
-    $("#notice").innerHTML = `<div class="wrap"><a href="#brief" class="band-a">${ic} <b>${d} ${nm}</b> <small>${slotLabel}</small> · ${esc(t)}</a></div>`;
+    const parts = BAND[h.slot], d = h.day.slice(5).replace("-", "/").replace(/^0/, "");
+    const slotLabel = h.headline ? hhmm(KST(new Date(h.at))) + " KST 기준" : "(" + h.slot + " 정리)";
+    $("#notice").innerHTML = '<div class="wrap"><a href="#brief" class="band-a">' + parts[0] + ' <b>' + d + " " + parts[1] + '</b> <small>' + slotLabel + '</small> · ' + esc(t) + '</a></div>';
     $("#notice").hidden = false;
   } catch { /* 띠 없이 */ }
 }
-setInterval(() => { const nt = window.__pinNotice; if (!nt) loadBand(); }, 60000);
+window.loadBand = loadBand;
+setInterval(() => { if (!window.__pinNotice) loadBand(); }, 60000);
 
 function archCard(s, isNext, label) {
   const d = new Date(s.date + "T00:00:00");
