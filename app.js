@@ -461,7 +461,7 @@ async function loadBand() {
     const t = bandText(h);
     if (!t) return;
     const [ic, nm] = BAND[h.slot], d = h.day.slice(5).replace("-", "/").replace(/^0/, "");
-    const slotLabel = h.headline ? "사용자 제공 · 10/29" : `(${h.slot} 정리)`;
+    const slotLabel = h.headline ? `${hhmm(KST(new Date(h.at)))} KST 기준` : `(${h.slot} 정리)`;
     $("#notice").innerHTML = `<div class="wrap"><a href="#brief" class="band-a">${ic} <b>${d} ${nm}</b> <small>${slotLabel}</small> · ${esc(t)}</a></div>`;
     $("#notice").hidden = false;
   } catch { /* 띠 없이 */ }
