@@ -359,7 +359,7 @@ async function loadStudies() {
         </ul>
         ${s.summary ? `<p class="up-sum">${esc(s.summary)}</p>` : ""}
         <p class="up-rule">${esc(se.name || "")} · ${esc(se.rule || "")}</p>
-        <div class="up-btns"><a class="btn btn-kakao" href="${esc(site.kakao)}" target="_blank" rel="noopener">💬 참여 신청</a><a class="btn btn-ghost-dark" href="study.html?id=${encodeURIComponent(s.id)}">자세히</a></div>
+        <div class="up-btns"><a class="btn btn-kakao" href="${esc(site.kakao)}" target="_blank" rel="noopener">💬 참여 신청</a></div>
       </article>`;
     }).join("") || `<p class="empty">다음 그룹 스터디 일정은 곧 안내합니다.</p>`;
     $("#studyInfo").innerHTML = `<ul><li>📍 ${esc(site.place)}</li><li>🅿️ ${esc(site.parking)}</li><li>☕ ${esc(site.free)}</li><li>👥 카카오톡 오픈채팅 ${esc(site.members)} · 참가비 무료 · 교육 목적 그룹 스터디</li></ul>`;
