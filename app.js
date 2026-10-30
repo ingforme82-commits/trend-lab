@@ -473,7 +473,7 @@ function liveBand() {
   const latest = () => {
     const hs = brief.heads || [];
     const h = hs.find((x) => /코스피|코스닥|삼성|하이닉스|반도체|미국|연준|나스닥|S&P|PCE|금리|일본|중국|실적|선물|트럼프|이란|호르무즈|협상|전쟁|원유|유가/.test(x.text || ""));
-    return h ? "속보 " + String(h.text).replace(/\\s+/g, " ").slice(0, 74) + (h.src ? " · " + h.src : "") : "";
+    return h ? "속보 " + String(h.text).replace(/\s+/g, " ").slice(0, 74) + (h.src ? " · " + h.src : "") : "";
   };
   const stockEt = () => {
     const rows = new Map();
