@@ -28,3 +28,4 @@ tools/kbprog_cache.json
 tools/dupcheck.log
 tools/hourly_state.json
 tools/hourly_kr_cache.json
+tools/alert_outbox.log

@@ -133,6 +133,16 @@ def log(msg: str) -> None:
         f.write(f"{datetime.now(KST):%m-%d %H:%M} {msg}\n")
 
 
+def _alert(kind: str, key: str, text: str) -> None:
+    """🔔 텔레그램 이슈 알림(tools/tg_alert.py). 꺼져 있으면 미리 보기 기록만, 실패해도 수집은 계속."""
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from tg_alert import alert
+        alert(kind, key, text)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def refresh() -> None:
     """텔레 받기: 1분마다 속보 채널 3개, 10분마다(분이 0으로 끝날 때) 전체 채널."""
     if not TGR_PY.exists():
@@ -426,6 +436,7 @@ def build() -> dict:
         for ch in leaders_changes(leaders):
             sector_items.append({"ts": t_ms, "got": t_ms, "src": "트렌드랩 자동 집계", "kind": "주도 섹터", "text": ch["text"],
                                  "tags": ["한국" if ch["mkt"] == "kr" else "미국"], "hot": True})
+            _alert("주도 섹터", ch["text"], ch["text"])
     except Exception as e:  # noqa: BLE001
         log(f"주도 섹터 건너뜀: {type(e).__name__}: {e}")
     tg_items = from_telegram()
@@ -468,6 +479,14 @@ def build() -> dict:
         sys.path.insert(0, str(Path(__file__).resolve().parent))
         from moves import analyze
         out["moves"], out["series"] = analyze(items)
+        now_a = datetime.now(timezone.utc).timestamp() * 1000
+        for m in out["moves"][:6]:                        # 🔔 새 변곡점(끝난 지 15분 안) → 텔레그램 이슈 알림
+            if now_a - m["end"] < 15 * 60_000:
+                nw = next((n["text"] for n in items if n["ts"] in (m.get("news") or [])), "")
+                _alert("변곡점", m.get("grp") or m.get("id") or f"{m['asset']}-{m['start']}",
+                       f"{m['name']} {'▲' if m['move'] > 0 else '▼'}{abs(m['move'])}{'bp' if m['unit'] == 'bp' else '%'} "
+                       f"({datetime.fromtimestamp(m['start'] / 1000):%H:%M}~{datetime.fromtimestamp(m['end'] / 1000):%H:%M})"
+                       + (f"\n같은 시각 뉴스: {nw[:120]}" if nw else ""))
     except Exception as e:  # noqa: BLE001
         log(f"변곡점 감지 건너뜀: {type(e).__name__}: {e}")
     try:                                                  # 해외 지수·화제 종목·많이 나온 종목
@@ -499,6 +518,8 @@ def build() -> dict:
             for e in (out["watch"] or {}).get("events", [])[:12]:          # 관전 포인트 조건 전환 → 속보 목록에도
                 out["items"].append({"ts": e["ts"], "got": e["ts"], "src": "트렌드랩 자동 집계", "kind": "관전 포인트",
                                      "text": "👀 " + e["text"] + (f" · 오늘 {e['n']}번째 전환" if e.get("n", 1) > 1 else ""), "tags": ["반도체" if e["sym"] == "SOXL" else "한국", "지수"], "hot": True})
+                if e.get("k") == "level" and datetime.now(timezone.utc).timestamp() * 1000 - e["ts"] < 15 * 60_000:   # 🔔 운영자 가격대 도달·이탈
+                    _alert("운영자 가격대", f"{e['sym']}-{e['ts']}", "👀 " + e["text"])
             out["items"].sort(key=lambda i: -i["ts"])
         except Exception as e:  # noqa: BLE001
             log(f"관전 포인트 건너뜀: {type(e).__name__}: {e}")
