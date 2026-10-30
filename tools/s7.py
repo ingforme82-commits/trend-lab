@@ -131,10 +131,15 @@ def build() -> dict:
             cache["tot"], cache["tot_day"] = _total_prev(), kday
         except Exception:  # noqa: BLE001
             pass
+    try:
+        from kbprog import fetch_quotes
+        kb_quotes = fetch_quotes(list(S7))
+    except Exception:  # noqa: BLE001
+        kb_quotes = {}
     rows = []
     for d in sd:
         code = d.get("itemCode")
-        px, diff, sg = _n(d.get("closePriceRaw")), abs(_n(d.get("compareToPreviousClosePriceRaw"))), _sign(d)
+        px, diff, sg = kb_quotes.get(code, _n(d.get("closePriceRaw"))), abs(_n(d.get("compareToPreviousClosePriceRaw"))), _sign(d)
         if code not in S7 or not px:
             continue
         prev = px - sg * diff
@@ -196,6 +201,7 @@ def build() -> dict:
     rows.sort(key=lambda r: order.index(r["code"]))
     ig = cache.get("integ") or {}
     return {"at": int(t * 1000), "open": is_open, "day": kday,
+            "quote_source": "KB Open API IVU10140" if kb_quotes else "Naver realtime fallback",
             "kospi": {"px": kpx, "prev": kprev, "pts": round(kpts, 2), "chg": round(kpts / kprev * 100, 2) if kprev else 0.0,
                       **{k: ig.get(k) for k in ("ind", "frgn", "org", "arb", "nonarb", "prog", "up", "dn")}, "flow_day": ig.get("day")},
             "s7": s, "rows": rows, "approx": not cache.get("tot")}
