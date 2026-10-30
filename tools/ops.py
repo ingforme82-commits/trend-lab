@@ -97,8 +97,25 @@ def _reg(n: str) -> bool:
 
 
 def run(_a) -> None:
-    r = subprocess.run([sys.executable, str(ROOT / "tools" / "live_news.py")], cwd=ROOT)
-    print("수집 1회 완료" if r.returncode == 0 else f"수집 실패(코드 {r.returncode}) — tools/live_news.log 확인")
+    log = ROOT / "tools" / "live_news.log"
+    before = log.stat().st_mtime if log.exists() else 0
+    try:
+        r = subprocess.run([sys.executable, str(ROOT / "tools" / "live_news.py")], cwd=ROOT, timeout=240)
+    except subprocess.TimeoutExpired:
+        print("수집 실패: 4분 제한 초과 — 이전 실행이 멈췄을 수 있습니다")
+        raise SystemExit(124)
+    if r.returncode:
+        print(f"수집 실패(코드 {r.returncode}) — tools/live_news.log 확인")
+        raise SystemExit(r.returncode)
+    if not log.exists() or log.stat().st_mtime <= before:
+        print("수집 실패: 이번 실행의 기록이 없습니다")
+        raise SystemExit(2)
+    last = log.read_text(encoding="utf-8", errors="replace").splitlines()[-1:]
+    line = last[0] if last else ""
+    if "실패:" in line or not ("올림" in line or "변화 없음" in line):
+        print("수집·게시 실패 — tools/live_news.log 확인")
+        raise SystemExit(2)
+    print("수집 및 사이트 게시 확인: " + line)
 
 
 def watch(a) -> None:
