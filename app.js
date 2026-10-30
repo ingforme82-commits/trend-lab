@@ -512,7 +512,7 @@ function liveBand() {
     at = Math.max(reg.SP500 && reg.SP500.at || 0, reg.XYZ100 && reg.XYZ100.at || 0, window.trlLev && window.trlLev.at || 0) || at;
   } else if (minute >= 300 && minute < 930) {
     icon = minute < 540 ? "🌅" : "📊";
-    title = minute < 540 ? "미국 마감 · 한국 장전" : "한국 오전장 · 미국 마감";
+    title = minute < 540 ? "미국 마감 · 한국 장전" : (minute < 720 ? "한국 오전장" : "한국 오후장") + " · 미국 마감";   // 오전장 09:00~12:00, 오후장 12:00~15:30
     if (idx.px != null) out.push("코스피 " + Number(idx.px).toLocaleString("ko-KR", { maximumFractionDigits: 2 }) + " (" + pcLive(idx.chg) + ")");
     if (kosdaq.px != null) out.push("코스닥 " + Number(kosdaq.px).toLocaleString("ko-KR", { maximumFractionDigits: 2 }) + " (" + pcLive(kosdaq.chg) + ")");
     const names = [["삼성전자", kr.SMSN], ["SK하이닉스", kr.SKHX]];
