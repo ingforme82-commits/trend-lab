@@ -469,11 +469,10 @@ function liveBand() {
   const reg = window.trlReg || {}, lev = (window.trlLev || {}).items || [];
   const out = [], pcLive = (v) => v == null ? "" : (v > 0 ? "+" : "") + Number(v).toFixed(2) + "%";
   const cash = (v) => v == null ? "" : "$" + Number(v).toFixed(2);
-  const won = (v) => v == null ? "" : Math.round(v).toLocaleString("ko-KR") + "원";
   const money = (v) => v >= 1e12 ? (v / 1e12).toFixed(1) + "조" : Math.round(v / 1e8).toLocaleString("ko-KR") + "억";
   const latest = () => {
     const hs = brief.heads || [];
-    const h = hs.find((x) => /코스피|코스닥|삼성|하이닉스|반도체|미국|연준|나스닥|S&P|PCE|금리|일본|중국|실적|선물/.test(x.text || ""));
+    const h = hs.find((x) => /코스피|코스닥|삼성|하이닉스|반도체|미국|연준|나스닥|S&P|PCE|금리|일본|중국|실적|선물|트럼프|이란|호르무즈|협상|전쟁|원유|유가/.test(x.text || ""));
     return h ? "속보 " + String(h.text).replace(/\\s+/g, " ").slice(0, 74) + (h.src ? " · " + h.src : "") : "";
   };
   const stockEt = () => {
@@ -483,10 +482,13 @@ function liveBand() {
     for (const r of rows.values()) if (r.val != null && r.val_krx != null) total += Math.max(0, r.val - r.val_krx);
     return total;
   };
-  const etfExt = () => lev.filter((x) => x.ext && x.ext.px != null).map((x) => {
-    const e = x.ext, status = e.live ? (e.sess === "pre" ? "프리장" : "애프터") : "마지막 체결";
-    return x.sym + " " + status + " " + cash(e.px) + " (" + pcLive(e.chg) + ")";
+  const etfExt = () => lev.filter((x) => x.ext && x.ext.px != null && ["SOXL", "KORU"].includes(x.sym)).map((x) => {
+    const e = x.ext, stamp = hhmm(KST(new Date(e.at || 0)));
+    return e.live
+      ? x.sym + " " + (e.sess === "pre" ? "프리장" : "애프터") + " " + cash(e.px) + " (" + pcLive(e.chg) + ")"
+      : x.sym + " 시간외 마지막 체결 " + cash(e.px) + " (" + pcLive(e.chg) + " · " + stamp + " KST)";
   });
+  const future = (name) => (brief.futures || []).find((x) => x.name === name);
   let icon = "", title = "", at = window.trlUpdated || Date.now();
   if (minute >= 930 && minute < 1200) {
     icon = "🏁"; title = "KRX 마감";
@@ -504,16 +506,33 @@ function liveBand() {
     if (reg.SP500) out.push("S&P500 " + pcLive(reg.SP500.chg));
     if (reg.XYZ100) out.push("나스닥100 " + pcLive(reg.XYZ100.chg));
     for (const x of lev) if (["SOXL", "KORU"].includes(x.sym) && x.px != null) out.push(x.sym + " " + cash(x.px) + " (" + pcLive(x.chg) + ")");
+    const wti = future("WTI"), brent = future("브렌트");
+    if (wti || brent) out.push([wti && "WTI " + cash(wti.px), brent && "브렌트 " + cash(brent.px)].filter(Boolean).join(" · "));
     if (latest()) out.push(latest());
     at = Math.max(reg.SP500 && reg.SP500.at || 0, reg.XYZ100 && reg.XYZ100.at || 0, window.trlLev && window.trlLev.at || 0) || at;
-  } else if (minute >= 1200 && !usRegular) {
+  } else if (minute >= 300 && minute < 930) {
+    icon = minute < 540 ? "🌅" : "📊";
+    title = minute < 540 ? "미국 마감 · 한국 장전" : "한국 오전장 · 미국 마감";
+    if (idx.px != null) out.push("코스피 " + Number(idx.px).toLocaleString("ko-KR", { maximumFractionDigits: 2 }) + " (" + pcLive(idx.chg) + ")");
+    if (kosdaq.px != null) out.push("코스닥 " + Number(kosdaq.px).toLocaleString("ko-KR", { maximumFractionDigits: 2 }) + " (" + pcLive(kosdaq.chg) + ")");
+    const names = [["삼성전자", kr.SMSN], ["SK하이닉스", kr.SKHX]];
+    const stockText = names.filter(([, q]) => q && q.chg != null).map(([n, q]) => n + " " + pcLive(q.chg));
+    if (stockText.length) out.push(stockText.join(" · "));
+    const us = [reg.SP500 && "S&P500 " + pcLive(reg.SP500.chg), reg.XYZ100 && "나스닥100 " + pcLive(reg.XYZ100.chg)].filter(Boolean);
+    if (us.length) out.push("미국 정규장 마감 " + us.join(" · "));
+    const ext = etfExt();
+    if (ext.length) out.push(ext.join(" · "));
+    const wti = future("WTI"), brent = future("브렌트");
+    if (wti || brent) out.push([wti && "WTI " + cash(wti.px) + " (" + pcLive(wti.chg) + ")", brent && "브렌트 " + cash(brent.px) + " (" + pcLive(brent.chg) + ")"].filter(Boolean).join(" · "));
+    if (latest()) out.push(latest());
+    at = Math.max(idx.at || 0, kr.SMSN && kr.SMSN.at || 0, kr.SKHX && kr.SKHX.at || 0, brief.at || 0) || at;
+  } else if (minute >= 1200) {
     icon = "🌆"; title = usAfter ? "미국 마감·애프터장" : "넥스트레이드 마감 · 미국 프리장";
     if (idx.px != null) out.push("코스피 종가 " + Number(idx.px).toLocaleString("ko-KR", { maximumFractionDigits: 2 }) + " (" + pcLive(idx.chg) + ")");
     const nxt = stockEt();
     if (nxt > 0) out.push("관심 종목 NXT 거래대금 " + money(nxt));
     out.push(...etfExt());
-    const fs = brief.futures || [];
-    const sp = fs.find((x) => x.name === "S&P500"), nq = fs.find((x) => x.name === "나스닥100");
+    const sp = future("S&P500"), nq = future("나스닥100");
     if (sp || nq) out.push("24시간 지수 참고 " + (sp ? "S&P500 " + pcLive(sp.chg) : "") + (sp && nq ? " · " : "") + (nq ? "나스닥100 " + pcLive(nq.chg) : ""));
     if (latest()) out.push(latest());
     at = Math.max(idx.at || 0, window.trlLev && window.trlLev.at || 0, brief.at || 0) || at;
