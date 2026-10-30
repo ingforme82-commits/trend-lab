@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from s7 import calc, is_common, prev_mcap  # noqa: E402
+from s7 import KST, calc, is_common, krx_regular, prev_mcap  # noqa: E402
 
 
 class S7Test(unittest.TestCase):
@@ -29,6 +29,13 @@ class S7Test(unittest.TestCase):
         self.assertEqual(s["ex_pts"], 10.0)
         self.assertAlmostEqual(s["ex_chg"], 10 / 600 * 100, places=2)
         self.assertEqual(s["share"], 67)
+
+
+    def test_krx_regular(self):
+        from datetime import datetime
+        self.assertTrue(krx_regular(datetime(2026, 10, 30, 14, 0, tzinfo=KST)))
+        self.assertFalse(krx_regular(datetime(2026, 10, 30, 23, 50, tzinfo=KST)))   # 마감 뒤 NXT 시간
+        self.assertFalse(krx_regular(datetime(2026, 10, 31, 10, 0, tzinfo=KST)))    # 토요일
 
 
 if __name__ == "__main__":

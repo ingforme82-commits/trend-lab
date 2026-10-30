@@ -109,6 +109,12 @@ def _total_prev() -> float:
     return tot
 
 
+def krx_regular(now: datetime | None = None) -> bool:
+    """한국 정규장 시간(평일 09:00~15:30 KST)인가."""
+    t = (now or datetime.now(KST)).astimezone(KST)
+    return t.weekday() < 5 and 9 * 60 <= t.hour * 60 + t.minute <= 15 * 60 + 30
+
+
 def build() -> dict:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from flows import _trader, _trend, parse_trader, parse_trend
@@ -131,11 +137,13 @@ def build() -> dict:
             cache["tot"], cache["tot_day"] = _total_prev(), kday
         except Exception:  # noqa: BLE001
             pass
-    try:
-        from kbprog import fetch_quotes
-        kb_quotes = fetch_quotes(list(S7))
-    except Exception:  # noqa: BLE001
-        kb_quotes = {}
+    kb_quotes = {}
+    if krx_regular():                                  # KB 현재가는 정규장(09:00~15:30)에만 — 장 끝나면 NXT 시간외 가격이 섞이므로 정규장 종가(네이버) 사용
+        try:
+            from kbprog import fetch_quotes
+            kb_quotes = fetch_quotes(list(S7))
+        except Exception:  # noqa: BLE001
+            kb_quotes = {}
     rows = []
     for d in sd:
         code = d.get("itemCode")
