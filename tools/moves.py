@@ -28,6 +28,7 @@ ASSETS = [
     ("DXY", "달러인덱스", "yf", "DX-Y.NYB", "pct", 0.20, ("연준·금리",)),
 ]
 WIN = 10            # 분
+TREND_1H = {"WTI": 1.0, "BRENT": 1.0}   # 60분 변화가 이 % 이상이면 평소 폭과 상관없이 변곡점(운영자 기준: 유가는 1%만 변해도)
 US_A, KR_A = {"NQ", "SP"}, {"K200"}
 US_RX = re.compile(r"미국|나스닥|S&P|다우|뉴욕|월가|연준|파월|엔비디아|브로드컴|인텔|AMD|마이크론|테슬라|애플|오클로|뉴스케일|"
                    r"\$[A-Z]{1,5}\b|Nasdaq|Wall Street|\bFed\b|NYSE")
@@ -166,14 +167,15 @@ def detect(asset, rows: list[tuple[int, float]]) -> list[dict]:
     if len(rows) < 60:
         return []
     flags: dict[int, tuple[bool, int, float]] = {}       # i → (상승?, 기준창, 평소폭)
-    for win, mult in ((5, 0.6), (WIN, 1.0), (30, 1.6)):   # 5분(짧고 급한 움직임)·10분·30분
+    wins = [(5, 0.6), (WIN, 1.0), (30, 1.6)] + ([(60, None)] if code in TREND_1H else [])   # 5분·10분·30분(+유가 60분)
+    for win, mult in wins:
         base = _returns(rows, win)
         rets = [_chg(b[1], rows[i][1], unit) if b else 0.0 for i, b in enumerate(base)]
         absr = [abs(x) for x in rets if x]
         if not absr:
             continue
         mad = statistics.median(absr) or 1e-9
-        thr = max(SIGMA * mad, floor * mult)
+        thr = TREND_1H[code] if mult is None else max(SIGMA * mad, floor * mult)
         for i, r in enumerate(rets):
             if abs(r) >= thr and i not in flags:
                 flags[i] = (r > 0, win, mad)

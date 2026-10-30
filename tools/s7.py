@@ -139,10 +139,11 @@ def build() -> dict:
     rows = []
     for d in sd:
         code = d.get("itemCode")
-        px, diff, sg = kb_quotes.get(code, _n(d.get("closePriceRaw"))), abs(_n(d.get("compareToPreviousClosePriceRaw"))), _sign(d)
+        npx, diff, sg = _n(d.get("closePriceRaw")), abs(_n(d.get("compareToPreviousClosePriceRaw"))), _sign(d)
+        px = kb_quotes.get(code, npx)                 # 현재가는 KB(있으면), 전일 종가는 네이버 값(같은 출처의 가격−대비)
         if code not in S7 or not px:
             continue
-        prev = px - sg * diff
+        prev = npx - sg * diff
         tot_val = _n((d.get("integratedPriceInfo") or {}).get("accumulatedTradingValueRaw"))
         val = _n(d.get("accumulatedTradingValueRaw"))
         rows.append({"code": code, "name": S7[code], "px": px, "chg": round((px / prev - 1) * 100, 2) if prev else 0.0,
