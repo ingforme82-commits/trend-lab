@@ -87,6 +87,41 @@ def _one(code: str, token: str) -> dict | None:
     return parse(out if isinstance(out, list) else [out])
 
 
+def fetch_quotes(codes: list[str]) -> dict[str, float]:
+    """KB IVU10140 국내주식 현재가. 인증정보·원응답은 기록하지 않는다."""
+    now = time.time()
+    try:
+        cache = json.loads((TOKDIR / "kbquote_cache.json").read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        cache = {}
+    need = [code for code in codes if now - (cache.get(code) or {}).get("t", 0) > 45]
+    if need:
+        try:
+            tok = _token()
+        except Exception:  # noqa: BLE001
+            tok = None
+        if tok:
+            def one(code: str):
+                try:
+                    r = _post(f"{BASE}/api/v1/ivu10140", {"shrt_cd": code, "excg_clsf": "0"}, tok)
+                    if (r.get("dataHeader") or {}).get("resultCode") != "200":
+                        return code, None
+                    px = float(str((r.get("dataBody") or {}).get("now_prc") or "0").replace(",", "").replace("+", ""))
+                    return code, px if px > 0 else None
+                except Exception:  # noqa: BLE001
+                    return code, None
+            with ThreadPoolExecutor(max_workers=4) as ex:
+                for code, px in ex.map(one, need):
+                    if px:
+                        cache[code] = {"t": now, "px": px}
+            try:
+                TOKDIR.mkdir(parents=True, exist_ok=True)
+                (TOKDIR / "kbquote_cache.json").write_text(json.dumps(cache), encoding="utf-8")
+            except OSError:
+                pass
+    return {code: float(cache[code]["px"]) for code in codes if cache.get(code) and cache[code].get("px")}
+
+
 def fetch(codes: list[str], hot: set[str] | None = None) -> dict[str, dict]:
     """종목코드 → {day, amt, q, amt5}. 키가 없거나 실패하면 저장본(있으면)만 돌려준다."""
     try:
