@@ -25,7 +25,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $o push -Message "무엇을 
 - 시황 업데이트 요청을 받으면: `status` → 사이트의 🏁 주도 섹터·⏱ 시간대별 강세·💰 주도주 수급(외국인·기관·프로그램)·S7 을 보고 한국/미국을 나눠 `issue` 로 올린다.
 
 ### 알림(2026-10-30 운영자 결정)
-- **카톡은 보내지 않는다.** `%USERPROFILE%\.kakao_notify\OFF` 가 있으면 모든 카톡이 `market-site\trader\logs\kakao_off_outbox.jsonl` 기록으로만 남는다. 지우지 말 것(운영자가 다시 켜라고 할 때만).
+- **카톡은 보내지 않는다.** `%USERPROFILE%\.kakao_notify\OFF` 가 있으면 모든 카톡이 `market-site\trader\logs\kakao_off_outbox.jsonl` 기록으로만 남는다. 지우지 말 것(운영자가 다시 켜라고 할 때만). **예외: NH 모의 주문이 실제로 나갔을 때만 카톡 전송**(strategy.py `notify(..., force=True)`, 텔레 봇 토큰 전까지).
 - **이슈만 텔레그램 개인 알림**: `python tools/tg_alert.py status|setup|find-chat|test`. 변곡점·운영자 가격대 도달/이탈·주도 섹터 1위 교체·NH 모의 주문 시 자동. `~/.tg_notify/.env` 의 `TG_ALERT_ON=1` 전에는 `tools/alert_outbox.log` 미리 보기만. 토큰·chat id 값은 출력·커밋 금지.
 
 ### 자주 나는 장애와 대응(2026-10-30 실제 사례)
