@@ -117,7 +117,7 @@
     const box = q("#ticker"); if (!box) return;
     const tr = box.querySelector(".tk-track");
     if (!tr) return;
-    tickPick = pick;
+    tickPick = pick; pick.shownAt = Date.now();
     tr.innerHTML = tickRow(pick);
     tr.style.animationDuration = `${Math.max(30, pick.reduce((a, n) => a + Math.min(110, n.text.length), 0) * 0.28)}s`;   // 글 길이에 맞춘 일정한 속도
   }
@@ -146,9 +146,19 @@
       });
     } else {
       pick.lab = lab;
-      tickPending = pick;                                  // 흐르는 중에는 끊지 않고 다음 바퀴부터
+      // 흐르는 중에는 끊지 않고 다음 바퀴부터. 단, 지금 흐르는 목록이 10분 넘게 묵었으면(백그라운드 탭·폰 화면 꺼짐으로 바퀴가 안 끝난 경우) 바로 바꾼다
+      const stale = !tickPick.shownAt || Date.now() - tickPick.shownAt > 10 * 60000 || document.hidden;
+      if (stale) { tickPending = null; tickShow(pick); const l = box.querySelector(".tk-label"); if (l) l.innerHTML = lab; }
+      else tickPending = pick;
     }
   }
+  // 탭·폰 화면으로 돌아오면 기다리던 새 목록을 바로 넣는다
+  document.addEventListener("visibilitychange", () => {
+    if (document.hidden || !tickPending) return;
+    const box = q("#ticker"); if (!box) return;
+    const p = tickPending; tickPending = null; tickShow(p);
+    const l = box.querySelector(".tk-label"); if (l) l.innerHTML = p.lab;
+  });
 
   /* ── '이후' 변화(5분봉) ── */
   function reaction(k, ts) {
