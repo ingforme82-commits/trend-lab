@@ -457,7 +457,6 @@ function bandText(h) {
 function liveBand() {
   const now = new Date(), k = KST(now), minute = k.getHours() * 60 + k.getMinutes();
   const weekday = k.getDay() > 0 && k.getDay() < 6;
-  if (!weekday) return null;
   const etParts = new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", weekday: "short", hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(now);
   const part = (name) => (etParts.find((x) => x.type === name) || {}).value || "";
   const etMinute = (+part("hour")) * 60 + (+part("minute"));
@@ -489,8 +488,17 @@ function liveBand() {
       : x.sym + " 시간외 마지막 체결 " + cash(e.px) + " (" + pcLive(e.chg) + " · " + stamp + " KST)";
   });
   const future = (name) => (brief.futures || []).find((x) => x.name === name);
+  const live24 = () => [["코스피200", ""], ["나스닥100", ""], ["S&P500", ""], ["WTI", "$"], ["브렌트", "$"], ["금", "$"], ["원/달러", ""]]
+    .map(([n, u]) => { const f = future(n); return f ? n + " " + u + Number(f.px).toLocaleString("en-US", { maximumFractionDigits: 2 }) + " (" + pcLive(f.chg) + ")" : ""; })
+    .filter(Boolean).join(" · ");
   let icon = "", title = "", at = window.trlUpdated || Date.now();
-  if (minute >= 930 && minute < 1200) {
+  if (!weekday) {
+    // 주말: 정시 브리핑 대신 지금 시각 24시간 시세 하나로(운영자 지시 — 기준을 나누지 않음)
+    icon = "🛰️"; title = "주말 · 24시간 시세";
+    out.push(live24());
+    if (latest()) out.push(latest());
+    at = brief.at || at;
+  } else if (minute >= 930 && minute < 1200) {
     icon = "🏁"; title = "KRX 마감";
     if (idx.px != null) out.push("코스피 " + Number(idx.px).toLocaleString("ko-KR", { maximumFractionDigits: 2 }) + " (" + pcLive(idx.chg) + ")");
     if (kosdaq.px != null) out.push("코스닥 " + Number(kosdaq.px).toLocaleString("ko-KR", { maximumFractionDigits: 2 }) + " (" + pcLive(kosdaq.chg) + ")");
@@ -536,7 +544,12 @@ function liveBand() {
     if (sp || nq) out.push("24시간 지수 참고 " + (sp ? "S&P500 " + pcLive(sp.chg) : "") + (sp && nq ? " · " : "") + (nq ? "나스닥100 " + pcLive(nq.chg) : ""));
     if (latest()) out.push(latest());
     at = Math.max(idx.at || 0, window.trlLev && window.trlLev.at || 0, brief.at || 0) || at;
-  } else return null;
+  } else {
+    icon = "🛰️"; title = "24시간 시세";
+    out.push(live24());
+    if (latest()) out.push(latest());
+    at = brief.at || at;
+  }
   const time = hhmm(KST(new Date(at))) + " 기준";
   return { icon, title, text: out.filter(Boolean).join(" · "), date: (k.getMonth() + 1) + "/" + k.getDate(), time };
 }
