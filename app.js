@@ -590,7 +590,36 @@ function archCard(s, isNext, label) {
     <h3 class="arc-title">${esc(s.title)}</h3><p class="arc-sub">${esc(s.book || s.theme || "")}</p></div></a>`;
 }
 
+async function loadEducation() {
+  try {
+    const r = await fetch(`data/education.json?t=${Date.now()}`);
+    if (!r.ok) throw new Error("교육용 멘트를 불러오지 못했습니다.");
+    const data = await r.json();
+    const items = (data.items || []).slice().sort((a, b) => b.date.localeCompare(a.date));
+    $("#eduList").innerHTML = items.map((item) => {
+      const body = (item.body || []).map((p) => `<p>${esc(p)}</p>`).join("");
+      const closing = esc(item.closing || "").replace(/\n/g, "<br>");
+      return `<article class="edu-card">
+        <div class="edu-meta"><span>${esc(item.category || "교육용 멘트")}</span><time datetime="${esc(item.date)}">${fmtD(item.date, true)}</time></div>
+        <h4>${esc(item.title)}</h4>
+        <p class="edu-summary">${esc(item.summary)}</p>
+        <blockquote>${esc(item.highlight)}</blockquote>
+        <details><summary>전문 읽기</summary>
+          <div class="edu-body">${body}</div>
+          <p class="edu-closing">${closing}</p>
+          <p class="edu-author">— ${esc(item.author)}</p>
+          <p class="edu-disclaimer">${esc(item.disclaimer)}</p>
+        </details>
+      </article>`;
+    }).join("") || '<p class="empty">아직 등록된 교육용 멘트가 없습니다.</p>';
+    $("#eduStamp").textContent = data.updated ? `마지막 등록 ${fmtD(data.updated, true)}` : "";
+  } catch (e) {
+    $("#eduList").innerHTML = '<p class="empty">교육용 멘트를 불러오지 못했습니다.</p>';
+    console.error(e);
+  }
+}
+
 /* ───────── 시작 ───────── */
-loadHeadline(); loadTicks(); loadChecks(); loadStudies();   // 블로그 분석 글 피드는 2026-10-28 운영자 결정으로 뺌
+loadHeadline(); loadTicks(); loadChecks(); loadStudies(); loadEducation();   // 블로그 분석 글 피드는 2026-10-28 운영자 결정으로 뺌
 setInterval(loadTicks, 30000);
 
