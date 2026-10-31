@@ -91,7 +91,7 @@ def world_and_spot() -> tuple[list[dict], list[dict]]:
     for s in cfg:
         if not s.get("on"):
             continue
-        row = {k: s.get(k) for k in ("id", "name", "market", "reason", "since", "kw", "hl", "yf")}
+        row = {k: s.get(k) for k in ("id", "name", "market", "reason", "since", "kw", "hl", "yf", "kind")}
         if s.get("members"):                              # 종목군: 구성 종목별 오늘 등락·3개월 고점 대비
             from concurrent.futures import ThreadPoolExecutor
             from sector_watch import _quote
