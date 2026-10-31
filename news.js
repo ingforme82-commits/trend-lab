@@ -242,7 +242,7 @@
     const head = s.avg ? `<span class="spot-px">평균</span><b class="${cls(s.chg)}">${s.chg > 0 ? "+" : ""}${(+s.chg).toFixed(2)}%</b>`
       : s.px ? `<span class="spot-px">$${(+s.px).toLocaleString("ko-KR", { maximumFractionDigits: 2 })}</span><b class="${cls(s.chg)}">${s.chg > 0 ? "+" : ""}${(+s.chg).toFixed(2)}%</b>` : "";
     return `<article class="spot">
-      <div class="spot-top"><b class="spot-n">${esc(s.name)}</b><span class="spot-m">${esc(s.market || "")} · ${esc(s.since || "")}부터</span>${head}</div>
+      <div class="spot-top">${s.kind ? `<span class="spot-k">${esc(s.kind)}</span>` : ""}<b class="spot-n">${esc(s.name)}</b><span class="spot-m">${esc(s.market || "")} · ${esc(s.since || "")}부터</span>${head}</div>
       ${s.reason ? `<p class="spot-r">${esc(s.reason)}</p>` : ""}
       ${mem.length ? memBlock(s, mem) : ""}
       <p class="spot-c">최근 24시간 관련 속보 <b>${today}건</b></p>
@@ -286,7 +286,7 @@
     spotIdx = ((spotIdx % spot.length) + spot.length) % spot.length;
     const nav = spot.length > 1 ? `<div class="spot-nav"><button class="spot-arrow" data-spot-step="-1" aria-label="이전">‹</button>${spot.map((x, i) =>
       `<button class="spot-dot${i === spotIdx ? " on" : ""}" data-spot-go="${i}" title="${esc(x.name)}">${esc(x.name)}</button>`).join("")}<button class="spot-arrow" data-spot-step="1" aria-label="다음">›</button></div>` : "";
-    box.innerHTML = `<p class="spot-h">🔥 오늘의 주요 종목군 <small>미국 개장 30분 뒤 가격·뉴스 움직임으로 매일 자동 선정 · 추천 아님 · ${spot.length}개가 번갈아 보입니다</small></p>${nav}${spotCard(spot[spotIdx])}`;
+    box.innerHTML = `<p class="spot-h">🔥 오늘의 주요 종목군 <small>매일 미국 개장 30분 뒤 자동 선정 — 움직임 큰 종목군 · ⚡ 급등락 대형주 · 📈 연일 상승 종목군 · 추천 아님 · ${spot.length}개가 번갈아 보입니다</small></p>${nav}${spotCard(spot[spotIdx])}`;
     if (!spotTimer && spot.length > 1) {
       spotTimer = setInterval(() => { if (!spotHold && !memOpen) { spotIdx++; drawSpot(); } }, 8000);
       box.addEventListener("mouseenter", () => { spotHold = true; });

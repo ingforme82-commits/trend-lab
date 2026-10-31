@@ -4,7 +4,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from spot_auto import apply, in_window, reason, score, stats  # noqa: E402
+from spot_auto import apply, big_movers, in_window, reason, score, stats, streak  # noqa: E402
 
 AT = int(datetime(2026, 10, 27, 15, 0, tzinfo=timezone.utc).timestamp() * 1000)   # 뉴욕 10/27 11:00
 
@@ -52,6 +52,20 @@ class ApplyTest(unittest.TestCase):
         self.assertEqual(out[1]["since"], "2026-10-27")
         self.assertFalse(out[2]["on"])
         self.assertTrue(out[3]["on"])
+
+
+    def test_streak_and_movers(self):
+        self.assertEqual(streak([1, -1, 0.5, 0.2, 0.1]), 3)
+        self.assertEqual(streak([1, -0.1]), 0)
+        st = [{"sym": "A", "chg": -20, "mcap": 5e10}, {"sym": "B", "chg": -15, "mcap": 5e10}, {"sym": "C", "chg": -12, "mcap": 5e10},
+              {"sym": "D", "chg": 9, "mcap": 5e10}, {"sym": "E", "chg": -30, "mcap": 1e9}, {"sym": "F", "chg": 3, "mcap": 9e11}]
+        self.assertEqual([x["sym"] for x in big_movers(st)], ["A", "B", "D"])   # 한 방향 최대 2개, 소형주·작은 등락 제외
+
+    def test_singles_kept_three_days(self):
+        spots = [{"id": "GOOGL", "yf": "GOOGL", "auto": True, "on": True, "since": "2026-10-31"},
+                 {"id": "OLD", "yf": "OLD", "auto": True, "on": True, "since": "2026-10-20"}]
+        out = apply(spots, {}, [], "2026-11-03", [{"id": "INTC", "name": "인텔", "yf": "INTC"}])
+        self.assertEqual([(s["id"], s["on"]) for s in out], [("INTC", True), ("GOOGL", True), ("OLD", False)])
 
 
 if __name__ == "__main__":

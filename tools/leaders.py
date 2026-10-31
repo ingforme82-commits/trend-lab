@@ -147,7 +147,7 @@ def us() -> dict:
         status = status or s.get("marketStatus", "")
         stocks.append({"sym": sym, "name": s.get("stockName"), "ind": (s.get("industryCodeType") or {}).get("industryGroupKor"),
                        "px": _n(s.get("closePriceRaw")), "chg": _chg(s), "val": _n(s.get("accumulatedTradingValueRaw")),
-                       "mcap": _n(s.get("marketValueRaw"))})
+                       "mcap": _n(s.get("marketValueRaw")), "eng": s.get("stockNameEng") or ""})
     return {"industry": score(us_groups(stocks))[:N_SHOW], "open": status == "OPEN",
             "map": {s["sym"]: {"mcap": s["mcap"], "val": s["val"]} for s in stocks},
             "all": stocks}                                   # 시간대별 강세(tools/hourly.py)가 쓰는 전 종목 — news.json 에는 안 올림
