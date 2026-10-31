@@ -20,6 +20,56 @@
  "free": "커피 · 와이파이 · 사무실 이용 모두 무료",
  "spotlight": [
   {
+   "id": "INTC",
+   "name": "인텔",
+   "market": "미국",
+   "yf": "INTC",
+   "on": true,
+   "since": "2026-10-27",
+   "kw": "인텔|Intel|\\bINTC\\b",
+   "reason": "10/30(금) 정규장 -28.58% · 시가총액 약 3,492억 달러 · 업종 반도체",
+   "kind": "⚡ 급락 대형주",
+   "hl": "xyz:INTC",
+   "auto": true
+  },
+  {
+   "id": "ILMN",
+   "name": "일루미나",
+   "market": "미국",
+   "yf": "ILMN",
+   "kw": "일루미나|Illumina|\\bILMN\\b",
+   "kind": "⚡ 급락 대형주",
+   "reason": "10/30(금) 정규장 -18.64% · 시가총액 약 356억 달러 · 업종 첨단 의료 장비 및 기술",
+   "on": true,
+   "auto": true,
+   "since": "2026-10-31"
+  },
+  {
+   "id": "REGN",
+   "name": "리제네론 파마슈티컬스",
+   "market": "미국",
+   "yf": "REGN",
+   "kw": "리제네론|Regeneron|\\bREGN\\b",
+   "kind": "⚡ 급등 대형주",
+   "reason": "10/30(금) 정규장 +13.33% · 시가총액 약 955억 달러 · 업종 제약",
+   "on": true,
+   "auto": true,
+   "since": "2026-10-31"
+  },
+  {
+   "id": "GOOGL",
+   "name": "알파벳(구글)",
+   "market": "미국",
+   "yf": "GOOGL",
+   "hl": "xyz:GOOGL",
+   "kw": "알파벳|구글|Alphabet|Google|\bGOOGL?\b",
+   "kind": "⚡ 급락 대형주",
+   "reason": "10/29(목) 정규장 -12.6%(상장 뒤 하루 최대 하락) · 10/30(금) -1.4% · 3분기 잉여현금흐름 -91억 달러 · 2027년 설비투자 3,000억 달러 이상 계획 · 시가총액 약 1조 8,791억 달러",
+   "on": true,
+   "auto": true,
+   "since": "2026-10-31"
+  },
+  {
    "id": "USSEMI",
    "name": "미국 반도체",
    "market": "미국",
@@ -34,7 +84,7 @@
     "MRVL": "마벨",
     "INTC": "인텔"
    },
-   "reason": "10/30(금) 미국 정규장 마감 기준 · 평균 -10.78%(전일 종가 대비) · 개장 후 -2.55% · 8종목 중 8종목 하락 · 최저 인텔 -28.58% · 관련 속보 7건(12시간)",
+   "reason": "10/30(금) 미국 정규장 마감 기준 · 평균 -10.78%(전일 종가 대비) · 개장 후 -2.55% · 8종목 중 8종목 하락 · 최저 인텔 -28.58% · 관련 속보 6건(12시간)",
    "on": true,
    "auto": true,
    "hl": "xyz:SMH",
@@ -76,11 +126,30 @@
    "since": "2026-10-31"
   },
   {
+   "id": "ENERGY",
+   "name": "정유·에너지",
+   "market": "미국",
+   "kw": "엑슨|Exxon|셰브론|Chevron|옥시덴탈|Occidental|코노코|Conoco|유가|원유|WTI|브렌트|oil|crude",
+   "members": {
+    "XOM": "엑슨모빌",
+    "CVX": "셰브론",
+    "OXY": "옥시덴탈",
+    "COP": "코노코필립스",
+    "SLB": "SLB"
+   },
+   "reason": "평균 3일 연속 상승 · 최근 5거래일 합계 +1.30%(일봉 종가 기준)",
+   "on": true,
+   "auto": true,
+   "kind": "📈 연일 상승",
+   "hl": "xyz:XLE",
+   "since": "2026-10-31"
+  },
+  {
    "id": "OPTICAL",
    "name": "광통신·네트워크",
    "market": "미국",
    "hl": "xyz:LITE",
-   "on": true,
+   "on": false,
    "since": "2026-10-27",
    "kw": "루멘텀|Lumentum|광통신|광트랜시버|광모듈|코히런트|Coherent|Ciena|시에나|AAOI|패브리넷|Fabrinet|크레도|Credo|코닝|Corning|CPO|아리스타|Arista",
    "reason": "10/30(금) 미국 정규장 마감 기준 · 평균 -8.55%(전일 종가 대비) · 개장 후 -1.53% · 8종목 중 8종목 하락 · 최저 AAOI -12.80%",
@@ -94,7 +163,8 @@
     "GLW": "코닝",
     "ANET": "아리스타"
    },
-   "auto": true
+   "auto": true,
+   "until": "2026-10-31"
   },
   {
    "id": "TSLA",
@@ -106,18 +176,6 @@
    "since": "2026-10-27",
    "kw": "테슬라|Tesla|TSLA|머스크|Musk|사이버캡|옵티머스|로보택시",
    "reason": "스페이스X 합병 논의 속 강세 — 3개월 고점 돌파 구간",
-   "until": "2026-10-31"
-  },
-  {
-   "id": "INTC",
-   "name": "인텔",
-   "market": "미국",
-   "hl": "xyz:INTC",
-   "yf": "INTC",
-   "on": false,
-   "since": "2026-10-27",
-   "kw": "인텔|Intel|INTC",
-   "reason": "미국 반도체 섹터 동반 강세 속 상승",
    "until": "2026-10-31"
   },
   {
