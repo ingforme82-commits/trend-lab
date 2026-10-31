@@ -735,3 +735,26 @@ body{overflow-x:hidden}
 .ticker:hover .tk-track.tk-flow{animation-play-state:running}
 @keyframes tkflow{from{transform:translateX(0)}to{transform:translateX(-100%)}}
 @media (prefers-reduced-motion:reduce){.tk-track.tk-flow{animation-duration:240s !important}}
+
+/* education messages archive */
+.edu-board{margin:0 0 42px;padding:24px;background:linear-gradient(135deg,#f5f7fa,#fff);border:1px solid var(--line);border-radius:18px}
+.edu-head{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;margin-bottom:18px}
+.edu-head h3{margin:0;font-size:22px;color:var(--navy);font-weight:900}
+.edu-head .eyebrow{margin:0 0 4px}
+.edu-head .sec-sub{margin:4px 0 0}
+.edu-list{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px}
+.edu-card{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;box-shadow:0 5px 18px rgba(15,27,45,.045)}
+.edu-meta{display:flex;justify-content:space-between;gap:12px;color:var(--sub);font-size:13px}
+.edu-meta span{color:var(--gold-d);font-weight:700}
+.edu-card h4{margin:9px 0;font-size:20px;line-height:1.45;color:var(--ink)}
+.edu-summary{margin:0;color:#465064;line-height:1.75}
+.edu-card blockquote{margin:16px 0;padding:12px 16px;background:var(--gold-bg);border-left:4px solid var(--gold);border-radius:0 10px 10px 0;font-size:17px;font-weight:900;color:var(--navy);line-height:1.6}
+.edu-card details{border-top:1px solid var(--line);padding-top:14px}
+.edu-card summary{cursor:pointer;color:var(--gold-d);font-weight:700}
+.edu-body{padding-top:10px;color:#343d4d;font-size:15px;line-height:1.9}
+.edu-body p{margin:0 0 14px}
+.edu-closing{margin:18px 0 8px;font-weight:700;line-height:1.8;white-space:normal}
+.edu-author{margin:0;color:var(--navy);font-weight:700}
+.edu-disclaimer{margin:8px 0 0;color:var(--sub);font-size:12px}
+.arch-divider{height:1px;margin:28px 0;background:var(--line)}
+@media(max-width:600px){.edu-board{padding:16px}.edu-head{align-items:flex-start;flex-direction:column}.edu-card{padding:17px}.edu-card h4{font-size:18px}}
