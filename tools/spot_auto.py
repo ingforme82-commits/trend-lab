@@ -3,6 +3,7 @@
   python tools/spot_auto.py            # 시간 창(개장 후 20~75분) 안일 때만 실행, data/site.json 고치고 push
   python tools/spot_auto.py --dry      # 시간과 상관없이 계산만 출력(기록·push 안 함)
   python tools/spot_auto.py --force    # 시간 창 밖이어도 실행
+  python tools/spot_auto.py --last     # 주말·휴장일에 직전 거래일 마감 기준으로 바로 교체
 
 - 후보: data/spot_pool.json 의 종목군(미국). 야후 5분봉으로 전일 종가 대비·개장 후 등락을 계산한다.
 - 점수 = |평균 등락| × (0.5 + 같은 방향 종목 비율) + 개장 후 |평균 등락| × 0.5 + 관련 속보 수(최근 12시간, 최대 10) × 0.15
@@ -134,10 +135,11 @@ def git(*a: str) -> subprocess.CompletedProcess:
 
 
 def main() -> int:
-    sys.stdout.reconfigure(encoding="utf-8")
-    dry, force = "--dry" in sys.argv, "--force" in sys.argv
+    if sys.stdout:                                                     # 예약 작업(pythonw)에서는 stdout 이 없다
+        sys.stdout.reconfigure(encoding="utf-8")
+    dry, force, last = "--dry" in sys.argv, "--force" in sys.argv, "--last" in sys.argv
     now = datetime.now(timezone.utc)
-    if not (dry or force or in_window(now)):
+    if not (dry or force or last or in_window(now)):
         return 0                                                       # 서머타임/해제 두 시각 중 맞는 쪽만 실행
     ny = ny_now(now)
     today_ny = ny.strftime("%Y-%m-%d")
@@ -147,7 +149,7 @@ def main() -> int:
     syms = sorted({s for p in pool.values() for s in p["members"]})
     with ThreadPoolExecutor(max_workers=8) as ex:
         q = dict(zip(syms, ex.map(_yq, syms)))
-    if dry:                                                            # 확인용: 장 전이면 직전 거래일 기준
+    if dry or last:                                                    # 확인용·--last: 장 전·주말이면 직전 거래일 기준
         days = [datetime.fromtimestamp(d["at"] / 1000, timezone.utc).astimezone(ny.tzinfo).strftime("%Y-%m-%d") for d in q.values() if d and d.get("at")]
         today_ny = max(days, default=today_ny)
     items = [it for it in _news() if now.timestamp() * 1000 - it["ts"] < 12 * 3600_000]
@@ -166,6 +168,10 @@ def main() -> int:
         log(f"종목군 교체 건너뜀 — 오늘({today_ny}) 미국 정규장 시세가 충분하지 않음(휴장 가능, {len(ranked)}개)")
         return 2
     picks = [(gid, reason(st, n, f"{open_kst:%H:%M}", mins)) for _, gid, st, n in ranked[:PICK]]
+    if last and today_ny != ny.strftime("%Y-%m-%d"):                   # 지난 거래일 마감 기준으로 고르면 이유 앞머리를 바꾼다
+        dd = datetime.strptime(today_ny, "%Y-%m-%d")
+        tag = f"{dd.month}/{dd.day}({'월화수목금토일'[dd.weekday()]}) 미국 정규장 마감 기준"
+        picks = [(gid, re.sub(r"^미국 개장\([^)]*\) 후 \d+분", tag, rs)) for gid, rs in picks]
     if dry:
         for gid, rs in picks:
             print("선정:", pool[gid]["name"], "—", rs)
