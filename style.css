@@ -642,7 +642,16 @@ body{overflow-x:hidden}
 
 /* SOXL·KORU 점검 */
 .lvbox{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 12px}
-.lv{margin:6px 0 8px}.lv ul{margin:0;padding-left:18px;font-size:13.5px;line-height:1.65}
+.lc-g{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin:6px 0}
+.lc{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fff}
+.lc-h,.lc-p,.lc-f{margin:0}.lc-px{font-size:20px}.lc-p{margin:2px 0 6px;font-size:14px}
+.lc-cs{display:flex;flex-wrap:wrap;gap:5px}
+.lc-c{font-size:12.5px;border-radius:999px;padding:2px 8px;font-weight:600}
+.lc-c.on{background:#fde8e8;color:var(--up)}.lc-c.off{background:#e6eefb;color:var(--down)}.lc-c.mid{background:#f1f1f1;color:var(--sub)}
+.lc-r{display:flex;align-items:center;gap:6px;margin:8px 0 4px;font-size:11.5px;color:var(--sub)}
+.lc-b{position:relative;flex:1;height:6px;border-radius:3px;background:linear-gradient(90deg,var(--down),#ddd,var(--up))}
+.lc-b i{position:absolute;top:-4px;width:4px;height:14px;margin-left:-2px;background:#222;border-radius:2px}
+.lc-f{font-size:12.5px;color:var(--sub)}.lc-p+.lc-f{margin:-4px 0 6px}
 .wt-ev{margin:0;padding-left:18px;font-size:13.5px;line-height:1.65}
 .band-a{color:inherit;text-decoration:none}.band-a small{opacity:.8}
 .mv-lag{font-weight:600;color:var(--ink,#333)}

@@ -316,37 +316,34 @@
     return `<div class="mm"><p class="mm-h">📈 섹터 모멘텀 <small>${st}${usd}</small></p><ol class="mm-l">${rows}</ol>
       ${compact ? "" : `<p class="mm-f">순서는 고정(미국 반도체·한국 반도체·2차전지·방산·원전·조선), 왼쪽 'n위'는 점수 순위 · 거래대금 가속도·상대강도·5일선·신고가 근접 4개 지표의 종목 간 순위(0~100)로 계산 · 수급 미반영 · 매수·매도 권유 아님</p>`}</div>`;
   }
-  // 🔬 SOXL · KORU 점검(레버리지 3배 ETF): 갭·5일선·20일선·연속 양봉·20일 고저·거래량·기초지수 ×3·24시간 시세
+  // 🔬 SOXL · KORU 한눈에: 가격 한 줄 + 상태 배지(5일선·20일선·연속 양봉·운영자 가격대) + 20일 범위 막대 + 기초지수 한 줄
   const md2 = (ms) => { const d = kst(ms); return `${d.getMonth() + 1}/${d.getDate()}`; };
+  function levCard(x, level) {
+    const $$ = (v) => v == null ? "-" : "$" + (+v).toFixed(2);
+    const pc = (v) => v == null ? "-" : `${v > 0 ? "+" : ""}${(+v).toFixed(1)}%`;
+    if (!x || x.err || x.px == null) return `<div class="lc"><b>${esc((x && x.sym) || "")}</b> <span class="dim">시세를 받지 못함</span></div>`;
+    const chip = (ok, t) => `<span class="lc-c ${ok ? "on" : "off"}">${ok ? "▲" : "▼"} ${t}</span>`;
+    const C = [chip(x.over_ma5, `5일선 ${x.over_ma5 ? "위" : "아래"} ${pc(x.vs_ma5)}`)];
+    if (x.ma20 != null) C.push(chip(x.over_ma20, `20일선 ${x.over_ma20 ? "위" : "아래"} ${pc(x.vs_ma20)}`));
+    C.push(`<span class="lc-c ${x.three ? "on" : "mid"}">${x.three ? "적삼병 조건" + (x.open ? " 진행 중" : " 충족") : `연속 양봉 ${x.bull ? x.streak : 0}일`}</span>`);
+    if (level) { const d = (x.px / level - 1) * 100; C.push(`<span class="lc-c ${Math.abs(d) < 0.15 ? "mid" : d > 0 ? "on" : "off"}">가격대 $${level} ${Math.abs(d) < 0.15 ? "부근" : d > 0 ? "위" : "아래"}</span>`); }
+    let bar = "";
+    if (x.hi20 != null && x.lo20 != null && x.hi20 > x.lo20) {
+      const pos = Math.max(0, Math.min(100, (x.px - x.lo20) / (x.hi20 - x.lo20) * 100));
+      bar = `<div class="lc-r"><small>20일 저가 ${$$(x.lo20)}</small><span class="lc-b"><i style="left:${pos.toFixed(0)}%"></i></span><small>고가 ${$$(x.hi20)}</small></div>`;
+    }
+    const ext = x.ext ? `<p class="lc-f">🌙 시간외 ${$$(x.ext.px)} <b class="${cls(x.ext.chg)}">${pc(x.ext.chg)}</b> <small>(정규장 종가 대비)</small></p>` : "";
+    const base = x.base_chg != null ? `기초 ${esc(String(x.base).replace(/\(.*\)/, ""))} <b class="${cls(x.base_chg)}">${pc(x.base_chg)}</b>` : "";
+    const mem = x.members ? ` · 구성 대형주 ${x.members.n_up}/${x.members.n} 상승` : "";
+    return `<div class="lc"><p class="lc-h"><b>${esc(x.sym)}</b> <small class="dim">${esc(x.name)}</small></p>
+      <p class="lc-p"><b class="lc-px">${$$(x.px)}</b> <b class="${cls(x.chg)}">${pc(x.chg)}</b> <small class="dim">${+x.day.slice(5, 7)}/${+x.day.slice(8, 10)} ${x.open ? "장중" : "마감"}</small></p>${ext}
+      <div class="lc-cs">${C.join("")}</div>${bar}${base || mem ? `<p class="lc-f">${base}${mem}</p>` : ""}</div>`;
+  }
   function levHtml(L, compact) {
     const its = (L && L.items) || [];
     if (!its.length) return "";
-    const $$ = (v) => v == null ? "-" : "$" + (+v).toFixed(2);
-    const sgn = (v) => v == null ? "-" : `<b class="${cls(v)}">${v > 0 ? "+" : ""}${(+v).toFixed(2)}%</b>`;
-    const one = (x) => {
-      if (x.err || x.px == null) return `<div class="lv"><b>${esc(x.sym)}</b> <span class="dim">시세를 받지 못함</span></div>`;
-      const st = x.open ? "진행 중" : "마감";
-      const L2 = [
-        `캔들: 시가 ${$$(x.o)} (갭 ${sgn(x.gap)}${x.gap_over_high ? " · 전일 고가 위" : ""}) · 고가 ${$$(x.h)} 저가 ${$$(x.l)} · 오늘 ${x.px > x.o ? "양봉" : x.px < x.o ? "음봉" : "보합"} ${st}`,
-        `연속 양봉: 전일까지 ${x.streak_prev}일 → ${x.bull ? `${x.streak}일째` : "끊김(오늘 양봉 아님)"}${x.three ? ` · <b>적삼병 조건 ${x.open ? "충족 중(마감 전)" : "충족 마감"}</b>` : ""}`,
-        `이동평균: 5일선 ${$$(x.ma5)} ${x.over_ma5 ? "위" : "아래"} ${sgn(x.vs_ma5)} · 20일선 ${$$(x.ma20)} ${x.over_ma20 ? "위" : "아래"} ${sgn(x.vs_ma20)}`,
-        `20일 범위: 고가 ${$$(x.hi20)} 대비 ${sgn(x.from_hi20)} · 저가 ${$$(x.lo20)} 대비 ${sgn(x.from_lo20)}${x.vol_ratio != null ? ` · 거래량 20일 평균의 ×${x.vol_ratio}${x.open ? "(장중 누적)" : ""}` : ""}`,
-        `기초: ${esc(x.base)} ${sgn(x.base_chg)}${x.base_over_ma5 != null ? ` (5일선 ${x.base_over_ma5 ? "위" : "아래"})` : ""}${x.x3 != null ? ` · ×3 = ${sgn(x.x3)} → 실제와 차이 ${x.x3_gap > 0 ? "+" : ""}${x.x3_gap}%p` : ""}${x.kr200 != null ? ` · 코스피200 야간(24시간) ${sgn(x.kr200)}` : ""}`,
-      ];
-      const ex = (e, nm) => {
-        if (!e) return "";
-        const ss = e.sess === "pre" ? "프리마켓" : "애프터마켓";
-        return `🌙 ${nm ? esc(nm) + " " : ""}${ss} ${$$(e.px)} · 정규장 종가 ${$$(e.base)} 대비 ${sgn(e.chg)} <small class="dim">${e.stale ? `마지막 체결 ${md2(e.at)} ${hm(e.at)}${e.live ? " · 15분 넘게 체결 없음" : " · 지금은 시간외 거래 시간 아님"}` : `${hm(e.at)} 체결`} · 야후 1분봉</small>`;
-      };
-      if (x.ext) L2.unshift(ex(x.ext));
-      if (x.base_ext) L2.splice(1, 0, ex(x.base_ext, "EWY"));
-      if (x.h24) L2.push(`24시간 시세(하이퍼리퀴드): ${$$(x.h24.px)} · 정규장 가격 대비 ${sgn(x.h24.vs_reg)}`);
-      if (x.members) L2.push(`구성 대형주 ${x.members.n}종목 중 ${x.members.n_up}종목 상승 · 강 ${x.members.up.map((m) => `${esc(m.name)} ${sgn(m.chg)}`).join(", ")} · 약 ${x.members.down.map((m) => `${esc(m.name)} ${sgn(m.chg)}`).join(", ")}`);
-      return `<div class="lv"><p class="wt-n"><b>${esc(x.sym)}</b> <small class="dim">${esc(x.name)}</small> ${$$(x.px)} ${sgn(x.chg)} <small class="dim">${+x.day.slice(5, 7)}/${+x.day.slice(8, 10)} 정규장 ${st}</small></p>
-        <ul>${(compact ? L2.slice(0, 3) : L2).map((t) => `<li>${t}</li>`).join("")}</ul></div>`;
-    };
-    return `<div class="lvbox"><p class="mm-h">🔬 SOXL · KORU 점검 <small>${hm(L.at)} 기준 · 2분마다 갱신</small></p>${its.map(one).join("")}
-      ${compact ? "" : `<p class="mm-f">야후 정규장 시세 기준(시가는 5분봉 첫 봉) · 🌙 시간외 = 프리·애프터마켓 마지막 1분봉 체결, 정규장 종가 대비(하이퍼리퀴드 24시간 가격과 다른 상품) · 적삼병 조건 = 3일 연속 양봉(시가보다 높게, 전일보다 높게 마감)으로 단순 판정 · 3배 ETF는 하루 단위로 3배를 따라가 여러 날 누적 수익률은 3배와 다름 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`}</div>`;
+    return `<div class="lvbox"><p class="mm-h">🔬 SOXL · KORU 한눈에 <small>${hm(L.at)} 기준</small></p><div class="lc-g">${its.map((x) => levCard(x)).join("")}</div>
+      ${compact ? "" : `<p class="mm-f">▲ 위 · ▼ 아래 · 막대는 20일 저가~고가 중 지금 위치 · 야후 정규장 기준 · 3배 ETF는 하루 단위로 3배 추종 · 매수·매도 권유 아님</p>`}</div>`;
   }
   /* ── ⏱ 시간대별 강세: 매시(KST) '이번 시간 상승률' 상위 종목·업종 — 한국·미국 구분 ── */
   function hourlyHtml() {
@@ -421,6 +418,8 @@
     const sgn = (v) => `<b class="${cls(v)}">${v > 0 ? "+" : ""}${(+v).toFixed(2)}%</b>`;
     const md = (d) => `${+d.slice(5, 7)}/${+d.slice(8, 10)}`;
     const row = (x) => {
+      const lv0 = ((lev && lev.items) || []).find((y) => y.sym === x.sym);
+      if (lv0 && lv0.px != null) return levCard(lv0, x.level);
       if (x.err || x.px == null) return `<div class="wt-i"><b>${esc(x.name)}</b> <span class="dim">${x.px == null && !x.err ? "개장 전 · 전일 종가 " + $$(x.prev) + " · 5일선 " + $$(x.ma5_prev) : "시세를 받지 못함"}</span></div>`;
       const st = x.open ? "진행 중" : "마감";
       const L = [];
