@@ -527,7 +527,10 @@
     const distance = (oil.px / 100 - 1) * 100;
     const side = distance > 0 ? "위" : distance < 0 ? "아래" : "부근";
     const stale = !brief.at || Date.now() - brief.at > 5 * 60000;
-    return `<div class="ses"><p class="spot-h">🛢 WTI 100달러 기준 <small>${brief.at ? hm(brief.at) + " 기준" : "시각 미확인"}${stale ? " · 시세 지연" : ""} · 하이퍼리퀴드</small></p>
+    const context = sessionQuotes && sessionQuotes.oil && Date.now() <= Date.parse(sessionQuotes.until) ? sessionQuotes.oil : null;
+    const flow = context && Number.isFinite(context.reference) ? `<p><b>${esc(context.label)} → 현재 $${oil.px.toFixed(2)}</b> · ${oil.px < 99.5 ? "100달러 아래로 내려온 흐름" : oil.px <= 101.5 ? "100달러 부근으로 내려온 흐름" : oil.px < context.reference ? "주말 전보다 낮아진 흐름" : "104달러대 회복 여부 확인"}</p><p class="fine">${esc(context.memo)} 주말 전 참고값과 현재 시세는 출처·거래 시점이 다릅니다.</p>` : "";
+    return `<div class="ses"><p class="spot-h">🛢 WTI 유가 흐름 <small>${brief.at ? hm(brief.at) + " 기준" : "시각 미확인"}${stale ? " · 시세 지연" : ""} · 하이퍼리퀴드</small></p>
+      ${flow}
       <p>WTI <b>$${oil.px.toFixed(2)}</b> · <b>${oil.px < 100 ? "100달러 아래 — 중요 변곡점 확인" : "100달러 " + side}</b></p>
       <p class="fine">100달러 하향 이탈을 중요 변곡점으로 감지 · 이탈 시각 전후 관련 뉴스와 주요 지수 반응은 아래 변곡점 카드에서 확인</p></div>`;
   }
