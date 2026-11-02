@@ -126,7 +126,8 @@ def make(out: dict) -> dict:
             "ust": {k: {"px": v["px"], "bp": v["bp"]} for k, v in (out.get("ust") or {}).items()},
             "official": out.get("official") or {},
             "macro": macro, "heads": heads, "analysis": analysis, "moves": moves, "trending": [{"name": t["name"], "n": t["n"]} for t in out.get("trending", [])[:5]],
-            "sectors": sectors, "world": w, "spot": [{"name": s["name"], "chg": s.get("chg")} for s in out.get("spot", [])]}
+            "sectors": sectors, "world": w, "spot": [{"name": s["name"], "chg": s.get("chg")} for s in out.get("spot", [])],
+            "ext": out.get("ext") or None}
 
 
 def save(brief: dict) -> bool:

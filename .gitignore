@@ -29,3 +29,5 @@ tools/dupcheck.log
 tools/hourly_state.json
 tools/hourly_kr_cache.json
 tools/alert_outbox.log
+tools/ext_board_cache.json
+tools/ext_board_state.json

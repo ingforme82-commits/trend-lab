@@ -70,6 +70,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $o push -Message "무엇을 
 | `study/<id>/` | 회차별 사진(웹용 1600px, 메타데이터 제거) |
 | `data/growth.json` · `study/growth/` · `tools/growth_photos.py` | 📒 가치 투자 성장 스토리(아카이브 칩, `study.html?id=growth`): 운영자 개인 공부 사진. **운영자 외 얼굴은 모두 모자이크**. `detect` → `review`(내 PC 확인 페이지에서 본인 상자만 지움·놓친 얼굴 추가) → `apply --push`. 원본·작업 파일(boxes.json)은 저장소 밖 |
 | `study.py` | 일정 수정, 새 회차, 사진·후기 올리기, 공지 띠 |
+| `tools/ext_board.py` | 🌙 미국 시간외 시세판(프리·애프터마켓, 야후 1분봉 마지막 체결, 정규장 종가 대비): 주요 ETF·대형주 18개 + 화제 미국 종목, 3분 캐시. 브리핑 칸에 표시, ±5%·±10% 첫 돌파는 속보 목록에 '시간외 시세'로(종목·세션·단계당 1번) |
 | `tools/moves.py` | 변곡점 감지(1분봉 10분·30분 급변, 평소 변동폭의 4배 이상) + 직전 15분 관련 뉴스 연결. 🔴 빨간 점은 이 뉴스에만 |
 | `data/site.json` spotlight · `spot.py` | 🔥 이번 주 화제 종목(주 단위로 on/off, 추천 아님 표시). `python spot.py on TSLA --name 테슬라 ... --push` / `off` |
 | `data/sectors.json` · `tools/sector_watch.py` | 섹터 시세 감시(사이버보안·미국/한국 반도체·원전·미국 원전SMR·방산·2차전지·조선 8개 섹터, 92종목(사이버보안은 ETF 3개 포함), 사이트에서는 접힌 카드 → 누르면 종목). 하루 ±3%·3개월 고점 돌파·52주 신고가 3% 이내가 생기면 속보 목록에 '섹터 시세'로. 섹터를 늘리려면 sectors.json에 추가 |

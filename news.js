@@ -711,11 +711,12 @@
     const cps = (b.checkpoints || []).length ? `<div class="bcol"><h4>🗓️ 오늘 체크포인트</h4><ul class="bn">${b.checkpoints.map((c) => `<li>${c.time ? `<b>${esc(c.time)}</b> ` : ""}${esc(c.title)}</li>`).join("")}</ul></div>` : "";
     const ktop = (b.kr_top || []).length ? `<div class="bcol"><h4>🇰🇷 국내 감시 종목 상승 상위</h4><ul class="bn">${b.kr_top.map((r) => `<li>${esc(r.name)} ${sg(r.chg)} <small class="dim">${esc(r.sector)}${r.val ? ` · 거래대금 ${eok(r.val)}` : ""}</small></li>`).join("")}</ul></div>` : "";
     const rg = b.reg && b.reg.SP500 ? `<div class="bcol"><h4>🇺🇸 미국 정규장 마감</h4><div class="bfs">${[["SP500", "S&P500"], ["XYZ100", "나스닥100"], ["SOXL", "SOXL"], ["EWY", "EWY"]].filter(([k]) => b.reg[k]).map(([k, n]) => `<span class="bf"><small>${n}</small> ${sg(b.reg[k].chg)}</span>`).join("")}</div></div>` : "";
+    const ex = b.ext && (b.ext.rows || []).length ? `<div class="bwide"><h4>🌙 미국 ${b.ext.sess === "pre" ? "프리마켓" : "애프터마켓"}${b.ext.live ? "" : " 마지막 체결"} <small class="dim">(직전 정규장 종가 대비 · 야후 1분봉 마지막 체결 · ${hm(b.ext.at)} KST${b.ext.live ? " · 3분마다 갱신" : ""} · 지수는 ETF로 표시)</small></h4><div class="bfs">${b.ext.rows.map((r) => `<span class="bf"><small>${esc(r.name)}</small> $${(+r.px).toLocaleString("en-US", { maximumFractionDigits: 2 })} ${sg(r.chg)}</span>`).join("")}</div></div>` : "";
     const fl = (b.flows || []).length ? `<div class="bcol">${b.flows.map((g) => flowTable(g, 5, true)).join("")}</div>` : "";
     const mom = (b.momentum || []).length ? `<div class="bcol">${momHtml({ sectors: b.momentum }, true)}</div>` : "";
     const lv = b.lev && (b.lev.items || []).length ? `<div class="bwide">${levHtml(b.lev, true)}</div>` : "";
     const ev = lv + (b.watch && (b.watch.items || []).length ? `<div class="bwide">${watchHtml(b.watch, true)}</div>` : "") + (b.eve && (b.eve.fut || []).length ? eveHtml(b.eve) : "");
-    return ev + top + ofh + cps + rg + mom + fl + ktop + `<div class="bcol"><h4>📍 가장 크게 움직인 순간</h4><ul>${mv || '<li class="dim">최근 24시간 변곡점 없음</li>'}</ul></div>
+    return ev + top + ex + ofh + cps + rg + mom + fl + ktop + `<div class="bcol"><h4>📍 가장 크게 움직인 순간</h4><ul>${mv || '<li class="dim">최근 24시간 변곡점 없음</li>'}</ul></div>
       <div class="bcol"><h4>📊 섹터 강약</h4><ul>${sec || '<li class="dim">-</li>'}</ul></div>
       <div class="bcol"><h4>📈 뉴스에 많이 나온 종목</h4><div class="bts">${tr || '<span class="dim">-</span>'}</div>
         <h4 style="margin-top:12px">🌏 해외 지수</h4><p>상승 ${w.up || 0} · 하락 ${w.down || 0}${w.best ? ` · 최강 ${esc(w.best.name)} ${sg(w.best.chg)} · 최약 ${esc(w.worst.name)} ${sg(w.worst.chg)}` : ""}</p>

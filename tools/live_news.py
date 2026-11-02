@@ -502,6 +502,14 @@ def build() -> dict:
             log(f"공식 데이터 건너뜀: {type(e).__name__}: {e}")
         out["kr"] = kr_now()
         out["reg"] = reg_quotes()
+        try:                                              # 🌙 미국 시간외 시세판 + ±5%·±10% 첫 돌파 속보
+            from ext_board import build as ext_board
+            out["ext"] = ext_board(out.get("spot"))
+            have = {i["ts"] for i in out["items"] if i.get("kind") == "시간외 시세"}
+            out["items"] += [i for i in out["ext"].pop("items", []) if i["ts"] not in have]
+            out["items"].sort(key=lambda i: -i["ts"])
+        except Exception as e:  # noqa: BLE001
+            log(f"미국 시간외 건너뜀: {type(e).__name__}: {e}")
         try:
             from leadership import public as momentum
             out["momentum"] = momentum(sector_cards)
