@@ -58,6 +58,23 @@
   async function loadNotes() {
     try { notes = await (await fetch(`data/notes.json?t=${Math.floor(Date.now() / 600000)}`)).json(); window.trlNotes = notes; } catch { /* 없음 */ }
   }
+  let sessionQuotes = null;
+  async function loadSessionQuotes() {
+    try {
+      const r = await fetch(`data/session_quotes.json?t=${Math.floor(Date.now() / 60000)}`);
+      if (r.ok) sessionQuotes = await r.json();
+    } catch { /* 확인한 캡처 유지 */ }
+  }
+  function sessionQuotesHtml() {
+    const s = sessionQuotes;
+    if (!s || !s.until || Date.now() > Date.parse(s.until)) return "";
+    const items = (s.items || []).filter((x) => Number.isFinite(x.px) && x.px > 0 && Number.isFinite(x.base) && x.base > 0 && Number.isFinite(Date.parse(x.at)));
+    if (!items.length) return "";
+    return `<div class="lvbox"><p class="mm-h">☀️ ${esc(s.session)} · NH HTS 확인 <small>수동 캡처 · 실시간 자동 갱신 아님</small></p><div class="lc-g">${items.map((x) => {
+      const delta = x.px - x.base, chg = delta / x.base * 100, sign = delta > 0 ? "+" : delta < 0 ? "-" : "";
+      return `<div class="lc"><p class="lc-h"><b>${esc(x.sym)}</b> <small>${esc(s.session)}</small></p><p class="lc-p"><b class="lc-px">$${x.px.toFixed(2)}</b> <b class="${cls(chg)}">${sign}${Math.abs(chg).toFixed(2)}%</b></p><p class="lc-f">정규장 종가 $${x.base.toFixed(2)} 대비 <b class="${cls(chg)}">${sign}$${Math.abs(delta).toFixed(2)}</b></p><p class="lc-f">${md2(Date.parse(x.at))} ${hm(Date.parse(x.at))} KST 화면 확인</p></div>`;
+    }).join("")}</div><p class="mm-f">${esc(s.source)} · 아래 시간외 마지막 체결은 이전 애프터마켓 자료로 구분합니다. 캡처 시각 이후 가격은 달라질 수 있습니다.</p></div>`;
+  }
   async function loadCandles() {
     const end = Date.now(), start = end - H * 3600e3;
     await Promise.all(CARDS.filter((c) => c.k.startsWith("xyz:")).map(async (s) => {
@@ -518,7 +535,7 @@
   function drawWatch() {
     const box = q("#watchBox"); if (!box) return;
     const wh = watchHtml(watch);
-    const h = oilWatchHtml() + sessionHtml() + (wh || levHtml(lev));
+    const h = sessionQuotesHtml() + oilWatchHtml() + sessionHtml() + (wh || levHtml(lev));
     box.hidden = !h; box.innerHTML = h;
   }
 
@@ -899,9 +916,9 @@
     const sk = e.target.closest("[data-spot-kw]"); if (sk && q("#news")) { setKw(sk.dataset.spotName, sk.dataset.spotKw); return; }
     const sc = e.target.closest("[data-spot-chart]"); if (sc && window.trlChart) window.trlChart.open({ coin: sc.dataset.spotChart, name: sc.dataset.spotName, sel: null, news });
   });
-  (async () => { await Promise.all([loadNews(), loadNotes(), loadHeadline(), loadBriefs(), full ? loadCandles() : null]); redraw(); })();
+  (async () => { await Promise.all([loadNews(), loadNotes(), loadSessionQuotes(), loadHeadline(), loadBriefs(), full ? loadCandles() : null]); redraw(); })();
   setInterval(loadBriefs, 600000);
-  setInterval(async () => { await loadNews(); redraw(); }, 60000);                 // 속보·변곡점 1분마다
+  setInterval(async () => { await Promise.all([loadNews(), loadSessionQuotes()]); redraw(); }, 60000);                 // 속보·변곡점 1분마다
   setInterval(loadNotes, 600000);
   setInterval(async () => { await loadHeadline(); drawHeroLive(); }, 300000);   // 주요 이슈 5분마다
   if (full) setInterval(async () => { await loadCandles(); redraw(); }, 120000);  // 지수 2분마다
