@@ -758,3 +758,5 @@ body{overflow-x:hidden}
 .edu-disclaimer{margin:8px 0 0;color:var(--sub);font-size:12px}
 .arch-divider{height:1px;margin:28px 0;background:var(--line)}
 @media(max-width:600px){.edu-board{padding:16px}.edu-head{align-items:flex-start;flex-direction:column}.edu-card{padding:17px}.edu-card h4{font-size:18px}}
+
+.mv-react{margin:0 0 14px}.mv-react .mvr-self{background:var(--bg2,#f1f5f9)}.mv-react td.mvr-n{text-align:left;white-space:normal;min-width:260px;font-size:12.5px}

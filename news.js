@@ -210,10 +210,38 @@
     }).join("");
   }
 
+  /* ── 📊 변곡점 지수 반응표: 변곡점 구간마다 다른 지수·유가·금·금리가 같은 구간에 얼마나 움직였는지(사실 집계) ── */
+  const REACT_COLS = [["나스닥100", "나스닥100"], ["S&P500", "S&P500"], ["코스피200", "코스피200"], ["WTI", "WTI"], ["브렌트", "브렌트"], ["금", "금"], ["미 10년물 금리", "미 10년물"], ["달러인덱스", "달러"]];
+  function drawMoveReact(recent) {
+    const box = q("#moveReact"); if (!box) return;
+    const seen = new Set(), rows = [];
+    for (const m of [...recent].sort((a, b) => b.start - a.start)) {
+      const k = m.grp || m.id; if (seen.has(k)) continue; seen.add(k);
+      const g = recent.filter((x) => (x.grp || x.id) === k).sort((a, b) => b.ratio - a.ratio)[0];
+      const n = (g.items || (g.news || []).map((ts) => news.find((y) => y.ts === ts)).filter(Boolean))[0];
+      rows.push({ m: g, n });
+      if (rows.length >= 12) break;
+    }
+    if (!rows.length) { box.hidden = true; return; }
+    const cell = (m, name) => {
+      const v = m.name === name ? m.move : (m.others || {})[name];
+      if (v == null) return `<td class="dim">-</td>`;
+      const u = name.includes("금리") ? "bp" : "%";
+      const t = `<b class="${cls(v)}">${v > 0 ? "+" : ""}${v}${u}</b>`;
+      return m.name === name ? `<td class="mvr-self">${t}</td>` : `<td>${t}</td>`;
+    };
+    box.hidden = false;
+    box.innerHTML = `<p class="fl-gh">📊 변곡점 지수 반응표 <small>최근 24시간 · 변곡점 구간 동안 각 자산의 변화 · 굵은 칸이 변곡점 자산 · 시각이 겹친 뉴스이며 인과관계를 단정하지 않습니다</small></p>
+      <div class="fl-scroll"><table class="fl-t"><tr><th>구간</th>${REACT_COLS.map(([, h]) => `<th>${h}</th>`).join("")}<th style="text-align:left">같은 시각 뉴스</th></tr>
+      ${rows.map(({ m, n }) => `<tr><td class="fl-n">${hm(m.start)}–${hm(m.end)} <small class="dim">${esc(m.name)}${m.kind === "cumulative" ? " 누적" : m.kind === "level" ? " 가격대" : ""}</small></td>${REACT_COLS.map(([k]) => cell(m, k)).join("")}<td class="mvr-n">${n ? `${hm(n.ts)} ${esc(n.text.slice(0, 60))}${n.text.length > 60 ? "…" : ""}` : `<span class="dim">연결된 뉴스 없음</span>`}</td></tr>`).join("")}
+      </table></div>`;
+  }
+
   /* ── 시장을 움직인 순간(변곡점 카드) ── */
   function drawMoves() {
     const box = q("#moveList"); if (!box) return;
     const recent = moves.filter((m) => Date.now() - m.start < 24 * 3600e3);
+    drawMoveReact(recent);
     // 같은 순간(시작 6분 안)은 카드 하나로: 평소 대비 배수가 가장 큰 자산이 제목, 나머지는 '함께 움직임'
     const groups = [];
     for (const m of recent) {
