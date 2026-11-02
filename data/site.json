@@ -20,17 +20,41 @@
  "free": "커피 · 와이파이 · 사무실 이용 모두 무료",
  "spotlight": [
   {
-   "id": "INTC",
-   "name": "인텔",
+   "id": "IDXX",
+   "name": "아이덱스 래보라토리스",
    "market": "미국",
-   "yf": "INTC",
+   "yf": "IDXX",
+   "kw": "아이덱스|IDEXX|\\bIDXX\\b",
+   "kind": "⚡ 급등 대형주",
+   "reason": "11/2(월) 정규장 개장 후 30분 +18.22% · 시가총액 약 513억 달러 · 업종 의료 장비, 물품 및 유통",
    "on": true,
-   "since": "2026-10-27",
-   "kw": "인텔|Intel|\\bINTC\\b",
-   "reason": "10/30(금) 정규장 -28.58% · 시가총액 약 3,492억 달러 · 업종 반도체",
+   "auto": true,
+   "since": "2026-11-03"
+  },
+  {
+   "id": "LITE",
+   "name": "루멘텀 홀딩스",
+   "market": "미국",
+   "yf": "LITE",
+   "kw": "루멘텀|Lumentum|\\bLITE\\b",
    "kind": "⚡ 급락 대형주",
-   "hl": "xyz:INTC",
-   "auto": true
+   "reason": "11/2(월) 정규장 개장 후 30분 -10.82% · 시가총액 약 679억 달러 · 업종 통신 및 네트워킹",
+   "hl": "xyz:LITE",
+   "on": true,
+   "auto": true,
+   "since": "2026-11-03"
+  },
+  {
+   "id": "CVNA",
+   "name": "카바나",
+   "market": "미국",
+   "yf": "CVNA",
+   "kw": "카바나|Carvana|\\bCVNA\\b",
+   "kind": "⚡ 급등 대형주",
+   "reason": "11/2(월) 정규장 개장 후 30분 +6.66% · 시가총액 약 804억 달러 · 업종 자동차 차량, 부품 및 서비스 소매",
+   "on": true,
+   "auto": true,
+   "since": "2026-11-03"
   },
   {
    "id": "ILMN",
@@ -57,6 +81,74 @@
    "since": "2026-10-31"
   },
   {
+   "id": "CYBER",
+   "name": "사이버보안",
+   "market": "미국",
+   "kw": "크라우드스트라이크|CrowdStrike|팔로알토|Palo Alto|지스케일러|Zscaler|포티넷|Fortinet|클라우드플레어|Cloudflare|옥타|Okta|사이버|해킹|cyber",
+   "members": {
+    "CRWD": "크라우드스트라이크",
+    "PANW": "팔로알토",
+    "ZS": "지스케일러",
+    "FTNT": "포티넷",
+    "NET": "클라우드플레어",
+    "OKTA": "옥타",
+    "S": "센티넬원"
+   },
+   "reason": "미국 개장(23:30) 후 30분 · 평균 -3.56%(전일 종가 대비) · 개장 후 -3.57% · 7종목 중 7종목 하락 · 최저 옥타 -5.19% · 관련 속보 14건(12시간)",
+   "on": true,
+   "auto": true,
+   "hl": "xyz:CRWD",
+   "since": "2026-11-03"
+  },
+  {
+   "id": "MEMORY",
+   "name": "메모리·스토리지",
+   "market": "미국",
+   "kw": "마이크론|Micron|샌디스크|SanDisk|웨스턴디지털|Western Digital|시게이트|Seagate|메모리|D램|DRAM|낸드|NAND|HBM",
+   "members": {
+    "MU": "마이크론",
+    "SNDK": "샌디스크",
+    "WDC": "웨스턴디지털",
+    "STX": "시게이트"
+   },
+   "reason": "미국 개장(23:30) 후 30분 · 평균 -3.16%(전일 종가 대비) · 개장 후 -3.62% · 4종목 중 4종목 하락 · 최저 시게이트 -5.34% · 관련 속보 6건(12시간)",
+   "on": true,
+   "auto": true,
+   "hl": "xyz:MU",
+   "since": "2026-11-03"
+  },
+  {
+   "id": "NEOCLOUD",
+   "name": "코어위브·네오클라우드",
+   "market": "미국",
+   "hl": "xyz:CRWV",
+   "on": true,
+   "since": "2026-10-27",
+   "kw": "코어위브|CoreWeave|CRWV|네오클라우드|neocloud|네비우스|Nebius|NBIS|IREN|아이렌",
+   "reason": "미국 개장(23:30) 후 30분 · 평균 -3.28%(전일 종가 대비) · 개장 후 -3.98% · 4종목 중 4종목 하락 · 최저 코어위브 -4.52% · 관련 속보 2건(12시간)",
+   "members": {
+    "CRWV": "코어위브",
+    "NBIS": "네비우스",
+    "IREN": "IREN",
+    "CORZ": "코어사이언티픽"
+   },
+   "auto": true
+  },
+  {
+   "id": "INTC",
+   "name": "인텔",
+   "market": "미국",
+   "yf": "INTC",
+   "on": false,
+   "since": "2026-10-27",
+   "kw": "인텔|Intel|\\bINTC\\b",
+   "reason": "10/30(금) 정규장 -28.58% · 시가총액 약 3,492억 달러 · 업종 반도체",
+   "kind": "⚡ 급락 대형주",
+   "hl": "xyz:INTC",
+   "auto": true,
+   "until": "2026-11-03"
+  },
+  {
    "id": "GOOGL",
    "name": "알파벳(구글)",
    "market": "미국",
@@ -65,9 +157,10 @@
    "kw": "알파벳|구글|Alphabet|Google|\bGOOGL?\b",
    "kind": "⚡ 급락 대형주",
    "reason": "10/29(목) 정규장 -12.6%(상장 뒤 하루 최대 하락) · 10/30(금) -1.4% · 3분기 잉여현금흐름 -91억 달러 · 2027년 설비투자 3,000억 달러 이상 계획 · 시가총액 약 1조 8,791억 달러",
-   "on": true,
+   "on": false,
    "auto": true,
-   "since": "2026-10-31"
+   "since": "2026-10-31",
+   "until": "2026-11-03"
   },
   {
    "id": "USSEMI",
@@ -85,27 +178,11 @@
     "INTC": "인텔"
    },
    "reason": "10/30(금) 미국 정규장 마감 기준 · 평균 -10.78%(전일 종가 대비) · 개장 후 -2.55% · 8종목 중 8종목 하락 · 최저 인텔 -28.58% · 관련 속보 6건(12시간)",
-   "on": true,
+   "on": false,
    "auto": true,
    "hl": "xyz:SMH",
-   "since": "2026-10-31"
-  },
-  {
-   "id": "NEOCLOUD",
-   "name": "코어위브·네오클라우드",
-   "market": "미국",
-   "hl": "xyz:CRWV",
-   "on": true,
-   "since": "2026-10-27",
-   "kw": "코어위브|CoreWeave|CRWV|네오클라우드|neocloud|네비우스|Nebius|NBIS|IREN|아이렌",
-   "reason": "10/30(금) 미국 정규장 마감 기준 · 평균 -9.25%(전일 종가 대비) · 개장 후 -1.99% · 4종목 중 4종목 하락 · 최저 네비우스 -10.38%",
-   "members": {
-    "CRWV": "코어위브",
-    "NBIS": "네비우스",
-    "IREN": "IREN",
-    "CORZ": "코어사이언티픽"
-   },
-   "auto": true
+   "since": "2026-10-31",
+   "until": "2026-11-03"
   },
   {
    "id": "CRYPTO",
@@ -120,10 +197,11 @@
     "BMNR": "비트마인"
    },
    "reason": "10/30(금) 미국 정규장 마감 기준 · 평균 -8.36%(전일 종가 대비) · 개장 후 -1.61% · 5종목 중 5종목 하락 · 최저 코인베이스 -10.62% · 관련 속보 7건(12시간)",
-   "on": true,
+   "on": false,
    "auto": true,
    "hl": "xyz:COIN",
-   "since": "2026-10-31"
+   "since": "2026-10-31",
+   "until": "2026-11-03"
   },
   {
    "id": "ENERGY",
@@ -138,11 +216,12 @@
     "SLB": "SLB"
    },
    "reason": "평균 3일 연속 상승 · 최근 5거래일 합계 +1.30%(일봉 종가 기준)",
-   "on": true,
+   "on": false,
    "auto": true,
    "kind": "📈 연일 상승",
    "hl": "xyz:XLE",
-   "since": "2026-10-31"
+   "since": "2026-10-31",
+   "until": "2026-11-03"
   },
   {
    "id": "OPTICAL",
