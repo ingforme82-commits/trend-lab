@@ -101,11 +101,22 @@ LEVEL_GAP = 60          # 분 — 같은 가격대를 이 시간 안에 다시 �
 def level_cross(code: str, name: str, unit: str, rows: list[tuple[int, float]], hold: int = LEVEL_HOLD) -> list[dict]:
     """주요 가격대(LEVEL_STEP 배수) 돌파: 기준선을 넘은 뒤 hold분 동안 다시 돌아오지 않으면 기록."""
     step = LEVEL_STEP.get(code)
-    if not step or len(rows) < hold + 2:
+    if not step:
         return []
-    out, i = [], 1
+    # WTI 100달러 하향 이탈은 변동률·유지 시간과 무관하게 관측 즉시 기록한다.
+    out = []
+    if code == "WTI":
+        for (_, a), (t, b) in zip(rows, rows[1:]):
+            if a >= 100 > b:
+                out.append({"asset": code, "name": name, "unit": unit, "kind": "level", "level": 100,
+                            "start": t, "end": t, "from": a, "to": b,
+                            "move": round(_chg(a, b, unit), 2), "ratio": 0.0})
+    i = 1
     while i < len(rows) - hold:
         a, b = rows[i - 1][1], rows[i][1]
+        if code == "WTI" and a >= 100 > b:
+            i += 1
+            continue
         lo, hi = min(a, b), max(a, b)
         k = int(hi // step) * step if hi % step else hi
         if lo < k <= hi and k > 0:                       # a→b 사이에 기준선 k 가 있다
@@ -320,7 +331,8 @@ def analyze(items: list[dict]) -> tuple[list[dict], dict]:
         for it in picked:
             it["pivot"] = True
             unit = "bp" if m["unit"] == "bp" else "%"
-            tag = f'{m["name"]} {"+" if m["move"] > 0 else ""}{m["move"]}{unit}'
+            tag = ("WTI $100 하향 이탈" if m["asset"] == "WTI" and m.get("level") == 100 and m["to"] < 100
+                   else f'{m["name"]} {"+" if m["move"] > 0 else ""}{m["move"]}{unit}')
             it.setdefault("pv", [])
             if tag not in it["pv"]:
                 it["pv"].append(tag)

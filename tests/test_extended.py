@@ -9,6 +9,11 @@ PER = {"pre": {"start": 1000, "end": 2000}, "regular": {"start": 2000, "end": 30
 
 
 class ExtTest(unittest.TestCase):
+    def test_fractional_cent_price_and_change(self):
+        meta = {"regularMarketPrice": 10.63, "regularMarketTime": 2999, "currentTradingPeriod": PER}
+        r = build_one(meta, [3500], [10.6021], now=3600)
+        self.assertEqual((r["px"], r["change"], r["chg"]), (10.6021, -0.0279, -0.26))
+
     def test_session(self):
         self.assertEqual(session_of(1500, 500, PER), "pre")
         self.assertEqual(session_of(2500, 2500, PER), "reg")

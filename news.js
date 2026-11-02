@@ -342,7 +342,7 @@
       const pos = Math.max(0, Math.min(100, (x.px - x.lo20) / (x.hi20 - x.lo20) * 100));
       bar = `<div class="lc-r"><small>20일 저가 ${$$(x.lo20)}</small><span class="lc-b"><i style="left:${pos.toFixed(0)}%"></i></span><small>고가 ${$$(x.hi20)}</small></div>`;
     }
-    const ext = x.ext ? `<p class="lc-f">🌙 시간외 ${$$(x.ext.px)} <b class="${cls(x.ext.chg)}">${pc(x.ext.chg)}</b> <small>(정규장 종가 대비)</small></p>` : "";
+    const ext = x.ext ? `<p class="lc-f">🌙 ${x.ext.stale ? "시간외 마지막 체결" : "시간외"} $${(+x.ext.px).toFixed(4).replace(/0{1,2}$/, "")} <b class="${cls(x.ext.chg)}">${x.ext.chg > 0 ? "+" : ""}${(+x.ext.chg).toFixed(2)}%</b> <small>(정규장 종가 ${$$(x.ext.base)} 대비 · ${new Date(x.ext.at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })} KST)</small></p>` : "";
     const base = x.base_chg != null ? `기초 ${esc(String(x.base).replace(/\(.*\)/, ""))} <b class="${cls(x.base_chg)}">${pc(x.base_chg)}</b>` : "";
     const mem = x.members ? ` · 구성 대형주 ${x.members.n_up}/${x.members.n} 상승` : "";
     return `<div class="lc"><p class="lc-h"><b>${esc(x.sym)}</b> <small class="dim">${esc(x.name)}</small></p>
@@ -439,7 +439,7 @@
       if (x.focus.includes("three")) L.push(`연속 양봉: 전일까지 ${x.streak_prev}일 → 오늘 ${x.bull ? `양봉 ${st} = ${x.streak}일째` : `양봉 아님(${st})`}${x.three ? ` · <b>적삼병 조건 ${x.open ? "충족 중(마감 전)" : "충족 마감"}</b>` : ""}`);
       if (x.level) L.push(`${$$(x.level)} 구간: ${(() => { const d = (x.px / x.level - 1) * 100; return Math.abs(d) < 0.15 ? "현재가가 그 부근" : `현재가가 ${sgn(d)} ${d > 0 ? "위" : "아래"}`; })()}${x.level_touched ? " · 오늘 고가가 도달" : ""}${(x.level_hits || []).length ? ` · 최근 10거래일 중 넘었다가 아래에서 마감한 날 ${x.level_hits.map((h) => md(h.d)).join("·")}` : ""}`);
       if (!compact) {
-        if (e.ext) L.push(`🌙 ${e.ext.sess === "pre" ? "프리마켓" : "애프터마켓"} ${$$(e.ext.px)} · 정규장 종가 ${$$(e.ext.base)} 대비 ${sgn(e.ext.chg)} <small class="dim">${e.ext.stale ? `마지막 체결 ${hm(e.ext.at)}` : `${hm(e.ext.at)} 체결`}</small>`);
+        if (e.ext) L.push(`🌙 ${e.ext.sess === "pre" ? "프리마켓" : "애프터마켓"} $${(+e.ext.px).toFixed(4)} · 정규장 종가 ${$$(e.ext.base)} 대비 ${(e.ext.px - e.ext.base) >= 0 ? "+" : "-"}$${Math.abs(e.ext.px - e.ext.base).toFixed(4)} (${sgn(e.ext.chg)}) <small class="dim">${e.ext.stale ? "마지막 체결 " : "체결 "}${new Date(e.ext.at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })} KST</small>`);
         if (e.base_chg != null) L.push(`기초: ${esc(e.base || "")} ${sgn(e.base_chg)}${e.x3 != null ? ` · ×3 = ${sgn(e.x3)}, 실제와 차이 ${e.x3_gap > 0 ? "+" : ""}${e.x3_gap}%p` : ""}${e.kr200 != null ? ` · 코스피200 야간 ${sgn(e.kr200)}` : ""}${e.members ? ` · 구성 대형주 ${e.members.n_up}/${e.members.n} 상승` : ""}`);
         if (e.h24 && !x.open) L.push(`24시간 시세(하이퍼리퀴드) ${$$(e.h24.px)} · 정규장 가격 대비 ${sgn(e.h24.vs_reg)}`);
       }
@@ -511,8 +511,8 @@
     const side = distance > 0 ? "위" : distance < 0 ? "아래" : "부근";
     const stale = !brief.at || Date.now() - brief.at > 5 * 60000;
     return `<div class="ses"><p class="spot-h">🛢 WTI 100달러 기준 <small>${brief.at ? hm(brief.at) + " 기준" : "시각 미확인"}${stale ? " · 시세 지연" : ""} · 하이퍼리퀴드</small></p>
-      <p>WTI <b>${oil.px.toFixed(2)}</b> · 100달러 ${side} · 기준 대비 <b class="${cls(distance)}">${distance > 0 ? "+" : ""}${distance.toFixed(2)}%</b></p>
-      <p class="fine">WTI 1·3시간 순변화 ±1% 감지 · 100달러 통과는 별도 확인 · 주요 지수 반응과 관련 뉴스는 아래 변곡점 카드에서 확인</p></div>`;
+      <p>WTI <b>$${oil.px.toFixed(2)}</b> · <b>${oil.px < 100 ? "100달러 아래 — 중요 변곡점 확인" : "100달러 " + side}</b></p>
+      <p class="fine">100달러 하향 이탈을 중요 변곡점으로 감지 · 이탈 시각 전후 관련 뉴스와 주요 지수 반응은 아래 변곡점 카드에서 확인</p></div>`;
   }
 
   function drawWatch() {

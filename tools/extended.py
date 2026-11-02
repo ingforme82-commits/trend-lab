@@ -43,7 +43,7 @@ def build_one(meta: dict, ts: list, closes: list, now: float) -> dict | None:
         return None
     p = per.get("pre" if sess == "pre" else "post") or {}
     live = p.get("start", 0) <= now < p.get("end", 0)
-    return {"sess": sess, "px": round(px, 2), "base": round(float(base), 2), "chg": round((px / base - 1) * 100, 2),
+    return {"sess": sess, "px": round(px, 4), "base": round(float(base), 4), "change": round(px - base, 4), "chg": round((px / base - 1) * 100, 2),
             "at": t * 1000, "live": live, "stale": (not live) or now - t > STALE_S}
 
 

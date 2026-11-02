@@ -51,14 +51,14 @@ class LevelTest(unittest.TestCase):
         self.assertEqual(ev[0]["start"], 2 * self.M)
 
     def test_hover_without_buffer_ignored(self):
-        self.assertEqual(level_cross("WTI", "WTI", "pct", self.rows([100.05, 99.97, 99.96, 99.95, 99.97, 99.96])), [])
+        self.assertEqual(level_cross("BRENT", "브렌트", "pct", self.rows([100.05, 99.97, 99.96, 99.95, 99.97, 99.96])), [])
 
     def test_bounce_back_not_held(self):
-        self.assertEqual(level_cross("WTI", "WTI", "pct", self.rows([100.2, 99.8, 99.7, 100.1, 100.2, 100.3])), [])
+        self.assertEqual(level_cross("BRENT", "브렌트", "pct", self.rows([100.2, 99.8, 99.7, 100.1, 100.2, 100.3])), [])
 
     def test_recross_keeps_latest(self):
         p = [100.3, 99.8, 99.7, 99.6, 99.6, 100.3, 100.4, 100.5, 100.4, 99.8, 99.7, 99.6, 99.5]
-        ev = level_cross("WTI", "WTI", "pct", self.rows(p))
+        ev = level_cross("BRENT", "브렌트", "pct", self.rows(p))
         self.assertEqual(len(ev), 1)
         self.assertEqual(ev[0]["start"], 9 * self.M)
 
