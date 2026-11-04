@@ -1,6 +1,6 @@
 ﻿const fs = require('fs'), assert = require('assert');
 const src = fs.readFileSync('news.js', 'utf8');
-const code = src.match(/  function levCard\(x, level\) \{[\s\S]*?\n  \}/)[0];
+const code = src.match(/  function levCard\(x, level, checkedAt\) \{[\s\S]*?\n  \}/)[0];
 const render = new Function('x', 'esc', 'cls', 'hm', code + '; return levCard(x);');
 const now = Date.now();
 const row = {sym:'SOXL', name:'SOXL', px:100, chg:2, day:'2026-11-04', at:now-3600000, ext:{px:105,chg:5,base:100,at:now-60000,live:true,stale:false,sess:'post'}};
@@ -10,4 +10,10 @@ assert(html(row).includes('5.0%'));
 assert(html({...row,ext:{...row.ext,stale:true}}).includes('class="lc-px">$100.00'));
 assert(html({...row,ext:{...row.ext,at:now-36000000}}).includes('class="lc-px">$100.00'));
 assert(html({...row,ext:null}).includes('class="lc-px">$100.00'));
+const nh = {...row, ext:{px:106,chg:6,base:100,checked_at:now,source:'NH투자증권',sess:'day',live:true,stale:false}};
+assert(html(nh).includes('class="lc-px">$106.00'));
+assert(html(nh).includes('한국 시간 조회'));
+assert(html(nh).includes('주간거래'));
+assert(!html(nh).includes('Invalid Date'));
+assert(html({...nh,ext:{...nh.ext,checked_at:now-4*60000}}).includes('class="lc-px">$100.00'));
 console.log('lev_card.test.js OK');

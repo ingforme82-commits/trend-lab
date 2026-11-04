@@ -3,7 +3,7 @@
 - 출처: 야후 1분봉(includePrePost=true)의 마지막 유효 체결. 호가·즉시 체결 보장 값이 아니다.
 - 기준가: 직전 정규장 종가(meta.regularMarketPrice). chartPreviousClose 는 하루 더 앞 종가일 수 있어 쓰지 않는다.
 - 세션 구분: meta.currentTradingPeriod 의 pre·regular·post 시간(미국 동부, 서머타임·휴장 반영은 야후 값을 따름)
-- 지금 시간외 세션이 아니거나 마지막 체결이 15분보다 오래되면 stale=True → 화면에 '마지막 체결'로 표시(현재 시각을 붙이지 않음)
+- 지금 시간외 세션이 아니거나 마지막 체결이 15분보다 오래되면 stale=True. checked_at은 조회 시각, at은 원천 체결 시각이다.
 - 하이퍼리퀴드 24시간 가격과 섞지 않는다(다른 상품).
 """
 
@@ -44,7 +44,7 @@ def build_one(meta: dict, ts: list, closes: list, now: float) -> dict | None:
     p = per.get("pre" if sess == "pre" else "post") or {}
     live = p.get("start", 0) <= now < p.get("end", 0)
     return {"sess": sess, "px": round(px, 4), "base": round(float(base), 4), "change": round(px - base, 4), "chg": round((px / base - 1) * 100, 2),
-            "at": t * 1000, "live": live, "stale": (not live) or now - t > STALE_S}
+            "at": t * 1000, "checked_at": int(now * 1000), "live": live, "stale": (not live) or now - t > STALE_S}
 
 
 def quote(sym: str) -> dict | None:

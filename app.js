@@ -482,10 +482,10 @@ function liveBand() {
     return total;
   };
   const etfExt = () => lev.filter((x) => x.ext && x.ext.px != null && ["SOXL", "KORU"].includes(x.sym)).map((x) => {
-    const e = x.ext, stamp = hhmm(KST(new Date(e.at || 0)));
-    return e.live
-      ? x.sym + " " + (e.sess === "pre" ? "프리장" : "애프터") + " " + cash(e.px) + " (" + pcLive(e.chg) + ")"
-      : x.sym + " 시간외 마지막 체결 " + cash(e.px) + " (" + pcLive(e.chg) + " · " + stamp + " KST)";
+    const e = x.ext, stamp = hhmm(KST(new Date(e.checked_at || e.at || 0)));
+    return e.live && !e.stale && Date.now() - (e.checked_at || e.at || 0) < 3 * 60000
+      ? x.sym + " " + (e.sess === "day" ? "주간거래" : e.sess === "pre" ? "프리장" : "애프터") + " " + cash(e.px) + " (" + pcLive(e.chg) + " · " + stamp + " 한국 시간 조회)"
+      : x.sym + " 현재 시간외 시세 확인 불가";
   });
   const future = (name) => (brief.futures || []).find((x) => x.name === name);
   const live24 = () => [["코스피200", ""], ["나스닥100", ""], ["S&P500", ""], ["WTI", "$"], ["브렌트", "$"], ["금", "$"], ["원/달러", ""]]

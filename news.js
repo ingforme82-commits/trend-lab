@@ -47,6 +47,18 @@
   async function loadNews() {
     try {
       const j = await fetchNews();
+      try {
+        const response = await fetch(`https://raw.githubusercontent.com/ingforme82-commits/trend-lab/quotes/nh-quotes.json?t=${Math.floor(Date.now() / 60000)}`, { signal: AbortSignal.timeout(8000), cache: "no-store" });
+        if (response.ok) {
+          const snapshot = await response.json();
+          for (const row of (j.lev && j.lev.items) || []) {
+            const quote = (snapshot.items || []).find((item) => item.sym === row.sym);
+            if (quote && Number.isFinite(quote.px) && Number.isFinite(quote.base) && quote.px > 0 && quote.base > 0) {
+              row.ext = { ...quote, stale: quote.stale || Date.now() - quote.checked_at > 3 * 60000 || quote.checked_at > Date.now() + 60000 };
+            }
+          }
+        }
+      } catch { /* NH 갱신 실패 시 수집된 자료를 유지하되 조회 시각을 표시 */ }
       news = j.items || []; moves = j.moves || []; series = j.series || {}; health = j.health || null;
       world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
       window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlUst = j.ust || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; flows = j.flows || null; s7 = normalizeS7(j); leaders = j.leaders || null; watch = j.watch || null; lev = j.lev || null; window.trlBrief = brief || {}; window.trlFlows = flows || {}; window.trlS7 = s7 || {}; window.trlLev = lev || {}; window.trlUpdated = j.updated || Date.now(); if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } if (typeof window.loadBand === "function" && !window.__pinNotice) window.loadBand(); window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
@@ -373,14 +385,16 @@
   }
   // 🔬 SOXL · KORU 한눈에: 가격 한 줄 + 상태 배지(5일선·20일선·연속 양봉·운영자 가격대) + 20일 범위 막대 + 기초지수 한 줄
   const md2 = (ms) => { const d = kst(ms); return `${d.getMonth() + 1}/${d.getDate()}`; };
-  function levCard(x, level) {
+  function levCard(x, level, checkedAt) {
     const $$ = (v) => v == null ? "-" : "$" + (+v).toFixed(2);
     const pc = (v) => v == null ? "-" : `${v > 0 ? "+" : ""}${(+v).toFixed(1)}%`;
     if (!x || x.err || x.px == null) return `<div class="lc"><b>${esc((x && x.sym) || "")}</b> <span class="dim">시세를 받지 못함</span></div>`;
     const e = x.ext;
-    const active = e && e.live && !e.stale && Date.now() - e.at < 15 * 60000 && e.at >= x.at;
+    const active = e && e.live && !e.stale && (e.source === "NH투자증권" ? Date.now() - e.checked_at < 3 * 60000 : Date.now() - e.at < 15 * 60000 && e.at >= x.at);
     const price = active ? e.px : x.px, change = active ? e.chg : x.chg;
-    const label = active ? `${e.sess === "pre" ? "프리마켓" : "애프터마켓"} · ${hm(e.at)} KST 체결` : `${+x.day.slice(5, 7)}/${+x.day.slice(8, 10)} ${x.open ? "장중" : "마감"}`;
+    const queried = e && (e.checked_at || checkedAt);
+    const queryLabel = queried ? `${new Date(queried).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })} 한국 시간 조회` : "조회 시각 확인 불가";
+    const label = active ? `${e.sess === "day" ? "주간거래" : e.sess === "pre" ? "프리마켓" : "애프터마켓"} · ${queryLabel}` : `${+x.day.slice(5, 7)}/${+x.day.slice(8, 10)} ${x.open ? "장중" : "마감"}`;
     const chip = (ok, t) => `<span class="lc-c ${ok ? "on" : "off"}">${ok ? "▲" : "▼"} ${t}</span>`;
     const C = [chip(x.over_ma5, `5일선 ${x.over_ma5 ? "위" : "아래"} ${pc(x.vs_ma5)}`)];
     if (x.ma20 != null) C.push(chip(x.over_ma20, `20일선 ${x.over_ma20 ? "위" : "아래"} ${pc(x.vs_ma20)}`));
@@ -391,7 +405,7 @@
       const pos = Math.max(0, Math.min(100, (x.px - x.lo20) / (x.hi20 - x.lo20) * 100));
       bar = `<div class="lc-r"><small>20일 저가 ${$$(x.lo20)}</small><span class="lc-b"><i style="left:${pos.toFixed(0)}%"></i></span><small>고가 ${$$(x.hi20)}</small></div>`;
     }
-    const ext = x.ext ? `<p class="lc-f">🌙 ${x.ext.stale ? "시간외 마지막 체결" : "시간외"} $${(+x.ext.px).toFixed(4).replace(/0{1,2}$/, "")} <b class="${cls(x.ext.chg)}">${x.ext.chg > 0 ? "+" : ""}${(+x.ext.chg).toFixed(2)}%</b> <small>(정규장 종가 ${$$(x.ext.base)} 대비 · ${new Date(x.ext.at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })} KST)</small></p>` : "";
+    const ext = e ? `<p class="lc-f">${active ? `시간외 · 정규장 종가 ${$$(e.base)} 대비 ${pc(e.chg)}` : "현재 시간외 시세 확인 불가"} <small>· ${esc(e.source || "야후")} · ${queryLabel}</small></p>` : `<p class="lc-f">현재 시간외 시세 확인 불가</p>`;
     const base = x.base_chg != null ? `기초 ${esc(String(x.base).replace(/\(.*\)/, ""))} <b class="${cls(x.base_chg)}">${pc(x.base_chg)}</b>` : "";
     const mem = x.members ? ` · 구성 대형주 ${x.members.n_up}/${x.members.n} 상승` : "";
     return `<div class="lc"><p class="lc-h"><b>${esc(x.sym)}</b> <small class="dim">${esc(x.name)}</small></p>
@@ -401,8 +415,8 @@
   function levHtml(L, compact) {
     const its = (L && L.items) || [];
     if (!its.length) return "";
-    return `<div class="lvbox"><p class="mm-h">🔬 SOXL · KORU 한눈에 <small>${hm(L.at)} 기준</small></p><div class="lc-g">${its.map((x) => levCard(x)).join("")}</div>
-      ${compact ? "" : `<p class="mm-f">시간외 가격·등락률은 정규장 종가 대비 · 1분마다 자동 확인(지연 가능) · 지표·막대는 야후 정규장 기준 · 3배 ETF는 하루 단위로 3배 추종 · 매수·매도 권유 아님</p>`}</div>`;
+    return `<div class="lvbox"><p class="mm-h">🔬 SOXL · KORU 한눈에 <small>${hm(L.at)} 한국 시간 조회</small></p><div class="lc-g">${its.map((x) => levCard(x, undefined, L.at)).join("")}</div>
+      ${compact ? "" : `<p class="mm-f">NH 현재가 우선 · 시간외 등락률은 정규장 종가 대비 · 1분마다 자동 조회(지연 가능) · 조회 시각은 한국 시간 · 지표·막대는 정규장 기준 · 3배 ETF는 하루 단위로 3배 추종 · 매수·매도 권유 아님</p>`}</div>`;
   }
   /* ── ⏱ 시간대별 강세: 매시(KST) '이번 시간 상승률' 상위 종목·업종 — 한국·미국 구분 ── */
   function hourlyHtml() {
