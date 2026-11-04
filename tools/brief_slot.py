@@ -13,8 +13,14 @@ from __future__ import annotations
 
 import json
 import os
-import subprocess
 import sys
+import subprocess
+if sys.platform == "win32":  # pythonw로 예약 실행될 때 git·gh 검은 창이 뜨지 않게
+    _run = subprocess.run
+    def _quiet_run(*a, **k):
+        k.setdefault("creationflags", 0x08000000)  # CREATE_NO_WINDOW
+        return _run(*a, **k)
+    subprocess.run = _quiet_run
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
