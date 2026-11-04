@@ -20,6 +20,42 @@
  "free": "커피 · 와이파이 · 사무실 이용 모두 무료",
  "spotlight": [
   {
+   "id": "FIX",
+   "name": "컴포트 시스템즈 USA",
+   "market": "미국",
+   "yf": "FIX",
+   "kw": "컴포트|Comfort|\\bFIX\\b",
+   "kind": "⚡ 급락 대형주",
+   "reason": "11/4(수) 정규장 개장 후 30분 -14.72% · 시가총액 약 383억 달러 · 업종 건설 및 엔지니어링",
+   "on": true,
+   "auto": true,
+   "since": "2026-11-05"
+  },
+  {
+   "id": "XYZ",
+   "name": "블록",
+   "market": "미국",
+   "yf": "XYZ",
+   "kw": "블록|Block|\\bXYZ\\b",
+   "kind": "⚡ 급등 대형주",
+   "reason": "11/4(수) 정규장 개장 후 30분 +12.86% · 시가총액 약 519억 달러 · 업종 경영 지원 서비스",
+   "on": true,
+   "auto": true,
+   "since": "2026-11-05"
+  },
+  {
+   "id": "MDLN",
+   "name": "메드라인",
+   "market": "미국",
+   "yf": "MDLN",
+   "kw": "메드라인|Medline|\\bMDLN\\b",
+   "kind": "⚡ 급등 대형주",
+   "reason": "11/4(수) 정규장 개장 후 30분 +11.91% · 시가총액 약 502억 달러 · 업종 의료 장비, 물품 및 유통",
+   "on": true,
+   "auto": true,
+   "since": "2026-11-05"
+  },
+  {
    "id": "BE",
    "name": "블룸 에너지",
    "market": "미국",
@@ -45,60 +81,6 @@
    "since": "2026-11-04"
   },
   {
-   "id": "TRI",
-   "name": "톰슨 로이터",
-   "market": "미국",
-   "yf": "TRI",
-   "kw": "톰슨|Thomson|\\bTRI\\b",
-   "kind": "⚡ 급락 대형주",
-   "reason": "11/3(화) 정규장 개장 후 30분 -8.04% · 시가총액 약 490억 달러 · 업종 전문 정보 서비스",
-   "on": true,
-   "auto": true,
-   "since": "2026-11-04"
-  },
-  {
-   "id": "IDXX",
-   "name": "아이덱스 래보라토리스",
-   "market": "미국",
-   "yf": "IDXX",
-   "kw": "아이덱스|IDEXX|\\bIDXX\\b",
-   "kind": "⚡ 급등 대형주",
-   "reason": "11/2(월) 미국 정규장 마감 +21.85%(개장 후 30분 선정) · 시가총액 약 513억 달러 · 업종 의료 장비, 물품 및 유통",
-   "on": true,
-   "auto": true,
-   "since": "2026-11-03"
-  },
-  {
-   "id": "LITE",
-   "name": "루멘텀 홀딩스",
-   "market": "미국",
-   "yf": "LITE",
-   "kw": "루멘텀|Lumentum|\\bLITE\\b",
-   "kind": "⚡ 급락 대형주",
-   "reason": "11/2(월) 미국 정규장 마감 -18.68%(개장 후 30분 선정) · 시가총액 약 679억 달러 · 업종 통신 및 네트워킹",
-   "hl": "xyz:LITE",
-   "on": true,
-   "auto": true,
-   "since": "2026-11-03"
-  },
-  {
-   "id": "NEOCLOUD",
-   "name": "코어위브·네오클라우드",
-   "market": "미국",
-   "hl": "xyz:CRWV",
-   "on": true,
-   "since": "2026-10-27",
-   "kw": "코어위브|CoreWeave|CRWV|네오클라우드|neocloud|네비우스|Nebius|NBIS|IREN|아이렌",
-   "reason": "미국 개장(23:30) 후 30분 · 평균 +6.21%(전일 종가 대비) · 개장 후 +4.40% · 4종목 중 4종목 상승 · 최고 IREN +8.72% · 관련 속보 1건(12시간)",
-   "members": {
-    "CRWV": "코어위브",
-    "NBIS": "네비우스",
-    "IREN": "IREN",
-    "CORZ": "코어사이언티픽"
-   },
-   "auto": true
-  },
-  {
    "id": "POWER",
    "name": "AI 전력·인프라",
    "market": "미국",
@@ -110,18 +92,112 @@
     "BE": "블룸에너지",
     "PWR": "콴타서비스"
    },
-   "reason": "미국 개장(23:30) 후 30분 · 평균 +6.34%(전일 종가 대비) · 개장 후 +2.96% · 5종목 중 5종목 상승 · 최고 블룸에너지 +10.08% · 관련 속보 3건(12시간)",
+   "reason": "미국 개장(23:30) 후 30분 · 평균 -7.60%(전일 종가 대비) · 개장 후 -2.25% · 5종목 중 5종목 하락 · 최저 콴타서비스 -10.11% · 관련 속보 1건(12시간)",
    "on": true,
    "auto": true,
    "hl": "xyz:GEV",
    "since": "2026-11-04"
   },
   {
+   "id": "NEOCLOUD",
+   "name": "코어위브·네오클라우드",
+   "market": "미국",
+   "hl": "xyz:CRWV",
+   "on": true,
+   "since": "2026-10-27",
+   "kw": "코어위브|CoreWeave|CRWV|네오클라우드|neocloud|네비우스|Nebius|NBIS|IREN|아이렌",
+   "reason": "미국 개장(23:30) 후 30분 · 평균 -7.42%(전일 종가 대비) · 개장 후 -1.57% · 4종목 중 4종목 하락 · 최저 코어사이언티픽 -10.96%",
+   "members": {
+    "CRWV": "코어위브",
+    "NBIS": "네비우스",
+    "IREN": "IREN",
+    "CORZ": "코어사이언티픽"
+   },
+   "auto": true
+  },
+  {
+   "id": "BIO",
+   "name": "바이오·비만치료제",
+   "market": "미국",
+   "kw": "일라이릴리|Eli Lilly|릴리|노보 노디스크|Novo Nordisk|비만|GLP-1|위고비|젭바운드|모더나|Moderna|힘스|Hims",
+   "members": {
+    "LLY": "일라이릴리",
+    "NVO": "노보노디스크",
+    "MRNA": "모더나",
+    "HIMS": "힘스앤허스",
+    "VKTX": "바이킹"
+   },
+   "reason": "미국 개장(23:30) 후 30분 · 평균 +5.76%(전일 종가 대비) · 개장 후 +2.77% · 5종목 중 5종목 상승 · 최고 모더나 +8.87% · 관련 속보 7건(12시간) · 평균 2일 연속 상승",
+   "on": true,
+   "auto": true,
+   "hl": "xyz:LLY",
+   "since": "2026-11-05"
+  },
+  {
+   "id": "EV",
+   "name": "테슬라·전기차",
+   "market": "미국",
+   "kw": "테슬라|Tesla|TSLA|머스크|Musk|로보택시|리비안|Rivian|루시드|Lucid|전기차|EV\\b",
+   "members": {
+    "TSLA": "테슬라",
+    "RIVN": "리비안",
+    "LCID": "루시드",
+    "XPEV": "샤오펑",
+    "NIO": "니오"
+   },
+   "reason": "평균 3일 연속 상승 · 최근 5거래일 합계 +5.16%(일봉 종가 기준)",
+   "on": true,
+   "auto": true,
+   "kind": "📈 연일 상승",
+   "hl": "xyz:TSLA",
+   "since": "2026-11-05"
+  },
+  {
+   "id": "TRI",
+   "name": "톰슨 로이터",
+   "market": "미국",
+   "yf": "TRI",
+   "kw": "톰슨|Thomson|\\bTRI\\b",
+   "kind": "⚡ 급락 대형주",
+   "reason": "11/3(화) 정규장 개장 후 30분 -8.04% · 시가총액 약 490억 달러 · 업종 전문 정보 서비스",
+   "on": false,
+   "auto": true,
+   "since": "2026-11-04",
+   "until": "2026-11-05"
+  },
+  {
+   "id": "IDXX",
+   "name": "아이덱스 래보라토리스",
+   "market": "미국",
+   "yf": "IDXX",
+   "kw": "아이덱스|IDEXX|\\bIDXX\\b",
+   "kind": "⚡ 급등 대형주",
+   "reason": "11/2(월) 미국 정규장 마감 +21.85%(개장 후 30분 선정) · 시가총액 약 513억 달러 · 업종 의료 장비, 물품 및 유통",
+   "on": false,
+   "auto": true,
+   "since": "2026-11-03",
+   "until": "2026-11-05"
+  },
+  {
+   "id": "LITE",
+   "name": "루멘텀 홀딩스",
+   "market": "미국",
+   "yf": "LITE",
+   "kw": "루멘텀|Lumentum|\\bLITE\\b",
+   "kind": "⚡ 급락 대형주",
+   "reason": "11/2(월) 미국 정규장 마감 -18.68%(개장 후 30분 선정) · 시가총액 약 679억 달러 · 업종 통신 및 네트워킹",
+   "hl": "xyz:LITE",
+   "on": false,
+   "auto": true,
+   "since": "2026-11-03",
+   "until": "2026-11-05"
+  },
+  {
    "id": "OPTICAL",
    "name": "광통신·네트워크",
    "market": "미국",
    "hl": "xyz:LITE",
-   "on": true,
+   "on": false,
    "since": "2026-10-27",
    "kw": "루멘텀|Lumentum|광통신|광트랜시버|광모듈|코히런트|Coherent|Ciena|시에나|AAOI|패브리넷|Fabrinet|크레도|Credo|코닝|Corning|CPO|아리스타|Arista",
    "reason": "미국 개장(23:30) 후 30분 · 평균 +5.19%(전일 종가 대비) · 개장 후 +3.04% · 8종목 중 8종목 상승 · 최고 패브리넷 +13.02%",
@@ -135,7 +211,8 @@
     "GLW": "코닝",
     "ANET": "아리스타"
    },
-   "auto": true
+   "auto": true,
+   "until": "2026-11-05"
   },
   {
    "id": "CVNA",
