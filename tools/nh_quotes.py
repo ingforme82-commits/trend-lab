@@ -7,16 +7,23 @@ import json
 import os
 import re
 import subprocess
+import sys
 import tempfile
 import time
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
 from pathlib import Path
 
 BASE = "https://api.nhplug.com:8443"
 REPO = "ingforme82-commits/trend-lab"
 SESSIONS = {"0": "pre", "1": "reg", "2": "post", "3": "day"}
+NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+STATUS = Path.home() / ".cache" / "trl-nh-quotes-status.json"
+
+
+def write_status(ok, error=None):
+    STATUS.parent.mkdir(parents=True, exist_ok=True)
+    STATUS.write_text(json.dumps({"checked_at": int(time.time() * 1000), "ok": ok, "error": error}), encoding="utf-8")
 
 
 def request(path, payload, token=None):
@@ -73,12 +80,12 @@ def normalize(row, checked_at):
 
 def gh(args, payload=None):
     if payload is None:
-        result = subprocess.run(["gh", "api", *args], capture_output=True, text=True, encoding="utf-8", timeout=35)
+        result = subprocess.run(["gh", "api", *args], capture_output=True, text=True, encoding="utf-8", timeout=35, creationflags=NO_WINDOW)
     else:
         with tempfile.TemporaryDirectory(prefix="trl-nh-") as directory:
             path = Path(directory) / "request.json"
             path.write_text(json.dumps(payload), encoding="utf-8")
-            result = subprocess.run(["gh", "api", *args, "--input", str(path)], capture_output=True, text=True, encoding="utf-8", timeout=35)
+            result = subprocess.run(["gh", "api", *args, "--input", str(path)], capture_output=True, text=True, encoding="utf-8", timeout=35, creationflags=NO_WINDOW)
     if result.returncode:
         raise RuntimeError("GitHub quote publish failed")
     return json.loads(result.stdout)
@@ -100,6 +107,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--credentials", type=Path, default=Path(os.environ.get("NH_APP_KEY_FILE", r"D:\Desktop\NH.txt")))
     parser.add_argument("--publish", action="store_true")
+    parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args()
     token = access_token(args.credentials)
     rows = []
@@ -111,7 +119,9 @@ def main():
     data = {"updated": int(time.time() * 1000), "source": "NH투자증권", "items": rows}
     if args.publish:
         publish(data)
-    print(json.dumps(data, ensure_ascii=True))
+    write_status(True)
+    if not args.quiet and sys.stdout is not None:
+        print(json.dumps(data, ensure_ascii=True))
 
 
 if __name__ == "__main__":
@@ -119,5 +129,7 @@ if __name__ == "__main__":
         main()
     except Exception as error:
         # 공급자 응답·키·토큰·요청 URL은 로그에 쓰지 않는다.
-        print("NH quote update failed:", type(error).__name__)
+        write_status(False, type(error).__name__)
+        if "--quiet" not in sys.argv and sys.stdout is not None:
+            print("NH quote update failed:", type(error).__name__)
         raise SystemExit(1) from None

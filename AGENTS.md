@@ -1,6 +1,7 @@
 # AGENTS.md — Trend Research Lab 사이트 작업 규칙 (Codex · Claude Code 공통)
 
 ## 운영자 지시 (2026-11-04)
+- NH 시세 갱신은 팝업·콘솔 창 없이 실행한다. `scripts/register-nh-quotes.ps1`로 `pythonw.exe --publish --quiet` 작업을 등록하며, GitHub 하위 프로세스도 `CREATE_NO_WINDOW`를 적용한다. 로그인 시 재시작·1분 반복·실패 시 재시도. 상태는 사용자 `.cache/trl-nh-quotes-status.json`에서 확인한다. PC가 꺼져 있거나 절전 중이면 수집할 수 없다.
 - KORU·SOXL 현재 시세는 NH HTS/공식 NH API 연동을 우선 확인한다. 화면의 갱신 시각은 한국 시간 조회 시각으로 표시하고 원천 체결 시각과 구분한다. 오래된 가격에 현재 시각만 붙여 현재 시세로 표시하지 않는다.
 - NH 현재가 자동 수집: `tools/nh_quotes.py --publish`, 예약 작업 `TRL_NH_Quotes`(1분). 공개 시세만 별도 `quotes` 브랜치 `nh-quotes.json`에 게시하며 `live` 브랜치는 건드리지 않는다. 인증 파일은 로컬 `NH_APP_KEY_FILE` 또는 `D:\Desktop\NH.txt`; 토큰은 저장소 밖 사용자 캐시에만 둔다. 조회 시각이 3분 넘으면 현재 시세로 표시하지 않는다.
 - 시황 작성 시 KORU·SOXL은 그 시황 시점의 시간외 가격·정규장 종가 대비 등락률·조회/체결 시각을 새로 확인한다. 이전 시간외 마지막 체결을 현재 가격으로 대신하지 않는다. 주간거래 등 현재 세션 가격을 조회할 수 없으면 확인 불가로 표시한다.
