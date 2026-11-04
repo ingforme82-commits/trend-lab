@@ -1,0 +1,13 @@
+﻿const fs = require('fs'), assert = require('assert');
+const src = fs.readFileSync('news.js', 'utf8');
+const code = src.match(/  function levCard\(x, level\) \{[\s\S]*?\n  \}/)[0];
+const render = new Function('x', 'esc', 'cls', 'hm', code + '; return levCard(x);');
+const now = Date.now();
+const row = {sym:'SOXL', name:'SOXL', px:100, chg:2, day:'2026-11-04', at:now-3600000, ext:{px:105,chg:5,base:100,at:now-60000,live:true,stale:false,sess:'post'}};
+const html = x => render(x, String, () => 'up', () => '15:00');
+assert(html(row).includes('class="lc-px">$105.00'));
+assert(html(row).includes('5.0%'));
+assert(html({...row,ext:{...row.ext,stale:true}}).includes('class="lc-px">$100.00'));
+assert(html({...row,ext:{...row.ext,at:now-36000000}}).includes('class="lc-px">$100.00'));
+assert(html({...row,ext:null}).includes('class="lc-px">$100.00'));
+console.log('lev_card.test.js OK');

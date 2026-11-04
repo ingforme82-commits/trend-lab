@@ -1,4 +1,4 @@
-"""🔬 SOXL · KORU 점검 — 레버리지 3배 ETF를 기초지수·구성 종목과 함께 수치로 본다(news.json lev, 2분마다).
+"""🔬 SOXL · KORU 점검 — 레버리지 3배 ETF를 기초지수·구성 종목과 함께 수치로 본다(news.json lev, 1분마다).
 
 - 가격·갭·5일선·20일선·연속 양봉(적삼병 조건): watch.analyze 와 같은 계산(야후 정규장, 시가는 5분봉 첫 봉)
 - 20일 고가·저가 대비 위치, 거래량(오늘 누적 ÷ 직전 20일 평균, 장중엔 누적이라 작게 나옴)
@@ -63,7 +63,7 @@ def build() -> dict:
     now = datetime.now(timezone.utc).timestamp()
     try:
         c = json.loads(CACHE.read_text(encoding="utf-8"))
-        if now - c["t"] < 110:
+        if now - c["t"] < 50:
             return c["v"]
     except Exception:  # noqa: BLE001
         pass

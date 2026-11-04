@@ -377,6 +377,10 @@
     const $$ = (v) => v == null ? "-" : "$" + (+v).toFixed(2);
     const pc = (v) => v == null ? "-" : `${v > 0 ? "+" : ""}${(+v).toFixed(1)}%`;
     if (!x || x.err || x.px == null) return `<div class="lc"><b>${esc((x && x.sym) || "")}</b> <span class="dim">시세를 받지 못함</span></div>`;
+    const e = x.ext;
+    const active = e && e.live && !e.stale && Date.now() - e.at < 15 * 60000 && e.at >= x.at;
+    const price = active ? e.px : x.px, change = active ? e.chg : x.chg;
+    const label = active ? `${e.sess === "pre" ? "프리마켓" : "애프터마켓"} · ${hm(e.at)} KST 체결` : `${+x.day.slice(5, 7)}/${+x.day.slice(8, 10)} ${x.open ? "장중" : "마감"}`;
     const chip = (ok, t) => `<span class="lc-c ${ok ? "on" : "off"}">${ok ? "▲" : "▼"} ${t}</span>`;
     const C = [chip(x.over_ma5, `5일선 ${x.over_ma5 ? "위" : "아래"} ${pc(x.vs_ma5)}`)];
     if (x.ma20 != null) C.push(chip(x.over_ma20, `20일선 ${x.over_ma20 ? "위" : "아래"} ${pc(x.vs_ma20)}`));
@@ -391,14 +395,14 @@
     const base = x.base_chg != null ? `기초 ${esc(String(x.base).replace(/\(.*\)/, ""))} <b class="${cls(x.base_chg)}">${pc(x.base_chg)}</b>` : "";
     const mem = x.members ? ` · 구성 대형주 ${x.members.n_up}/${x.members.n} 상승` : "";
     return `<div class="lc"><p class="lc-h"><b>${esc(x.sym)}</b> <small class="dim">${esc(x.name)}</small></p>
-      <p class="lc-p"><b class="lc-px">${$$(x.px)}</b> <b class="${cls(x.chg)}">${pc(x.chg)}</b> <small class="dim">${+x.day.slice(5, 7)}/${+x.day.slice(8, 10)} ${x.open ? "장중" : "마감"}</small></p>${ext}
+      <p class="lc-p"><b class="lc-px">${$$(price)}</b> <b class="${cls(change)}">${pc(change)}</b> <small class="dim">${label}</small></p>${ext}
       <div class="lc-cs">${C.join("")}</div>${bar}${base || mem ? `<p class="lc-f">${base}${mem}</p>` : ""}</div>`;
   }
   function levHtml(L, compact) {
     const its = (L && L.items) || [];
     if (!its.length) return "";
     return `<div class="lvbox"><p class="mm-h">🔬 SOXL · KORU 한눈에 <small>${hm(L.at)} 기준</small></p><div class="lc-g">${its.map((x) => levCard(x)).join("")}</div>
-      ${compact ? "" : `<p class="mm-f">▲ 위 · ▼ 아래 · 막대는 20일 저가~고가 중 지금 위치 · 야후 정규장 기준 · 3배 ETF는 하루 단위로 3배 추종 · 매수·매도 권유 아님</p>`}</div>`;
+      ${compact ? "" : `<p class="mm-f">시간외 가격·등락률은 정규장 종가 대비 · 1분마다 자동 확인(지연 가능) · 지표·막대는 야후 정규장 기준 · 3배 ETF는 하루 단위로 3배 추종 · 매수·매도 권유 아님</p>`}</div>`;
   }
   /* ── ⏱ 시간대별 강세: 매시(KST) '이번 시간 상승률' 상위 종목·업종 — 한국·미국 구분 ── */
   function hourlyHtml() {
@@ -739,7 +743,7 @@
     const cps = (b.checkpoints || []).length ? `<div class="bcol"><h4>🗓️ 오늘 체크포인트</h4><ul class="bn">${b.checkpoints.map((c) => `<li>${c.time ? `<b>${esc(c.time)}</b> ` : ""}${esc(c.title)}</li>`).join("")}</ul></div>` : "";
     const ktop = (b.kr_top || []).length ? `<div class="bcol"><h4>🇰🇷 국내 감시 종목 상승 상위</h4><ul class="bn">${b.kr_top.map((r) => `<li>${esc(r.name)} ${sg(r.chg)} <small class="dim">${esc(r.sector)}${r.val ? ` · 거래대금 ${eok(r.val)}` : ""}</small></li>`).join("")}</ul></div>` : "";
     const rg = b.reg && b.reg.SP500 ? `<div class="bcol"><h4>🇺🇸 미국 정규장 마감</h4><div class="bfs">${[["SP500", "S&P500"], ["XYZ100", "나스닥100"], ["SOXL", "SOXL"], ["EWY", "EWY"]].filter(([k]) => b.reg[k]).map(([k, n]) => `<span class="bf"><small>${n}</small> ${sg(b.reg[k].chg)}</span>`).join("")}</div></div>` : "";
-    const ex = b.ext && (b.ext.rows || []).length ? `<div class="bwide"><h4>🌙 미국 ${b.ext.sess === "pre" ? "프리마켓" : "애프터마켓"}${b.ext.live ? "" : " 마지막 체결"} <small class="dim">(직전 정규장 종가 대비 · 야후 1분봉 마지막 체결 · ${hm(b.ext.at)} KST${b.ext.live ? " · 3분마다 갱신" : ""} · 지수는 ETF로 표시)</small></h4><div class="bfs">${b.ext.rows.map((r) => `<span class="bf"><small>${esc(r.name)}</small> $${(+r.px).toLocaleString("en-US", { maximumFractionDigits: 2 })} ${sg(r.chg)}</span>`).join("")}</div></div>` : "";
+    const ex = b.ext && (b.ext.rows || []).length ? `<div class="bwide"><h4>🌙 미국 ${b.ext.sess === "pre" ? "프리마켓" : "애프터마켓"}${b.ext.live ? "" : " 마지막 체결"} <small class="dim">(직전 정규장 종가 대비 · 야후 1분봉 마지막 체결 · ${hm(b.ext.at)} KST${b.ext.live ? " · 1분마다 갱신" : ""} · 지수는 ETF로 표시)</small></h4><div class="bfs">${b.ext.rows.map((r) => `<span class="bf"><small>${esc(r.name)}</small> $${(+r.px).toLocaleString("en-US", { maximumFractionDigits: 2 })} ${sg(r.chg)}</span>`).join("")}</div></div>` : "";
     const fl = (b.flows || []).length ? `<div class="bcol">${b.flows.map((g) => flowTable(g, 5, true)).join("")}</div>` : "";
     const mom = (b.momentum || []).length ? `<div class="bcol">${momHtml({ sectors: b.momentum }, true)}</div>` : "";
     const lv = b.lev && (b.lev.items || []).length ? `<div class="bwide">${levHtml(b.lev, true)}</div>` : "";

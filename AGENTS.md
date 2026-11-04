@@ -1,5 +1,9 @@
 # AGENTS.md — Trend Research Lab 사이트 작업 규칙 (Codex · Claude Code 공통)
 
+## 운영자 지시 (2026-11-04)
+- 시황 작성 시 KORU·SOXL은 그 시황 시점의 시간외 가격·정규장 종가 대비 등락률·조회/체결 시각을 새로 확인한다. 이전 시간외 마지막 체결을 현재 가격으로 대신하지 않는다. 주간거래 등 현재 세션 가격을 조회할 수 없으면 확인 불가로 표시한다.
+- TRL 변경은 최신 GitHub pull 후 검증·커밋·push까지 진행하고 요청 시 사이트를 연다.
+
 조영근 추세추종 리서치 랩의 공개 랜딩 페이지입니다. GitHub Pages로 배포됩니다.
 - 사이트: https://ingforme82-commits.github.io/trend-lab/
 - 저장소: https://github.com/ingforme82-commits/trend-lab (공개)
