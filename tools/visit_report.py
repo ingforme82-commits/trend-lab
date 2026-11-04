@@ -1,6 +1,6 @@
-"""사이트 방문 현황 → 내 카톡(나에게 보내기). 매일 12:00 예약 실행.
+"""방문 현황 미리보기·사이트 브리핑 저장. 카카오톡 전송 기능은 제거했다.
 
-  python tools/visit_report.py          # 카톡 전송
+  python tools/visit_report.py          # 사이트 브리핑 저장만(카톡 발송 없음)
   python tools/visit_report.py --dry    # 화면에만 출력
 
 숫자는 count.js가 올린 abacus 카운터(trendlab-ing82)에서 읽는다. 날짜는 한국 시간 기준.
@@ -65,6 +65,10 @@ def market_lines(now: datetime) -> list[str]:
 
 
 def main() -> None:
+    if "--dry" not in sys.argv:
+        print("카카오톡 발송 중단 — 사이트 브리핑만 저장합니다.")
+        save_brief()
+        return
     now = datetime.now(KST)
     y, t = day(now - timedelta(days=1)), day(now)
     tot = {k: get(f"{k}-total") for k in ("v", "pv", "kakao", "quiz", "share", "news", "chart", "move")}
@@ -85,14 +89,7 @@ def main() -> None:
         "",
         SITE,
     ])
-    if "--dry" in sys.argv:
-        print(msg)
-        return
-    sys.path.insert(0, os.environ.get("TRL_KAKAO_DIR", r"C:\projects\market-site\trader"))   # 카톡 모듈(메인 PC 전용)
-    from kakao_notify import notify
-    ok = notify(msg)
-    print("전송 성공" if ok else "전송 실패")
-    save_brief()
+    print(msg)
 
 
 def save_brief() -> None:
