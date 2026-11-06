@@ -16,7 +16,7 @@
 **실시간 갱신은 Claude 없이도 돈다.** 속보·시세·주도 섹터·시간대별 강세·수급·프로그램 매매는 Windows 예약 작업 '트렌드랩_속보갱신'(1분마다 `tools/live_news.py`)이 만든다. Claude 사용량 초과로 멈추는 것은 사람이 하던 일(주요 이슈 작성, 관전 포인트 가격대, 중복 묶음 보강, 장애 점검)뿐이고, 아래 명령으로 이어서 한다.
 
 ```powershell
-$o = "C:\projects\trend-lab-site\scripts\ops.ps1"
+$o = "C:\projects\trend-lab\scripts\ops.ps1"
 powershell -NoProfile -ExecutionPolicy Bypass -File $o status        # ① 먼저: 예약 작업·사이트 갱신 시각(5분 넘으면 ⚠)·묶이지 않은 중복·KB 키 유무
 powershell -NoProfile -ExecutionPolicy Bypass -File $o run           # 갱신이 멈췄으면 수집 1회(그래도 안 되면 예약 작업 '트렌드랩_속보갱신' 확인)
 powershell -NoProfile -ExecutionPolicy Bypass -File $o watch -Memo "운영자 문장 그대로" -Soxl 102 -Koru 12 -Push   # 관전 포인트(운영자 메모·가격대)
@@ -38,7 +38,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $o push -Message "무엇을 
 ### 자주 나는 장애와 대응(2026-10-30 실제 사례)
 | 증상 | 원인 | 대응 |
 |---|---|---|
-| `status` 사이트 갱신 ⚠(5분 넘게 멈춤), 예약 작업 '다음 실행' 비어 있음 | '트렌드랩_속보갱신' 트리거가 '로그온 때만 반복'이라 한 번 끊기면 다시 안 돎 | `powershell -NoProfile -ExecutionPolicy Bypass -File C:\projects\trend-lab-site\scripts\fix_live_task.ps1` (1분 반복 트리거 추가) → `ops.ps1 run` 으로 즉시 1회 |
+| `status` 사이트 갱신 ⚠(5분 넘게 멈춤), 예약 작업 '다음 실행' 비어 있음 | '트렌드랩_속보갱신' 트리거가 '로그온 때만 반복'이라 한 번 끊기면 다시 안 돎 | `powershell -NoProfile -ExecutionPolicy Bypass -File C:\projects\trend-lab\scripts\fix_live_task.ps1` (1분 반복 트리거 추가) → `ops.ps1 run` 으로 즉시 1회 |
 | 밤사이 NH 모의 판정(22:35·04:50·04:55)이 기록에 없음, 아침에 예약 작업들이 결과 1 | 노트북 절전·종료(예약 작업 '깨우기' 꺼짐) | 미국장 동안 전원 연결·절전 해제. 놓친 판정은 되돌릴 수 없음 — `market-site\trader\logs\decisions_*.jsonl` 끊긴 시각 확인 |
 | NH 잔고 $0, 계좌 끝자리가 바뀜 | NH 모의 계좌가 새로 발급됨(기존 계좌 목록에서 사라짐) | `trader\.venv\Scripts\python nh_tool.py accounts` 로 확인 → 운영자가 NH 포털에서 모의 계좌·자금 확인. 주문은 운영자 확인 전 보내지 않음 |
 | KB 응답 확인 | 키는 사용자 환경변수(KB_APP_KEY/SECRET) | `market-site\backend\.venv\Scripts\python market-site\trader\kb_tool.py price 005930` (조회만, 키 출력 없음). Codex 실행 환경이 네트워크 차단이면 메인 노트북 PowerShell 에서 |

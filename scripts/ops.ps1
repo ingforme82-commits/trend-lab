@@ -1,5 +1,5 @@
 ﻿# 트렌드랩 운영 명령(Claude 사용량이 다 찼을 때 Codex·운영자가 PowerShell에서 이어서 사용). 자세한 설명: AGENTS.md '사용량 초과 시'
-# 예) powershell -NoProfile -ExecutionPolicy Bypass -File C:\projects\trend-lab-site\scripts\ops.ps1 status
+# 예) powershell -NoProfile -ExecutionPolicy Bypass -File C:\projects\trend-lab\scripts\ops.ps1 status
 param(
     [Parameter(Position = 0)][ValidateSet("status", "run", "watch", "issue", "issue-remove", "alias", "test", "push", "help")][string]$Cmd = "help",
     [string]$Memo, [double]$Soxl, [double]$Koru, [string]$Title, [string]$Date,
