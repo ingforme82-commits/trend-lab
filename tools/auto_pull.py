@@ -13,7 +13,7 @@ import subprocess
 from datetime import datetime
 from pathlib import Path
 
-REPOS = [Path(r"C:\projects\trend-lab-site"), Path(r"C:\projects\market-site")]
+REPOS = [Path(r"C:\projects\trend-lab"), Path(r"C:\projects\market-site")]
 LOG = Path(__file__).resolve().parent / "auto_pull.log"
 NO_WINDOW = 0x08000000
 
