@@ -91,6 +91,11 @@ FEEDS = [
     ("알자지라", "https://www.aljazeera.com/xml/rss/all.xml", "en"),
     ("CNBC", "https://www.cnbc.com/id/100727362/device/rss/rss.html", "en"),
     ("Oilprice", "https://oilprice.com/rss/main", "en"),
+    # 블룸버그 무료 RSS (운영자 11/9 지시)
+    ("블룸버그", "https://www.bloomberg.com/feeds/markets/news.rss", "en"),
+    ("블룸버그", "https://www.bloomberg.com/feeds/politics/news.rss", "en"),
+    ("블룸버그", "https://www.bloomberg.com/feeds/technology/news.rss", "en"),
+    ("블룸버그", "https://www.bloomberg.com/feeds/economics/news.rss", "en"),
     ("미 연준", "https://www.federalreserve.gov/feeds/press_all.xml", "en"),
     ("미 EIA", "https://www.eia.gov/rss/todayinenergy.xml", "en"),
 ]
