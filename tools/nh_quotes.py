@@ -105,7 +105,10 @@ def publish(data):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--credentials", type=Path, default=Path(os.environ.get("NH_APP_KEY_FILE", r"D:\Desktop\NH.txt")))
+    # 키 파일 위치: 환경변수 → 바탕화면 NH.txt → ~/.nhplug/.env (11/8 바탕화면 파일이 없어 멈췄던 문제)
+    keyfile = next((p for p in (os.environ.get("NH_APP_KEY_FILE"), r"D:\Desktop\NH.txt", str(Path.home() / ".nhplug" / ".env")) if p and Path(p).is_file()),
+                   str(Path.home() / ".nhplug" / ".env"))
+    parser.add_argument("--credentials", type=Path, default=Path(keyfile))
     parser.add_argument("--publish", action="store_true")
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args()
