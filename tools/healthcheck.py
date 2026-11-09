@@ -1,7 +1,8 @@
 """🩺 실시간 점검 — 사이트 실시간 값이 멈췄는지, 멈췄다면 어디서 멈췄는지 바로 보이게 (운영자 11/9 지시).
 
   python tools/healthcheck.py          # 한 번 점검해서 결과 출력 + tools/health.json 저장
-  예약: TrendLab_HealthCheck (5분마다, 창 없음) — 등록: scriptsegister_healthcheck.ps1
+  예약: TrendLab_HealthCheck (5분마다, 창 없음) — 등록: scripts
+egister_healthcheck.ps1
 
 점검 항목(각각 정상 / 주의 / 문제 + 원인 설명):
   1 속보 수집기 — live_news.log 마지막 실행 시각, 최근 오류
@@ -13,6 +14,8 @@
   7 NH API — 토큰 갱신 + 시세 1건 조회(연결 유지 겸), 모의매매 주문 시간대는 건너뜀
   8 KB API — 10분 쉼(kb_down.txt) 여부
   9 예약 작업 — 트렌드랩_*·NH_MOCK_* 마지막 결과 코드, 반복 작업이 너무 오래 안 돈 것
+ 10 SOXL·KORU 시간외 — 사이트 카드에 보낼 시간외 값이 5분 안에 갱신됐는지
+ 11 사이트 배포 — 깃허브 페이지의 news.js·app.js·index.html 이 최신 커밋과 같은지(20분 넘게 다르면 문제)
 새로 '문제'가 생기면 tg_alert(텔레그램 개인 알림, 꺼져 있으면 tools/alert_outbox.log)로 알리고 tools/healthcheck.log 에 남긴다.
 키·토큰·계좌번호는 출력하지 않는다.
 """
@@ -247,13 +250,55 @@ def check_tasks() -> None:
         "코드 1·2 = 스크립트 오류로 끝남(그 작업 로그 확인) · 오래 안 돎 = PC 절전·작업 꺼짐" if bad else "")
 
 
+# 10 SOXL·KORU 시간외 — 사이트 카드가 실제로 보여 줄 값이 있는지
+def check_lev() -> None:
+    rows = {r["sym"]: r for r in ((NEWS.get("brief") or {}).get("ext") or {}).get("rows") or []}
+    sess = ((NEWS.get("brief") or {}).get("ext") or {}).get("sess")
+    if not ((NEWS.get("brief") or {}).get("ext") or {}).get("live"):
+        add("SOXL·KORU 시간외", "정상", "지금은 시간외 세션 아님(정규장·휴장) — 카드에 정규장 값 표시"); return
+    bad = [s for s in ("SOXL", "KORU") if s not in rows or age(rows[s].get("checked_at")) > 5]
+    if bad:
+        add("SOXL·KORU 시간외", "문제", f"{' · '.join(bad)} 시간외 값 없음/오래됨({sess})", "시간외 시세판(ext_board) 수집 실패 — 사이트 카드에 '마지막 체결'만 표시됨")
+    else:
+        add("SOXL·KORU 시간외", "정상", " · ".join(f"{s} {rows[s]['src']} ${rows[s]['px']} {rows[s]['chg']:+.2f}%" for s in ("SOXL", "KORU")))
+
+
+# 11 배포 — 깃허브 페이지의 화면 코드가 최신 커밋과 같은지
+def check_deploy() -> None:
+    import hashlib
+    base = "https://ingforme82-commits.github.io/trend-lab/"
+    old = []
+    for f in ("news.js", "app.js", "index.html"):
+        try:
+            local = subprocess.run(["git", "-C", str(TOOLS.parent), "show", f"origin/main:{f}"], capture_output=True, timeout=30, creationflags=NO_WINDOW).stdout
+            remote = urllib.request.urlopen(urllib.request.Request(f"{base}{f}?t={int(NOW)}", headers={"Cache-Control": "no-cache"}), timeout=15).read()
+            if hashlib.sha1(local.replace(b"\r\n", b"\n")).hexdigest() != hashlib.sha1(remote.replace(b"\r\n", b"\n")).hexdigest():
+                old.append(f)
+        except Exception as e:  # noqa: BLE001
+            old.append(f"{f}({type(e).__name__})")
+    st = state_ref.setdefault("deploy_old_since", None)
+    if old:
+        since = state_ref["deploy_old_since"] = st or NOW
+        m = (NOW - since) / 60
+        add("사이트 배포", "문제" if m > 20 else "정상", f"배포 대기 {m:.0f}분: {' · '.join(old)}",
+            "깃허브 페이지 빌드 실패·지연 — gh api repos/ingforme82-commits/trend-lab/pages/builds 확인" if m > 20 else "")
+    else:
+        state_ref["deploy_old_since"] = None
+        add("사이트 배포", "정상", "화면 코드가 최신 커밋과 같음(열린 창은 5분 안에 자동 새로고침)")
+
+
+state_ref: dict = {}
+
+
 def main() -> None:
     sys.stdout.reconfigure(encoding="utf-8")
     try:
         state = json.loads(STATE.read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001
         state = {}
-    for fn in (check_collector, check_site, lambda: check_futures(state), check_cnbc, check_ext, check_rss, check_nh, check_kb, check_tasks):
+    global state_ref
+    state_ref = state
+    for fn in (check_collector, check_site, lambda: check_futures(state), check_cnbc, check_ext, check_lev, check_rss, check_nh, check_kb, check_tasks, check_deploy):
         try:
             fn()
         except Exception as e:  # noqa: BLE001

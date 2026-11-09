@@ -976,6 +976,24 @@
   (async () => { await Promise.all([loadNews(), loadNotes(), loadSessionQuotes(), loadHeadline(), loadBriefs(), full ? loadCandles() : null]); redraw(); })();
   setInterval(loadBriefs, 600000);
   setInterval(async () => { await Promise.all([loadNews(), loadSessionQuotes()]); redraw(); }, 60000);                 // 속보·변곡점 1분마다
+  // 새 버전이 배포되면 오래 열어 둔 페이지도 스스로 새로고침(11/9: 고친 코드가 배포됐는데 열린 창은 옛 코드로 '시간외 확인 불가'를 계속 보여 줌)
+  (() => {
+    let first = null;
+    const files = ["news.js", "app.js"];
+    const stamp = async () => (await Promise.all(files.map(async (f) => {
+      const r = await fetch(`${f}?v=${Date.now()}`, { method: "HEAD", cache: "no-store" });
+      return r.ok ? (r.headers.get("last-modified") || r.headers.get("etag") || "") : "";
+    }))).join("|");
+    setInterval(async () => {
+      try {
+        const now = await stamp();
+        if (!now.replace(/\|/g, "")) return;
+        if (first === null) { first = now; return; }
+        if (now !== first && !document.querySelector("input:focus, textarea:focus, select:focus")) location.reload();
+      } catch { /* 다음에 다시 */ }
+    }, 5 * 60000);
+    stamp().then((v) => { if (first === null && v.replace(/\|/g, "")) first = v; }).catch(() => {});
+  })();
   setInterval(loadNotes, 600000);
   setInterval(async () => { await loadHeadline(); drawHeroLive(); }, 300000);   // 주요 이슈 5분마다
   if (full) setInterval(async () => { await loadCandles(); redraw(); }, 120000);  // 지수 2분마다
