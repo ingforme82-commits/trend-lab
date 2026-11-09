@@ -99,6 +99,12 @@ FEEDS = [
     ("CNBC", "https://www.cnbc.com/id/10000113/device/rss/rss.html", "en"),
     ("CNBC", "https://www.cnbc.com/id/10000664/device/rss/rss.html", "en"),
     ("Oilprice", "https://oilprice.com/rss/main", "en"),
+    # 월스트리트저널 무료 RSS (운영자 11/9 지시): 시장·세계·미국 기업·기술·경제
+    ("WSJ", "https://feeds.content.dowjones.io/public/rss/RSSMarketsMain", "en"),
+    ("WSJ", "https://feeds.content.dowjones.io/public/rss/RSSWorldNews", "en"),
+    ("WSJ", "https://feeds.content.dowjones.io/public/rss/WSJcomUSBusiness", "en"),
+    ("WSJ", "https://feeds.content.dowjones.io/public/rss/RSSWSJD", "en"),
+    ("WSJ", "https://feeds.content.dowjones.io/public/rss/socialeconomyfeed", "en"),
     # 블룸버그 무료 RSS (운영자 11/9 지시)
     ("블룸버그", "https://www.bloomberg.com/feeds/markets/news.rss", "en"),
     ("블룸버그", "https://www.bloomberg.com/feeds/politics/news.rss", "en"),
