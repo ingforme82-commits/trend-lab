@@ -1,6 +1,6 @@
 """🌙 미국 시간외(프리마켓·애프터마켓) 시세 — 정규장 값과 따로 둔다(2026-10-28 코덱스 점검 반영).
 
-- 출처: 야후 1분봉(includePrePost=true)의 마지막 유효 체결. 호가·즉시 체결 보장 값이 아니다.
+- 출처: NH투자증권 해외주식 현재가 API 먼저(운영자 11/9 지시), 실패하면 야후 1분봉(includePrePost=true)의 마지막 유효 체결. 호가·즉시 체결 보장 값이 아니다.
 - 기준가: 직전 정규장 종가(meta.regularMarketPrice). chartPreviousClose 는 하루 더 앞 종가일 수 있어 쓰지 않는다.
 - 세션 구분: meta.currentTradingPeriod 의 pre·regular·post 시간(미국 동부, 서머타임·휴장 반영은 야후 값을 따름)
 - 지금 시간외 세션이 아니거나 마지막 체결이 15분보다 오래되면 stale=True. checked_at은 조회 시각, at은 원천 체결 시각이다.
@@ -10,8 +10,14 @@
 from __future__ import annotations
 
 import json
+import os
+import threading
 import time
+import urllib.error
 import urllib.request
+from datetime import datetime
+from pathlib import Path
+from zoneinfo import ZoneInfo
 
 STALE_S = 15 * 60
 
@@ -47,7 +53,73 @@ def build_one(meta: dict, ts: list, closes: list, now: float) -> dict | None:
             "at": t * 1000, "checked_at": int(now * 1000), "live": live, "stale": (not live) or now - t > STALE_S}
 
 
+NH_SESS = {"0": "pre", "2": "post"}          # 1=정규장, 3=주간거래 → 야후로 넘김
+_nh_lock = threading.Lock()
+_nh_down_until = 0.0
+_nh_gap = threading.Lock()
+_nh_last = 0.0
+NH_GAP = 0.35
+
+
+def nh_allowed(now: float) -> bool:
+    """평일 한국장(08:50~15:40 KST)에는 NH 시세를 쓰지 않는다 — 같은 앱 키로 도는 모의매매 주문·감시 호출 한도를 먹지 않게."""
+    t = datetime.fromtimestamp(now, ZoneInfo("Asia/Seoul"))
+    return not (t.weekday() < 5 and 850 <= t.hour * 100 + t.minute <= 1540)
+
+
+def _nh_token():
+    """NH 시세용 토큰(키 파일 ~/.nhplug/.env, 토큰은 ~/.cache 에만 저장 — nh_quotes.py 와 같은 캐시)."""
+    import nh_quotes
+    with _nh_lock:
+        return nh_quotes.access_token(Path(os.environ.get("NH_APP_KEY_FILE") or Path.home() / ".nhplug" / ".env"))
+
+
+def nh_quote(sym: str, now: float) -> dict | None:
+    """NH투자증권 해외주식 현재가(프리·애프터 세션 체결가, 기준가=직전 정규장 종가). 운영자 11/9 지시."""
+    import nh_quotes
+    global _nh_last
+    tok = _nh_token()
+    with _nh_gap:                                  # 초당 호출 건수 제한(IGW42902) — 호출 사이 NH_GAP 초
+        time.sleep(max(0.0, _nh_last + NH_GAP - time.time()))
+        _nh_last = time.time()
+    r = nh_quotes.request("/gbstock/quote/v1/current", {"Input_0": {"iem_cd": sym}}, tok)
+    o = r.get("Output_0") or {}
+    if r.get("rsp_cd") != "00000":
+        raise ValueError("NH quote rejected")
+    sess = NH_SESS.get(str(o.get("marketperiod_cls")))
+    px, base = float(o.get("trdprc") or 0), float(o.get("normal_trdprc") or 0)
+    if not sess or px <= 0 or base <= 0:
+        return None
+    try:
+        t = datetime.strptime(f"{o['trade_date']}{o['quote_time']}", "%Y%m%d%H%M%S").replace(tzinfo=ZoneInfo("America/New_York")).timestamp()
+    except Exception:  # noqa: BLE001
+        t = now
+    live = now - t <= STALE_S
+    return {"sess": sess, "px": round(px, 4), "base": round(base, 4), "change": round(px - base, 4), "chg": round((px / base - 1) * 100, 2),
+            "at": int(t * 1000), "checked_at": int(now * 1000), "live": live, "stale": not live, "src": "NH"}
+
+
 def quote(sym: str) -> dict | None:
+    """NH 먼저, 실패하면 야후. 호출 한도 초과(429)는 그 종목만 야후로, 그 밖의 NH 오류는 10분 동안 야후만 쓴다."""
+    global _nh_down_until
+    now = time.time()
+    if now >= _nh_down_until and nh_allowed(now):
+        try:
+            q = nh_quote(sym, now)
+            if q:
+                return q
+        except urllib.error.HTTPError as e:
+            if e.code != 429:
+                _nh_down_until = now + 600
+        except Exception:  # noqa: BLE001
+            _nh_down_until = now + 600
+    q = yahoo_quote(sym)
+    if q:
+        q["src"] = "야후"
+    return q
+
+
+def yahoo_quote(sym: str) -> dict | None:
     u = f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.request.quote(sym)}?interval=1m&range=1d&includePrePost=true"
     r = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"}), timeout=10).read())["chart"]["result"][0]
     return build_one(r["meta"], r.get("timestamp") or [], r["indicators"]["quote"][0].get("close") or [], time.time())

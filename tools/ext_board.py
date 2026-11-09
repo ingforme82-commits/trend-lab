@@ -1,6 +1,6 @@
 """🌙 미국 시간외 시세판(프리마켓·애프터마켓) + 큰 움직임 속보(2026-11-02 운영자 요청).
 
-- 값: tools/extended.py quote()(야후 1분봉 includePrePost 마지막 체결, 정규장 종가 대비). 지수는 시간외 거래가 없어 ETF(SPY·QQQ)로 본다.
+- 값: tools/extended.py quote()(NH 해외주식 현재가 먼저, 실패 시 야후 1분봉 마지막 체결, 정규장 종가 대비). 지수는 시간외 거래가 없어 ETF(SPY·QQQ)로 본다.
 - 대상: 주요 ETF·대형주(BOARD) + 🔥 화제 종목(spot)의 미국 종목.
 - 1분마다만 새로 받는다(tools/ext_board_cache.json).
 - 시간외 체결이 정규장 종가 대비 ±5%·±10%를 처음 넘으면 그 시각으로 속보 1건(같은 종목·같은 세션·같은 단계는 한 번만, tools/ext_board_state.json).
