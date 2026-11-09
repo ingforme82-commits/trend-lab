@@ -84,6 +84,13 @@ FEEDS = [
     # 해외 원출처 직접 번역 (2026-10-27 추가)
     ("FT", "https://www.ft.com/markets?format=rss", "en"),
     ("FT", "https://www.ft.com/world?format=rss", "en"),
+    # FT 최신 속보·분야별 (운영자 11/9 지시)
+    ("FT", "https://www.ft.com/news-feed?format=rss", "en"),
+    ("FT", "https://www.ft.com/companies?format=rss", "en"),
+    ("FT", "https://www.ft.com/technology?format=rss", "en"),
+    ("FT", "https://www.ft.com/global-economy?format=rss", "en"),
+    ("FT", "https://www.ft.com/asia-pacific?format=rss", "en"),
+    ("FT", "https://www.ft.com/commodities?format=rss", "en"),
     ("BBC", "https://feeds.bbci.co.uk/news/business/rss.xml", "en"),
     ("NYT", "https://rss.nytimes.com/services/xml/rss/nyt/Business.xml", "en"),
     ("가디언", "https://www.theguardian.com/business/rss", "en"),
