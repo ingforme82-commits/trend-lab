@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -56,12 +57,36 @@ def futures() -> list[dict]:
         c = _hl_ctx()
     except Exception:  # noqa: BLE001
         return []
+    cn = cnbc_fx()
     out = []
     for sym, name, u in FUT:
+        if name in cn:                                   # 달러인덱스·원/달러·엔/달러는 CNBC 24시간 실시간(하이퍼리퀴드 상품은 거래 멈춤, 11/9 확인)
+            out.append({"name": name, **cn[name], "u": u})
+            continue
         x = c.get(sym)
-        if x and float(x.get("prevDayPx") or 0):
+        if x and float(x.get("prevDayPx") or 0) and float(x.get("dayNtlVlm") or 0) > 0:   # 거래량 0 = 멈춘 상품은 싣지 않음
             px, prev = float(x["markPx"]), float(x["prevDayPx"])
             out.append({"name": name, "px": px, "chg": round((px / prev - 1) * 100, 2), "u": u})
+    return out
+
+
+CNBC_FX = {".DXY": "달러인덱스", "KRW=": "원/달러", "JPY=": "엔/달러"}
+
+
+def cnbc_fx() -> dict:
+    """CNBC 실시간 환율(24시간 갱신). 실패하면 빈 값 → 하이퍼리퀴드(거래 있는 것만)."""
+    u = ("https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?symbols=" + urllib.request.quote("|".join(CNBC_FX))
+         + "&requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=1&output=json")
+    out = {}
+    try:
+        qs = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"}), timeout=10).read())
+        for q in qs["FormattedQuoteResult"]["FormattedQuote"]:
+            px, prev = float(str(q["last"]).replace(",", "")), float(str(q["previous_day_closing"]).replace(",", ""))
+            if px > 0 and prev > 0 and q.get("symbol") in CNBC_FX:
+                out[CNBC_FX[q["symbol"]]] = {"px": round(px, 3), "chg": round((px / prev - 1) * 100, 2), "src": "CNBC",
+                                             "at": int(datetime.fromisoformat(q["last_time"]).timestamp() * 1000)}
+    except Exception:  # noqa: BLE001
+        pass
     return out
 
 
