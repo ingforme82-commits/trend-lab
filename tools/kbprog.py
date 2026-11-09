@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import time
+import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
@@ -43,8 +44,23 @@ def _post(url: str, body: dict, token: str | None = None) -> dict:
     h = {"Content-Type": "application/json", "Accept": "application/json"}
     if token:
         h["Authorization"] = f"bearer {token}"
+    down = Path(__file__).with_name("kb_down.txt")              # KB 서버 시간 초과 뒤 10분은 부르지 않음(속보 갱신이 멈추지 않게)
+    try:
+        last = float(down.read_text())
+    except (OSError, ValueError):
+        last = 0.0
+    if time.time() - last < 600:
+        raise TimeoutError("KB 서버 응답 없음(10분 쉼)")
     req = urllib.request.Request(url, data=json.dumps({"dataHeader": HDR, "dataBody": body}).encode(), headers=h, method="POST")
-    return json.loads(urllib.request.urlopen(req, timeout=15).read())
+    try:
+        return json.loads(urllib.request.urlopen(req, timeout=8).read())
+    except (TimeoutError, urllib.error.URLError) as e:
+        if isinstance(e, TimeoutError) or "timed out" in str(e):
+            try:
+                down.write_text(str(time.time()))
+            except OSError:
+                pass
+        raise
 
 
 def _token() -> str | None:
@@ -139,10 +155,16 @@ def fetch(codes: list[str], hot: set[str] | None = None) -> dict[str, dict]:
         except Exception:  # noqa: BLE001
             tok = None
         if tok:
+            dead = []                                    # KB 서버가 안 되면(시간 초과 등) 남은 종목은 건너뛰어 속보 갱신이 멈추지 않게
+            t0 = time.time()
+
             def one(x):
+                if dead or time.time() - t0 > 30:
+                    return x, None
                 try:
                     return x, _one(x, tok)
                 except Exception:  # noqa: BLE001
+                    dead.append(x)
                     return x, None
             with ThreadPoolExecutor(max_workers=4) as ex:
                 for x, v in ex.map(one, need[:120]):
