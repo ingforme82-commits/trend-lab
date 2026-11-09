@@ -96,6 +96,8 @@ FEEDS = [
     ("블룸버그", "https://www.bloomberg.com/feeds/politics/news.rss", "en"),
     ("블룸버그", "https://www.bloomberg.com/feeds/technology/news.rss", "en"),
     ("블룸버그", "https://www.bloomberg.com/feeds/economics/news.rss", "en"),
+    # 로이터는 공개 RSS가 없어 구글 뉴스 검색 RSS(reuters.com 기사만, 최근 2시간)로 받는다 (운영자 11/9 지시)
+    ("로이터", "https://news.google.com/rss/search?q=site:reuters.com+when:2h&hl=en-US&gl=US&ceid=US:en", "en"),
     ("미 연준", "https://www.federalreserve.gov/feeds/press_all.xml", "en"),
     ("미 EIA", "https://www.eia.gov/rss/todayinenergy.xml", "en"),
 ]
@@ -283,6 +285,8 @@ def fetch_rss() -> list[dict]:
         ok.append(name)
         for it in root.iter("item"):
             title = unescape(re.sub(r"<[^>]+>", "", (it.findtext("title") or "")).strip())
+            if name == "로이터":
+                title = re.sub(r"\s+-\s+Reuters$", "", title)       # 구글 뉴스가 붙이는 ' - Reuters' 떼기
             pub = it.findtext("pubDate") or it.findtext("{http://purl.org/dc/elements/1.1/}date") or ""
             try:
                 dt = email.utils.parsedate_to_datetime(pub) if "," in pub else datetime.fromisoformat(pub.replace("Z", "+00:00"))
