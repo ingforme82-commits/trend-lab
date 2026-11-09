@@ -32,3 +32,6 @@ tools/alert_outbox.log
 tools/ext_board_cache.json
 tools/ext_board_state.json
 tools/kb_down.txt
+tools/health.json
+tools/health_state.json
+tools/healthcheck.log
