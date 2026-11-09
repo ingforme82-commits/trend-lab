@@ -53,18 +53,25 @@ def build_one(meta: dict, ts: list, closes: list, now: float) -> dict | None:
             "at": t * 1000, "checked_at": int(now * 1000), "live": live, "stale": (not live) or now - t > STALE_S}
 
 
-NH_SESS = {"0": "pre", "2": "post"}          # 1=정규장, 3=주간거래 → 야후로 넘김
+NH_SESS = {"0": "pre", "2": "post", "3": "day"}   # 1=정규장(야후·정규장 자료로) · 3=주간거래(한국 낮 시간)
 _nh_lock = threading.Lock()
 _nh_down_until = 0.0
 _nh_gap = threading.Lock()
 _nh_last = 0.0
-NH_GAP = 0.35
 
 
-def nh_allowed(now: float) -> bool:
-    """평일 한국장(08:50~15:40 KST)에는 NH 시세를 쓰지 않는다 — 같은 앱 키로 도는 모의매매 주문·감시 호출 한도를 먹지 않게."""
+# 모의매매(같은 앱 키)가 주문을 내는 시간대 — 이때만 NH 시세를 쉬고 야후로 (KST HHMM 구간)
+TRADER_BUSY = ((900, 920), (1058, 1106), (1428, 1436), (1505, 1522))
+
+
+def nh_gap(now: float) -> float | None:
+    """NH 호출 간격(초). None 이면 지금은 NH를 쓰지 않는다.
+    평일 한국장(08:50~15:40)에는 간격을 1초로 늘리고 모의매매 주문 시간대는 건너뛴다 — 호출 한도(IGW42902)를 나눠 쓰므로."""
     t = datetime.fromtimestamp(now, ZoneInfo("Asia/Seoul"))
-    return not (t.weekday() < 5 and 850 <= t.hour * 100 + t.minute <= 1540)
+    hm = t.hour * 100 + t.minute
+    if t.weekday() < 5 and 850 <= hm <= 1540:
+        return None if any(a <= hm <= b for a, b in TRADER_BUSY) else 1.0
+    return 0.35
 
 
 def _nh_token():
@@ -74,13 +81,13 @@ def _nh_token():
         return nh_quotes.access_token(Path(os.environ.get("NH_APP_KEY_FILE") or Path.home() / ".nhplug" / ".env"))
 
 
-def nh_quote(sym: str, now: float) -> dict | None:
+def nh_quote(sym: str, now: float, gap: float = 0.35) -> dict | None:
     """NH투자증권 해외주식 현재가(프리·애프터 세션 체결가, 기준가=직전 정규장 종가). 운영자 11/9 지시."""
     import nh_quotes
     global _nh_last
     tok = _nh_token()
     with _nh_gap:                                  # 초당 호출 건수 제한(IGW42902) — 호출 사이 NH_GAP 초
-        time.sleep(max(0.0, _nh_last + NH_GAP - time.time()))
+        time.sleep(max(0.0, _nh_last + gap - time.time()))
         _nh_last = time.time()
     r = nh_quotes.request("/gbstock/quote/v1/current", {"Input_0": {"iem_cd": sym}}, tok)
     o = r.get("Output_0") or {}
@@ -94,18 +101,22 @@ def nh_quote(sym: str, now: float) -> dict | None:
         t = datetime.strptime(f"{o['trade_date']}{o['quote_time']}", "%Y%m%d%H%M%S").replace(tzinfo=ZoneInfo("America/New_York")).timestamp()
     except Exception:  # noqa: BLE001
         t = now
-    live = now - t <= STALE_S
+    if not (now - 12 * 3600 < t <= now + 120):     # 시각 형식이 다르면 조회 시각으로
+        t = now
+    # NH 가 알려 주는 구분이 '지금 열린 세션'이므로 live. 마지막 체결이 오래됐으면(거래 적은 종목) stale 로 표시만 한다.
+    live = True
     return {"sess": sess, "px": round(px, 4), "base": round(base, 4), "change": round(px - base, 4), "chg": round((px / base - 1) * 100, 2),
-            "at": int(t * 1000), "checked_at": int(now * 1000), "live": live, "stale": not live, "src": "NH"}
+            "at": int(t * 1000), "checked_at": int(now * 1000), "live": live, "stale": now - t > STALE_S, "src": "NH"}
 
 
 def quote(sym: str) -> dict | None:
     """NH 먼저, 실패하면 야후. 호출 한도 초과(429)는 그 종목만 야후로, 그 밖의 NH 오류는 10분 동안 야후만 쓴다."""
     global _nh_down_until
     now = time.time()
-    if now >= _nh_down_until and nh_allowed(now):
+    gap = nh_gap(now)
+    if now >= _nh_down_until and gap is not None:
         try:
-            q = nh_quote(sym, now)
+            q = nh_quote(sym, now, gap)
             if q:
                 return q
         except urllib.error.HTTPError as e:

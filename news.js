@@ -59,6 +59,12 @@
           }
         }
       } catch { /* NH 갱신 실패 시 수집된 자료를 유지하되 조회 시각을 표시 */ }
+      const board = (j.brief && j.brief.ext) || j.ext;              // 시간외 시세판(NH 우선, 실패 시 야후) — 1분마다
+      for (const row of (j.lev && j.lev.items) || []) {
+        const fresh = row.ext && !row.ext.stale && Date.now() - row.ext.checked_at < 3 * 60000;
+        const r = board && (board.rows || []).find((x) => x.sym === row.sym);
+        if (!fresh && r && r.px > 0 && r.base > 0) row.ext = { ...r, source: r.src === "NH" ? "NH투자증권" : "야후", board: true };
+      }
       news = j.items || []; moves = j.moves || []; series = j.series || {}; health = j.health || null;
       world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
       window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlUst = j.ust || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; flows = j.flows || null; s7 = normalizeS7(j); leaders = j.leaders || null; watch = j.watch || null; lev = j.lev || null; window.trlBrief = brief || {}; window.trlFlows = flows || {}; window.trlS7 = s7 || {}; window.trlLev = lev || {}; window.trlUpdated = j.updated || Date.now(); if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } if (typeof window.loadBand === "function" && !window.__pinNotice) window.loadBand(); window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
@@ -390,7 +396,7 @@
     const pc = (v) => v == null ? "-" : `${v > 0 ? "+" : ""}${(+v).toFixed(1)}%`;
     if (!x || x.err || x.px == null) return `<div class="lc"><b>${esc((x && x.sym) || "")}</b> <span class="dim">시세를 받지 못함</span></div>`;
     const e = x.ext;
-    const active = e && e.live && !e.stale && (e.source === "NH투자증권" ? Date.now() - e.checked_at < 3 * 60000 : Date.now() - e.at < 15 * 60000 && e.at >= x.at);
+    const active = e && e.live && !e.stale && (e.board ? Date.now() - e.checked_at < 5 * 60000 : e.source === "NH투자증권" ? Date.now() - e.checked_at < 3 * 60000 : Date.now() - e.at < 15 * 60000 && e.at >= x.at);
     const price = active ? e.px : x.px, change = active ? e.chg : x.chg;
     const queried = e && (e.checked_at || checkedAt);
     const queryLabel = queried ? `${new Date(queried).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })} 한국 시간 조회` : "조회 시각 확인 불가";
@@ -405,7 +411,8 @@
       const pos = Math.max(0, Math.min(100, (x.px - x.lo20) / (x.hi20 - x.lo20) * 100));
       bar = `<div class="lc-r"><small>20일 저가 ${$$(x.lo20)}</small><span class="lc-b"><i style="left:${pos.toFixed(0)}%"></i></span><small>고가 ${$$(x.hi20)}</small></div>`;
     }
-    const ext = e ? `<p class="lc-f">${active ? `시간외 · 정규장 종가 ${$$(e.base)} 대비 ${pc(e.chg)}` : "현재 시간외 시세 확인 불가"} <small>· ${esc(e.source || "야후")} · ${queryLabel}</small></p>` : `<p class="lc-f">현재 시간외 시세 확인 불가</p>`;
+    const SN = { pre: "프리마켓", post: "애프터마켓", day: "주간거래" };
+    const ext = e ? `<p class="lc-f">${active ? `${SN[e.sess] || "시간외"} · 정규장 종가 ${$$(e.base)} 대비 ${pc(e.chg)}${e.stale ? ` · 마지막 체결 ${hm(e.at)}` : ""}` : `${SN[e.sess] || "시간외"} 마지막 체결 ${$$(e.px)} ${pc(e.chg)} · ${e.at ? md2(e.at) + " " + hm(e.at) : ""}`} <small>· ${esc(e.source || "야후")} · ${queryLabel}</small></p>` : `<p class="lc-f">${x.open ? "정규장 거래 중 — 위 가격이 실시간" : "시간외 거래 없는 시간(정규장 종가 표시)"}</p>`;
     const base = x.base_chg != null ? `기초 ${esc(String(x.base).replace(/\(.*\)/, ""))} <b class="${cls(x.base_chg)}">${pc(x.base_chg)}</b>` : "";
     const mem = x.members ? ` · 구성 대형주 ${x.members.n_up}/${x.members.n} 상승` : "";
     return `<div class="lc"><p class="lc-h"><b>${esc(x.sym)}</b> <small class="dim">${esc(x.name)}</small></p>
@@ -502,7 +509,7 @@
       if (x.focus.includes("three")) L.push(`연속 양봉: 전일까지 ${x.streak_prev}일 → 오늘 ${x.bull ? `양봉 ${st} = ${x.streak}일째` : `양봉 아님(${st})`}${x.three ? ` · <b>적삼병 조건 ${x.open ? "충족 중(마감 전)" : "충족 마감"}</b>` : ""}`);
       if (x.level) L.push(`${$$(x.level)} 구간: ${(() => { const d = (x.px / x.level - 1) * 100; return Math.abs(d) < 0.15 ? "현재가가 그 부근" : `현재가가 ${sgn(d)} ${d > 0 ? "위" : "아래"}`; })()}${x.level_touched ? " · 오늘 고가가 도달" : ""}${(x.level_hits || []).length ? ` · 최근 10거래일 중 넘었다가 아래에서 마감한 날 ${x.level_hits.map((h) => md(h.d)).join("·")}` : ""}`);
       if (!compact) {
-        if (e.ext) L.push(`🌙 ${e.ext.sess === "pre" ? "프리마켓" : "애프터마켓"} $${(+e.ext.px).toFixed(4)} · 정규장 종가 ${$$(e.ext.base)} 대비 ${(e.ext.px - e.ext.base) >= 0 ? "+" : "-"}$${Math.abs(e.ext.px - e.ext.base).toFixed(4)} (${sgn(e.ext.chg)}) <small class="dim">${e.ext.stale ? "마지막 체결 " : "체결 "}${new Date(e.ext.at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })} KST</small>`);
+        if (e.ext) L.push(`🌙 ${e.ext.sess === "pre" ? "프리마켓" : e.ext.sess === "day" ? "주간거래" : "애프터마켓"} $${(+e.ext.px).toFixed(4)} · 정규장 종가 ${$$(e.ext.base)} 대비 ${(e.ext.px - e.ext.base) >= 0 ? "+" : "-"}$${Math.abs(e.ext.px - e.ext.base).toFixed(4)} (${sgn(e.ext.chg)}) <small class="dim">${e.ext.stale ? "마지막 체결 " : "체결 "}${new Date(e.ext.at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })} KST</small>`);
         if (e.base_chg != null) L.push(`기초: ${esc(e.base || "")} ${sgn(e.base_chg)}${e.x3 != null ? ` · ×3 = ${sgn(e.x3)}, 실제와 차이 ${e.x3_gap > 0 ? "+" : ""}${e.x3_gap}%p` : ""}${e.kr200 != null ? ` · 코스피200 야간 ${sgn(e.kr200)}` : ""}${e.members ? ` · 구성 대형주 ${e.members.n_up}/${e.members.n} 상승` : ""}`);
         if (e.h24 && !x.open) L.push(`24시간 시세(하이퍼리퀴드) ${$$(e.h24.px)} · 정규장 가격 대비 ${sgn(e.h24.vs_reg)}`);
       }
@@ -529,7 +536,7 @@
     const L = [];
     const lvl = () => ((watch && watch.items) || []).filter((x) => x.px != null).map((x) => {
       const e = ((lev && lev.items) || []).find((y) => y.sym === x.sym);
-      const ext = e && e.ext && !e.ext.stale ? ` · ${e.ext.sess === "pre" ? "프리" : "애프터"} $${e.ext.px} ${sg2(e.ext.chg)}` : "";
+      const ext = e && e.ext && !e.ext.stale ? ` · ${e.ext.sess === "pre" ? "프리" : e.ext.sess === "day" ? "주간" : "애프터"} $${e.ext.px} ${sg2(e.ext.chg)}` : "";
       return `${esc(x.sym)} $${(+x.px).toFixed(2)} ${sg2(x.chg)}${x.level ? (() => { const d = (x.px / x.level - 1) * 100; return ` (운영자 가격대 $${x.level} ${Math.abs(d) < 0.15 ? "부근" : `대비 ${sg2(d)} ${d > 0 ? "위" : "아래"}`})`; })() : ""}${ext}`;
     }).join(" · ");
     if (md_ === "us") {
@@ -757,7 +764,7 @@
     const cps = (b.checkpoints || []).length ? `<div class="bcol"><h4>🗓️ 오늘 체크포인트</h4><ul class="bn">${b.checkpoints.map((c) => `<li>${c.time ? `<b>${esc(c.time)}</b> ` : ""}${esc(c.title)}</li>`).join("")}</ul></div>` : "";
     const ktop = (b.kr_top || []).length ? `<div class="bcol"><h4>🇰🇷 국내 감시 종목 상승 상위</h4><ul class="bn">${b.kr_top.map((r) => `<li>${esc(r.name)} ${sg(r.chg)} <small class="dim">${esc(r.sector)}${r.val ? ` · 거래대금 ${eok(r.val)}` : ""}</small></li>`).join("")}</ul></div>` : "";
     const rg = b.reg && b.reg.SP500 ? `<div class="bcol"><h4>🇺🇸 미국 정규장 마감</h4><div class="bfs">${[["SP500", "S&P500"], ["XYZ100", "나스닥100"], ["SOXL", "SOXL"], ["EWY", "EWY"]].filter(([k]) => b.reg[k]).map(([k, n]) => `<span class="bf"><small>${n}</small> ${sg(b.reg[k].chg)}</span>`).join("")}</div></div>` : "";
-    const ex = b.ext && (b.ext.rows || []).length ? `<div class="bwide"><h4>🌙 미국 ${b.ext.sess === "pre" ? "프리마켓" : "애프터마켓"}${b.ext.live ? "" : " 마지막 체결"} <small class="dim">(직전 정규장 종가 대비 · ${(() => { const n = b.ext.rows.filter((r) => r.src === "NH").length; return n === b.ext.rows.length ? "NH투자증권 시세" : n ? "NH투자증권 시세(일부 야후 1분봉)" : "야후 1분봉 마지막 체결"; })()} · ${hm(b.ext.at)} KST${b.ext.live ? " · 1분마다 갱신" : ""} · 지수는 ETF로 표시)</small></h4><div class="bfs">${b.ext.rows.map((r) => `<span class="bf"><small>${esc(r.name)}</small> $${(+r.px).toLocaleString("en-US", { maximumFractionDigits: 2 })} ${sg(r.chg)}</span>`).join("")}</div></div>` : "";
+    const ex = b.ext && (b.ext.rows || []).length ? `<div class="bwide"><h4>🌙 미국 ${b.ext.sess === "pre" ? "프리마켓" : b.ext.sess === "day" ? "주간거래" : "애프터마켓"}${b.ext.live ? "" : " 마지막 체결"} <small class="dim">(직전 정규장 종가 대비 · ${(() => { const n = b.ext.rows.filter((r) => r.src === "NH").length; return n === b.ext.rows.length ? "NH투자증권 시세" : n ? "NH투자증권 시세(일부 야후 1분봉)" : "야후 1분봉 마지막 체결"; })()} · ${hm(b.ext.at)} KST${b.ext.live ? " · 1분마다 갱신" : ""} · 지수는 ETF로 표시)</small></h4><div class="bfs">${b.ext.rows.map((r) => `<span class="bf"><small>${esc(r.name)}</small> $${(+r.px).toLocaleString("en-US", { maximumFractionDigits: 2 })} ${sg(r.chg)}</span>`).join("")}</div></div>` : "";
     const fl = (b.flows || []).length ? `<div class="bcol">${b.flows.map((g) => flowTable(g, 5, true)).join("")}</div>` : "";
     const mom = (b.momentum || []).length ? `<div class="bcol">${momHtml({ sectors: b.momentum }, true)}</div>` : "";
     const lv = b.lev && (b.lev.items || []).length ? `<div class="bwide">${levHtml(b.lev, true)}</div>` : "";

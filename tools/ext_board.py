@@ -21,7 +21,7 @@ STATE = TOOLS / "ext_board_state.json"
 KST = timezone(timedelta(hours=9))
 TTL = 50
 STEPS = (5.0, 10.0)
-SESS = {"pre": "프리마켓", "post": "애프터마켓"}
+SESS = {"pre": "프리마켓", "post": "애프터마켓", "day": "주간거래"}
 
 BOARD = [("SPY", "S&P500 ETF"), ("QQQ", "나스닥100 ETF"), ("SOXX", "반도체 ETF"), ("SOXL", "반도체 3배"), ("EWY", "한국 ETF"), ("KORU", "한국 3배"),
          ("NVDA", "엔비디아"), ("AAPL", "애플"), ("MSFT", "마이크로소프트"), ("GOOGL", "알파벳"), ("AMZN", "아마존"), ("META", "메타"),
