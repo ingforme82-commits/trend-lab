@@ -90,6 +90,14 @@ FEEDS = [
     ("SCMP", "https://www.scmp.com/rss/92/feed", "en"),
     ("알자지라", "https://www.aljazeera.com/xml/rss/all.xml", "en"),
     ("CNBC", "https://www.cnbc.com/id/100727362/device/rss/rss.html", "en"),
+    # CNBC 분야별 (운영자 11/9 지시): 투자·기술·에너지·실적·경제·정치·금융
+    ("CNBC", "https://www.cnbc.com/id/15839069/device/rss/rss.html", "en"),
+    ("CNBC", "https://www.cnbc.com/id/19854910/device/rss/rss.html", "en"),
+    ("CNBC", "https://www.cnbc.com/id/19836768/device/rss/rss.html", "en"),
+    ("CNBC", "https://www.cnbc.com/id/15839135/device/rss/rss.html", "en"),
+    ("CNBC", "https://www.cnbc.com/id/20910258/device/rss/rss.html", "en"),
+    ("CNBC", "https://www.cnbc.com/id/10000113/device/rss/rss.html", "en"),
+    ("CNBC", "https://www.cnbc.com/id/10000664/device/rss/rss.html", "en"),
     ("Oilprice", "https://oilprice.com/rss/main", "en"),
     # 블룸버그 무료 RSS (운영자 11/9 지시)
     ("블룸버그", "https://www.bloomberg.com/feeds/markets/news.rss", "en"),
