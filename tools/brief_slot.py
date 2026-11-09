@@ -73,8 +73,8 @@ def validate(slot: str, d: dict, now_ms: int) -> list[str]:
         reg = d.get("reg") or {}
         if not reg.get("SP500") or not reg.get("XYZ100"):
             bad.append("미국 정규장 마감 시세 누락")
-        elif now_ms - min(reg["SP500"]["at"], reg["XYZ100"]["at"]) > 30 * 60 * MIN:
-            bad.append("미국 정규장 마감 시세가 30시간 넘게 지난 값")
+        elif now_ms - min(reg["SP500"]["at"], reg["XYZ100"]["at"]) > (80 if datetime.fromtimestamp(now_ms / 1000, KST).weekday() == 0 else 30) * 60 * MIN:
+            bad.append("미국 정규장 마감 시세가 너무 오래된 값(평일 30시간·월요일 80시간 기준)")   # 월요일 07:20 은 금요일 마감이 마지막(11/9 차단 수정)
         if not (d.get("us10y") or {}).get("px"):
             bad.append("미 10년물 금리 누락")
     if slot == "1400":
