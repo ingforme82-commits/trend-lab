@@ -20,66 +20,68 @@
  "free": "커피 · 와이파이 · 사무실 이용 모두 무료",
  "spotlight": [
   {
-   "id": "APP",
-   "name": "앱러빈",
-   "market": "미국",
-   "yf": "APP",
-   "kw": "앱러빈|AppLovin|\\bAPP\\b",
-   "kind": "⚡ 급등 대형주",
-   "reason": "11/5(목) 정규장 개장 후 30분 +32.01% · 시가총액 약 1,189억 달러 · 업종 소프트웨어",
-   "on": true,
-   "auto": true,
-   "since": "2026-11-06"
-  },
-  {
    "id": "BE",
    "name": "블룸 에너지",
    "market": "미국",
    "yf": "BE",
    "kw": "블룸|Bloom|\\bBE\\b",
-   "kind": "⚡ 급락 대형주",
-   "reason": "11/5(목) 정규장 개장 후 30분 -15.27% · 시가총액 약 502억 달러 · 업종 중전기장비",
+   "kind": "⚡ 급등 대형주",
+   "reason": "11/9(월) 정규장 개장 후 30분 +12.36% · 시가총액 약 575억 달러 · 업종 중전기장비",
    "on": true,
    "auto": true,
    "since": "2026-11-04",
    "hl": "xyz:BE"
   },
   {
-   "id": "MELI",
-   "name": "메르카도리브레",
+   "id": "COHR",
+   "name": "코히런트",
    "market": "미국",
-   "yf": "MELI",
-   "kw": "메르카도리브레|MercadoLibre|\\bMELI\\b",
-   "kind": "⚡ 급락 대형주",
-   "reason": "11/5(목) 정규장 개장 후 30분 -13.88% · 시가총액 약 760억 달러 · 업종 온라인 서비스",
-   "hl": "xyz:MELI",
-   "on": true,
-   "auto": true,
-   "since": "2026-11-06"
-  },
-  {
-   "id": "FIX",
-   "name": "컴포트 시스템즈 USA",
-   "market": "미국",
-   "yf": "FIX",
-   "kw": "컴포트|Comfort|\\bFIX\\b",
-   "kind": "⚡ 급락 대형주",
-   "reason": "11/4(수) 정규장 개장 후 30분 -14.72% · 시가총액 약 383억 달러 · 업종 건설 및 엔지니어링",
-   "on": true,
-   "auto": true,
-   "since": "2026-11-05"
-  },
-  {
-   "id": "XYZ",
-   "name": "블록",
-   "market": "미국",
-   "yf": "XYZ",
-   "kw": "블록|Block|\\bXYZ\\b",
+   "yf": "COHR",
+   "kw": "코히런트|Coherent|\\bCOHR\\b",
    "kind": "⚡ 급등 대형주",
-   "reason": "11/4(수) 정규장 개장 후 30분 +12.86% · 시가총액 약 519억 달러 · 업종 경영 지원 서비스",
+   "reason": "11/9(월) 정규장 개장 후 30분 +11.33% · 시가총액 약 423억 달러 · 업종 전자 장비 및 부품",
    "on": true,
    "auto": true,
-   "since": "2026-11-05"
+   "since": "2026-11-10"
+  },
+  {
+   "id": "OPTICAL",
+   "name": "광통신·네트워크",
+   "market": "미국",
+   "hl": "xyz:LITE",
+   "on": true,
+   "since": "2026-10-27",
+   "kw": "루멘텀|Lumentum|광통신|광트랜시버|광모듈|코히런트|Coherent|Ciena|시에나|AAOI|패브리넷|Fabrinet|크레도|Credo|코닝|Corning|CPO|아리스타|Arista",
+   "reason": "미국 개장(23:30) 후 30분 · 평균 +8.19%(전일 종가 대비) · 개장 후 +5.47% · 8종목 중 8종목 상승 · 최고 코히런트 +11.20% · 평균 2일 연속 상승",
+   "members": {
+    "LITE": "루멘텀",
+    "COHR": "코히런트",
+    "CIEN": "시에나",
+    "AAOI": "AAOI",
+    "FN": "패브리넷",
+    "CRDO": "크레도",
+    "GLW": "코닝",
+    "ANET": "아리스타"
+   },
+   "auto": true
+  },
+  {
+   "id": "SPACE",
+   "name": "우주",
+   "market": "미국",
+   "kw": "로켓랩|Rocket Lab|AST스페이스모바일|AST SpaceMobile|인튜이티브 머신스|Intuitive Machines|스페이스X|SpaceX|우주|space",
+   "members": {
+    "RKLB": "로켓랩",
+    "ASTS": "AST스페이스모바일",
+    "LUNR": "인튜이티브머신스",
+    "PL": "플래닛랩스",
+    "FLY": "파이어플라이"
+   },
+   "reason": "미국 개장(23:30) 후 30분 · 평균 +7.26%(전일 종가 대비) · 개장 후 +4.22% · 5종목 중 5종목 상승 · 최고 플래닛랩스 +8.65% · 관련 속보 2건(12시간) · 평균 2일 연속 상승",
+   "on": true,
+   "auto": true,
+   "hl": "xyz:RKLB",
+   "since": "2026-11-10"
   },
   {
    "id": "MEMORY",
@@ -92,18 +94,71 @@
     "WDC": "웨스턴디지털",
     "STX": "시게이트"
    },
-   "reason": "미국 개장(23:30) 후 30분 · 평균 -12.39%(전일 종가 대비) · 개장 후 -6.60% · 4종목 중 4종목 하락 · 최저 샌디스크 -13.78% · 관련 속보 10건(12시간)",
+   "reason": "미국 개장(23:30) 후 30분 · 평균 +6.61%(전일 종가 대비) · 개장 후 +4.85% · 4종목 중 4종목 상승 · 최고 웨스턴디지털 +7.81% · 관련 속보 5건(12시간) · 평균 2일 연속 상승",
    "on": true,
    "auto": true,
    "hl": "xyz:MU",
    "since": "2026-11-03"
   },
   {
+   "id": "APP",
+   "name": "앱러빈",
+   "market": "미국",
+   "yf": "APP",
+   "kw": "앱러빈|AppLovin|\\bAPP\\b",
+   "kind": "⚡ 급등 대형주",
+   "reason": "11/5(목) 정규장 개장 후 30분 +32.01% · 시가총액 약 1,189억 달러 · 업종 소프트웨어",
+   "on": false,
+   "auto": true,
+   "since": "2026-11-06",
+   "until": "2026-11-10"
+  },
+  {
+   "id": "MELI",
+   "name": "메르카도리브레",
+   "market": "미국",
+   "yf": "MELI",
+   "kw": "메르카도리브레|MercadoLibre|\\bMELI\\b",
+   "kind": "⚡ 급락 대형주",
+   "reason": "11/5(목) 정규장 개장 후 30분 -13.88% · 시가총액 약 760억 달러 · 업종 온라인 서비스",
+   "hl": "xyz:MELI",
+   "on": false,
+   "auto": true,
+   "since": "2026-11-06",
+   "until": "2026-11-10"
+  },
+  {
+   "id": "FIX",
+   "name": "컴포트 시스템즈 USA",
+   "market": "미국",
+   "yf": "FIX",
+   "kw": "컴포트|Comfort|\\bFIX\\b",
+   "kind": "⚡ 급락 대형주",
+   "reason": "11/4(수) 정규장 개장 후 30분 -14.72% · 시가총액 약 383억 달러 · 업종 건설 및 엔지니어링",
+   "on": false,
+   "auto": true,
+   "since": "2026-11-05",
+   "until": "2026-11-10"
+  },
+  {
+   "id": "XYZ",
+   "name": "블록",
+   "market": "미국",
+   "yf": "XYZ",
+   "kw": "블록|Block|\\bXYZ\\b",
+   "kind": "⚡ 급등 대형주",
+   "reason": "11/4(수) 정규장 개장 후 30분 +12.86% · 시가총액 약 519억 달러 · 업종 경영 지원 서비스",
+   "on": false,
+   "auto": true,
+   "since": "2026-11-05",
+   "until": "2026-11-10"
+  },
+  {
    "id": "NEOCLOUD",
    "name": "코어위브·네오클라우드",
    "market": "미국",
    "hl": "xyz:CRWV",
-   "on": true,
+   "on": false,
    "since": "2026-10-27",
    "kw": "코어위브|CoreWeave|CRWV|네오클라우드|neocloud|네비우스|Nebius|NBIS|IREN|아이렌",
    "reason": "미국 개장(23:30) 후 30분 · 평균 -10.63%(전일 종가 대비) · 개장 후 -6.82% · 4종목 중 4종목 하락 · 최저 네비우스 -13.09% · 관련 속보 2건(12시간)",
@@ -113,28 +168,8 @@
     "IREN": "IREN",
     "CORZ": "코어사이언티픽"
    },
-   "auto": true
-  },
-  {
-   "id": "OPTICAL",
-   "name": "광통신·네트워크",
-   "market": "미국",
-   "hl": "xyz:LITE",
-   "on": true,
-   "since": "2026-10-27",
-   "kw": "루멘텀|Lumentum|광통신|광트랜시버|광모듈|코히런트|Coherent|Ciena|시에나|AAOI|패브리넷|Fabrinet|크레도|Credo|코닝|Corning|CPO|아리스타|Arista",
-   "reason": "미국 개장(23:30) 후 30분 · 평균 -10.80%(전일 종가 대비) · 개장 후 -5.84% · 8종목 중 8종목 하락 · 최저 AAOI -13.77% · 관련 속보 1건(12시간)",
-   "members": {
-    "LITE": "루멘텀",
-    "COHR": "코히런트",
-    "CIEN": "시에나",
-    "AAOI": "AAOI",
-    "FN": "패브리넷",
-    "CRDO": "크레도",
-    "GLW": "코닝",
-    "ANET": "아리스타"
-   },
-   "auto": true
+   "auto": true,
+   "until": "2026-11-10"
   },
   {
    "id": "MDLN",
