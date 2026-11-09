@@ -291,7 +291,8 @@ state_ref: dict = {}
 
 
 def main() -> None:
-    sys.stdout.reconfigure(encoding="utf-8")
+    if sys.stdout:  # 예약 작업(pythonw)은 콘솔이 없어 stdout이 None
+        sys.stdout.reconfigure(encoding="utf-8")
     try:
         state = json.loads(STATE.read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001
