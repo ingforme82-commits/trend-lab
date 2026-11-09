@@ -121,8 +121,8 @@ async function loadHeadline() {
     const today = ymd(KST());
     const items = (h.items || []).filter((x) => !x.until || x.until >= today);
     if (!items.length) return;
-    $("#hlList").innerHTML = items.map((x) => `<article class="hl-card">
-      <p class="hl-tag">${esc(x.tag || "")}${x.when ? ` <small>${esc(x.when)}</small>` : ""}</p>
+    $("#hlList").innerHTML = items.map((x) => `<article class="hl-card${x.main ? " hl-main" : ""}">
+      <p class="hl-tag">${x.main ? '<span class="hl-badge">메인</span>' : ""}${esc(x.tag || "")}${x.when ? ` <small>${esc(x.when)}</small>` : ""}</p>
       <h3 class="hl-title">${esc(x.title)}</h3>
       <ul class="hl-pts">${(x.points || []).map((p) => `<li>${esc(p)}</li>`).join("")}</ul>
       ${x.source ? `<p class="hl-src">출처: ${esc(x.source)}</p>` : ""}

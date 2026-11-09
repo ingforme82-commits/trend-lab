@@ -828,7 +828,7 @@
   }
   function drawHeroLive() {
     const box = q("#heroLive"); if (!box) return;
-    const pins = headline.map((x) => `<li class="mn-pin"><a href="#headline"><span class="mn-t">📌 ${esc(x.tag || "주요 이슈")}</span> <b>${esc(x.title)}</b>${x.when ? ` <small>${esc(x.when)}</small>` : ""}</a></li>`);
+    const pins = [...headline.filter((x) => x.main), ...headline.filter((x) => !x.main)].map((x) => `<li class="mn-pin${x.main ? " mn-main" : ""}"><a href="#headline"><span class="mn-t">${x.main ? "🔴" : "📌"} ${esc(x.tag || "주요 이슈")}</span> <b>${esc(x.title)}</b>${x.when ? ` <small>${esc(x.when)}</small>` : ""}</a></li>`);
     const live = mainNews().map((n) => {
       const g = gist(n.text), full = n.text.replace(/…$/, "");
       const t = g !== full ? `<span class="mn-x" data-open="0" title="눌러서 전체 보기">${esc(g)}</span><span class="mn-full" hidden>${esc(full)}</span>` : esc(g);

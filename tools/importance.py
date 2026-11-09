@@ -18,6 +18,8 @@ EXPLAIN = re.compile(r"(?:상승|하락|급등|급락|반등|약세|강세)\s?(?
 THEME = {"반도체", "AI·빅테크", "중동·유가", "연준·금리", "지수"}
 MOVE = re.compile(r"(니케이|닛케이|코스피|코스닥|나스닥|S&P|다우|항셍|선물|유가|WTI|브렌트|금값|국채|환율|원/달러|SOX|반도체 지수)"
                   r".{0,25}\d+(?:\.\d+)?\s?%")
+DEAL = re.compile(r"합의|타결|협정|종전|휴전|중재|동결\s?자금|80억|deal|agreement|ceasefire|truce|accord|unfreez", re.I)
+IRAN = re.compile(r"이란|호르무즈|테헤란|Iran|Hormuz|Tehran", re.I)
 KIND_BONUS = {"시황 분석": 25, "증권사 시황": 12, "섹터 시세": 8, "관전 포인트": 10}   # 시황 분석 = 운영자가 골라 둔 분석 채널(카이에 드 마켓·나쁜양파·가치투자클럽)
 
 
@@ -28,6 +30,7 @@ def score(it: dict) -> int:
     s += 35 if it.get("pivot") else 0
     s += 15 if it.get("hot") else 0
     s += 12 if KEY.search(t) else 0
+    s += 30 if DEAL.search(t) and IRAN.search(t) else 0       # 이란 합의·종전 속보는 메인 뉴스로(운영자 11/9 지시)
     s += {"official": 15, "multi": 12}.get(it.get("verify", ""), 0)
     s += 8 if (it.get("xc") or {}).get("st") == "ok" else 0
     s += min(10, 3 * max(0, (it.get("nsrc") or 1) - 1))
