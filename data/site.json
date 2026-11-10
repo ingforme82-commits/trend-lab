@@ -20,17 +20,40 @@
  "free": "커피 · 와이파이 · 사무실 이용 모두 무료",
  "spotlight": [
   {
-   "id": "BE",
-   "name": "블룸 에너지",
+   "id": "SKYD",
+   "name": "스카이댄스",
    "market": "미국",
-   "yf": "BE",
-   "kw": "블룸|Bloom|\\bBE\\b",
-   "kind": "⚡ 급등 대형주",
-   "reason": "11/9(월) 정규장 개장 후 30분 +12.36% · 시가총액 약 575억 달러 · 업종 중전기장비",
+   "yf": "SKYD",
+   "kw": "스카이댄스|Skydance|\\bSKYD\\b",
+   "kind": "⚡ 급락 대형주",
+   "reason": "11/10(화) 정규장 개장 후 39분 -9.02% · 시가총액 약 399억 달러 · 업종 엔터테인먼트 제작",
    "on": true,
    "auto": true,
-   "since": "2026-11-04",
-   "hl": "xyz:BE"
+   "since": "2026-11-11"
+  },
+  {
+   "id": "SE",
+   "name": "씨 ADR",
+   "market": "미국",
+   "yf": "SE",
+   "kw": "씨|Sea|\\bSE\\b",
+   "kind": "⚡ 급등 대형주",
+   "reason": "11/10(화) 정규장 개장 후 39분 +7.67% · 시가총액 약 476억 달러 · 업종 소프트웨어",
+   "on": true,
+   "auto": true,
+   "since": "2026-11-11"
+  },
+  {
+   "id": "ASX",
+   "name": "ASE 테크놀로지 홀딩 ADR",
+   "market": "미국",
+   "yf": "ASX",
+   "kw": "ASE|ASE|\\bASX\\b",
+   "kind": "⚡ 급등 대형주",
+   "reason": "11/10(화) 정규장 개장 후 39분 +6.74% · 시가총액 약 823억 달러 · 업종 반도체 장비 및 테스트",
+   "on": true,
+   "auto": true,
+   "since": "2026-11-11"
   },
   {
    "id": "COHR",
@@ -45,25 +68,59 @@
    "since": "2026-11-10"
   },
   {
-   "id": "OPTICAL",
-   "name": "광통신·네트워크",
+   "id": "SEMIEQ",
+   "name": "반도체 장비",
    "market": "미국",
-   "hl": "xyz:LITE",
-   "on": true,
-   "since": "2026-10-27",
-   "kw": "루멘텀|Lumentum|광통신|광트랜시버|광모듈|코히런트|Coherent|Ciena|시에나|AAOI|패브리넷|Fabrinet|크레도|Credo|코닝|Corning|CPO|아리스타|Arista",
-   "reason": "미국 개장(23:30) 후 30분 · 평균 +8.19%(전일 종가 대비) · 개장 후 +5.47% · 8종목 중 8종목 상승 · 최고 코히런트 +11.20% · 평균 2일 연속 상승",
+   "kw": "ASML|어플라이드|Applied Materials|램리서치|Lam Research|KLA|반도체 장비",
    "members": {
-    "LITE": "루멘텀",
-    "COHR": "코히런트",
-    "CIEN": "시에나",
-    "AAOI": "AAOI",
-    "FN": "패브리넷",
-    "CRDO": "크레도",
-    "GLW": "코닝",
-    "ANET": "아리스타"
+    "ASML": "ASML",
+    "AMAT": "어플라이드",
+    "LRCX": "램리서치",
+    "KLAC": "KLA",
+    "TER": "테라다인"
    },
-   "auto": true
+   "reason": "미국 개장(23:30) 후 39분 · 평균 +2.34%(전일 종가 대비) · 개장 후 +3.91% · 5종목 중 5종목 상승 · 최고 테라다인 +2.88% · 평균 3일 연속 상승",
+   "on": true,
+   "auto": true,
+   "hl": "xyz:AMAT",
+   "since": "2026-11-11"
+  },
+  {
+   "id": "QUANTUM",
+   "name": "양자컴퓨팅",
+   "market": "미국",
+   "kw": "양자|퀀텀|quantum|아이온큐|IonQ|리게티|Rigetti|디웨이브|D-Wave",
+   "members": {
+    "IONQ": "아이온큐",
+    "RGTI": "리게티",
+    "QBTS": "디웨이브",
+    "QUBT": "퀀텀컴퓨팅"
+   },
+   "reason": "미국 개장(23:30) 후 39분 · 평균 -3.46%(전일 종가 대비) · 개장 후 +0.18% · 4종목 중 4종목 하락 · 최저 디웨이브 -6.97%",
+   "on": true,
+   "auto": true,
+   "since": "2026-11-11"
+  },
+  {
+   "id": "USSEMI",
+   "name": "미국 반도체",
+   "market": "미국",
+   "kw": "엔비디아|Nvidia|NVIDIA|AMD|브로드컴|Broadcom|TSMC|Arm\\b|퀄컴|Qualcomm|마벨|Marvell|인텔|Intel|반도체|semiconductor|chip",
+   "members": {
+    "NVDA": "엔비디아",
+    "AMD": "AMD",
+    "AVGO": "브로드컴",
+    "TSM": "TSMC",
+    "ARM": "ARM",
+    "QCOM": "퀄컴",
+    "MRVL": "마벨",
+    "INTC": "인텔"
+   },
+   "reason": "미국 개장(23:30) 후 39분 · 평균 +1.38%(전일 종가 대비) · 개장 후 +3.29% · 8종목 중 6종목 상승 · 최고 AMD +5.35% · 관련 속보 4건(12시간) · 평균 3일 연속 상승",
+   "on": true,
+   "auto": true,
+   "hl": "xyz:SMH",
+   "since": "2026-10-31"
   },
   {
    "id": "SPACE",
@@ -77,11 +134,48 @@
     "PL": "플래닛랩스",
     "FLY": "파이어플라이"
    },
-   "reason": "미국 개장(23:30) 후 30분 · 평균 +7.26%(전일 종가 대비) · 개장 후 +4.22% · 5종목 중 5종목 상승 · 최고 플래닛랩스 +8.65% · 관련 속보 2건(12시간) · 평균 2일 연속 상승",
+   "reason": "평균 3일 연속 상승 · 최근 5거래일 합계 +16.62%(일봉 종가 기준)",
    "on": true,
    "auto": true,
    "hl": "xyz:RKLB",
-   "since": "2026-11-10"
+   "since": "2026-11-10",
+   "kind": "📈 연일 상승"
+  },
+  {
+   "id": "BE",
+   "name": "블룸 에너지",
+   "market": "미국",
+   "yf": "BE",
+   "kw": "블룸|Bloom|\\bBE\\b",
+   "kind": "⚡ 급등 대형주",
+   "reason": "11/9(월) 정규장 개장 후 30분 +12.36% · 시가총액 약 575억 달러 · 업종 중전기장비",
+   "on": false,
+   "auto": true,
+   "since": "2026-11-04",
+   "hl": "xyz:BE",
+   "until": "2026-11-11"
+  },
+  {
+   "id": "OPTICAL",
+   "name": "광통신·네트워크",
+   "market": "미국",
+   "hl": "xyz:LITE",
+   "on": false,
+   "since": "2026-10-27",
+   "kw": "루멘텀|Lumentum|광통신|광트랜시버|광모듈|코히런트|Coherent|Ciena|시에나|AAOI|패브리넷|Fabrinet|크레도|Credo|코닝|Corning|CPO|아리스타|Arista",
+   "reason": "미국 개장(23:30) 후 30분 · 평균 +8.19%(전일 종가 대비) · 개장 후 +5.47% · 8종목 중 8종목 상승 · 최고 코히런트 +11.20% · 평균 2일 연속 상승",
+   "members": {
+    "LITE": "루멘텀",
+    "COHR": "코히런트",
+    "CIEN": "시에나",
+    "AAOI": "AAOI",
+    "FN": "패브리넷",
+    "CRDO": "크레도",
+    "GLW": "코닝",
+    "ANET": "아리스타"
+   },
+   "auto": true,
+   "until": "2026-11-11"
   },
   {
    "id": "MEMORY",
@@ -95,10 +189,11 @@
     "STX": "시게이트"
    },
    "reason": "미국 개장(23:30) 후 30분 · 평균 +6.61%(전일 종가 대비) · 개장 후 +4.85% · 4종목 중 4종목 상승 · 최고 웨스턴디지털 +7.81% · 관련 속보 5건(12시간) · 평균 2일 연속 상승",
-   "on": true,
+   "on": false,
    "auto": true,
    "hl": "xyz:MU",
-   "since": "2026-11-03"
+   "since": "2026-11-03",
+   "until": "2026-11-11"
   },
   {
    "id": "APP",
@@ -380,28 +475,6 @@
    "reason": "10/29(목) 정규장 -12.6%(상장 뒤 하루 최대 하락) · 10/30(금) -1.4% · 3분기 잉여현금흐름 -91억 달러 · 2027년 설비투자 3,000억 달러 이상 계획 · 시가총액 약 1조 8,791억 달러",
    "on": false,
    "auto": true,
-   "since": "2026-10-31",
-   "until": "2026-11-03"
-  },
-  {
-   "id": "USSEMI",
-   "name": "미국 반도체",
-   "market": "미국",
-   "kw": "엔비디아|Nvidia|NVIDIA|AMD|브로드컴|Broadcom|TSMC|Arm\\b|퀄컴|Qualcomm|마벨|Marvell|인텔|Intel|반도체|semiconductor|chip",
-   "members": {
-    "NVDA": "엔비디아",
-    "AMD": "AMD",
-    "AVGO": "브로드컴",
-    "TSM": "TSMC",
-    "ARM": "ARM",
-    "QCOM": "퀄컴",
-    "MRVL": "마벨",
-    "INTC": "인텔"
-   },
-   "reason": "10/30(금) 미국 정규장 마감 기준 · 평균 -10.78%(전일 종가 대비) · 개장 후 -2.55% · 8종목 중 8종목 하락 · 최저 인텔 -28.58% · 관련 속보 6건(12시간)",
-   "on": false,
-   "auto": true,
-   "hl": "xyz:SMH",
    "since": "2026-10-31",
    "until": "2026-11-03"
   },
