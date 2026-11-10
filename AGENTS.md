@@ -109,7 +109,7 @@ JSON을 직접 고쳐도 됩니다. 고친 뒤에는 `python -m json.tool data/s
 git clone https://github.com/ingforme82-commits/trend-lab.git
 cd trend-lab && pip install -r requirements.txt
 ```
-- 텔레 속보 자동 갱신(`트렌드랩_속보갱신`, 10분마다)과 방문 카톡 리포트(`트렌드랩_방문리포트`, 매일 12:00)는 **메인 PC에서만** 돌아갑니다. 다른 PC에서는 등록하지 않습니다(중복 전송 방지).
+- (2026-11-10~) 메인 PC 없음. 모든 PC가 `C:\projects\market-siteailover\setup_pc.ps1`로 같은 예약 작업을 등록하고, 깃허브 역할 패를 가진 PC 한 대만 실제로 실행합니다(속보 갱신·방문 리포트·브리핑 포함, 중복 전송 없음). 패 PC가 10분 끊기면 다른 PC가 넘겨받습니다. 자세히: market-site `failover/README.md`.
 - 미리보기: `python -m http.server 8000` 후 http://localhost:8000. 로컬 주소는 방문자로 세지 않습니다.
 
 ## 확인 방법
