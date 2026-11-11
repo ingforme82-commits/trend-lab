@@ -976,7 +976,10 @@
   });
   (async () => { await Promise.all([loadNews(), loadNotes(), loadSessionQuotes(), loadHeadline(), loadBriefs(), full ? loadCandles() : null]); redraw(); })();
   setInterval(loadBriefs, 600000);
-  setInterval(async () => { await Promise.all([loadNews(), loadSessionQuotes()]); redraw(); }, 60000);                 // 속보·변곡점 1분마다
+  const refreshLive = async () => { await Promise.all([loadNews(), loadSessionQuotes()]); redraw(); };
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshLive(); });
+  window.addEventListener("online", refreshLive);
+  setInterval(refreshLive, 60000);                 // 속보·변곡점 1분마다
   // 새 버전이 배포되면 오래 열어 둔 페이지도 스스로 새로고침(11/9: 고친 코드가 배포됐는데 열린 창은 옛 코드로 '시간외 확인 불가'를 계속 보여 줌)
   (() => {
     let first = null;
