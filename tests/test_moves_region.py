@@ -50,6 +50,13 @@ class LevelTest(unittest.TestCase):
         self.assertEqual([(e["level"], e["move"] < 0) for e in ev], [(100, True)])
         self.assertEqual(ev[0]["start"], 2 * self.M)
 
+    def test_wti_below_85_is_immediate(self):
+        ev = level_cross("WTI", "WTI", "pct", self.rows([85.01, 84.99]))
+        self.assertEqual([(e["level"], e["start"], e["end"]) for e in ev], [(85, self.M, self.M)])
+
+    def test_wti_100_no_longer_has_immediate_exception(self):
+        self.assertEqual(level_cross("WTI", "WTI", "pct", self.rows([100.01, 99.99])), [])
+
     def test_hover_without_buffer_ignored(self):
         self.assertEqual(level_cross("BRENT", "브렌트", "pct", self.rows([100.05, 99.97, 99.96, 99.95, 99.97, 99.96])), [])
 
