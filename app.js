@@ -51,8 +51,10 @@ async function loadTicks() {
         const sp = t.t === "10Y" && U["2Y"] && r.px ? ` · 2년물과 차 ${Math.round((r.px - U["2Y"].px) * 100)}bp` : "";
         if (!r.px) return `<div class="tick"><p class="t-name">${t.n}</p><p class="t-px">-</p><p class="fine">불러오는 중</p></div>`;
         const c3 = r.bp > 0.05 ? "c-up" : r.bp < -0.05 ? "c-dn" : "c-fl";
-        const old = Date.now() - r.at > 60 * 60000;
-        return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">${r.px.toFixed(3)}%</p><p class="t-ch ${c3}">${r.bp > 0 ? "▲" : r.bp < 0 ? "▼" : ""} ${r.bp > 0 ? "+" : ""}${r.bp.toFixed(1)}bp</p><p class="fine" style="margin:2px 0 0">전일 ${r.prev}%${sp}${old ? " · 장 마감" : ""}</p></div>`;
+        const old = r.stale || !r.at || Date.now() - r.at > 30 * 60000;
+        const status = r.market_note || (old ? "시세 지연 · 마지막 값" : "최근 시세");
+        const stamp = r.at ? new Date(r.at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }) + " KST" : "시각 미확인";
+        return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">${r.px.toFixed(3)}%</p><p class="t-ch ${c3}">${r.bp > 0 ? "▲" : r.bp < 0 ? "▼" : ""} ${r.bp > 0 ? "+" : ""}${r.bp.toFixed(1)}bp</p><p class="fine" style="margin:2px 0 0">전일 ${r.prev}%${sp}${" · " + esc(status)}</p><p class="fine">${esc(r.src || "출처 미확인")} · ${esc(stamp)}</p></div>`;
       }
       if (t.srv) {                                        // 다우존스: 사이트 속보 데이터(야후)에서 — 미국장엔 지수, 그 외엔 선물
         const dw = window.trlDow || {};
