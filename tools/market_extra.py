@@ -12,6 +12,7 @@ import re
 import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 CACHE = ROOT / "tools" / "world_cache.json"
@@ -160,6 +161,24 @@ def dow() -> dict:
 
 
 _UST: dict = {}
+UST_MAX_AGE_MS = 30 * 60_000
+# SIFMA 2026 미국 채권시장 휴장 권고일. 주식시장 휴장일과 구분한다.
+UST_HOLIDAYS_2026 = {
+    "2026-01-01", "2026-01-19", "2026-02-16", "2026-05-25",
+    "2026-06-19", "2026-07-03", "2026-09-07", "2026-10-12",
+    "2026-11-11", "2026-11-26", "2026-12-25",
+}
+
+
+def ust_market_note(now_ms: int) -> str:
+    """미국 현지 날짜 기준 휴장 안내. 시세의 원천 시각은 바꾸지 않는다."""
+    local = datetime.fromtimestamp(now_ms / 1000, ZoneInfo("America/New_York"))
+    if local.strftime("%Y-%m-%d") in UST_HOLIDAYS_2026:
+        return "미국 채권시장 휴장일 · 마지막 시세"
+    if local.weekday() >= 5:
+        return "미국 채권시장 주말 · 마지막 시세"
+    return ""
+
 
 
 def ust() -> dict:
@@ -167,6 +186,7 @@ def ust() -> dict:
     if _UST.get("t") and datetime.now(timezone.utc).timestamp() - _UST["t"] < 50:
         return _UST["v"]
     out = {}
+    now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
     u = ("https://quote.cnbc.com/quote-html-webservice/restQuote/symbolType/symbol?symbols=US2Y%7CUS10Y%7CUS30Y"
          "&requestMethod=itv&noform=1&partnerId=2&fund=1&exthrs=1&output=json")
     try:
@@ -178,10 +198,19 @@ def ust() -> dict:
     except Exception:  # noqa: BLE001
         pass
     for k, sym in (("10Y", "%5ETNX"), ("30Y", "%5ETYX")):
-        if k not in out:
+        current = out.get(k) or {}
+        at = current.get("at") or 0
+        if not current or not at or now_ms - at > UST_MAX_AGE_MS or at > now_ms + 60_000:
             y = _yield_yf(sym)
-            if y:
+            y_at = (y or {}).get("at") or 0
+            if y and y_at > 0 and y_at <= now_ms + 60_000 and (not current or y_at > at or at > now_ms + 60_000):
                 out[k] = y
+    note = ust_market_note(now_ms)
+    for row in out.values():
+        at = row.get("at") or 0
+        row["stale"] = not at or now_ms - at > UST_MAX_AGE_MS or at > now_ms + 60_000
+        if note:
+            row["market_note"] = note
     _UST.update(t=datetime.now(timezone.utc).timestamp(), v=out)
     return out
 
