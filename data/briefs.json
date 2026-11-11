@@ -1,6 +1,822 @@
 [
  {
   "day": "2026-11-11",
+  "slot": "12:00",
+  "at": 1794397903241,
+  "session": "유럽 장중 · 미국 개장 전",
+  "futures": [
+   {
+    "name": "코스피200",
+    "px": 845.06,
+    "chg": 4.41,
+    "u": ""
+   },
+   {
+    "name": "니케이225",
+    "px": 61826.0,
+    "chg": 2.86,
+    "u": ""
+   },
+   {
+    "name": "삼성전자",
+    "px": 156.33,
+    "chg": 5.9,
+    "u": "$"
+   },
+   {
+    "name": "SK하이닉스",
+    "px": 967.47,
+    "chg": 8.26,
+    "u": "$"
+   },
+   {
+    "name": "나스닥100",
+    "px": 28252.0,
+    "chg": 1.51,
+    "u": ""
+   },
+   {
+    "name": "S&P500",
+    "px": 7587.5,
+    "chg": 0.42,
+    "u": ""
+   },
+   {
+    "name": "WTI",
+    "px": 85.757,
+    "chg": 1.28,
+    "u": "$"
+   },
+   {
+    "name": "브렌트",
+    "px": 91.11,
+    "chg": 1.86,
+    "u": "$"
+   },
+   {
+    "name": "금",
+    "px": 4047.7,
+    "chg": -0.69,
+    "u": "$"
+   },
+   {
+    "name": "달러인덱스",
+    "px": 102.518,
+    "chg": 0.28,
+    "src": "CNBC",
+    "at": 1794397902000,
+    "u": ""
+   },
+   {
+    "name": "원/달러",
+    "px": 1336.46,
+    "chg": -0.42,
+    "src": "CNBC",
+    "at": 1794397860000,
+    "u": "원"
+   },
+   {
+    "name": "엔/달러",
+    "px": 159.11,
+    "chg": 0.24,
+    "src": "CNBC",
+    "at": 1794397860000,
+    "u": "엔"
+   }
+  ],
+  "kr": {
+   "SMSN": {
+    "px": 208000.0,
+    "prev": 198900.0,
+    "chg": 4.58,
+    "at": 1794394800000,
+    "open": false
+   },
+   "SKHX": {
+    "px": 1291000.0,
+    "prev": 1212000.0,
+    "chg": 6.52,
+    "at": 1794394800000,
+    "open": false
+   },
+   "KOSPI": {
+    "px": 5375.36,
+    "prev": 5239.13,
+    "chg": 2.6,
+    "at": 1794395700000,
+    "open": false
+   },
+   "KOSDAQ": {
+    "px": 705.1,
+    "prev": 667.61,
+    "chg": 5.62,
+    "at": 1794395700000,
+    "open": false
+   },
+   "KR200": {
+    "px": 838.32,
+    "prev": 814.3100000000001,
+    "chg": 2.95,
+    "at": 1794395700000,
+    "open": false
+   }
+  },
+  "us10y": {
+   "px": 5.0,
+   "bp": 13.8
+  },
+  "ust": {
+   "2Y": {
+    "px": 4.748,
+    "bp": 20.1
+   },
+   "10Y": {
+    "px": 5.0,
+    "bp": 13.8
+   },
+   "30Y": {
+    "px": 5.358,
+    "bp": 10.2
+   }
+  },
+  "official": {
+   "ust": {
+    "date": "2026-11-10",
+    "rates": {
+     "3M": {
+      "v": 4.3,
+      "bp": 6
+     },
+     "2Y": {
+      "v": 4.73,
+      "bp": 17
+     },
+     "10Y": {
+      "v": 4.98,
+      "bp": 10
+     },
+     "30Y": {
+      "v": 5.35,
+      "bp": 9
+     }
+    },
+    "s10_2": 25,
+    "s10_3m": 68
+   },
+   "eia": {
+    "week": "2026-10-30",
+    "items": [
+     {
+      "name": "상업용 원유",
+      "v": 409.76,
+      "chg": -0.865,
+      "yoy": -2.7
+     },
+     {
+      "name": "전략비축유(SPR)",
+      "v": 282.184,
+      "chg": -0.399,
+      "yoy": -31.1
+     },
+     {
+      "name": "휘발유",
+      "v": 208.958,
+      "chg": -0.222,
+      "yoy": 1.4
+     },
+     {
+      "name": "정제유(디젤 등)",
+      "v": 99.259,
+      "chg": -3.565,
+      "yoy": -11.0
+     }
+    ]
+   },
+   "bls": [
+    {
+     "name": "CPI",
+     "period": "2026-09",
+     "v": 3.7,
+     "unit": "% (전년 대비)"
+    },
+    {
+     "name": "근원 CPI",
+     "period": "2026-09",
+     "v": 2.6,
+     "unit": "% (전년 대비)"
+    },
+    {
+     "name": "PPI(최종 수요)",
+     "period": "2026-09",
+     "v": 6.3,
+     "unit": "% (전년 대비)"
+    },
+    {
+     "name": "비농업 고용",
+     "period": "2026-10",
+     "v": 165,
+     "unit": "천 명(전월 대비)"
+    },
+    {
+     "name": "실업률",
+     "period": "2026-10",
+     "v": 4.1,
+     "unit": "%"
+    }
+   ]
+  },
+  "macro": [],
+  "heads": [
+   {
+    "ts": 1794397109000,
+    "text": "AI 의심이 Anthropic의 대규모 IPO와 충돌",
+    "src": "블룸버그",
+    "pivot": false
+   },
+   {
+    "ts": 1794396763000,
+    "text": "낙관적인 CoreWeave 전망 속에 나스닥 선물 상승, Anthropic IPO 희망",
+    "src": "Investing.com",
+    "pivot": false
+   },
+   {
+    "ts": 1794396739000,
+    "text": "Anthropic 후원자들은 신규 투자자에게 최대 15억 달러의 IPO 주식을 제공합니다: 보고서",
+    "src": "Seeking Alpha",
+    "pivot": false
+   },
+   {
+    "ts": 1794396688000,
+    "text": "Nvidia의 가치는 스파이 혐의 이후 4,300억 달러 하락했습니다. 미국의 주요 법률 회사가 청구 조사를 위해 고용되었기 때문입니다 - 비즈니스 라이브",
+    "src": "가디언",
+    "pivot": false
+   },
+   {
+    "ts": 1794389640000,
+    "text": "공해에 러시아 디젤 엔진을 수입하려는 트럼프의 계획",
+    "src": "WSJ",
+    "pivot": true
+   },
+   {
+    "ts": 1794388079000,
+    "text": "키예프 주민들은 러시아에 영토를 포기하는 것에 대해 어떻게 생각합니까?",
+    "src": "알자지라",
+    "pivot": true
+   },
+   {
+    "ts": 1794388020000,
+    "text": "미국-이란 분쟁 불확실성으로 이틀간 하락한 후 유가 반등",
+    "src": "WSJ",
+    "pivot": true
+   },
+   {
+    "ts": 1794387539000,
+    "text": "미국 대사관, 후티 반군의 예멘 봉쇄 주장을 반박하고 타이즈에 대한 포위 공격 강조",
+    "src": "알자지라",
+    "pivot": true
+   }
+  ],
+  "analysis": [],
+  "moves": [
+   {
+    "name": "S&P500",
+    "asset": "SP",
+    "move": -0.82,
+    "unit": "pct",
+    "start": 1794317280000,
+    "end": 1794319140000,
+    "ratio": 29.3,
+    "news": [
+     "알리바바 칩 유닛 T-Head, 중국의 AI 자급자족 추진 속에 홍콩 IPO 계획 제출"
+    ]
+   },
+   {
+    "name": "달러인덱스",
+    "asset": "DXY",
+    "move": 0.26,
+    "unit": "pct",
+    "start": 1794317340000,
+    "end": 1794317700000,
+    "ratio": 29.0,
+    "news": []
+   },
+   {
+    "name": "나스닥100",
+    "asset": "NQ",
+    "move": -1.0,
+    "unit": "pct",
+    "start": 1794317280000,
+    "end": 1794319140000,
+    "ratio": 23.4,
+    "news": [
+     "알리바바 칩 유닛 T-Head, 중국의 AI 자급자족 추진 속에 홍콩 IPO 계획 제출"
+    ]
+   }
+  ],
+  "trending": [
+   {
+    "name": "엔비디아",
+    "n": 33
+   },
+   {
+    "name": "앤트로픽",
+    "n": 28
+   },
+   {
+    "name": "코어위브",
+    "n": 16
+   },
+   {
+    "name": "삼성전자",
+    "n": 3
+   },
+   {
+    "name": "TSMC",
+    "n": 3
+   }
+  ],
+  "sectors": [
+   {
+    "name": "사이버보안",
+    "icon": "🔐",
+    "avg": -0.41,
+    "best": {
+     "name": "클라우드플레어",
+     "chg": 4.1
+    },
+    "worst": {
+     "name": "지스케일러",
+     "chg": -2.07
+    },
+    "flags": 0
+   },
+   {
+    "name": "미국 반도체",
+    "icon": "💾",
+    "avg": -0.09,
+    "best": {
+     "name": "브로드컴",
+     "chg": 3.91
+    },
+    "worst": {
+     "name": "엔비디아",
+     "chg": -5.47
+    },
+    "flags": 0
+   },
+   {
+    "name": "한국 반도체",
+    "icon": "🇰🇷",
+    "avg": 11.25,
+    "best": {
+     "name": "코미코",
+     "chg": 20.02
+    },
+    "worst": {
+     "name": "삼성전자",
+     "chg": 4.58
+    },
+    "flags": 15
+   },
+   {
+    "name": "원전",
+    "icon": "⚛️",
+    "avg": 1.93,
+    "best": {
+     "name": "우리기술",
+     "chg": 5.1
+    },
+    "worst": {
+     "name": "한전KPS",
+     "chg": 0.0
+    },
+    "flags": 2
+   },
+   {
+    "name": "미국 원전·SMR",
+    "icon": "🇺🇸",
+    "avg": -4.2,
+    "best": {
+     "name": "BWX테크",
+     "chg": -1.05
+    },
+    "worst": {
+     "name": "나노뉴클리어",
+     "chg": -7.21
+    },
+    "flags": 0
+   },
+   {
+    "name": "방산",
+    "icon": "🛡️",
+    "avg": 3.84,
+    "best": {
+     "name": "LIG넥스원",
+     "chg": 9.29
+    },
+    "worst": {
+     "name": "한화에어로스페이스",
+     "chg": 0.0
+    },
+    "flags": 3
+   },
+   {
+    "name": "2차전지",
+    "icon": "🔋",
+    "avg": 6.63,
+    "best": {
+     "name": "대주전자재료",
+     "chg": 15.59
+    },
+    "worst": {
+     "name": "SK이노베이션",
+     "chg": 1.55
+    },
+    "flags": 11
+   },
+   {
+    "name": "조선",
+    "icon": "🚢",
+    "avg": 1.95,
+    "best": {
+     "name": "태광",
+     "chg": 7.96
+    },
+    "worst": {
+     "name": "HD현대마린솔루션",
+     "chg": -1.74
+    },
+    "flags": 5
+   }
+  ],
+  "world": {
+   "up": 7,
+   "down": 1,
+   "best": {
+    "name": "대만(EWT·24시간)",
+    "chg": 4.96
+   },
+   "worst": {
+    "name": "항셍",
+    "chg": -0.54
+   }
+  },
+  "spot": [
+   {
+    "name": "스카이댄스",
+    "chg": -7.59
+   },
+   {
+    "name": "씨 ADR",
+    "chg": -1.49
+   },
+   {
+    "name": "ASE 테크놀로지 홀딩 ADR",
+    "chg": 3.26
+   },
+   {
+    "name": "코히런트",
+    "chg": -4.68
+   },
+   {
+    "name": "반도체 장비",
+    "chg": 0.3
+   },
+   {
+    "name": "양자컴퓨팅",
+    "chg": -6.04
+   },
+   {
+    "name": "미국 반도체",
+    "chg": -0.23
+   },
+   {
+    "name": "우주",
+    "chg": -1.45
+   },
+   {
+    "name": "한국·일본 증시",
+    "chg": 3.84
+   }
+  ],
+  "ext": {
+   "at": 1794397868522,
+   "sess": "pre",
+   "live": true,
+   "rows": [
+    {
+     "sym": "SPY",
+     "name": "S&P500 ETF",
+     "sess": "pre",
+     "px": 756.45,
+     "base": 749.92,
+     "change": 6.53,
+     "chg": 0.87,
+     "at": 1794397868000,
+     "checked_at": 1794397868532,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    },
+    {
+     "sym": "QQQ",
+     "name": "나스닥100 ETF",
+     "sess": "pre",
+     "px": 687.27,
+     "base": 674.76,
+     "change": 12.51,
+     "chg": 1.85,
+     "at": 1794397868000,
+     "checked_at": 1794397868534,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    },
+    {
+     "sym": "SOXX",
+     "name": "반도체 ETF",
+     "sess": "pre",
+     "px": 153.71,
+     "base": 146.59,
+     "change": 7.12,
+     "chg": 4.86,
+     "at": 1794397868000,
+     "checked_at": 1794397868534,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    },
+    {
+     "sym": "SOXL",
+     "name": "반도체 3배",
+     "sess": "pre",
+     "px": 64.15,
+     "base": 56.06,
+     "change": 8.09,
+     "chg": 14.43,
+     "at": 1794397868000,
+     "checked_at": 1794397868535,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    },
+    {
+     "sym": "EWY",
+     "name": "한국 ETF",
+     "sess": "pre",
+     "px": 146.63,
+     "base": 139.18,
+     "change": 7.45,
+     "chg": 5.35,
+     "at": 1794397861000,
+     "checked_at": 1794397868536,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    },
+    {
+     "sym": "KORU",
+     "name": "한국 3배",
+     "sess": "pre",
+     "px": 8.3696,
+     "base": 7.21,
+     "change": 1.1596,
+     "chg": 16.08,
+     "at": 1794397869000,
+     "checked_at": 1794397868536,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    },
+    {
+     "sym": "NVDA",
+     "name": "엔비디아",
+     "sess": "pre",
+     "px": 175.6363,
+     "base": 168.89,
+     "change": 6.7463,
+     "chg": 3.99,
+     "at": 1794397869000,
+     "checked_at": 1794397868635,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    },
+    {
+     "sym": "AAPL",
+     "name": "애플",
+     "sess": "pre",
+     "px": 346.37,
+     "base": 348.51,
+     "change": -2.14,
+     "chg": -0.61,
+     "at": 1794397829000,
+     "checked_at": 1794397868950,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    },
+    {
+     "sym": "MSFT",
+     "name": "마이크로소프트",
+     "sess": "pre",
+     "px": 534.4806,
+     "base": 533.16,
+     "change": 1.3206,
+     "chg": 0.25,
+     "at": 1794397828000,
+     "checked_at": 1794397869320,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    },
+    {
+     "sym": "GOOGL",
+     "name": "알파벳",
+     "sess": "pre",
+     "px": 291.0,
+     "base": 287.38,
+     "change": 3.62,
+     "chg": 1.26,
+     "at": 1794397871000,
+     "checked_at": 1794397869654,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    },
+    {
+     "sym": "AMZN",
+     "name": "아마존",
+     "sess": "pre",
+     "px": 271.5,
+     "base": 270.87,
+     "change": 0.63,
+     "chg": 0.23,
+     "at": 1794397871000,
+     "checked_at": 1794397870006,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    },
+    {
+     "sym": "META",
+     "name": "메타",
+     "sess": "pre",
+     "px": 647.13,
+     "base": 641.39,
+     "change": 5.74,
+     "chg": 0.89,
+     "at": 1794397868000,
+     "checked_at": 1794397870364,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    },
+    {
+     "sym": "TSLA",
+     "name": "테슬라",
+     "sess": "pre",
+     "px": 386.09,
+     "base": 379.78,
+     "change": 6.31,
+     "chg": 1.66,
+     "at": 1794397870000,
+     "checked_at": 1794397870719,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    },
+    {
+     "sym": "AVGO",
+     "name": "브로드컴",
+     "sess": "pre",
+     "px": 344.71,
+     "base": 331.98,
+     "change": 12.73,
+     "chg": 3.83,
+     "at": 1794397856000,
+     "checked_at": 1794397871064,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    },
+    {
+     "sym": "AMD",
+     "name": "AMD",
+     "sess": "pre",
+     "px": 547.99,
+     "base": 515.21,
+     "change": 32.78,
+     "chg": 6.36,
+     "at": 1794397869000,
+     "checked_at": 1794397871427,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    },
+    {
+     "sym": "MU",
+     "name": "마이크론",
+     "sess": "pre",
+     "px": 770.26,
+     "base": 725.11,
+     "change": 45.15,
+     "chg": 6.23,
+     "at": 1794397872000,
+     "checked_at": 1794397871774,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    },
+    {
+     "sym": "INTC",
+     "name": "인텔",
+     "sess": "pre",
+     "px": 61.62,
+     "base": 58.13,
+     "change": 3.49,
+     "chg": 6.0,
+     "at": 1794397853000,
+     "checked_at": 1794397872129,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    },
+    {
+     "sym": "TSM",
+     "name": "TSMC",
+     "sess": "pre",
+     "px": 414.0,
+     "base": 396.48,
+     "change": 17.52,
+     "chg": 4.42,
+     "at": 1794397869000,
+     "checked_at": 1794397872482,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    },
+    {
+     "sym": "SKYD",
+     "name": "스카이댄스",
+     "sess": "pre",
+     "px": 8.13,
+     "base": 8.04,
+     "change": 0.09,
+     "chg": 1.12,
+     "at": 1794396759000,
+     "checked_at": 1794397872835,
+     "live": true,
+     "stale": true,
+     "src": "NH"
+    },
+    {
+     "sym": "SE",
+     "name": "씨 ADR",
+     "sess": "pre",
+     "px": 79.07,
+     "base": 76.8,
+     "change": 2.27,
+     "chg": 2.96,
+     "at": 1794397841000,
+     "checked_at": 1794397873189,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    },
+    {
+     "sym": "ASX",
+     "name": "ASE 테크놀로지 홀딩 ADR",
+     "sess": "pre",
+     "px": 37.6075,
+     "base": 35.48,
+     "change": 2.1275,
+     "chg": 6.0,
+     "at": 1794397875000,
+     "checked_at": 1794397873531,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    },
+    {
+     "sym": "COHR",
+     "name": "코히런트",
+     "sess": "pre",
+     "px": 233.97,
+     "base": 214.66,
+     "change": 19.31,
+     "chg": 9.0,
+     "at": 1794397873000,
+     "checked_at": 1794397873887,
+     "live": true,
+     "stale": false,
+     "src": "NH"
+    }
+   ]
+  }
+ },
+ {
+  "day": "2026-11-11",
   "slot": "07:20",
   "title": "밤사이 점검 · 미국 마감 · 오늘 체크포인트",
   "at": 1794360981430,
