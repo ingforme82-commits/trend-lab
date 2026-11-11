@@ -596,6 +596,13 @@ def build() -> dict:
         out["brief"] = make_brief(out)
     except Exception as e:  # noqa: BLE001
         log(f"브리핑 건너뜀: {type(e).__name__}: {e}")
+    try:                                                  # ⚡ 지수 선물 급변 → 이유 정리해 주요 이슈 자동 갱신(11/12 운영자)
+        from move_issue import update as move_issue
+        t = move_issue(out)
+        if t:
+            log(f"주요 이슈 자동 갱신: {t[:80]}")
+    except Exception as e:  # noqa: BLE001
+        log(f"지수 급변 정리 건너뜀: {type(e).__name__}: {e}")
     return out
 
 
