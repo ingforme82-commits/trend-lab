@@ -164,6 +164,12 @@ def update(d: dict, push: bool = True) -> str:
             sys.path.insert(0, str(Path(__file__).resolve().parent))
             from ops import push as git_push
             git_push(f"주요 이슈 자동: {rec['title'][:60]}", ["data/headline.json"])
+            try:                                          # 📲 앱 푸시(등록 기기가 있을 때) — 카톡은 보내지 않음(카톡 예외 3가지에 없음)
+                from push_notify import SITE, push as app_push
+                app_push("TRL · ⚡ 지수 급변", rec["title"] + ("\n" + rec["points"][0] if rec["points"] else ""), SITE + "#headline",
+                         "move-" + datetime.now(KST).strftime("%m%d"))
+            except Exception:  # noqa: BLE001
+                pass
         STATE.parent.mkdir(parents=True, exist_ok=True)
         STATE.write_text(json.dumps({"day": datetime.now(KST).strftime("%Y-%m-%d"), "at": now_ms,
                                      "max": max((abs(v) for v in it["_big"].values()), default=0),

@@ -34,7 +34,21 @@ class CumulativeTest(unittest.TestCase):
     def test_brent_supported_other_assets_unchanged(self):
         brent = next(a for a in moves.ASSETS if a[0] == "BRENT")
         self.assertTrue(moves.cumulative_moves(brent, trend()))
-        self.assertEqual(moves.cumulative_moves(moves.ASSETS[0], trend()), [])
+        gold = next(a for a in moves.ASSETS if a[0] == "GOLD")
+        self.assertEqual(moves.cumulative_moves(gold, trend()), [])
+
+    def test_index_slow_trend_detected(self):
+        """11/12: 지수가 몇 시간 꾸준히 오르는 장도 변곡점으로 잡는다(10분 급변만으로는 놓침)."""
+        nq = next(a for a in moves.ASSETS if a[0] == "NQ")
+        self.assertEqual(moves.detect(nq, trend(1.6, 180)), [])
+        self.assertTrue(moves.cumulative_moves(nq, trend(1.6, 180)))
+        self.assertEqual(moves.cumulative_moves(nq, trend(0.5, 60)), [])
+
+    def test_k200_sparse_night_rows(self):
+        """코스피200 24시간 선물은 밤에 1분봉이 비어도(최대 10분) 누적 움직임을 잡는다."""
+        k = next(a for a in moves.ASSETS if a[0] == "K200")
+        rows = [r for n, r in enumerate(trend(2.5, 180)) if n % 4 == 0]
+        self.assertTrue(moves.cumulative_moves(k, rows))
 
     def test_small_moves_ignored(self):
         self.assertEqual(moves.cumulative_moves(WTI, trend(0.9, 180)), [])

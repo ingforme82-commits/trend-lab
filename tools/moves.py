@@ -219,6 +219,9 @@ def detect(asset, rows: list[tuple[int, float]]) -> list[dict]:
 # 유가 누적 움직임은 평소폭 배수 대신 절대 변화율과 방향성을 확인한다.
 OIL_TREND_WINDOWS = ((60, 1.5), (180, 2.5))
 WTI_TREND_WINDOWS = ((60, 1.0), (180, 1.0))
+# 지수도 1·3시간 누적(11/12: 나스닥이 몇 시간 꾸준히 +3% 오르는 동안 10분 급변 기준만 있어 변곡점이 안 잡힌 문제)
+IDX_TREND_WINDOWS = {"NQ": ((60, 0.8), (180, 1.5)), "SP": ((60, 0.6), (180, 1.0)), "K200": ((60, 1.0), (180, 2.0))}
+IDX_MAX_GAP = {"K200": 10}               # 코스피200 24시간 선물은 밤에 체결이 드물어 1분봉 빈칸 허용(분)
 
 
 def merge_moves(events: list[dict]) -> list[dict]:
@@ -239,28 +242,33 @@ def merge_moves(events: list[dict]) -> list[dict]:
 
 
 def cumulative_moves(asset, rows: list[tuple[int, float]]) -> list[dict]:
-    """유가 1·3시간 누적 등락. 데이터 공백과 방향성 없는 왕복 등락은 제외한다."""
+    """유가·지수 1·3시간 누적 등락. 데이터 공백과 방향성 없는 왕복 등락은 제외한다."""
     code, name, _, _, unit, _, _ = asset
-    if code not in ("WTI", "BRENT"):
+    if code not in ("WTI", "BRENT") and code not in IDX_TREND_WINDOWS:
         return []
+    wins = WTI_TREND_WINDOWS if code == "WTI" else OIL_TREND_WINDOWS if code == "BRENT" else IDX_TREND_WINDOWS[code]
+    gap = IDX_MAX_GAP.get(code, 2) * 60_000
+    ts = [r[0] for r in rows]
+    import bisect
     out = []
     for i in range(1, len(rows)):
-        for minutes, threshold in (WTI_TREND_WINDOWS if code == "WTI" else OIL_TREND_WINDOWS):
-            j = i - minutes
-            if j < 0:
+        for minutes, threshold in wins:
+            j = bisect.bisect_left(ts, rows[i][0] - minutes * 60_000)    # 시각 기준(빈칸 있는 1분봉도 정확히)
+            if j >= i or rows[j][0] > rows[i][0] - (minutes - 1) * 60_000:
                 continue
             segment = rows[j:i + 1]
             elapsed = (segment[-1][0] - segment[0][0]) / 60_000
-            if not minutes - 1 <= elapsed <= minutes + 1:
+            if not minutes - (IDX_MAX_GAP.get(code, 0.5)) <= elapsed <= minutes + 1:   # 빈칸 없는 자료는 정확히 그 구간만
                 continue
-            if any(b[0] - a[0] > 2 * 60_000 or b[0] <= a[0] or a[1] <= 0 or b[1] <= 0
+            if any(b[0] - a[0] > gap or b[0] <= a[0] or a[1] <= 0 or b[1] <= 0
                    for a, b in zip(segment, segment[1:])):
                 continue
             change = _chg(segment[0][1], segment[-1][1], unit)
             path = sum(abs(b[1] - a[1]) for a, b in zip(segment, segment[1:]))
             efficiency = abs(segment[-1][1] - segment[0][1]) / path if path else 0
             # WTI는 순변화 1% 자체를 신호로 삼는다(중간 흔들림으로 누락시키지 않음).
-            if abs(change) + 1e-9 < threshold or (code != "WTI" and efficiency < 0.6):
+            min_eff = 0.0 if code == "WTI" else 0.45 if code in IDX_TREND_WINDOWS else 0.6   # 지수는 흔들리며 오르는 경우가 많아 0.45
+            if abs(change) + 1e-9 < threshold or efficiency < min_eff:
                 continue
             event = {"asset": code, "name": name, "unit": unit, "kind": "cumulative",
                      "start": segment[0][0], "end": segment[-1][0],
