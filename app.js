@@ -418,8 +418,8 @@ async function loadStudies() {
   } catch (e) { console.error(e); }
 }
 
-/* ── 맨 위 띠: 하루 5번(06:10 새벽 · 07:20 오전 · 14:00 오후 · 20:05 저녁 · 22:15 밤·새벽) 정시 브리핑 기록에서 수치만 뽑아 고정 ── */
-const BAND = { "06:10": ["🌄", "새벽 미국 마감·이슈"], "07:20": ["🌅", "오전장 핵심 뉴스"], "14:00": ["🕑", "오후"], "20:05": ["🌆", "저녁"], "22:15": ["🌙", "밤·새벽"] };
+/* ── 맨 위 띠: 하루 6번(06:10 새벽 · 07:20 오전 · 14:00 오후 · 15:30 국내 마감 · 20:05 저녁 · 22:15 밤·새벽) 정시 브리핑 기록에서 수치만 뽑아 고정 ── */
+const BAND = { "06:10": ["🌄", "새벽 미국 마감·이슈"], "07:20": ["🌅", "오전장 핵심 뉴스"], "14:00": ["🕑", "오후"], "15:30": ["🔔", "국내 마감(종가)"], "20:05": ["🌆", "저녁"], "22:15": ["🌙", "밤·새벽"] };
 const pc = (v) => v == null ? "" : `${v > 0 ? "+" : ""}${(+v).toFixed(2)}%`;
 function bandText(h) {
   const P = [];
@@ -435,7 +435,7 @@ function bandText(h) {
     if (u["10Y"]) P.push(`미 10년물 ${u["10Y"].px.toFixed(3)}%`);
     P.push(...wt);
     if ((h.checkpoints || []).length) P.push(`오늘: ${h.checkpoints.slice(0, 2).map((c) => (c.time ? c.time + " " : "") + c.title).join(", ")}`);
-  } else if (h.slot === "14:00") {
+  } else if (h.slot === "14:00" || h.slot === "15:30") {
     if (kr.KOSPI) P.push(`코스피 ${pc(kr.KOSPI.chg)} · 코스닥 ${pc((kr.KOSDAQ || {}).chg)}`);
     if (kr.SMSN) P.push(`삼성전자 ${pc(kr.SMSN.chg)} · SK하이닉스 ${pc((kr.SKHX || {}).chg)}`);
     const m = (h.momentum || []).slice().sort((a, b) => b.momentum - a.momentum)[0];

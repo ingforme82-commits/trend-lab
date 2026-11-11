@@ -1,4 +1,4 @@
-"""⏰ 정시 브리핑 발행: 06:10(미국 마감 직후 이른 아침 — 운영자 06:30 기상·고객 소통, 11/12 추가) · 07:20(밤사이 점검) · 14:00(국내 장중 점검) · 20:05(넥장 마감·프리장 선물·유가) · 22:15(미국 개장 전) → data/briefs.json 에 기록하고 push.
+"""⏰ 정시 브리핑 발행: 06:10(미국 마감 직후 이른 아침 — 운영자 06:30 기상·고객 소통, 11/12 추가) · 07:20(밤사이 점검) · 14:00(국내 장중 점검) · 15:30(국내 종가, 15:35 실행) · 20:05(넥장 마감·프리장 선물·유가) · 22:15(미국 개장 전) → data/briefs.json 에 기록하고 push.
 
   python tools/brief_slot.py 0720      # 또는 1400 / 2005 / 2215
   python tools/brief_slot.py 1400 --dry   # 검증만(기록·push 안 함)
@@ -33,10 +33,13 @@ LOCK = ROOT / "tools" / "brief_slot.lock"
 LOG = ROOT / "tools" / "brief_slot.log"
 KST = timezone(timedelta(hours=9))
 REPO = "ingforme82-commits/trend-lab"
-SLOTS = {"0610": ("06:10", "미국 마감 직후 · 밤사이 이슈 · 오늘 체크포인트"), "0720": ("07:20", "밤사이 점검 · 미국 마감 · 오늘 체크포인트"), "1400": ("14:00", "국내 장중 점검 · 섹터 · 주요 종목"),
+SLOTS = {"0610": ("06:10", "미국 마감 직후 · 밤사이 이슈 · 오늘 체크포인트"), "0720": ("07:20", "밤사이 점검 · 미국 마감 · 오늘 체크포인트"), "1400": ("14:00", "국내 장중 점검 · 섹터 · 주요 종목"), "1530": ("15:30", "국내 증시 마감(종가) · 섹터 · 수급"),
          "2005": ("20:05", "넥스트레이드 마감 · 미국 프리장 선물·유가 점검"), "2215": ("22:15", "미국 개장 전 선물·유가 점검")}
 EVE = {"2005", "2215"}
-MORNING = {"0610", "0720"}                 # 미국 마감 결과·10년물·오늘 체크포인트를 담는 아침 슬롯
+MORNING = {"0610", "0720"}
+KR_DAY = {"1400", "1530"}                 # 국내 섹터·모멘텀·수급·상위 종목을 담는 슬롯
+KAKAO = {"0610"}                          # 발행하면 카톡 나에게 요약도 보냄(11/12 운영자)
+SITE = "https://ingforme82-commits.github.io/trend-lab/"                 # 미국 마감 결과·10년물·오늘 체크포인트를 담는 아침 슬롯
 MIN = 60_000
 
 
@@ -78,6 +81,16 @@ def validate(slot: str, d: dict, now_ms: int) -> list[str]:
             bad.append("미국 정규장 마감 시세가 너무 오래된 값(평일 30시간·월요일 80시간 기준)")   # 월요일 07:20 은 금요일 마감이 마지막(11/9 차단 수정)
         if not (d.get("us10y") or {}).get("px"):
             bad.append("미 10년물 금리 누락")
+    if slot == "1530":
+        kr = d.get("kr") or {}
+        if not kr.get("KOSPI") or not kr.get("KR200"):
+            bad.append("한국 지수 시세 누락")
+        elif kr["KOSPI"].get("open"):
+            bad.append("한국 정규장이 아직 열려 있음(종가 전)")
+        elif datetime.fromtimestamp(kr["KOSPI"]["at"] / 1000, KST).strftime("%Y-%m-%d") != datetime.fromtimestamp(now_ms / 1000, KST).strftime("%Y-%m-%d"):
+            bad.append("오늘 국내 종가가 아님(휴장일 가능)")
+        if not [r for c in d.get("sectors") or [] for r in c.get("rows", []) if r.get("cur") == "KRW"]:
+            bad.append("국내 섹터 시세 누락")
     if slot == "1400":
         kr = d.get("kr") or {}
         if not kr.get("KOSPI") or not kr.get("KR200"):
@@ -111,7 +124,7 @@ def compose(slot: str, d: dict, day: str) -> dict:
         rec["watch"] = d["watch"]                         # 운영자 관전 포인트(07:20엔 마감 결과)
     if slot in EVE:
         rec["eve"] = d.get("eve") or {}
-    if slot == "1400":
+    if slot in KR_DAY:
         kr_secs = [c for c in d.get("sectors") or [] if any(r.get("cur") == "KRW" for r in c.get("rows", []))]
         rec["momentum"] = (d.get("momentum") or {}).get("sectors", [])
         rec["flows"] = [{"name": g["name"], "icon": g.get("icon", ""), "rows": sorted(g["rows"], key=lambda r: -(r.get("val") or 0))[:5]}
@@ -119,6 +132,31 @@ def compose(slot: str, d: dict, day: str) -> dict:
         rec["kr_top"] = sorted(({"name": r["name"], "sector": c["name"], "chg": r["chg"], "val": r.get("val")}
                                 for c in kr_secs for r in c["rows"]), key=lambda x: -x["chg"])[:8]
     return rec
+
+
+def kakao_text(rec: dict) -> str:
+    """카톡용 짧은 요약(수치·출처만). 사이트 맨 위 띠와 같은 내용 + 주요 뉴스 3건."""
+    pc = lambda v: "" if v is None else f"{v:+.2f}%"  # noqa: E731
+    reg, ust = rec.get("reg") or {}, rec.get("ust") or {}
+    L = [f"🌄 {rec['day'][5:].replace('-', '/')} {rec['slot']} TRL 새벽 브리핑", rec.get("title", "")]
+    if reg.get("SP500"):
+        L.append(f"미국 마감 S&P500 {pc(reg['SP500'].get('chg'))} · 나스닥100 {pc((reg.get('XYZ100') or {}).get('chg'))}"
+                 + (f" · SOXL {pc(reg['SOXL'].get('chg'))}" if reg.get("SOXL") else "") + (f" · KORU {pc(reg['KORU'].get('chg'))}" if reg.get("KORU") else ""))
+    if (ust.get("10Y") or {}).get("px"):
+        L.append(f"미 10년물 {ust['10Y']['px']:.3f}%")
+    fut = {f["name"]: f for f in rec.get("futures") or []}
+    sel = [f"{n} {pc(fut[n].get('chg'))}" for n in ("코스피200", "나스닥100", "WTI", "금", "달러인덱스", "원/달러") if n in fut]
+    if sel:
+        L.append("24시간: " + " · ".join(sel))
+    heads = rec.get("heads") or []
+    if heads:
+        L.append("주요 뉴스")
+        L += [f"- {h.get('text', '')[:70]} ({h.get('src', '')})" for h in heads[:3]]
+    cps = rec.get("checkpoints") or []
+    if cps:
+        L.append("오늘: " + ", ".join(((c.get("time") + " ") if c.get("time") else "") + c["title"] for c in cps[:3]))
+    L.append(SITE)
+    return chr(10).join(x for x in L if x)
 
 
 def already(day: str, label: str) -> bool:
@@ -198,6 +236,13 @@ def main() -> int:
                     raise
                 time.sleep(20)
         log(f"{label} 발행 완료")
+        if slot in KAKAO:
+            try:
+                from dart_watch import deliver
+                deliver("브리핑", f"{day}-{label}", kakao_text(rec))
+                log(f"{label} 카톡 요약 보냄")
+            except Exception as e:  # noqa: BLE001
+                log(f"{label} 카톡 요약 실패 {type(e).__name__}")
         return 0
     finally:
         if not dry and LOCK.exists():
