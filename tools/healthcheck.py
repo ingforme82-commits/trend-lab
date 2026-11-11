@@ -144,7 +144,12 @@ def check_cnbc() -> None:
     ust = NEWS.get("ust") or {}
     fx = {f["name"]: f for f in (NEWS.get("brief") or {}).get("futures") or [] if f.get("src") == "CNBC"}
     limit = 30
-    bad = [f"미 {k.replace('Y', '년물')} {fmt_min(age(v.get('at')))}" for k, v in ust.items() if age(v.get("at")) > limit]
+    from market_extra import ust_market_note
+    bond_note = ust_market_note(int(NOW * 1000))
+    bad = [] if bond_note else [f"미 {k.replace('Y', '년물')} {fmt_min(age(v.get('at')))}" for k, v in ust.items() if age(v.get("at")) > limit]
+    if bond_note:
+        add("미 국채", "정상" if ust.get("10Y") else "주의", bond_note,
+            "휴장 권고일에도 공급사에 따라 참고 시세가 들어올 수 있음. 원천 시각·출처를 함께 확인")
     bad += [f"{k} {fmt_min(age(v.get('at')))}" for k, v in fx.items() if age(v.get("at")) > limit]
     miss = [k for k in ("10Y",) if k not in ust] + [k for k in ("달러인덱스", "원/달러") if k not in fx]
     if us_closed_weekend():
@@ -210,13 +215,31 @@ def check_nh() -> None:
 
 # 8 KB API
 def check_kb() -> None:
+    """과거 오류 파일만으로 정상 판정하지 않고 공개 현재가 한 건을 실제 조회한다."""
     try:
-        t = float((TOOLS / "kb_down.txt").read_text())
+        last = float((TOOLS / "kb_down.txt").read_text())
     except (OSError, ValueError):
-        add("KB API", "정상", "최근 응답 없음 기록 없음"); return
-    m = (NOW - t) / 60
-    add("KB API", "주의" if m < 30 else "정상", f"마지막 응답 없음 {fmt_min(m)}" + (" — 10분 쉬는 중" if m < 10 else ""),
-        "KB 서버 시간 초과 — 국내 시세는 NH로 대신 받음" if m < 30 else "")
+        last = 0
+    if NOW - last < 600:
+        add("KB API", "주의", "최근 시간 초과 — 10분 쉬는 중", "대기 후 다음 점검에서 실제 현재가를 재조회")
+        return
+    try:
+        import kbprog
+        token = kbprog._token()
+        if not token:
+            add("KB API", "주의", "인증 키 없음 — 연결 미확인", "실행 PC의 사용자 키 설정 필요(키 값은 출력하지 않음)")
+            return
+        result = kbprog._post(f"{kbprog.BASE}/api/v1/ivu10140",
+                              {"shrt_cd": "005930", "excg_clsf": "0"}, token)
+        header, body = result.get("dataHeader") or {}, result.get("dataBody") or {}
+        px = float(str(body.get("now_prc") or "0").replace(",", "").replace("+", ""))
+        if header.get("resultCode") == "200" and px > 0:
+            add("KB API", "정상", "인증·공개 현재가 실제 조회 성공")
+        else:
+            add("KB API", "주의", "현재가 조회 거부 또는 가격 없음", "인증·서비스 신청 상태 확인. 원응답·인증값은 기록하지 않음")
+    except Exception as exc:  # noqa: BLE001
+        add("KB API", "주의", f"현재가 실제 조회 실패({type(exc).__name__})",
+            "연결 정상 미확인 — NH·네이버 대체 경로와 실행 PC의 연결 확인")
 
 
 # 9 예약 작업
