@@ -1,1 +1,2 @@
 Pillow>=10
+pywebpush>=2.0   # TRL 앱 푸시(tools/push_notify.py)

@@ -319,7 +319,16 @@ def collect(days: int = 14) -> tuple[list[dict], str, list[dict]]:
 
 
 def deliver(kind: str, key: str, text: str) -> bool:
-    """텔레그램 봇이 켜져 있으면 텔레그램, 아니면 카톡 '나에게'(카톡 OFF 여도 이 알림은 보냄 — 11/12 운영자 지시)."""
+    """TRL 앱 푸시(등록 기기가 있으면 항상) + 텔레그램 봇이 켜져 있으면 텔레그램, 아니면 카톡 '나에게'
+    (카톡 OFF 여도 이 알림은 보냄 — 11/12 운영자 지시)."""
+    try:                                                    # 📲 앱 푸시: 첫 줄=제목, 나머지=본문, 본문 속 첫 링크를 누르면 열림
+        from push_notify import SITE, push
+        lines = [x for x in text.splitlines() if x.strip()]
+        link = next((x.strip() for x in lines if x.strip().startswith("http")), SITE)
+        body = "\n".join(x for x in lines[1:] if not x.strip().startswith("http"))[:500]
+        push(f"TRL · {lines[0][:60]}" if lines else f"TRL · {kind}", body, link, key[:60])
+    except Exception:  # noqa: BLE001
+        pass
     try:
         from tg_alert import _env, _ready
         e = _env()
