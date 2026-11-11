@@ -178,8 +178,33 @@ def git(*a: str) -> None:
     subprocess.run(["git", *a], cwd=ROOT, check=True, capture_output=True, timeout=120)
 
 
-def main() -> int:
-    slot = next((a for a in sys.argv[1:] if a in SLOTS), None)
+def due_slots(now: datetime) -> list[str]:
+    """정시 실행을 5분 기다린 뒤, 20분 이내 누락만 현재 자료로 보완한다."""
+    result = []
+    for slot in SLOTS:
+        if now.weekday() >= 5 and not (slot == "0610" and now.weekday() == 5):
+            continue
+        hour, minute = (15, 35) if slot == "1530" else (int(slot[:2]), int(slot[2:]))
+        scheduled = now.replace(hour=hour, minute=minute, second=0, microsecond=0)
+        lag = (now - scheduled).total_seconds() / 60
+        if 5 <= lag <= 20:
+            result.append(slot)
+    return result
+
+
+def catch_up() -> None:
+    """실행 PC의 정상 수집 직후만 호출. 과거 슬롯을 최신 시세로 소급 작성하지 않는다."""
+    now = datetime.now(KST)
+    for slot in due_slots(now):
+        if not already(now.strftime("%Y-%m-%d"), SLOTS[slot][0]):
+            try:
+                main(slot, delayed=True)
+            except Exception as exc:  # noqa: BLE001
+                log(f"{SLOTS[slot][0]} 누락 보완 실패: {type(exc).__name__}")
+
+
+def main(slot: str | None = None, delayed: bool = False) -> int:
+    slot = slot or next((a for a in sys.argv[1:] if a in SLOTS), None)
     if not slot:
         print(__doc__)
         return 1
@@ -187,24 +212,44 @@ def main() -> int:
     label = SLOTS[slot][0]
     day = datetime.now(KST).strftime("%Y-%m-%d")
     if not dry:
-        git("pull", "-q", "--rebase", "--autostash")
+        try:
+            git("pull", "-q", "--rebase", "--autostash")
+        except (subprocess.SubprocessError, OSError) as exc:
+            log(f"{label} 최신 코드 받기 실패: {type(exc).__name__}")
+            return 1
         if already(day, label):
             log(f"{label} 이미 발행됨 — 건너뜀")
             return 0
         if LOCK.exists() and time.time() - LOCK.stat().st_mtime < 600:
             log(f"{label} 다른 실행이 진행 중 — 건너뜀")
             return 0
-        LOCK.write_text(str(os.getpid()), encoding="utf-8")
+        if LOCK.exists():
+            if time.time() - LOCK.stat().st_mtime < 600:
+                log(f"{label} 다른 실행이 진행 중 — 건너뜀")
+                return 0
+            try:
+                LOCK.unlink()
+            except FileNotFoundError:
+                pass
+        try:
+            with LOCK.open("x", encoding="utf-8") as lock:
+                lock.write(str(os.getpid()))
+        except FileExistsError:
+            log(f"{label} 다른 실행이 잠금을 얻음 — 건너뜀")
+            return 0
     try:
+        if not dry and already(day, label):
+            return 0
         bad = ["시작 전"]
-        for n in range(3):
+        attempts = 1 if delayed else 3
+        for n in range(attempts):
             if n:
                 time.sleep(120)
             try:
                 d = fetch()
             except Exception as e:  # noqa: BLE001
                 bad = [f"news.json 받기 실패: {e}"]
-                log(f"{label} 시도 {n + 1}/3 실패: {bad[0]}")
+                log(f"{label} 시도 {n + 1}/{attempts} 실패: {bad[0]}")
                 continue
             bad = validate(slot, d, int(time.time() * 1000))
             if not bad and slot in EVE:
@@ -218,6 +263,9 @@ def main() -> int:
             log(f"{label} 발행 차단 — " + " / ".join(bad))
             return 2
         rec = compose(slot, d, day)
+        if delayed:
+            rec["delayed"] = True
+            rec["title"] += " · 지연 발행(표시 시각의 최신 자료)"
         if dry:
             print(json.dumps({k: rec[k] for k in ("day", "slot", "title")}, ensure_ascii=False), "검증 통과(--dry, 기록 안 함)")
             return 0
