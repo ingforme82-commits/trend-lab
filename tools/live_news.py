@@ -669,6 +669,11 @@ def main() -> None:
     try:
         changed = upload(data)
         log(f"{len(data['items'])}건 {'올림' if changed else '변화 없음'}")
+        try:  # 정시 작업 때 대기 PC였다가 역할을 넘겨받은 경우의 누락 보완
+            from brief_slot import catch_up
+            catch_up()
+        except Exception as exc:  # noqa: BLE001
+            log(f"정시 브리핑 누락 점검 실패: {type(exc).__name__}")
     except Exception as e:  # noqa: BLE001
         log(f"실패: {e}")
 
