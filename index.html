@@ -18,6 +18,15 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="style.css">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0f1b2d">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="TRL">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<script src="pwa.js" defer></script>
 </head>
 <body>
 
@@ -34,6 +43,7 @@
       <a href="#archive">아카이브</a>
       <a href="#curriculum">커리큘럼</a>
     </nav>
+    <button class="btn btn-gold btn-sm" id="installBtn" type="button" hidden>📲 앱 설치</button>
     <a class="btn btn-kakao btn-sm" href="https://invite.kakao.com/tc/p7OX5rMjd0" target="_blank" rel="noopener">오픈채팅</a>
   </div>
 </header>

@@ -1,0 +1,23 @@
+{
+  "name": "Trend Research Lab",
+  "short_name": "TRL",
+  "description": "실시간 속보·시세·정시 브리핑·주도 섹터 — 숫자로 확인하는 추세추종",
+  "id": "./",
+  "start_url": "./?source=app",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "lang": "ko",
+  "background_color": "#0f1b2d",
+  "theme_color": "#0f1b2d",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icons/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "주요 이슈", "url": "./?source=app#headline", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "시세", "url": "./?source=app#market", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "브리핑", "url": "./?source=app#brief", "icons": [{ "src": "icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
