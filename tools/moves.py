@@ -103,18 +103,18 @@ def level_cross(code: str, name: str, unit: str, rows: list[tuple[int, float]], 
     step = LEVEL_STEP.get(code)
     if not step:
         return []
-    # WTI 100달러 하향 이탈은 변동률·유지 시간과 무관하게 관측 즉시 기록한다.
+    # WTI 85달러 하향 이탈은 변동률·유지 시간과 무관하게 관측 즉시 기록한다.
     out = []
     if code == "WTI":
         for (_, a), (t, b) in zip(rows, rows[1:]):
-            if a >= 100 > b:
-                out.append({"asset": code, "name": name, "unit": unit, "kind": "level", "level": 100,
+            if a >= 85 > b:
+                out.append({"asset": code, "name": name, "unit": unit, "kind": "level", "level": 85,
                             "start": t, "end": t, "from": a, "to": b,
                             "move": round(_chg(a, b, unit), 2), "ratio": 0.0})
     i = 1
     while i < len(rows) - hold:
         a, b = rows[i - 1][1], rows[i][1]
-        if code == "WTI" and a >= 100 > b:
+        if code == "WTI" and a >= 85 > b:
             i += 1
             continue
         lo, hi = min(a, b), max(a, b)
@@ -297,7 +297,7 @@ def analyze(items: list[dict]) -> tuple[list[dict], dict]:
     for a in ASSETS:
         rows = data[a[0]]
         moves += merge_moves(detect(a, rows) + cumulative_moves(a, rows))
-        moves += level_cross(a[0], a[1], a[4], data[a[0]])   # 주요 가격대 돌파(예: WTI $100)
+        moves += level_cross(a[0], a[1], a[4], data[a[0]])   # 주요 가격대 돌파(예: WTI $85)
     moves.sort(key=lambda m: -m["start"])
     for k, m in enumerate(moves):
         m["id"] = f'{m["asset"]}-{"L" if m.get("kind") == "level" else "C" if m.get("kind") == "cumulative" else ""}{m["start"] // 60000}'
@@ -339,7 +339,7 @@ def analyze(items: list[dict]) -> tuple[list[dict], dict]:
         for it in picked:
             it["pivot"] = True
             unit = "bp" if m["unit"] == "bp" else "%"
-            tag = ("WTI $100 하향 이탈" if m["asset"] == "WTI" and m.get("level") == 100 and m["to"] < 100
+            tag = ("WTI $85 하향 이탈" if m["asset"] == "WTI" and m.get("level") == 85 and m["to"] < 85
                    else f'{m["name"]} {"+" if m["move"] > 0 else ""}{m["move"]}{unit}')
             it.setdefault("pv", [])
             if tag not in it["pv"]:
