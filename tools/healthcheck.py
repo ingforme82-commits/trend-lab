@@ -315,11 +315,24 @@ def main() -> None:
         text = "🩺 실시간 점검 문제\n" + "\n".join(f"· {r['area']}: {r['msg']} — {r['why']}" for r in new)
         with LOG.open("a", encoding="utf-8") as fh:
             fh.write(f"{T:%m-%d %H:%M} {text}\n")
+    # 📲 운영자에게 알림(11/12: 11/11 밤 수집기 멈춤을 감지하고도 꺼진 텔레그램으로만 보내 아무도 몰랐던 문제)
+    # - 같은 영역이 두 번 연속(5분+) '문제'일 때만(실행 PC 전환 직후 잠깐 생기는 것 제외), 영역마다 한 번
+    # - 카톡 '나에게' + 앱 푸시(dart_watch.deliver). 해결되면 한 번 더 알림
+    areas_now = sorted({r["area"] for r in R if r["level"] == "문제"})
+    seen_before = set(state.get("areas_pending") or [])
+    told = set(state.get("areas_told") or [])
+    to_tell = [a for a in areas_now if a in seen_before and a not in told]
+    solved = sorted(told - set(areas_now))
+    if to_tell or solved:
+        lines = ([f"🩺 TRL 실시간 점검 문제 ({T:%H:%M})"] + [f"· {r['area']}: {r['msg']} — {r['why']}" for r in R if r["area"] in to_tell]
+                 if to_tell else [f"🩺 TRL 실시간 점검 ({T:%H:%M})"]) + ([f"✅ 해결: {', '.join(solved)}"] if solved else [])
         try:
-            from tg_alert import alert
-            alert("실시간점검", "|".join(sorted(now_p))[:200], text)
+            from dart_watch import deliver
+            deliver("실시간점검", f"{T:%m%d%H%M}", "\n".join(lines))
         except Exception:  # noqa: BLE001
             pass
+    state["areas_pending"] = areas_now
+    state["areas_told"] = sorted((told | set(to_tell)) - set(solved))
     fixed = prev - now_p
     if fixed:
         with LOG.open("a", encoding="utf-8") as fh:
