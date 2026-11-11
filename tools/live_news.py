@@ -535,8 +535,8 @@ def build() -> dict:
         try:                                              # 🌙 미국 시간외 시세판 + ±5%·±10% 첫 돌파 속보
             from ext_board import build as ext_board
             out["ext"] = ext_board(out.get("spot"))
-            have = {i["ts"] for i in out["items"] if i.get("kind") == "시간외 시세"}
-            out["items"] += [i for i in out["ext"].pop("items", []) if i["ts"] not in have]
+            # 시간외 속보는 ext_board 상태가 원본 — 상태에서 지운(잘못된 체결) 항목은 목록에서도 빠지게 매번 다시 채운다
+            out["items"] = [i for i in out["items"] if i.get("kind") != "시간외 시세"] + out["ext"].pop("items", [])
             out["items"].sort(key=lambda i: -i["ts"])
         except Exception as e:  # noqa: BLE001
             log(f"미국 시간외 건너뜀: {type(e).__name__}: {e}")
