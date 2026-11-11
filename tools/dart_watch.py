@@ -144,19 +144,133 @@ def quarter_numbers(key: str, cc: str, title: str) -> list[str]:
     rows = j.get("list") or []
     fs = "CFS" if any(r.get("fs_div") == "CFS" for r in rows) else "OFS"
     num = lambda v: float(str(v).replace(",", "")) if str(v or "").replace(",", "").lstrip("-").isdigit() else None
-    out = []
+    data = {}
     for acc in ("매출액", "영업이익", "당기순이익"):
         r = next((r for r in rows if r.get("fs_div") == fs and r.get("account_nm", "").replace(" ", "").startswith(acc)), None)
-        if not r:
-            continue
-        cur, prev = num(r.get("thstrm_amount")), num(r.get("frmtrm_q_amount") or r.get("frmtrm_amount"))
-        if cur is None:
-            continue
-        yoy = f" (작년 같은 분기 {eok(prev)}, {(cur / prev - 1) * 100:+.0f}%)" if prev and prev > 0 else f" (작년 같은 분기 {eok(prev)})" if prev is not None else ""
-        out.append(f"{acc} {eok(cur)}{yoy}")
-    if out:
-        out.append("연결 기준" if fs == "CFS" else "별도 기준")
+        if r and num(r.get("thstrm_amount")) is not None:
+            data[acc] = {"cur": num(r.get("thstrm_amount")), "yoy": num(r.get("frmtrm_q_amount") or r.get("frmtrm_amount")), "qoq": None}
+    return describe(data, "연결 기준" if fs == "CFS" else "별도 기준") if data else []
+
+
+UNIT = {"원": 1, "천원": 1e3, "백만원": 1e6, "억원": 1e8}
+
+
+def prelim_numbers(key: str, rcept_no: str) -> list[str]:
+    """영업(잠정)실적 공시 원문(OpenDART document.xml) → 이번 분기·직전 분기·작년 같은 분기 + 회사 설명. 실패하면 빈 목록."""
+    if not (key and rcept_no.isdigit()):
+        return []
+    try:
+        z = zipfile.ZipFile(BytesIO(_get(f"https://opendart.fss.or.kr/api/document.xml?crtfc_key={key}&rcept_no={rcept_no}", timeout=30)))
+        x = z.read(z.namelist()[0]).decode("utf-8", "replace")
+    except Exception:  # noqa: BLE001
+        return []
+    cells = [c.strip() for c in html.unescape(re.sub(r"<[^>]+>", "|", x)).split("|") if c.strip()]
+    unit = 1e6
+    for c in cells:
+        m = re.search(r"단위\s*:\s*(천원|백만원|억원|원)", c)
+        if m:
+            unit = UNIT[m.group(1)]
+            break
+    val = lambda s: float(s.replace(",", "")) if re.fullmatch(r"-?[\d,]+(\.\d+)?", s or "") else None
+    data = {}
+    for acc, label in (("매출액", "매출액"), ("영업이익", "영업이익"), ("당기순이익", "당기순이익")):
+        for i, c in enumerate(cells[:-8]):
+            if c.replace(" ", "").startswith(label) and cells[i + 1] == "당해실적":
+                cur, qoq_b, yoy_b = val(cells[i + 2]), val(cells[i + 3]), None
+                tail = cells[i + 4:i + 9]                          # 전기대비%, 흑자적자, 전년동기, 전년대비%, 흑자적자
+                nums = [val(t) for t in tail]
+                # '-' 가 섞여 칸 수가 일정하지 않아 전년동기실적은 '전기대비 칸 2개' 다음 숫자로 잡는다
+                yoy_b = nums[2] if len(nums) > 2 else None
+                if cur is not None:
+                    data[acc] = {"cur": cur * unit, "qoq": qoq_b * unit if qoq_b is not None else None,
+                                 "yoy": yoy_b * unit if yoy_b is not None else None}
+                break
+    note = ""
+    for i, c in enumerate(cells):
+        if "기타 투자판단과 관련한 중요사항" in c:
+            note = " ".join(cells[i + 1:i + 6])
+            break
+    out = describe(data, "연결 기준" if "연결" in x[:4000] else "별도 기준") if data else []
+    note = re.sub(r"\s+", " ", re.sub(r"관련\s*공시.*$", "", note))
+    boiler = re.compile(r"K-?IFRS|국제회계기준|외부감사|감사인|검토를 받지|잠정\s*영업실적|잠정치|편의를|홈페이지|변경될 수|달라질 수|게재할|요약 자료")
+    note = " ".join(s.strip(" -※") for s in re.split(r"(?<=[.다])\s+|\s-\s|※", note) if s.strip(" -※") and not boiler.search(s))
+    if note and not re.fullmatch(r"[-\s]*", note):
+        out.append("📝 회사 설명: " + note[:220] + ("…" if len(note) > 220 else ""))
     return out
+
+
+def _chg(a: float | None, b: float | None) -> str:
+    if a is None or b is None:
+        return ""
+    if b > 0 and a > 0:
+        p = (a / b - 1) * 100
+        return "보합" if abs(p) < 0.5 else f"{p:+.0f}%"
+    if b <= 0 < a:
+        return "흑자전환"
+    if a <= 0 < b:
+        return "적자전환"
+    return "적자지속" if a < 0 and b < 0 else ""
+
+
+def describe(d: dict, basis: str) -> list[str]:
+    """숫자 줄 + 해석(사실 기반 규칙, 매수·매도 권유 아님)."""
+    out = []
+    for acc in ("매출액", "영업이익", "당기순이익"):
+        v = d.get(acc)
+        if not v:
+            continue
+        parts = [f"작년 같은 분기 대비 {_chg(v['cur'], v['yoy'])}" if _chg(v["cur"], v["yoy"]) else "",
+                 f"직전 분기 대비 {_chg(v['cur'], v['qoq'])}" if _chg(v["cur"], v["qoq"]) else ""]
+        out.append(f"{acc} {eok(v['cur'])}" + (f" ({' · '.join(p for p in parts if p)})" if any(parts) else ""))
+    out.append(basis)
+    s, o, n = d.get("매출액"), d.get("영업이익"), d.get("당기순이익")
+    why = []
+    if s and o and s["cur"]:
+        m_now = o["cur"] / s["cur"] * 100
+        m_y = o["yoy"] / s["yoy"] * 100 if s.get("yoy") and o.get("yoy") is not None else None
+        m_q = o["qoq"] / s["qoq"] * 100 if s.get("qoq") and o.get("qoq") is not None else None
+        line = f"영업이익률 {m_now:.1f}%"
+        if m_y is not None:
+            line += f" (작년 {m_y:.1f}% → {m_now - m_y:+.1f}%p)"
+        if m_q is not None:
+            line += f" · 직전 분기 {m_q:.1f}%"
+        why.append(line)
+        sg = s["cur"] / s["yoy"] - 1 if s.get("yoy") else None
+        og = (o["cur"] - o["yoy"]) if o.get("yoy") is not None else None
+        if sg is not None and og is not None:
+            better = m_y is not None and m_now > m_y
+            if sg > 0.03 and og > 0:
+                why.append("매출·이익·이익률 모두 개선" if better else "매출이 늘어 이익도 늘었지만 이익률은 하락(원가·비용 증가)")
+            elif sg > 0.03 and og <= 0:
+                why.append("매출은 늘었지만 이익이 줄어 원가·비용 부담 확인 필요")
+            elif sg <= -0.03 and og > 0:
+                why.append("매출은 줄었지만 이익은 늘어 수익성(제품 구성·비용 절감) 개선")
+            elif sg <= -0.03 and og <= 0:
+                why.append("매출과 이익이 함께 줄어 업황·수주 둔화 신호")
+            else:
+                why.append("매출은 작년과 비슷, 이익은 " + ("개선" if og > 0 else "악화"))
+        if o.get("qoq") is not None and s.get("qoq"):
+            up_q, up_y = o["cur"] > o["qoq"], og is not None and og > 0
+            why.append("직전 분기 대비 영업이익 " + ("증가" if up_q else "감소") +
+                       (" — 작년 대비와 같은 방향" if up_q == up_y else " — 작년 대비와 반대 방향(최근 흐름 " + ("회복" if up_q else "둔화") + ")"))
+    if o and n and o.get("cur") and n.get("cur") is not None:
+        if (o["cur"] > 0) != (n["cur"] > 0) or (o.get("yoy") and n.get("yoy") and (o["cur"] > o["yoy"]) != (n["cur"] > n["yoy"])):
+            why.append("영업이익과 순이익 방향이 달라 영업 외 요인(금융자산 평가·환율·일회성 손익) 영향 — 회사 설명 확인")
+    if why:
+        out.append("💡 해석: " + " / ".join(why))
+    return out
+
+
+def price_now(code: str) -> str:
+    """공시 뒤 주가(KB 현재가, 실패하면 빈 문자열)."""
+    try:
+        sys.path.insert(0, r"C:\projects\market-site\trader")
+        from kb_tool import tr
+        q = tr("ivu10140", {"shrt_cd": code, "excg_clsf": "0"})
+        px, base = float(q.get("now_prc") or 0), float(q.get("sprc") or 0)
+        return f"📈 주가 {px:,.0f}원 ({(px / base - 1) * 100:+.2f}%, {datetime.now():%H:%M} KB)" if px and base else ""
+    except Exception:  # noqa: BLE001
+        return ""
 
 
 def market_dart(key: str, bgn: str, end: str) -> list[dict]:
@@ -305,7 +419,11 @@ def main() -> None:
     for d in new:
         if first:
             continue
-        extra = quarter_numbers(key, d.get("cc", ""), d["title"]) if "분기보고서" in d["title"] or "반기보고서" in d["title"] else []
+        extra = (quarter_numbers(key, d.get("cc", ""), d["title"]) if "분기보고서" in d["title"] or "반기보고서" in d["title"]
+                 else prelim_numbers(key, d["id"]) if re.search(r"잠정|손익구조", d["title"]) else [])
+        if "기업설명회" not in d["title"]:
+            extra.append(price_now(d["code"]))
+        extra = [e for e in extra if e]
         ttl = "🎤 IR 예정" if "기업설명회" in d["title"] else "📑 실적 공시"
         star = "⭐ " if d["name"] in MUST else ""
         text = "\n".join([f"{star}{ttl} · {d['name']}({d['code']}) {GROUP.get(d['code'], '')}", d["title"],
