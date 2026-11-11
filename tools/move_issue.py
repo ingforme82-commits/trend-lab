@@ -157,7 +157,13 @@ def update(d: dict, push: bool = True) -> str:
             return ""
         h = json.loads(HEAD.read_text(encoding="utf-8")) if HEAD.exists() else {"items": []}
         rec = {k: v for k, v in it.items() if not k.startswith("_")}
-        h["items"] = [rec] + [x for x in h.get("items", []) if x.get("tag") != TAG]
+        items = h.get("items", [])
+        pos = next((i for i, x in enumerate(items) if x.get("tag") == TAG), None)
+        if pos is None:                                   # 처음 생길 때만 맨 앞 — 이미 있으면 제자리 갱신(운영자가 맨 앞에 둔 정리를 밀어내지 않음)
+            h["items"] = [rec] + items
+        else:
+            items[pos] = rec
+            h["items"] = items
         h["updated"] = datetime.now(KST).strftime("%Y-%m-%d %H:%M")
         HEAD.write_text(json.dumps(h, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
         if push:
