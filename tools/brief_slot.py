@@ -1,4 +1,4 @@
-"""⏰ 정시 브리핑 발행: 07:20(밤사이 점검) · 14:00(국내 장중 점검) · 20:05(넥장 마감·프리장 선물·유가) · 22:15(미국 개장 전) → data/briefs.json 에 기록하고 push.
+"""⏰ 정시 브리핑 발행: 06:10(미국 마감 직후 이른 아침 — 운영자 06:30 기상·고객 소통, 11/12 추가) · 07:20(밤사이 점검) · 14:00(국내 장중 점검) · 20:05(넥장 마감·프리장 선물·유가) · 22:15(미국 개장 전) → data/briefs.json 에 기록하고 push.
 
   python tools/brief_slot.py 0720      # 또는 1400 / 2005 / 2215
   python tools/brief_slot.py 1400 --dry   # 검증만(기록·push 안 함)
@@ -33,9 +33,10 @@ LOCK = ROOT / "tools" / "brief_slot.lock"
 LOG = ROOT / "tools" / "brief_slot.log"
 KST = timezone(timedelta(hours=9))
 REPO = "ingforme82-commits/trend-lab"
-SLOTS = {"0720": ("07:20", "밤사이 점검 · 미국 마감 · 오늘 체크포인트"), "1400": ("14:00", "국내 장중 점검 · 섹터 · 주요 종목"),
+SLOTS = {"0610": ("06:10", "미국 마감 직후 · 밤사이 이슈 · 오늘 체크포인트"), "0720": ("07:20", "밤사이 점검 · 미국 마감 · 오늘 체크포인트"), "1400": ("14:00", "국내 장중 점검 · 섹터 · 주요 종목"),
          "2005": ("20:05", "넥스트레이드 마감 · 미국 프리장 선물·유가 점검"), "2215": ("22:15", "미국 개장 전 선물·유가 점검")}
 EVE = {"2005", "2215"}
+MORNING = {"0610", "0720"}                 # 미국 마감 결과·10년물·오늘 체크포인트를 담는 아침 슬롯
 MIN = 60_000
 
 
@@ -69,7 +70,7 @@ def validate(slot: str, d: dict, now_ms: int) -> list[str]:
                 bad.append(f"출처·시각 없는 항목: {x.get('text', '')[:30]}")
     if len(b.get("futures") or []) < 6:
         bad.append("24시간 선물 시세 누락(6개 미만)")
-    if slot == "0720":
+    if slot in MORNING:
         reg = d.get("reg") or {}
         if not reg.get("SP500") or not reg.get("XYZ100"):
             bad.append("미국 정규장 마감 시세 누락")
@@ -98,7 +99,7 @@ def compose(slot: str, d: dict, day: str) -> dict:
     b = dict(d.get("brief") or {})
     label, title = SLOTS[slot]
     rec = {"day": day, "slot": label, "title": title, **b, "at": int(time.time() * 1000), "reg": d.get("reg") or {}}
-    if slot == "0720":
+    if slot in MORNING:
         try:
             cps = json.loads(CHECKS.read_text(encoding="utf-8"))
             rec["checkpoints"] = [{"time": c.get("time", ""), "title": c["title"]} for c in cps if c.get("date") == day][:8]
