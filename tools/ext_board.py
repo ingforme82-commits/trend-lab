@@ -30,18 +30,29 @@ BOARD = [("SPY", "S&P500 ETF"), ("QQQ", "나스닥100 ETF"), ("SOXX", "반도체
 
 def events(rows: list[dict], state: dict, now: float) -> list[dict]:
     """rows 중 live 시간외 등락이 STEPS 를 처음 넘은 것 → state 에 기록(순수에 가깝게: state 를 고쳐 쓴다). 새로 생긴 키 목록을 돌려준다."""
+    # 11/12: 시간외 한 번 튄 체결(MSFT -15% 등 잘못된 값)로 속보가 나간 일 → 다음 갱신(≥50초 뒤)에도 같은 방향으로 넘어 있어야 확정
+    pend = state.setdefault("_pending", {})
     new = []
     for r in rows:
         if not r.get("live") or r.get("stale"):
             continue
         day = datetime.fromtimestamp(r["at"] / 1000, KST).strftime("%Y-%m-%d")
         for s in STEPS:
-            if abs(r["chg"]) >= s:
-                k = f"{r['sym']}-{r['sess']}-{day}-{int(s)}"
-                if k not in state:
-                    state[k] = {"ts": r["at"], "sym": r["sym"], "name": r["name"], "sess": r["sess"], "px": r["px"], "base": r["base"], "chg": r["chg"], "step": s}
-                    new.append(k)
-    for k in [k for k, v in state.items() if now * 1000 - v["ts"] > 36 * 3600_000]:
+            k = f"{r['sym']}-{r['sess']}-{day}-{int(s)}"
+            if abs(r["chg"]) < s or k in state:
+                if abs(r["chg"]) < s:
+                    pend.pop(k, None)
+                continue
+            p = pend.get(k)
+            if p and now - p["seen"] >= TTL and (p["chg"] > 0) == (r["chg"] > 0):
+                state[k] = {"ts": p["ts"], "sym": r["sym"], "name": r["name"], "sess": r["sess"], "px": r["px"], "base": r["base"], "chg": r["chg"], "step": s}
+                pend.pop(k, None)
+                new.append(k)
+            elif not p or (p["chg"] > 0) != (r["chg"] > 0):
+                pend[k] = {"seen": now, "ts": r["at"], "chg": r["chg"]}
+    for k in [k for k, v in pend.items() if now - v["seen"] > 600]:
+        pend.pop(k)
+    for k in [k for k, v in state.items() if k != "_pending" and now * 1000 - v["ts"] > 36 * 3600_000]:
         state.pop(k)
     return new
 
@@ -49,7 +60,9 @@ def events(rows: list[dict], state: dict, now: float) -> list[dict]:
 def items_of(state: dict) -> list[dict]:
     """state → 속보 목록용 항목(같은 종목·세션은 가장 높은 단계 하나만)."""
     best = {}
-    for v in state.values():
+    for k, v in state.items():
+        if k == "_pending":
+            continue
         key = (v["sym"], v["sess"], datetime.fromtimestamp(v["ts"] / 1000, KST).date())
         if key not in best or v["step"] > best[key]["step"]:
             best[key] = v
