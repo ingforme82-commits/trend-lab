@@ -20,6 +20,32 @@
  "free": "커피 · 와이파이 · 사무실 이용 모두 무료",
  "spotlight": [
   {
+   "id": "CRWV",
+   "name": "코어위브",
+   "market": "미국",
+   "yf": "CRWV",
+   "kw": "코어위브|CoreWeave|\\bCRWV\\b",
+   "kind": "⚡ 급등 대형주",
+   "reason": "11/11(수) 정규장 개장 후 30분 +17.24% · 시가총액 약 315억 달러 · 업종 IT 서비스 및 컨설팅",
+   "hl": "xyz:CRWV",
+   "on": true,
+   "auto": true,
+   "since": "2026-11-12"
+  },
+  {
+   "id": "NBIS",
+   "name": "네비우스 그룹",
+   "market": "미국",
+   "yf": "NBIS",
+   "kw": "네비우스|Nebius|\\bNBIS\\b",
+   "kind": "⚡ 급등 대형주",
+   "reason": "11/11(수) 정규장 개장 후 30분 +13.81% · 시가총액 약 415억 달러 · 업종 경영 지원 서비스",
+   "hl": "xyz:NBIS",
+   "on": true,
+   "auto": true,
+   "since": "2026-11-12"
+  },
+  {
    "id": "SKYD",
    "name": "스카이댄스",
    "market": "미국",
@@ -56,16 +82,59 @@
    "since": "2026-11-11"
   },
   {
-   "id": "COHR",
-   "name": "코히런트",
+   "id": "NEOCLOUD",
+   "name": "코어위브·네오클라우드",
    "market": "미국",
-   "yf": "COHR",
-   "kw": "코히런트|Coherent|\\bCOHR\\b",
-   "kind": "⚡ 급등 대형주",
-   "reason": "11/9(월) 정규장 개장 후 30분 +11.33% · 시가총액 약 423억 달러 · 업종 전자 장비 및 부품",
+   "hl": "xyz:CRWV",
+   "on": true,
+   "since": "2026-10-27",
+   "kw": "코어위브|CoreWeave|CRWV|네오클라우드|neocloud|네비우스|Nebius|NBIS|IREN|아이렌",
+   "reason": "미국 개장(23:30) 후 30분 · 평균 +10.19%(전일 종가 대비) · 개장 후 +0.43% · 4종목 중 4종목 상승 · 최고 코어위브 +16.93% · 관련 속보 10건(12시간)",
+   "members": {
+    "CRWV": "코어위브",
+    "NBIS": "네비우스",
+    "IREN": "IREN",
+    "CORZ": "코어사이언티픽"
+   },
+   "auto": true
+  },
+  {
+   "id": "MEMORY",
+   "name": "메모리·스토리지",
+   "market": "미국",
+   "kw": "마이크론|Micron|샌디스크|SanDisk|웨스턴디지털|Western Digital|시게이트|Seagate|메모리|D램|DRAM|낸드|NAND|HBM",
+   "members": {
+    "MU": "마이크론",
+    "SNDK": "샌디스크",
+    "WDC": "웨스턴디지털",
+    "STX": "시게이트"
+   },
+   "reason": "미국 개장(23:30) 후 30분 · 평균 +8.37%(전일 종가 대비) · 개장 후 +0.87% · 4종목 중 4종목 상승 · 최고 샌디스크 +11.51% · 관련 속보 4건(12시간)",
    "on": true,
    "auto": true,
-   "since": "2026-11-10"
+   "hl": "xyz:MU",
+   "since": "2026-11-03"
+  },
+  {
+   "id": "OPTICAL",
+   "name": "광통신·네트워크",
+   "market": "미국",
+   "hl": "xyz:LITE",
+   "on": true,
+   "since": "2026-10-27",
+   "kw": "루멘텀|Lumentum|광통신|광트랜시버|광모듈|코히런트|Coherent|Ciena|시에나|AAOI|패브리넷|Fabrinet|크레도|Credo|코닝|Corning|CPO|아리스타|Arista",
+   "reason": "미국 개장(23:30) 후 30분 · 평균 +6.81%(전일 종가 대비) · 개장 후 -0.80% · 8종목 중 8종목 상승 · 최고 루멘텀 +9.82% · 관련 속보 1건(12시간)",
+   "members": {
+    "LITE": "루멘텀",
+    "COHR": "코히런트",
+    "CIEN": "시에나",
+    "AAOI": "AAOI",
+    "FN": "패브리넷",
+    "CRDO": "크레도",
+    "GLW": "코닝",
+    "ANET": "아리스타"
+   },
+   "auto": true
   },
   {
    "id": "SEMIEQ",
@@ -79,11 +148,25 @@
     "KLAC": "KLA",
     "TER": "테라다인"
    },
-   "reason": "미국 개장(23:30) 후 39분 · 평균 +2.34%(전일 종가 대비) · 개장 후 +3.91% · 5종목 중 5종목 상승 · 최고 테라다인 +2.88% · 평균 3일 연속 상승",
+   "reason": "평균 4일 연속 상승 · 최근 5거래일 합계 +5.40%(일봉 종가 기준)",
    "on": true,
    "auto": true,
    "hl": "xyz:AMAT",
-   "since": "2026-11-11"
+   "since": "2026-11-11",
+   "kind": "📈 연일 상승"
+  },
+  {
+   "id": "COHR",
+   "name": "코히런트",
+   "market": "미국",
+   "yf": "COHR",
+   "kw": "코히런트|Coherent|\\bCOHR\\b",
+   "kind": "⚡ 급등 대형주",
+   "reason": "11/9(월) 정규장 개장 후 30분 +11.33% · 시가총액 약 423억 달러 · 업종 전자 장비 및 부품",
+   "on": false,
+   "auto": true,
+   "since": "2026-11-10",
+   "until": "2026-11-12"
   },
   {
    "id": "QUANTUM",
@@ -97,9 +180,10 @@
     "QUBT": "퀀텀컴퓨팅"
    },
    "reason": "미국 개장(23:30) 후 39분 · 평균 -3.46%(전일 종가 대비) · 개장 후 +0.18% · 4종목 중 4종목 하락 · 최저 디웨이브 -6.97%",
-   "on": true,
+   "on": false,
    "auto": true,
-   "since": "2026-11-11"
+   "since": "2026-11-11",
+   "until": "2026-11-12"
   },
   {
    "id": "USSEMI",
@@ -117,10 +201,11 @@
     "INTC": "인텔"
    },
    "reason": "미국 개장(23:30) 후 39분 · 평균 +1.38%(전일 종가 대비) · 개장 후 +3.29% · 8종목 중 6종목 상승 · 최고 AMD +5.35% · 관련 속보 4건(12시간) · 평균 3일 연속 상승",
-   "on": true,
+   "on": false,
    "auto": true,
    "hl": "xyz:SMH",
-   "since": "2026-10-31"
+   "since": "2026-10-31",
+   "until": "2026-11-12"
   },
   {
    "id": "SPACE",
@@ -135,11 +220,12 @@
     "FLY": "파이어플라이"
    },
    "reason": "평균 3일 연속 상승 · 최근 5거래일 합계 +16.62%(일봉 종가 기준)",
-   "on": true,
+   "on": false,
    "auto": true,
    "hl": "xyz:RKLB",
    "since": "2026-11-10",
-   "kind": "📈 연일 상승"
+   "kind": "📈 연일 상승",
+   "until": "2026-11-12"
   },
   {
    "id": "BE",
@@ -153,46 +239,6 @@
    "auto": true,
    "since": "2026-11-04",
    "hl": "xyz:BE",
-   "until": "2026-11-11"
-  },
-  {
-   "id": "OPTICAL",
-   "name": "광통신·네트워크",
-   "market": "미국",
-   "hl": "xyz:LITE",
-   "on": false,
-   "since": "2026-10-27",
-   "kw": "루멘텀|Lumentum|광통신|광트랜시버|광모듈|코히런트|Coherent|Ciena|시에나|AAOI|패브리넷|Fabrinet|크레도|Credo|코닝|Corning|CPO|아리스타|Arista",
-   "reason": "미국 개장(23:30) 후 30분 · 평균 +8.19%(전일 종가 대비) · 개장 후 +5.47% · 8종목 중 8종목 상승 · 최고 코히런트 +11.20% · 평균 2일 연속 상승",
-   "members": {
-    "LITE": "루멘텀",
-    "COHR": "코히런트",
-    "CIEN": "시에나",
-    "AAOI": "AAOI",
-    "FN": "패브리넷",
-    "CRDO": "크레도",
-    "GLW": "코닝",
-    "ANET": "아리스타"
-   },
-   "auto": true,
-   "until": "2026-11-11"
-  },
-  {
-   "id": "MEMORY",
-   "name": "메모리·스토리지",
-   "market": "미국",
-   "kw": "마이크론|Micron|샌디스크|SanDisk|웨스턴디지털|Western Digital|시게이트|Seagate|메모리|D램|DRAM|낸드|NAND|HBM",
-   "members": {
-    "MU": "마이크론",
-    "SNDK": "샌디스크",
-    "WDC": "웨스턴디지털",
-    "STX": "시게이트"
-   },
-   "reason": "미국 개장(23:30) 후 30분 · 평균 +6.61%(전일 종가 대비) · 개장 후 +4.85% · 4종목 중 4종목 상승 · 최고 웨스턴디지털 +7.81% · 관련 속보 5건(12시간) · 평균 2일 연속 상승",
-   "on": false,
-   "auto": true,
-   "hl": "xyz:MU",
-   "since": "2026-11-03",
    "until": "2026-11-11"
   },
   {
@@ -246,24 +292,6 @@
    "on": false,
    "auto": true,
    "since": "2026-11-05",
-   "until": "2026-11-10"
-  },
-  {
-   "id": "NEOCLOUD",
-   "name": "코어위브·네오클라우드",
-   "market": "미국",
-   "hl": "xyz:CRWV",
-   "on": false,
-   "since": "2026-10-27",
-   "kw": "코어위브|CoreWeave|CRWV|네오클라우드|neocloud|네비우스|Nebius|NBIS|IREN|아이렌",
-   "reason": "미국 개장(23:30) 후 30분 · 평균 -10.63%(전일 종가 대비) · 개장 후 -6.82% · 4종목 중 4종목 하락 · 최저 네비우스 -13.09% · 관련 속보 2건(12시간)",
-   "members": {
-    "CRWV": "코어위브",
-    "NBIS": "네비우스",
-    "IREN": "IREN",
-    "CORZ": "코어사이언티픽"
-   },
-   "auto": true,
    "until": "2026-11-10"
   },
   {
