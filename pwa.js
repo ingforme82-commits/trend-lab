@@ -2,7 +2,18 @@
 const VAPID_PUBLIC = "BKwWSi_sQqLn6ROiJ8CR0AecFzcWyuYUvjQ_cps6NNVinyzus6NKCbP2DNWXT4lpOu9SYZ8nUh4LeIow3QIAxUA";   // tools/push_notify.py 개인 키와 짝
 (function () {
   if ("serviceWorker" in navigator) {
-    window.addEventListener("load", () => navigator.serviceWorker.register("sw.js").catch(() => {}));
+    let reloading = false;
+    const hadController = !!navigator.serviceWorker.controller;
+    navigator.serviceWorker.addEventListener("controllerchange", () => {
+      if (hadController && !reloading) { reloading = true; location.reload(); }
+    });
+    window.addEventListener("load", () => {
+      navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((reg) => {
+        document.addEventListener("visibilitychange", () => {
+          if (!document.hidden) reg.update().catch(() => {});
+        });
+      }).catch(() => {});
+    });
   }
   const standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
   const btn = document.getElementById("installBtn");
