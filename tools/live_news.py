@@ -141,6 +141,10 @@ BROKER = re.compile(r"목표주가|목표가|TP\s|투자의견|BUY|매수\(유�
 JUNK = re.compile(r"광고|이벤트|구독|무료\s?리딩|수익\s?보장|가입|추천주|급등주|리딩방|쿠폰|할인|sponsored|podcast|webinar|at close of trade|stocks (?:higher|lower) at close"
                   # 자기 홍보 말투(2026-10-28): 채널 오픈 안내 · "저희가/저희 채널" · 관심·참여 부탁 · 입장 링크
                   r"|채널\s*(?:을|를)?\s*(?:새로\s*)?오픈|오픈했습니다|저희\s?(?:채널|팀)|저희가\s*이번에|관심\s*부탁|많관부|입장\s*(?:하기|링크|방법)|문의\s*주세요", re.I)
+# 국내 종합 피드(이데일리·조선비즈·뉴시스 등)의 시장 밖 기사 — 스포츠·연예·사건사고 (2026-11-13)
+NONMKT = re.compile(r"야구|축구|농구|배구|골프|KBO|APBC|K리그|프로야구|올림픽|월드컵|감독|투수|타자|홈런|마운드|국가대표|"
+                    r"e스포츠|연예|드라마|배우|가수|아이돌|예능|콘서트|결혼|열애|사망|숨진|살인|화재|교통사고|날씨|미세먼지")
+KR_MKT = re.compile(r"코스피|코스닥|증시|주가|주식|환율|원/달러|원화|금리|국채|외국인|기관|공매도|상장|실적|수출|한은|금통위|무역|반도체")
 TAGS = [
     ("중동·유가", r"이란|이스라엘|호르무즈|후티|사우디|카타르|레바논|헤즈볼라|유가|원유|WTI|브렌트|OPEC|오펙|천연가스|LNG|정유|핵무기|핵 활동|NPT|우라늄|"
                 r"\bIran|Israel|Hormuz|Houthi|Saudi|\boil\b|crude|Brent|OPEC|natural gas"),
@@ -331,6 +335,8 @@ def fetch_rss() -> list[dict]:
             tg = tags_of(title)
             if not tg:                                  # 시장과 관계없는 일반 기사는 뺀다
                 continue
+            if lang == "ko" and (NONMKT.search(title) or (tg == ["한국"] and not KR_MKT.search(title))):
+                continue                                # 국내 종합 피드의 스포츠·연예('한국 야구' 등) — 11/13 변곡점에 잘못 붙던 문제
             h = re.sub(r"\s+", " ", title)
             items.append({"ts": int(dt.timestamp() * 1000), "src": name, "kind": "해외 뉴스" if lang == "en" else "뉴스",
                           "lang": lang, "text": h[:140] + ("…" if len(h) > 140 else ""), "tags": tg, "hot": bool(HOT.search(h))})
@@ -619,6 +625,13 @@ def build() -> dict:
             log(f"주요 이슈 자동 갱신: {t[:80]}")
     except Exception as e:  # noqa: BLE001
         log(f"지수 급변 정리 건너뜀: {type(e).__name__}: {e}")
+    try:                                                  # 📈 금리·유가 변화 감지 → 이유 정리해 주요 이슈 자동 갱신(11/13 운영자)
+        from macro_issue import update as macro_issue
+        t = macro_issue(out)
+        if t:
+            log(f"주요 이슈 자동 갱신(금리·유가): {t[:80]}")
+    except Exception as e:  # noqa: BLE001
+        log(f"금리·유가 정리 건너뜀: {type(e).__name__}: {e}")
     return out
 
 
