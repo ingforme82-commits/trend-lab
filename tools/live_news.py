@@ -4,7 +4,8 @@
   python tools/live_news.py --dry    # 올리지 않고 화면에만 출력
 
 소스
-- 텔레그램: 속보 채널 3개는 1분마다, 등록된 채널 전체는 10분마다(tg_research/fast_news.py)
+- 텔레그램: 등록된 채널 전체 1분마다(PDF는 뒤로 미뤄 이어받기), 웹 소스는 10분마다(tg_research/fast_news.py)
+  → 📡 텔레그램 통합 정리(tools/tg_digest.py)도 1분마다
 - 뉴스 사이트 RSS(5분마다): Seeking Alpha, CNBC, MarketWatch, Investing(영문·한국어), 연합뉴스 경제, 한국경제 증권
 
 원칙
@@ -591,6 +592,11 @@ def build() -> dict:
             pass
     except Exception as e:  # noqa: BLE001
         log(f"중요도 건너뜀: {type(e).__name__}: {e}")
+    try:                                                  # 📡 텔레그램 통합 정리(리서치·시황 방 주제별 묶음, 11/13 운영자)
+        from tg_digest import build as tg_digest
+        out["tgsum"] = tg_digest(out["items"], now_ms, DB, CHANNELS, REFRESH.get("at"))
+    except Exception as e:  # noqa: BLE001
+        log(f"텔레 통합 정리 건너뜀: {type(e).__name__}: {e}")
     try:                                                  # 📋 시장 브리핑(사이트 표시용 요약)
         from brief import make as make_brief
         out["brief"] = make_brief(out)
@@ -655,6 +661,7 @@ def main() -> None:
         try:
             refresh()
             REFRESH["ok"] = True
+            REFRESH["at"] = int(datetime.now(timezone.utc).timestamp() * 1000)
         except Exception as e:  # noqa: BLE001  (텔레 수집이 늦어도 저장된 글과 RSS로 계속 진행)
             REFRESH["ok"] = False
             log(f"텔레 수집 건너뜀: {type(e).__name__}")

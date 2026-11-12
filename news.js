@@ -30,7 +30,7 @@
   let news = [], moves = [], series = {}, notes = [], candles = {}, candles1 = {}, sel = null, tag = "전체", shown = 15, health = null;
   // 속보 필터: 중요도·시간·검증·정렬(분류는 tag 칩)
   const flt = { imp: "all", hrs: 0, ver: "all", sort: "new" };
-  let world = [], spot = [], trend = [], sectors = [], brief = null, briefs = [], kwFilter = null, momentum = null, watch = null, lev = null, flows = null, flowOpen = null;   // kwFilter: {label, rx}
+  let tgsum = null, world = [], spot = [], trend = [], sectors = [], brief = null, briefs = [], kwFilter = null, momentum = null, watch = null, lev = null, flows = null, flowOpen = null;   // kwFilter: {label, rx}
 
   /* ── 데이터 ── */
   let apiBlockedUntil = 0;
@@ -66,7 +66,7 @@
         if (!fresh && r && r.px > 0 && r.base > 0) row.ext = { ...r, source: r.src === "NH" ? "NH투자증권" : "야후", board: true };
       }
       news = j.items || []; moves = j.moves || []; series = j.series || {}; health = j.health || null;
-      world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
+      tgsum = j.tgsum || null; world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
       window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlUst = j.ust || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; flows = j.flows || null; s7 = normalizeS7(j); leaders = j.leaders || null; watch = j.watch || null; lev = j.lev || null; window.trlBrief = brief || {}; window.trlFlows = flows || {}; window.trlS7 = s7 || {}; window.trlLev = lev || {}; window.trlUpdated = j.updated || Date.now(); if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } if (typeof window.loadBand === "function" && !window.__pinNotice) window.loadBand(); window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
       window.trlMoves = moves; window.trlSeries = series; window.trlNews = news;
       drawHealth(j.updated);
@@ -789,6 +789,21 @@
   const kstDay = (ms) => { const d = kst(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 
   /* ── 최근 24시간 뉴스에 많이 나온 종목 ── */
+  /* ── 📡 텔레그램 통합 정리 — 리서치·시황 방 글을 주제별로 묶음(1분마다, tools/tg_digest.py) ── */
+  function drawTgSum() {
+    const box = q("#tgSum"); if (!box) return;
+    const t = tgsum; if (!t || !(t.topics || []).length) { box.hidden = true; return; }
+    const ch = t.channels || [], now = Date.now();
+    const fresh = ch.filter((c) => c.got && now - c.got < 36 * 3600e3).length;
+    const lines = (ln) => `<li${ln.hot ? ' class="hot"' : ""}><span class="tg-t">${esc(gist(ln.text, 110))}</span>`
+      + `<span class="tg-m">${hm(ln.last)} · ${ln.srcs.map(esc).join(" · ")}${ln.srcs.length > 1 ? ` <b>${ln.srcs.length}채널 같은 내용</b>` : ""}${ln.n > ln.srcs.length ? ` · ${ln.n}건` : ""}</span></li>`;
+    box.innerHTML = `<div class="tg-head"><h3>📡 텔레그램 통합 정리</h3><p>최근 ${t.win_h}시간 · ${t.ch}개 채널 글 ${t.n}건을 주제별로 묶었습니다.`
+      + ` 여러 채널에 같은 내용이 나오면 한 줄로 합칩니다. 종목 추천·목표주가 글은 싣지 않습니다.</p></div>`
+      + `<div class="tg-grid">` + t.topics.map((tp) => `<div class="tg-card"><p class="tg-name">${esc(tp.name)} <span>${tp.ch}채널 · ${tp.n}건</span></p><ul>${tp.lines.map(lines).join("")}</ul></div>`).join("") + `</div>`
+      + `<details class="tg-ch"><summary>수집 상태 · 채널 ${ch.length}개 1분마다 확인${t.polled ? ` (마지막 확인 ${hm(t.polled)})` : ""} · 36시간 안에 새 글 ${fresh}개</summary>`
+      + `<p>${ch.map((c) => `<span${c.post && now - c.post > 72 * 3600e3 ? ' class="old"' : ""}>${esc(c.name)} <i>${c.post ? ago(c.post) : "-"}</i></span>`).join("")}</p></details>`;
+    box.hidden = false;
+  }
   function drawTrend() {
     const box = q("#trendBox"); if (!box) return;
     box.innerHTML = trend.length ? `<span class="trend-h">📈 최근 24시간 뉴스에 많이 나온 종목</span>` + trend.map((t) =>
@@ -941,7 +956,7 @@
     });
   }
 
-  const redraw = () => { drawHeroLive(); drawWorld(); drawSpot(); drawWatch(); drawSectors(); drawS7(); drawFlows(); drawBrief(); if (full) { drawCharts(); drawMoves(); drawTrend(); drawList(); } };
+  const redraw = () => { drawTgSum(); drawHeroLive(); drawWorld(); drawSpot(); drawWatch(); drawSectors(); drawS7(); drawFlows(); drawBrief(); if (full) { drawCharts(); drawMoves(); drawTrend(); drawList(); } };
   const setKw = (label, pat) => {
     try { kwFilter = { label, rx: new RegExp(pat, "i") }; } catch { kwFilter = null; }
     tag = "전체"; shown = 30; drawTrend(); drawList(); q("#news").scrollIntoView({ behavior: "smooth" });

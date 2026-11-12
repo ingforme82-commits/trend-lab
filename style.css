@@ -768,3 +768,14 @@ body{overflow-x:hidden}
 @media(max-width:600px){.edu-board{padding:16px}.edu-head{align-items:flex-start;flex-direction:column}.edu-card{padding:17px}.edu-card h4{font-size:18px}}
 
 .mv-react{margin:0 0 14px}.mv-react .mvr-self{background:var(--bg2,#f1f5f9)}.mv-react td.mvr-n{text-align:left;white-space:normal;min-width:260px;font-size:12.5px}
+
+/* 📡 텔레그램 통합 정리 */
+.tgsum{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin:0 0 18px}.tgsum[hidden]{display:none}
+.tg-head h3{margin:0 0 2px;font-size:17px}.tg-head p{margin:0 0 10px;font-size:12.5px;color:var(--sub)}
+.tg-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:10px}
+.tg-card{border:1px solid #e4dcf3;background:#faf7ff;border-radius:10px;padding:8px 10px;min-width:0}
+.tg-name{margin:0 0 4px;font-weight:700;color:#4c1d95}.tg-name span{font-weight:400;font-size:12px;color:var(--sub);margin-left:4px}
+.tg-card ul{margin:0;padding-left:16px}.tg-card li{margin:0 0 6px;font-size:14px;line-height:1.45;overflow-wrap:anywhere}.tg-card li.hot .tg-t{color:#b91c1c}
+.tg-t{display:block}.tg-m{display:block;font-size:12px;color:var(--sub)}.tg-m b{color:#6d28d9;font-weight:600}
+.tg-ch{margin-top:8px;font-size:12.5px;color:var(--sub)}.tg-ch summary{cursor:pointer}.tg-ch p{margin:6px 0 0;display:flex;flex-wrap:wrap;gap:4px 10px}
+.tg-ch span i{font-style:normal;color:#888}.tg-ch span.old{color:#b45309}
