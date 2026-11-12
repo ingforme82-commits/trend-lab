@@ -1,4 +1,4 @@
-"""📈 금리·유가 변화 감지 → 이유 정리 → 주요 이슈(data/headline.json) 자동 갱신. 2026-11-13 운영자 요청:
+"""📈 금리·유가·환율 변화 감지 → 이유 정리 → 주요 이슈(data/headline.json) 자동 갱신. 2026-11-13 운영자 요청:
 "10년 국채랑 WTI 다시 오르는 이유도 분석해야 할 것 같아. 변화 감지 기능 시스템 만들어줘".
 
 live_news.py 가 1분마다 부른다(move_issue 와 같은 방식, 태그 '📈 금리·유가 변화(자동)' 하나만 갈아 끼움).
@@ -7,6 +7,8 @@ live_news.py 가 1분마다 부른다(move_issue 와 같은 방식, 태그 '📈
 언제 쓰나
 - 미 10년물: 전일 대비 ±8bp 이상, 또는 0.1%p 단위 가격대(5.00%·5.10% …)를 새로 넘음, 또는 최근 60분 10년물 변곡점
 - WTI: 전일 정산 대비 ±2% 이상, 또는 $5 단위 가격대를 새로 넘음, 또는 최근 60분 WTI·브렌트 변곡점(1시간 ±1% 등)
+- 달러인덱스: 전일 대비 ±0.5% 이상, 또는 1포인트 단위(103·104 …)를 새로 넘음, 또는 최근 60분 달러인덱스 변곡점 (11/13 추가)
+- 원/달러: 전일 대비 ±0.7%(약 9원) 이상, 또는 10원 단위(1,340원 …)를 새로 넘음 (11/13 추가)
 - 같은 날 다시 쓰는 경우: 10년물 3bp 이상 또는 WTI 1%p 이상 더 움직임, 방향 바뀜, 새 변곡점·가격대, 마지막 갱신 뒤 30분
 무엇을 쓰나(사실·수치·출처만, 인과 단정 없이 '시각이 겹친 요인'으로)
 - 2년·10년·30년 금리와 곡선 모양(단기물 주도/장기물 주도), 달러·금·나스닥100, WTI·브렌트
@@ -27,9 +29,10 @@ ROOT = Path(__file__).resolve().parents[1]
 HEAD = ROOT / "data" / "headline.json"
 STATE = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "trendlab" / "macro_issue_state.json"
 KST = timezone(timedelta(hours=9))
-TAG = "📈 금리·유가 변화(자동)"
+TAG = "📈 금리·유가·환율 변화(자동)"
+OLD_TAGS = ("📈 금리·유가 변화(자동)",)        # 11/13 이름 바뀜 — 예전 카드는 새 카드로 갈아 끼움
 MIN = 60_000
-BP_LIM, WTI_LIM = 8.0, 2.0
+BP_LIM, WTI_LIM, DXY_LIM, KRW_LIM = 8.0, 2.0, 0.5, 0.7
 
 # 요인 묶음: (이름, 정규식) — 금리·유가 쪽 뉴스만
 DRIVERS = [
@@ -40,6 +43,7 @@ DRIVERS = [
     ("유가·지정학", r"유가|원유|WTI|브렌트|Brent|crude|OPEC|오펙|사우디|아람코|Aramco|후티|Houthi|송유관|pipeline|이란|Iran|이스라엘|Israel|"
                   r"호르무즈|Hormuz|홍해|Red Sea|러시아\s?(?:제재|원유)|재고|inventor|EIA|API\b"),
     ("해외 금리·달러", r"달러인덱스|달러\s?강세|DXY|엔화|엔/달러|일본\s?국채|JGB|BOJ|일본은행|독일\s?국채|Bund|ECB|유럽중앙은행|영란은행|BOE|길트|gilt|IMF"),
+    ("원화·외환", r"원/달러|달러/원|원화|환율|외환\s?당국|외환시장|스무딩|구두\s?개입|국민연금\s?(?:환헤지|외환)|네고|역외|NDF|외국인\s?(?:순매도|매도|자금)|한은|금통위"),
     ("재정·정치", r"재정|적자|deficit|셧다운|shutdown|부채\s?한도|debt ceiling|관세|tariff|감세|예산|budget|신용등급|downgrade"),
 ]
 DRX = [(n, re.compile(p, re.I)) for n, p in DRIVERS]
@@ -62,7 +66,14 @@ def snap(d: dict) -> dict:
             "bp2": (ust.get("2Y") or {}).get("bp"), "y2": (ust.get("2Y") or {}).get("px"),
             "bp30": (ust.get("30Y") or {}).get("bp"), "y30": (ust.get("30Y") or {}).get("px"),
             "wti": g("WTI", "px"), "wti_chg": g("WTI", "chg"), "brent": g("브렌트", "px"), "brent_chg": g("브렌트", "chg"),
-            "dxy": g("달러인덱스", "chg"), "gold": g("금", "chg"), "nq": g("나스닥100", "chg"), "krw": g("원/달러", "chg")}
+            "dxy": g("달러인덱스", "chg"), "dxy_px": g("달러인덱스", "px"), "gold": g("금", "chg"), "nq": g("나스닥100", "chg"),
+            "krw": g("원/달러", "chg"), "krw_px": g("원/달러", "px")}
+
+
+def levels(s: dict) -> dict:
+    """가격대 단위: 10년물 0.1%p · WTI $5 · 달러인덱스 1pt · 원/달러 10원"""
+    return {"lv10": int(s["y10"] * 10) / 10 if s["y10"] else None, "lvw": int(s["wti"] // 5 * 5) if s["wti"] else None,
+            "lvd": int(s["dxy_px"]) if s["dxy_px"] else None, "lvk": int(s["krw_px"] // 10 * 10) if s["krw_px"] else None}
 
 
 def trigger(d: dict, s: dict, now_ms: int, st: dict) -> tuple[list[str], list[dict]]:
@@ -71,13 +82,18 @@ def trigger(d: dict, s: dict, now_ms: int, st: dict) -> tuple[list[str], list[di
         why.append(f"10년물 {s['bp10']:+.1f}bp")
     if s["wti_chg"] is not None and abs(s["wti_chg"]) >= WTI_LIM:
         why.append(f"WTI {pc(s['wti_chg'])}")
-    lv10 = int((s["y10"] or 0) * 10) / 10 if s["y10"] else None          # 5.10% 같은 0.1%p 단위
-    lvw = int((s["wti"] or 0) // 5 * 5) if s["wti"] else None             # $85 같은 $5 단위
-    if lv10 is not None and st.get("lv10") is not None and lv10 != st["lv10"]:
-        why.append(f"10년물 {max(lv10, st['lv10']):.2f}% {'상향 돌파' if lv10 > st['lv10'] else '하향 이탈'}")
-    if lvw is not None and st.get("lvw") is not None and lvw != st["lvw"]:
-        why.append(f"WTI ${max(lvw, st['lvw'])} {'상향 돌파' if lvw > st['lvw'] else '하향 이탈'}")
-    mv = [m for m in d.get("moves") or [] if m.get("asset") in ("US10Y", "WTI", "BRENT") and now_ms - m["end"] < 60 * MIN]
+    if s["dxy"] is not None and abs(s["dxy"]) >= DXY_LIM:
+        why.append(f"달러인덱스 {pc(s['dxy'])}")
+    if s["krw"] is not None and abs(s["krw"]) >= KRW_LIM:
+        why.append(f"원/달러 {pc(s['krw'])}")
+    lv = levels(s)
+    fmt = {"lv10": lambda v: f"10년물 {v:.2f}%", "lvw": lambda v: f"WTI ${v}", "lvd": lambda v: f"달러인덱스 {v}",
+           "lvk": lambda v: f"원/달러 {v:,}원"}
+    for k, f in fmt.items():
+        a, b = lv[k], st.get(k)
+        if a is not None and b is not None and a != b:
+            why.append(f"{f(max(a, b))} {'상향 돌파' if a > b else '하향 이탈'}")
+    mv = [m for m in d.get("moves") or [] if m.get("asset") in ("US10Y", "WTI", "BRENT", "DXY") and now_ms - m["end"] < 60 * MIN]
     return why, mv
 
 
@@ -116,6 +132,17 @@ def character(s: dict, drv: list[tuple[str, list]]) -> list[str]:
         out.append(f"유가 상승과 같은 시각 유가·지정학 뉴스 {names['유가·지정학']}건 — 공급 차질 우려")
     if (s["dxy"] or 0) >= 0.2 and (b10 or 0) > 0:
         out.append(f"달러인덱스 {pc(s['dxy'])} 동반 강세")
+    d_, k_ = s["dxy"], s["krw"]
+    if d_ is not None and k_ is not None and max(abs(d_), abs(k_)) >= 0.3:
+        if k_ > 0 and d_ > 0:
+            out.append(f"원/달러 {pc(k_)} — 달러 강세({pc(d_)})를 따라 원화 약세" if k_ <= d_ * 1.5 else
+                       f"원/달러 {pc(k_)}가 달러인덱스 {pc(d_)}보다 크게 오름 — 원화 개별 약세(외국인 자금·국내 요인)")
+        elif k_ < 0 and d_ > 0:
+            out.append(f"달러 강세({pc(d_)})에도 원/달러 {pc(k_)} — 원화 상대 강세(수출 네고·외국인 유입 등)")
+        elif k_ > 0 and d_ <= 0:
+            out.append(f"달러 약세·보합({pc(d_)})에도 원/달러 {pc(k_)} — 원화 개별 약세")
+        elif k_ < 0 and d_ < 0:
+            out.append(f"달러 약세({pc(d_)})에 원/달러 {pc(k_)} — 원화 강세")
     if (s["nq"] or 0) <= -0.5 and (b10 or 0) >= 5:
         out.append(f"나스닥100 {pc(s['nq'])} — 금리 부담과 시각이 겹침")
     if (s["gold"] or 0) <= -1 and (b10 or 0) >= 5:
@@ -135,6 +162,10 @@ def compose(d: dict, now_ms: int, st: dict) -> dict | None:
         head.append(f"미 10년물 {s['y10']:.3f}%({(s['bp10'] or 0):+.1f}bp)")
     if s["wti"]:
         head.append(f"WTI ${s['wti']:.2f}({pc(s['wti_chg'])})")
+    if s["dxy_px"]:
+        head.append(f"달러인덱스 {s['dxy_px']:.2f}({pc(s['dxy'])})")
+    if s["krw_px"]:
+        head.append(f"원/달러 {s['krw_px']:,.1f}원({pc(s['krw'])})")
     lead = ch[0].split(" — ")[0].split("(")[0] if ch else (why[0] if why else "금리·유가 변곡점")
     title = " · ".join(head) + f" ({hm(now_ms)}) — {lead}"
     pts = []
@@ -144,14 +175,14 @@ def compose(d: dict, now_ms: int, st: dict) -> dict | None:
              if y is not None and b is not None]
     if curve:
         pts.append("미 국채: " + " · ".join(curve))
-    oth = [f"{n} {pc(v)}" for n, v in (("브렌트", s["brent_chg"]), ("달러인덱스", s["dxy"]), ("금", s["gold"]), ("나스닥100", s["nq"]), ("원/달러", s["krw"]))
+    oth = [f"{n} {pc(v)}" for n, v in (("브렌트", s["brent_chg"]), ("금", s["gold"]), ("나스닥100", s["nq"]))
            if v is not None]
     if oth:
         pts.append("함께 움직인 자산: " + " · ".join(oth))
     for m in mv[:2]:
         unit = "bp" if m.get("unit") == "bp" else "%"
         pts.append(f"변곡점 {hm(m['start'])}~{hm(m['end'])} {m['name']} {m['move']:+.2f}{unit}")
-    for name, its in drv[:4]:
+    for name, its in drv[:5]:
         top = its[:2]
         pts.append(f"[{name} · 6시간 {len(its)}건] " + " / ".join(f"{hm(i['ts'])} {i['text'][:70]}({i.get('src', '')})" for i in top))
     if len(ch) > 1 or (ch and why):
@@ -160,8 +191,7 @@ def compose(d: dict, now_ms: int, st: dict) -> dict | None:
     return {"tag": TAG, "title": title, "when": f"{day:%m/%d} {day:%H시 %M분} 자동 갱신",
             "until": (day + timedelta(days=1)).strftime("%Y-%m-%d"), "points": pts,
             "source": "트렌드랩 자동 집계(CNBC 금리·하이퍼리퀴드 24시간 유가·변곡점) · 뉴스 출처는 각 줄 · 인과 단정 아님",
-            "_s": s, "_moves": [m.get("grp") or m.get("id") for m in mv],
-            "_lv10": int((s["y10"] or 0) * 10) / 10 if s["y10"] else None, "_lvw": int((s["wti"] or 0) // 5 * 5) if s["wti"] else None}
+            "_s": s, "_moves": [m.get("grp") or m.get("id") for m in mv], "_lv": levels(s)}
 
 
 def due(it: dict, st: dict, now_ms: int) -> bool:
@@ -169,10 +199,11 @@ def due(it: dict, st: dict, now_ms: int) -> bool:
     if st.get("day") != day or not st.get("wrote"):
         return True
     s = it["_s"]
-    b, w = s["bp10"] or 0, s["wti_chg"] or 0
+    b, w, dx, k = s["bp10"] or 0, s["wti_chg"] or 0, s["dxy"] or 0, s["krw"] or 0
     return (abs(b - st.get("bp10", 0)) >= 3 or abs(w - st.get("wti", 0)) >= 1
+            or abs(dx - st.get("dxy", 0)) >= 0.3 or abs(k - st.get("krw", 0)) >= 0.4
             or (b > 0) != (st.get("bp10", 0) > 0) or bool(set(it["_moves"]) - set(st.get("moves", [])))
-            or it["_lv10"] != st.get("lv10") or it["_lvw"] != st.get("lvw") or now_ms - st.get("at", 0) >= 30 * MIN)
+            or any(v != st.get(n) for n, v in it["_lv"].items()) or now_ms - st.get("at", 0) >= 30 * MIN)
 
 
 def _save(st: dict) -> None:
@@ -190,9 +221,9 @@ def update(d: dict, push: bool = True) -> str:
             st = {}
         it = compose(d, now_ms, st)
         if not it:
-            s = snap(d)                                    # 가격대 기준은 계속 따라가게 저장
-            st.update(lv10=int((s["y10"] or 0) * 10) / 10 if s["y10"] else st.get("lv10"),
-                      lvw=int((s["wti"] or 0) // 5 * 5) if s["wti"] else st.get("lvw"))
+            for n, v in levels(snap(d)).items():          # 가격대 기준은 계속 따라가게 저장
+                if v is not None:
+                    st[n] = v
             _save(st)
             return ""
         if not due(it, st, now_ms):
@@ -200,7 +231,7 @@ def update(d: dict, push: bool = True) -> str:
         h = json.loads(HEAD.read_text(encoding="utf-8")) if HEAD.exists() else {"items": []}
         rec = {k: v for k, v in it.items() if not k.startswith("_")}
         items = h.get("items", [])
-        pos = next((i for i, x in enumerate(items) if x.get("tag") == TAG), None)
+        pos = next((i for i, x in enumerate(items) if x.get("tag") in (TAG,) + OLD_TAGS), None)
         if pos is None:
             h["items"] = [rec] + items
         else:
@@ -214,12 +245,12 @@ def update(d: dict, push: bool = True) -> str:
             git_push(f"주요 이슈 자동: {rec['title'][:60]}", ["data/headline.json"])
             try:                                          # 📲 앱 푸시만(카톡은 예외 목록에 없어 보내지 않음)
                 from push_notify import SITE, push as app_push
-                app_push("TRL · 📈 금리·유가 변화", rec["title"], SITE + "#headline", "macro-" + datetime.now(KST).strftime("%m%d"))
+                app_push("TRL · 📈 금리·유가·환율 변화", rec["title"], SITE + "#headline", "macro-" + datetime.now(KST).strftime("%m%d"))
             except Exception:  # noqa: BLE001
                 pass
         s = it["_s"]
         _save({"day": datetime.now(KST).strftime("%Y-%m-%d"), "at": now_ms, "wrote": True, "bp10": s["bp10"] or 0,
-               "wti": s["wti_chg"] or 0, "moves": it["_moves"], "lv10": it["_lv10"], "lvw": it["_lvw"]})
+               "wti": s["wti_chg"] or 0, "dxy": s["dxy"] or 0, "krw": s["krw"] or 0, "moves": it["_moves"], **it["_lv"]})
         return rec["title"]
     except Exception as e:  # noqa: BLE001
         return f"(실패 {type(e).__name__}: {e})"
@@ -234,7 +265,7 @@ def main() -> None:
         headers={"Accept": "application/vnd.github.raw+json", "User-Agent": "trl"}), timeout=30).read())
     it = compose(d, int(time.time() * 1000), {})
     if not it:
-        print("지금은 기준을 넘는 금리·유가 변화 없음")
+        print("지금은 기준을 넘는 금리·유가·환율 변화 없음")
         return
     print(f"[{it['tag']}] {it['title']}\n" + "\n".join(" - " + p for p in it["points"]) + f"\n출처: {it['source']}")
 
