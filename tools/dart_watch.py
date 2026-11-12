@@ -49,6 +49,7 @@ SHIP = {
     "성광벤드": "014620", "태광": "023160", "하이록코리아": "013030", "비엠티": "086670", "한라IMS": "092460",
     "오리엔탈정공": "014940", "한화엔진": "082740", "HD현대마린솔루션": "443060", "HD현대마린엔진": "071970",
     "삼성중공업": "010140", "한화오션": "042660", "HD한국조선해양": "009540", "HD현대중공업": "329180",
+    "에스엔시스": "0008Z0",
 }
 WATCH = {**SHIP, **SEMI}
 GROUP = {**{c: "🚢 조선" for c in SHIP.values()}, **{c: "💾 반도체 소부장" for c in SEMI.values()}}
@@ -346,6 +347,38 @@ def deliver(kind: str, key: str, text: str) -> bool:
         return False
 
 
+HEADLINE = Path(__file__).resolve().parents[1] / "data" / "headline.json"
+SHIP_CARD = "🚢 조선기자재 3분기 실적"      # 주요 이슈 카드(운영자 11/12 요청: 앱에서 실시간). 카드가 있을 때만 갱신
+
+
+def ship_card_update(name: str, title: str, date: str, extra: list[str], path: Path = HEADLINE) -> bool:
+    """조선 감시 회사의 실적 공시가 새로 잡히면 주요 이슈 카드 맨 위에 한 줄 넣고 '발표 대기'에서 뺀다.
+    카드(태그 SHIP_CARD)가 없으면 아무것도 하지 않는다. 숫자는 공시 원문 그대로(권유 없음)."""
+    if not re.search(r"잠정|분기보고서|반기보고서|손익구조", title):
+        return False
+    try:
+        h = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return False
+    it = next((x for x in h.get("items", []) if x.get("tag") == SHIP_CARD), None)
+    if not it:
+        return False
+    nums = [e.split(" (")[0] for e in extra if re.match(r"(매출액|영업이익|당기순이익) ", e)][:2]
+    chg = [m.group(1) for e in extra if re.match(r"(매출액|영업이익) ", e)
+           for m in [re.search(r"작년 같은 분기 대비 ([^·)]+)", e)] if m][:2]
+    body = " · ".join(f"{n} ({c.strip()})" if i < len(chg) else n for i, (n, c) in enumerate(zip(nums, chg + [""] * 2)))
+    line = f"✔ {date[4:6]}/{date[6:]} {name} — " + (body or "실적 공시 나옴(숫자는 공시 원문 확인)")
+    pts = [p for p in it.get("points", []) if not p.startswith(f"✔ {date[4:6]}/{date[6:]} {name} ")]
+    pending = [n for n in it.get("pending", []) if n != name]
+    pts = [line] + [p for p in pts if not p.startswith("⏳")]
+    if pending:
+        pts.append("⏳ 발표 대기: " + " · ".join(pending))
+    it.update(points=pts, pending=pending, when=f"{datetime.now():%m/%d %H시 %M분} 자동 갱신")
+    h["updated"] = f"{datetime.now():%Y-%m-%d %H:%M}"
+    path.write_text(json.dumps(h, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    return True
+
+
 REPORTED = Path.home() / ".tg_notify" / "dart_reported.json"
 QUARTER_START = "20261001"                # 이번 실적 시즌 시작(3분기). 다음 시즌엔 바꾼다
 
@@ -425,6 +458,7 @@ def main() -> None:
         seen, first = set(), True
     new = [d for d in found if d["id"] not in seen]
     key = dart_key()
+    card = False
     for d in new:
         if first:
             continue
@@ -441,6 +475,14 @@ def main() -> None:
             print(text + "\n")
         else:
             deliver("실적공시", d["id"], text)
+            if GROUP.get(d["code"]) == "🚢 조선" and ship_card_update(d["name"], d["title"], d["date"], extra):
+                card = True
+    if not dry and card:
+        try:
+            from ops import push as git_push
+            git_push(f"주요 이슈 자동: {SHIP_CARD} 갱신", ["data/headline.json"])
+        except Exception as e:  # noqa: BLE001
+            print(f"[카드 push 실패] {e}")
     if not dry:
         STATE.parent.mkdir(parents=True, exist_ok=True)
         STATE.write_text(json.dumps(sorted(seen | {d["id"] for d in found})), encoding="utf-8")
