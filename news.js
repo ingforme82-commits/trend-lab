@@ -66,7 +66,7 @@
         if (!fresh && r && r.px > 0 && r.base > 0) row.ext = { ...r, source: r.src === "NH" ? "NH투자증권" : "야후", board: true };
       }
       news = j.items || []; moves = j.moves || []; series = j.series || {}; health = j.health || null;
-      tgsum = j.tgsum || null; world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
+      tgsum = j.tgsum || null; window.trlAuto = j.auto_issues || []; if (typeof window.renderHeadline === "function") window.renderHeadline(); world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
       window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlUst = j.ust || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; flows = j.flows || null; s7 = normalizeS7(j); leaders = j.leaders || null; watch = j.watch || null; lev = j.lev || null; window.trlBrief = brief || {}; window.trlFlows = flows || {}; window.trlS7 = s7 || {}; window.trlLev = lev || {}; window.trlUpdated = j.updated || Date.now(); if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } if (typeof window.loadBand === "function" && !window.__pinNotice) window.loadBand(); window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
       window.trlMoves = moves; window.trlSeries = series; window.trlNews = news;
       drawHealth(j.updated);
@@ -844,7 +844,9 @@
   }
   function drawHeroLive() {
     const box = q("#heroLive"); if (!box) return;
-    const pins = [...headline.filter((x) => x.main), ...headline.filter((x) => !x.main)].map((x) => `<li class="mn-pin${x.main ? " mn-main" : ""}"><a href="#headline"><span class="mn-t">${x.main ? "🔴" : "📌"} ${esc(x.tag || "주요 이슈")}</span> <b>${esc(x.title)}</b>${x.when ? ` <small>${esc(x.when)}</small>` : ""}</a></li>`);
+    const autoC = (window.trlAuto || []).filter((x) => !x.until || x.until >= kstDay(Date.now())), autoT = new Set(autoC.map((x) => x.tag));
+    const hl = [...autoC, ...headline.filter((x) => !autoT.has(x.tag))];
+    const pins = [...hl.filter((x) => x.main), ...hl.filter((x) => !x.main)].map((x) => `<li class="mn-pin${x.main ? " mn-main" : ""}"><a href="#headline"><span class="mn-t">${x.main ? "🔴" : "📌"} ${esc(x.tag || "주요 이슈")}</span> <b>${esc(x.title)}</b>${x.when ? ` <small>${esc(x.when)}</small>` : ""}</a></li>`);
     const live = mainNews().map((n) => {
       const g = gist(n.text), full = n.text.replace(/…$/, "");
       const t = g !== full ? `<span class="mn-x" data-open="0" title="눌러서 전체 보기">${esc(g)}</span><span class="mn-full" hidden>${esc(full)}</span>` : esc(g);

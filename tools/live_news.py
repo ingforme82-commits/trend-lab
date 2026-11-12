@@ -632,6 +632,12 @@ def build() -> dict:
             log(f"주요 이슈 자동 갱신(금리·유가): {t[:80]}")
     except Exception as e:  # noqa: BLE001
         log(f"금리·유가 정리 건너뜀: {type(e).__name__}: {e}")
+    try:                                                  # 자동 카드 → 화면 '주요 이슈' 맨 위(1분마다, Pages 빌드 없음)
+        from macro_issue import current as macro_cur
+        from move_issue import current as move_cur
+        out["auto_issues"] = [x for x in (macro_cur(), move_cur()) if x]
+    except Exception as e:  # noqa: BLE001
+        log(f"자동 카드 건너뜀: {type(e).__name__}: {e}")
     return out
 
 

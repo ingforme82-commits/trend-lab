@@ -1,4 +1,4 @@
-"""⚡ 지수 급변 자동 분석 → 주요 이슈(data/headline.json) 맨 위 자동 갱신. 2026-11-12 운영자 요청:
+"""⚡ 지수 급변 자동 분석 → 주요 이슈 자동 카드(news.json auto_issues, 11/13부터 — 전에는 data/headline.json). 2026-11-12 운영자 요청:
 "지수 선물이 예상보다 큰 변화일 때는 관련 이유를 찾아 분석해서 TRL 자동 업데이트 수시로".
 
 live_news.py 가 1분마다 부른다(실행 PC 한 대). 조건이 맞을 때만 쓰고 push 한다.
@@ -155,21 +155,10 @@ def update(d: dict, push: bool = True) -> str:
             st = {}
         if not due(it, st, now_ms):
             return ""
-        h = json.loads(HEAD.read_text(encoding="utf-8")) if HEAD.exists() else {"items": []}
         rec = {k: v for k, v in it.items() if not k.startswith("_")}
-        items = h.get("items", [])
-        pos = next((i for i, x in enumerate(items) if x.get("tag") == TAG), None)
-        if pos is None:                                   # 처음 생길 때만 맨 앞 — 이미 있으면 제자리 갱신(운영자가 맨 앞에 둔 정리를 밀어내지 않음)
-            h["items"] = [rec] + items
-        else:
-            items[pos] = rec
-            h["items"] = items
-        h["updated"] = datetime.now(KST).strftime("%Y-%m-%d %H:%M")
-        HEAD.write_text(json.dumps(h, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        # 11/13: headline.json(main → Pages 빌드·10분 캐시) 대신 news.json 'auto_issues'(1분)로 — 카드는 STATE["rec"]에 보관
         if push:
             sys.path.insert(0, str(Path(__file__).resolve().parent))
-            from ops import push as git_push
-            git_push(f"주요 이슈 자동: {rec['title'][:60]}", ["data/headline.json"])
             try:                                          # 📲 앱 푸시(등록 기기가 있을 때) — 카톡은 보내지 않음(카톡 예외 3가지에 없음)
                 from push_notify import SITE, push as app_push
                 app_push("TRL · ⚡ 지수 급변", rec["title"] + ("\n" + rec["points"][0] if rec["points"] else ""), SITE + "#headline",
@@ -179,10 +168,20 @@ def update(d: dict, push: bool = True) -> str:
         STATE.parent.mkdir(parents=True, exist_ok=True)
         STATE.write_text(json.dumps({"day": datetime.now(KST).strftime("%Y-%m-%d"), "at": now_ms,
                                      "max": max((abs(v) for v in it["_big"].values()), default=0),
-                                     "sign": sorted((k, v > 0) for k, v in it["_big"].items()), "moves": it["_moves"]}), encoding="utf-8")
+                                     "sign": sorted((k, v > 0) for k, v in it["_big"].items()), "moves": it["_moves"],
+                                     "rec": rec}, ensure_ascii=False), encoding="utf-8")
         return rec["title"]
     except Exception as e:  # noqa: BLE001
         return f"(실패 {type(e).__name__}: {e})"
+
+
+def current() -> dict | None:
+    """지금 화면에 둘 자동 카드(기한 안). live_news 가 news.json['auto_issues'] 에 넣는다."""
+    try:
+        rec = json.loads(STATE.read_text(encoding="utf-8")).get("rec")
+    except Exception:  # noqa: BLE001
+        return None
+    return rec if rec and rec.get("until", "") >= datetime.now(KST).strftime("%Y-%m-%d") else None
 
 
 def main() -> None:

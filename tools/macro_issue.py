@@ -1,4 +1,4 @@
-"""📈 금리·유가·환율 변화 감지 → 이유 정리 → 주요 이슈(data/headline.json) 자동 갱신. 2026-11-13 운영자 요청:
+"""📈 금리·유가·환율 변화 감지 → 이유 정리 → 주요 이슈 자동 카드(news.json auto_issues, 1분) 갱신. 2026-11-13 운영자 요청:
 "10년 국채랑 WTI 다시 오르는 이유도 분석해야 할 것 같아. 변화 감지 기능 시스템 만들어줘".
 
 live_news.py 가 1분마다 부른다(move_issue 와 같은 방식, 태그 '📈 금리·유가 변화(자동)' 하나만 갈아 끼움).
@@ -206,6 +206,15 @@ def due(it: dict, st: dict, now_ms: int) -> bool:
             or any(v != st.get(n) for n, v in it["_lv"].items()) or now_ms - st.get("at", 0) >= 30 * MIN)
 
 
+def current() -> dict | None:
+    """지금 화면에 둘 자동 카드(기한 안). live_news 가 news.json['auto_issues'] 에 넣는다."""
+    try:
+        rec = json.loads(STATE.read_text(encoding="utf-8")).get("rec")
+    except Exception:  # noqa: BLE001
+        return None
+    return rec if rec and rec.get("until", "") >= datetime.now(KST).strftime("%Y-%m-%d") else None
+
+
 def _save(st: dict) -> None:
     STATE.parent.mkdir(parents=True, exist_ok=True)
     STATE.write_text(json.dumps(st, ensure_ascii=False), encoding="utf-8")
@@ -221,6 +230,7 @@ def update(d: dict, push: bool = True) -> str:
             st = {}
         it = compose(d, now_ms, st)
         if not it:
+            st = {**st}
             for n, v in levels(snap(d)).items():          # 가격대 기준은 계속 따라가게 저장
                 if v is not None:
                     st[n] = v
@@ -228,21 +238,10 @@ def update(d: dict, push: bool = True) -> str:
             return ""
         if not due(it, st, now_ms):
             return ""
-        h = json.loads(HEAD.read_text(encoding="utf-8")) if HEAD.exists() else {"items": []}
         rec = {k: v for k, v in it.items() if not k.startswith("_")}
-        items = h.get("items", [])
-        pos = next((i for i, x in enumerate(items) if x.get("tag") in (TAG,) + OLD_TAGS), None)
-        if pos is None:
-            h["items"] = [rec] + items
-        else:
-            items[pos] = rec
-            h["items"] = items
-        h["updated"] = datetime.now(KST).strftime("%Y-%m-%d %H:%M")
-        HEAD.write_text(json.dumps(h, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+        # 11/13: headline.json(main) 대신 news.json 'auto_issues'(1분) — 카드는 STATE["rec"]에 보관
         if push:
             sys.path.insert(0, str(Path(__file__).resolve().parent))
-            from ops import push as git_push
-            git_push(f"주요 이슈 자동: {rec['title'][:60]}", ["data/headline.json"])
             try:                                          # 📲 앱 푸시만(카톡은 예외 목록에 없어 보내지 않음)
                 from push_notify import SITE, push as app_push
                 app_push("TRL · 📈 금리·유가·환율 변화", rec["title"], SITE + "#headline", "macro-" + datetime.now(KST).strftime("%m%d"))
@@ -250,7 +249,7 @@ def update(d: dict, push: bool = True) -> str:
                 pass
         s = it["_s"]
         _save({"day": datetime.now(KST).strftime("%Y-%m-%d"), "at": now_ms, "wrote": True, "bp10": s["bp10"] or 0,
-               "wti": s["wti_chg"] or 0, "dxy": s["dxy"] or 0, "krw": s["krw"] or 0, "moves": it["_moves"], **it["_lv"]})
+               "wti": s["wti_chg"] or 0, "dxy": s["dxy"] or 0, "krw": s["krw"] or 0, "moves": it["_moves"], **it["_lv"], "rec": rec})
         return rec["title"]
     except Exception as e:  # noqa: BLE001
         return f"(실패 {type(e).__name__}: {e})"

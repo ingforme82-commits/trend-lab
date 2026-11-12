@@ -117,11 +117,19 @@ async function loadChecks() {
 }
 
 /* ───────── 2-1. 📌 주요 이슈(data/headline.json, 운영자가 올림 · 사실·수치만 · 외부 링크 없음) ───────── */
+// 자동 카드(⚡ 지수 급변 · 📈 금리·유가·환율)는 news.json 'auto_issues'(1분)로 받아 맨 위에 — news.js 가 window.trlAuto 를 채우고 다시 그린다(11/13)
+let hlData = { items: [], updated: "" };
 async function loadHeadline() {
+  try { hlData = await (await fetch(`data/headline.json?t=${Date.now()}`)).json(); } catch { /* 없음 */ }
+  renderHeadline();
+}
+function renderHeadline() {
   try {
-    const h = await (await fetch(`data/headline.json?t=${Date.now()}`)).json();
+    const h = hlData || {};
     const today = ymd(KST());
-    const items = (h.items || []).filter((x) => !x.until || x.until >= today);
+    const auto = (window.trlAuto || []).filter((x) => !x.until || x.until >= today);
+    const tags = new Set(auto.map((x) => x.tag));
+    const items = [...auto, ...(h.items || []).filter((x) => (!x.until || x.until >= today) && !tags.has(x.tag))];
     if (!items.length) return;
     $("#hlList").innerHTML = items.map((x) => `<article class="hl-card${x.main ? " hl-main" : ""}">
       <p class="hl-tag">${x.main ? '<span class="hl-badge">메인</span>' : ""}${esc(x.tag || "")}${x.when ? ` <small>${esc(x.when)}</small>` : ""}</p>
@@ -133,6 +141,7 @@ async function loadHeadline() {
     $("#headline").hidden = false;
   } catch { /* 주요 이슈 없으면 칸 숨김 */ }
 }
+window.renderHeadline = renderHeadline;
 
 /* ───────── 3. (블로그 분석 글 피드 — 2026-10-28 운영자 결정으로 사이트에서 뺌) ───────── */
 
