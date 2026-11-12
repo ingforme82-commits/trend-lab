@@ -310,12 +310,18 @@ def fetch_rss() -> list[dict]:
         cache = {"items": []}
     ok, fail = [], []
     items, cutoff = [], datetime.now(timezone.utc) - timedelta(hours=KEEP_H)
-    for name, url, lang in FEEDS:
+    def _get(url: str):
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0 (TrendResearchLab news reader)"})
-            root = ET.fromstring(urllib.request.urlopen(req, timeout=12).read())
+            return ET.fromstring(urllib.request.urlopen(req, timeout=12).read())
         except Exception as e:  # noqa: BLE001
-            log(f"RSS 실패 {name}: {type(e).__name__}")
+            return e
+    from concurrent.futures import ThreadPoolExecutor
+    with ThreadPoolExecutor(max_workers=12) as ex:      # 11/13: 51곳을 하나씩 받던 13초 → 동시에(가장 느린 한 곳 시간)
+        roots = list(ex.map(_get, [u for _, u, _ in FEEDS]))
+    for (name, url, lang), root in zip(FEEDS, roots):
+        if isinstance(root, Exception):
+            log(f"RSS 실패 {name}: {type(root).__name__}")
             fail.append(name)
             continue
         ok.append(name)
@@ -413,12 +419,16 @@ def translate(items: list[dict]) -> None:
             got = _claude_translate(todo[:60])
             if not got:                                   # 크레딧 없음 → 1시간 동안 Claude 시도 안 함
                 cache["_claude_off_until"] = datetime.now(timezone.utc).timestamp() + 3600
-        for t in todo[:80]:
-            if t not in got:
-                try:
-                    got[t] = _google_translate(t)
-                except Exception:  # noqa: BLE001
-                    pass
+        def _tr(t: str):
+            try:
+                return t, _google_translate(t)
+            except Exception:  # noqa: BLE001
+                return t, None
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=6) as ex:   # 11/13: 하나씩 → 동시에
+            for t, k in ex.map(_tr, [t for t in todo[:80] if t not in got]):
+                if k:
+                    got[t] = k
         cache.update({k: v for k, v in got.items() if v})
         keep = {it["text"] for it in items}
         cache = {k: v for k, v in cache.items() if k in keep or k.startswith("_")}   # 오래된 번역 정리
@@ -661,7 +671,41 @@ def upload(data: dict) -> bool:
         raise
 
 
+CMP_KEYS = ("items", "moves", "world", "spot", "trending", "sectors", "dow", "us10y", "ust", "kr", "momentum", "flows", "s7",
+            "leaders", "watch", "lev", "official")
+UP_STATE = ROOT / "tools" / "upload_state.json"     # 마지막으로 올린 파일 sha·내용 지문(이 PC 기준)
+
+
+def _fp(data: dict) -> str:
+    import hashlib
+    return hashlib.sha1(json.dumps([data.get(k) for k in CMP_KEYS], ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
+
+
 def _upload(data: dict) -> bool:
+    """11/13: 매번 400KB 를 받아(GET) 비교하던 것을 이 PC 의 마지막 올린 기록(sha·지문)으로 대신한다.
+    sha 가 안 맞으면(다른 PC 가 올렸거나 처음) 예전처럼 받아서 비교하고 올린다."""
+    fp = _fp(data)
+    try:
+        st = json.loads(UP_STATE.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        st = {}
+    if st.get("fp") == fp:
+        return False                                   # 바뀐 글 없음 → 받지도 올리지도 않음
+    if st.get("sha"):
+        body = {"message": f"속보 갱신 {datetime.now(KST):%m-%d %H:%M}", "branch": BRANCH, "sha": st["sha"],
+                "content": base64.b64encode(json.dumps(data, ensure_ascii=False).encode("utf-8")).decode()}
+        r = gh("api", "-X", "PUT", f"repos/{REPO}/contents/news.json", "--input", "-", input_=json.dumps(body))
+        if r.returncode == 0:
+            try:
+                UP_STATE.write_text(json.dumps({"sha": json.loads(r.stdout)["content"]["sha"], "fp": fp}), encoding="utf-8")
+            except Exception:  # noqa: BLE001
+                UP_STATE.unlink(missing_ok=True)
+            return True
+    ok = _upload_full(data)
+    return ok
+
+
+def _upload_full(data: dict) -> bool:
     ensure_branch()
     cur = gh("api", f"repos/{REPO}/contents/news.json?ref={BRANCH}")
     sha, old = None, None
@@ -672,7 +716,8 @@ def _upload(data: dict) -> bool:
             old = json.loads(base64.b64decode(j["content"]).decode("utf-8"))
         except Exception:  # noqa: BLE001
             old = None
-    if old and all(old.get(k) == data.get(k) for k in ("items", "moves", "world", "spot", "trending", "sectors", "dow", "us10y", "ust", "kr", "momentum", "flows", "s7", "leaders", "watch", "lev", "official")):
+    if old and all(old.get(k) == data.get(k) for k in CMP_KEYS):
+        UP_STATE.write_text(json.dumps({"sha": sha, "fp": _fp(data)}), encoding="utf-8")
         return False                                   # 바뀐 글 없음 → 커밋 안 함
     body = {"message": f"속보 갱신 {datetime.now(KST):%m-%d %H:%M}", "branch": BRANCH,
             "content": base64.b64encode(json.dumps(data, ensure_ascii=False).encode("utf-8")).decode()}
@@ -681,6 +726,10 @@ def _upload(data: dict) -> bool:
     r = gh("api", "-X", "PUT", f"repos/{REPO}/contents/news.json", "--input", "-", input_=json.dumps(body))
     if r.returncode != 0:
         raise RuntimeError(r.stderr.strip()[:300])
+    try:
+        UP_STATE.write_text(json.dumps({"sha": json.loads(r.stdout)["content"]["sha"], "fp": _fp(data)}), encoding="utf-8")
+    except Exception:  # noqa: BLE001
+        pass
     return True
 
 

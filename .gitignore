@@ -35,3 +35,4 @@ tools/kb_down.txt
 tools/health.json
 tools/health_state.json
 tools/healthcheck.log
+tools/upload_state.json

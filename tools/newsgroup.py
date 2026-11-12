@@ -28,7 +28,14 @@ def bigrams(s: str) -> set[str]:
 
 
 def similar(a: set[str], b: set[str]) -> bool:
-    return bool(a) and bool(b) and len(a & b) / max(1, len(a | b)) >= SIM
+    """자카드 유사도 ≥ SIM. 크기 차이가 커서 넘을 수 없는 쌍은 교집합 계산 전에 거른다(11/13 속도, 결과 같음)."""
+    if not a or not b:
+        return False
+    la, lb = len(a), len(b)
+    if min(la, lb) < SIM * max(la, lb):
+        return False
+    i = len(a & b)
+    return i / (la + lb - i) >= SIM
 
 
 def verify_of(members: list[dict]) -> str:
