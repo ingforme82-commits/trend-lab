@@ -33,16 +33,22 @@
   let tgsum = null, world = [], spot = [], trend = [], sectors = [], brief = null, briefs = [], kwFilter = null, momentum = null, watch = null, lev = null, flows = null, flowOpen = null;   // kwFilter: {label, rx}
 
   /* ── 데이터 ── */
-  let apiBlockedUntil = 0;
+  // GitHub API 는 IP당 시간당 60번 — 1분마다 부르면 1시간 뒤 막혀 20분 동안 5분 늦은 사본을 봤다(11/13 점검).
+  // → API 는 2분에 한 번(시간당 30번)만, 사이에는 raw(최대 5분 캐시)를 받고, 둘 중 더 새 것(updated)을 쓴다. 숨긴 탭은 쉰다.
+  let apiBlockedUntil = 0, apiLastAt = 0, newest = null;
+  const API_GAP = 115000;
+  const keep = (j) => { if (j && (!newest || (j.updated || 0) >= (newest.updated || 0))) newest = j; return newest; };
   async function fetchNews() {
-    if (Date.now() > apiBlockedUntil) {
+    const now = Date.now();
+    if (now > apiBlockedUntil && now - apiLastAt >= API_GAP) {
+      apiLastAt = now;
       try {
         const r = await fetch(API_URL, { headers: { Accept: "application/vnd.github.raw+json" }, cache: "no-cache" });
-        if (r.ok) return await r.json();
-        if (r.status === 403 || r.status === 429) apiBlockedUntil = Date.now() + 20 * 60000;
+        if (r.ok) return keep(await r.json());
+        if (r.status === 403 || r.status === 429) apiBlockedUntil = now + 20 * 60000;
       } catch { /* raw로 */ }
     }
-    return (await fetch(`${NEWS_URL}?t=${Math.floor(Date.now() / 60000)}`)).json();
+    try { return keep(await (await fetch(`${NEWS_URL}?t=${Math.floor(now / 60000)}`)).json()); } catch (e) { if (newest) return newest; throw e; }
   }
   async function loadNews() {
     try {
@@ -993,7 +999,7 @@
   });
   (async () => { await Promise.all([loadNews(), loadNotes(), loadSessionQuotes(), loadHeadline(), loadBriefs(), full ? loadCandles() : null]); redraw(); })();
   setInterval(loadBriefs, 600000);
-  const refreshLive = async () => { await Promise.all([loadNews(), loadSessionQuotes()]); redraw(); };
+  const refreshLive = async () => { if (document.hidden) return; await Promise.all([loadNews(), loadSessionQuotes()]); redraw(); };
   document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshLive(); });
   window.addEventListener("online", refreshLive);
   setInterval(refreshLive, 60000);                 // 속보·변곡점 1분마다
