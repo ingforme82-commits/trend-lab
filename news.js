@@ -387,7 +387,7 @@
     const st = m.at ? `${hm(m.at)} 기준${m.open ? "" : " · 장 마감·개장 전(전일 값 포함)"}${m.late ? ` · <b class="h-warn">지연 ${m.late}/${m.n}종목</b>` : ""}` : "";
     const usd = m.us_day ? ` · 🇺🇸 미국 ${+m.us_day.slice(5, 7)}/${+m.us_day.slice(8, 10)} 정규장` : "";
     return `<div class="mm"><p class="mm-h">📈 섹터 모멘텀 <small>${st}${usd}</small></p><ol class="mm-l">${rows}</ol>
-      ${compact ? "" : `<p class="mm-f">순서는 고정(미국 반도체·한국 반도체·2차전지·방산·원전·조선), 왼쪽 'n위'는 점수 순위 · 거래대금 가속도·상대강도·5일선·신고가 근접 4개 지표의 종목 간 순위(0~100)로 계산 · 수급 미반영 · 매수·매도 권유 아님</p>`}</div>`;
+      ${compact ? "" : `<p class="mm-f">순서는 고정(미국 반도체·한국 반도체·2차전지·방산·원전·조선·바이오), 왼쪽 'n위'는 점수 순위 · 거래대금 가속도·상대강도·5일선·신고가 근접 4개 지표의 종목 간 순위(0~100)로 계산 · 수급 미반영 · 매수·매도 권유 아님</p>`}</div>`;
   }
   // 🔬 SOXL · KORU 한눈에: 가격 한 줄 + 상태 배지(5일선·20일선·연속 양봉·운영자 가격대) + 20일 범위 막대 + 기초지수 한 줄
   const md2 = (ms) => { const d = kst(ms); return `${d.getMonth() + 1}/${d.getDate()}`; };

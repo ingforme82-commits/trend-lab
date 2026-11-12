@@ -191,7 +191,7 @@ def build(cards: list[dict], idx: dict[str, dict], hist: dict[str, dict], now_ms
 
 
 US_SECTOR, US_IDX, US_MKT = "미국 반도체", "^NDX", "QQQ"
-ORDER = ["미국 반도체", "한국 반도체", "2차전지", "방산", "원전", "조선"]      # 화면 표시 순서(운영자 지정, 2026-10-27)
+ORDER = ["미국 반도체", "한국 반도체", "2차전지", "방산", "원전", "조선", "바이오"]      # 화면 표시 순서(운영자 지정, 2026-10-27 · 바이오 11-12 추가)
 
 
 def order_sectors(secs: list[dict], order: list[str] = ORDER) -> list[dict]:
