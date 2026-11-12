@@ -85,7 +85,6 @@ FEEDS = [
     # 국내 매체 전체 파악 (운영자 11/13 지시 — 국내외 모든 뉴스 채널 통합)
     ("연합뉴스", "https://www.yna.co.kr/rss/market.xml", "ko"),
     ("연합인포맥스", "https://news.einfomax.co.kr/rss/allArticle.xml", "ko"),
-    ("머니투데이", "https://rss.mt.co.kr/mt_news_stock.xml", "ko"),
     ("이데일리", "http://rss.edaily.co.kr/edaily_news.xml", "ko"),
     ("서울경제", "https://www.sedaily.com/rss/finance", "ko"),
     ("파이낸셜뉴스", "https://www.fnnews.com/rss/r20/fn_realnews_stock.xml", "ko"),
