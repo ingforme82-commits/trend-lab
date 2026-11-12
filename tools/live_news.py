@@ -82,6 +82,17 @@ FEEDS = [
     ("인베스팅", "https://kr.investing.com/rss/news.rss", "ko"),
     ("연합뉴스", "https://www.yna.co.kr/rss/economy.xml", "ko"),
     ("한국경제", "https://www.hankyung.com/feed/finance", "ko"),
+    # 국내 매체 전체 파악 (운영자 11/13 지시 — 국내외 모든 뉴스 채널 통합)
+    ("연합뉴스", "https://www.yna.co.kr/rss/market.xml", "ko"),
+    ("연합인포맥스", "https://news.einfomax.co.kr/rss/allArticle.xml", "ko"),
+    ("머니투데이", "https://rss.mt.co.kr/mt_news_stock.xml", "ko"),
+    ("이데일리", "http://rss.edaily.co.kr/edaily_news.xml", "ko"),
+    ("서울경제", "https://www.sedaily.com/rss/finance", "ko"),
+    ("파이낸셜뉴스", "https://www.fnnews.com/rss/r20/fn_realnews_stock.xml", "ko"),
+    ("조선비즈", "https://biz.chosun.com/arc/outboundfeeds/rss/?outputType=xml", "ko"),
+    ("아시아경제", "https://www.asiae.co.kr/rss/stock.htm", "ko"),
+    ("전자신문", "https://rss.etnews.com/Section902.xml", "ko"),
+    ("뉴시스", "https://www.newsis.com/RSS/economy.xml", "ko"),
     # 해외 원출처 직접 번역 (2026-10-27 추가)
     ("FT", "https://www.ft.com/markets?format=rss", "en"),
     ("FT", "https://www.ft.com/world?format=rss", "en"),

@@ -796,11 +796,11 @@
     const ch = t.channels || [], now = Date.now();
     const fresh = ch.filter((c) => c.got && now - c.got < 36 * 3600e3).length;
     const lines = (ln) => `<li${ln.hot ? ' class="hot"' : ""}><span class="tg-t">${esc(gist(ln.text, 110))}</span>`
-      + `<span class="tg-m">${hm(ln.last)} · ${ln.srcs.map(esc).join(" · ")}${ln.srcs.length > 1 ? ` <b>${ln.srcs.length}채널 같은 내용</b>` : ""}${ln.n > ln.srcs.length ? ` · ${ln.n}건` : ""}</span></li>`;
-    box.innerHTML = `<div class="tg-head"><h3>📡 텔레그램 통합 정리</h3><p>최근 ${t.win_h}시간 · ${t.ch}개 채널 글 ${t.n}건을 주제별로 묶었습니다.`
-      + ` 여러 채널에 같은 내용이 나오면 한 줄로 합칩니다. 종목 추천·목표주가 글은 싣지 않습니다.</p></div>`
+      + `<span class="tg-m">${hm(ln.last)} · ${ln.srcs.map(esc).join(" · ")}${ln.srcs.length > 1 ? ` <b>${ln.srcs.length}곳 같은 내용</b>` : ""}${ln.n > ln.srcs.length ? ` · ${ln.n}건` : ""}</span></li>`;
+    box.innerHTML = `<div class="tg-head"><h3>📡 텔레그램·뉴스 통합 정리</h3><p>텔레그램 ${t.tg_ch}개 채널 ${t.tg_n}건 + 국내외 뉴스 ${t.news_ch}곳 ${t.news_n}건을 주제별로 묶었습니다`
+      + ` (뉴스·속보 채널 최근 ${t.win_fast}시간, 리서치·시황 방 최근 ${t.win_slow}시간). 여러 곳에 같은 내용이 나오면 한 줄로 합치고, 많이 나온 순서로 놓습니다. 종목 추천·목표주가 글은 싣지 않습니다.</p></div>`
       + `<div class="tg-grid">` + t.topics.map((tp) => `<div class="tg-card"><p class="tg-name">${esc(tp.name)} <span>${tp.ch}채널 · ${tp.n}건</span></p><ul>${tp.lines.map(lines).join("")}</ul></div>`).join("") + `</div>`
-      + `<details class="tg-ch"><summary>수집 상태 · 채널 ${ch.length}개 1분마다 확인${t.polled ? ` (마지막 확인 ${hm(t.polled)})` : ""} · 36시간 안에 새 글 ${fresh}개</summary>`
+      + `<details class="tg-ch"><summary>텔레그램 수집 상태 · 채널 ${ch.length}개 1분마다 확인${t.polled ? ` (마지막 확인 ${hm(t.polled)})` : ""} · 36시간 안에 새 글 ${fresh}개</summary>`
       + `<p>${ch.map((c) => `<span${c.post && now - c.post > 72 * 3600e3 ? ' class="old"' : ""}>${esc(c.name)} <i>${c.post ? ago(c.post) : "-"}</i></span>`).join("")}</p></details>`;
     box.hidden = false;
   }

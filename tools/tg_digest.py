@@ -1,8 +1,8 @@
-"""📡 텔레그램 통합 정리 — 등록 채널 글을 주제별로 묶어 한눈에 (live_news 가 1분마다 호출)
+"""📡 텔레그램·뉴스 통합 정리 — 텔레 전체 채널(김치터미널 포함) + 국내외 모든 매체를 주제별로 (live_news 가 1분마다 호출)
 
-- 재료: news.json 에 이미 실린 텔레그램 글만(목표주가·투자의견·추천 글은 live_news 에서 이미 빠짐).
-- 최근 3시간(글이 적으면 12시간) → 주제(tags 첫 번째)별로 나누고,
-  같은 내용(글자 2개씩 겹침 비율)이 여러 채널에 나오면 한 줄로 묶는다.
+- 재료: news.json 에 이미 실린 글만(목표주가·투자의견·추천 글은 live_news 에서 이미 빠짐). 시세 알림은 뺀다.
+- 기간: 뉴스·속보 채널 최근 3시간, 리서치·시황 방 최근 18시간(아침·마감에 몰려 올라오므로).
+- 주제(tags 첫 번째)별로 나누고, 같은 내용(글자 2개씩 겹침 비율)이 여러 매체·채널에 나오면 한 줄로 묶는다.
 - 주제 순서: 언급한 채널 수 → 글 수. 줄 순서: 채널 수 → 중요도 → 최근.
 - 채널 상태: 채널별 마지막 글 시각·수집 시각(수집이 멈췄는지 바로 보이게).
 """
@@ -14,10 +14,11 @@ import sqlite3
 from datetime import datetime, timedelta, timezone
 
 TG_KINDS = ("텔레그램", "시황 분석", "증권사 시황")
-EXCLUDE = {"김치터미널"}        # 해외 속보 채널은 '전체 속보'에 이미 다 실림 — 통합 정리는 리서치·시황 방 위주
-WIN_H, WIN_H_QUIET = 3, 18
+NEWS_KINDS = ("뉴스", "해외 뉴스")              # 국내외 모든 매체(RSS)
+FAST_SRC = {"김치터미널", "실시간 주식뉴스"}     # 속보 채널(김치터미널 포함 — 운영자 11/13: 항상 같이 본다)
+WIN_FAST, WIN_SLOW = 3, 18
 CHAT = re.compile(r"ㅋㅋ|ㅎㅎ|ㅠㅠ|^.{0,30}[?？]\s*$")   # 잡담 한 줄은 빼기
-TOPICS_MAX, LINES_MAX = 8, 3
+TOPICS_MAX, LINES_MAX = 10, 4
 
 
 def _norm(t: str) -> str:
@@ -73,13 +74,15 @@ def channel_status(db_path, names: dict[str, str]) -> list[dict]:
 
 def build(items: list[dict], now_ms: int, db_path=None, names: dict[str, str] | None = None,
           polled_ms: int | None = None) -> dict:
-    tg = [dict(i, text=re.sub(r"^\s*<\s*", "", i["text"])) for i in items
-          if i.get("kind") in TG_KINDS and i.get("text") and i.get("src") not in EXCLUDE and not CHAT.search(i["text"])]
-    win = WIN_H
-    pick = [i for i in tg if now_ms - i["ts"] <= win * 3600e3]
-    if len(pick) < 15:
-        win = WIN_H_QUIET
-        pick = [i for i in tg if now_ms - i["ts"] <= win * 3600e3]
+    def fast(i: dict) -> bool:                       # 속보성(뉴스·속보 채널) 3시간, 리서치·시황 방 18시간
+        return i.get("kind") in NEWS_KINDS or i.get("src") in FAST_SRC
+    pick = []
+    for i in items:
+        if i.get("kind") not in TG_KINDS + NEWS_KINDS or not i.get("text") or CHAT.search(i["text"]):
+            continue
+        if now_ms - i["ts"] > (WIN_FAST if fast(i) else WIN_SLOW) * 3600e3:
+            continue
+        pick.append(dict(i, text=re.sub(r"^\s*<\s*", "", i["text"])))
     by: dict[str, list[dict]] = {}
     for it in pick:
         by.setdefault((it.get("tags") or ["기타"])[0], []).append(it)
@@ -89,8 +92,11 @@ def build(items: list[dict], now_ms: int, db_path=None, names: dict[str, str] | 
         topics.append({"name": name, "n": len(its), "ch": len({i["src"] for i in its}),
                        "lines": [{k: v for k, v in c.items() if k != "g"} for c in cl[:LINES_MAX]]})
     topics.sort(key=lambda t: (t["name"] == "기타", -t["ch"], -t["n"]))
-    out = {"at": now_ms, "win_h": win, "n": len(pick), "ch": len({i["src"] for i in pick}),
-           "topics": topics[:TOPICS_MAX]}
+    tg = [i for i in pick if i.get("kind") in TG_KINDS]
+    nw = [i for i in pick if i.get("kind") in NEWS_KINDS]
+    out = {"at": now_ms, "win_fast": WIN_FAST, "win_slow": WIN_SLOW, "n": len(pick),
+           "ch": len({i["src"] for i in pick}), "tg_n": len(tg), "tg_ch": len({i["src"] for i in tg}),
+           "news_n": len(nw), "news_ch": len({i["src"] for i in nw}), "topics": topics[:TOPICS_MAX]}
     if polled_ms:
         out["polled"] = polled_ms
     if db_path and names:
@@ -106,9 +112,8 @@ if __name__ == "__main__":
     from live_news import CHANNELS, DB
     j = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
     d = build(j["items"], int(datetime.now(timezone.utc).timestamp() * 1000), DB, CHANNELS)
-    print(f"창 {d['win_h']}시간 · 글 {d['n']} · 채널 {d['ch']}")
+    print(f"텔레 {d['tg_ch']}채널 {d['tg_n']}건 · 뉴스 {d['news_ch']}곳 {d['news_n']}건")
     for t in d["topics"]:
-        print(f"■ {t['name']} 글 {t['n']} · 채널 {t['ch']}")
+        print(f"■ {t['name']} 글 {t['n']} · 출처 {t['ch']}")
         for ln in t["lines"]:
-            print(f"   - [{len(ln['srcs'])}채널 {ln['n']}건] {ln['text'][:90]}  ({', '.join(ln['srcs'][:4])})")
-    print(len(d.get("channels", [])), "채널 상태")
+            print(f"   - [{len(ln['srcs'])}곳 {ln['n']}건] {ln['text'][:80]}  ({', '.join(ln['srcs'][:5])})")
