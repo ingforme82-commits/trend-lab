@@ -51,12 +51,14 @@ def credentials(path):
     return values
 
 
-def access_token(path):
+def access_token(path, force=False):
     # 사용자 전용 로컬 캐시: 공개 저장소 밖에 둔다.
+    # force: 서버가 '유효하지 않은 token'(IGW40043)이라 하면 캐시를 버리고 새로 받는다 — 같은 키로 모의매매(nhplug)가
+    #        새 토큰을 받으면 이 캐시 토큰이 만료 전에 무효가 된다(11/13 healthcheck 'NH API HTTP 400' 원인).
     cache = Path.home() / ".cache" / "trl-nh-quotes-token.json"
     try:
         saved = json.loads(cache.read_text(encoding="utf-8"))
-        if saved["expires"] > time.time() + 120:
+        if not force and saved["expires"] > time.time() + 120:
             return saved["token"]
     except (OSError, ValueError, KeyError):
         pass

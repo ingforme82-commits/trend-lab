@@ -74,11 +74,11 @@ def nh_gap(now: float) -> float | None:
     return 0.35
 
 
-def _nh_token():
+def _nh_token(force: bool = False):
     """NH 시세용 토큰(키 파일 ~/.nhplug/.env, 토큰은 ~/.cache 에만 저장 — nh_quotes.py 와 같은 캐시)."""
     import nh_quotes
     with _nh_lock:
-        return nh_quotes.access_token(Path(os.environ.get("NH_APP_KEY_FILE") or Path.home() / ".nhplug" / ".env"))
+        return nh_quotes.access_token(Path(os.environ.get("NH_APP_KEY_FILE") or Path.home() / ".nhplug" / ".env"), force)
 
 
 def nh_quote(sym: str, now: float, gap: float = 0.35) -> dict | None:
@@ -89,7 +89,12 @@ def nh_quote(sym: str, now: float, gap: float = 0.35) -> dict | None:
     with _nh_gap:                                  # 초당 호출 건수 제한(IGW42902) — 호출 사이 NH_GAP 초
         time.sleep(max(0.0, _nh_last + gap - time.time()))
         _nh_last = time.time()
-    r = nh_quotes.request("/gbstock/quote/v1/current", {"Input_0": {"iem_cd": sym}}, tok)
+    try:
+        r = nh_quotes.request("/gbstock/quote/v1/current", {"Input_0": {"iem_cd": sym}}, tok)
+    except urllib.error.HTTPError as e:
+        if e.code != 400 or "IGW40043" not in e.read().decode("utf-8", "replace"):
+            raise
+        r = nh_quotes.request("/gbstock/quote/v1/current", {"Input_0": {"iem_cd": sym}}, _nh_token(force=True))   # 무효 토큰 → 새로 받고 한 번 더
     o = r.get("Output_0") or {}
     if r.get("rsp_cd") != "00000":
         raise ValueError("NH quote rejected")
