@@ -55,7 +55,8 @@ WATCH = {**SHIP, **SEMI}
 GROUP = {**{c: "🚢 조선" for c in SHIP.values()}, **{c: "💾 반도체 소부장" for c in SEMI.values()}}
 DIGEST_HOUR = 18                         # 평일 18시 이후 첫 실행 때 '오늘 실적 발표 종목' 요약 1회
 DIGEST_FLAG = Path.home() / ".tg_notify" / "dart_digest_day.txt"
-KEYWORDS = re.compile(r"잠정|분기보고서|반기보고서|사업보고서|기업설명회|손익구조|결산실적공시")
+IR_KEYWORDS = re.compile(r"기업\s*설명회|컨퍼런스\s*콜|컨콜|conference\s*call", re.I)
+KEYWORDS = re.compile(r"잠정|분기보고서|반기보고서|사업보고서|손익구조|결산실적공시|실적\s*발표|경영\s*실적|" + IR_KEYWORDS.pattern, re.I)
 HOME = Path.home()
 STATE = HOME / ".tg_notify" / "dart_seen.json"
 CORP_CACHE = HOME / ".dart" / "corp_codes.json"
@@ -464,10 +465,10 @@ def main() -> None:
             continue
         extra = (quarter_numbers(key, d.get("cc", ""), d["title"]) if "분기보고서" in d["title"] or "반기보고서" in d["title"]
                  else prelim_numbers(key, d["id"]) if re.search(r"잠정|손익구조", d["title"]) else [])
-        if "기업설명회" not in d["title"]:
+        if not IR_KEYWORDS.search(d["title"]):
             extra.append(price_now(d["code"]))
         extra = [e for e in extra if e]
-        ttl = "🎤 IR 예정" if "기업설명회" in d["title"] else "📑 실적 공시"
+        ttl = "🎤 IR·컨퍼런스콜" if IR_KEYWORDS.search(d["title"]) else "📑 실적 공시"
         star = "⭐ " if d["name"] in MUST else ""
         text = "\n".join([f"{star}{ttl} · {d['name']}({d['code']}) {GROUP.get(d['code'], '')}", d["title"],
                           f"접수 {d['date'][4:6]}/{d['date'][6:]}"] + extra + ([d["url"]] if d["url"] else []) + [f"출처 {src}"])
