@@ -26,11 +26,37 @@
    "yf": "NBIS",
    "kw": "네비우스|Nebius|\\bNBIS\\b",
    "kind": "⚡ 급락 대형주",
-   "reason": "11/12(목) 정규장 개장 후 30분 -16.88% · 시가총액 약 350억 달러 · 업종 경영 지원 서비스",
+   "reason": "11/13(금) 정규장 개장 후 30분 -10.75% · 시가총액 약 336억 달러 · 업종 경영 지원 서비스",
    "on": true,
    "auto": true,
    "since": "2026-11-12",
    "hl": "xyz:NBIS"
+  },
+  {
+   "id": "AMD",
+   "name": "AMD(어드밴스드 마이크로 디바이시스)",
+   "market": "미국",
+   "yf": "AMD",
+   "kw": "AMD\\(어드밴스드|Advanced|\\bAMD\\b",
+   "kind": "⚡ 급락 대형주",
+   "reason": "11/13(금) 정규장 개장 후 30분 -7.95% · 시가총액 약 8,837억 달러 · 업종 반도체",
+   "hl": "xyz:AMD",
+   "on": true,
+   "auto": true,
+   "since": "2026-11-14"
+  },
+  {
+   "id": "NU",
+   "name": "누 홀딩스",
+   "market": "미국",
+   "yf": "NU",
+   "kw": "누|Nu|\\bNU\\b",
+   "kind": "⚡ 급등 대형주",
+   "reason": "11/13(금) 정규장 개장 후 30분 +6.80% · 시가총액 약 606억 달러 · 업종 은행",
+   "hl": "xyz:NU",
+   "on": true,
+   "auto": true,
+   "since": "2026-11-14"
   },
   {
    "id": "CRWV",
@@ -58,6 +84,81 @@
    "since": "2026-11-11"
   },
   {
+   "id": "NEOCLOUD",
+   "name": "코어위브·네오클라우드",
+   "market": "미국",
+   "hl": "xyz:CRWV",
+   "on": true,
+   "since": "2026-10-27",
+   "kw": "코어위브|CoreWeave|CRWV|네오클라우드|neocloud|네비우스|Nebius|NBIS|IREN|아이렌",
+   "reason": "미국 개장(23:30) 후 30분 · 평균 -8.29%(전일 종가 대비) · 개장 후 -6.39% · 4종목 중 4종목 하락 · 최저 네비우스 -10.63%",
+   "members": {
+    "CRWV": "코어위브",
+    "NBIS": "네비우스",
+    "IREN": "IREN",
+    "CORZ": "코어사이언티픽"
+   },
+   "auto": true
+  },
+  {
+   "id": "SPACE",
+   "name": "우주",
+   "market": "미국",
+   "kw": "로켓랩|Rocket Lab|AST스페이스모바일|AST SpaceMobile|인튜이티브 머신스|Intuitive Machines|스페이스X|SpaceX|우주|space",
+   "members": {
+    "RKLB": "로켓랩",
+    "ASTS": "AST스페이스모바일",
+    "LUNR": "인튜이티브머신스",
+    "PL": "플래닛랩스",
+    "FLY": "파이어플라이"
+   },
+   "reason": "미국 개장(23:30) 후 30분 · 평균 -5.62%(전일 종가 대비) · 개장 후 -5.19% · 5종목 중 5종목 하락 · 최저 AST스페이스모바일 -8.12% · 관련 속보 3건(12시간)",
+   "on": true,
+   "auto": true,
+   "hl": "xyz:RKLB",
+   "since": "2026-11-10"
+  },
+  {
+   "id": "USSEMI",
+   "name": "미국 반도체",
+   "market": "미국",
+   "kw": "엔비디아|Nvidia|NVIDIA|AMD|브로드컴|Broadcom|TSMC|Arm\\b|퀄컴|Qualcomm|마벨|Marvell|인텔|Intel|반도체|semiconductor|chip",
+   "members": {
+    "NVDA": "엔비디아",
+    "AMD": "AMD",
+    "AVGO": "브로드컴",
+    "TSM": "TSMC",
+    "ARM": "ARM",
+    "QCOM": "퀄컴",
+    "MRVL": "마벨",
+    "INTC": "인텔"
+   },
+   "reason": "미국 개장(23:30) 후 30분 · 평균 -4.22%(전일 종가 대비) · 개장 후 -3.37% · 8종목 중 8종목 하락 · 최저 AMD -7.63% · 관련 속보 89건(12시간)",
+   "on": true,
+   "auto": true,
+   "hl": "xyz:SMH",
+   "since": "2026-10-31"
+  },
+  {
+   "id": "ENERGY",
+   "name": "정유·에너지",
+   "market": "미국",
+   "kw": "엑슨|Exxon|셰브론|Chevron|옥시덴탈|Occidental|코노코|Conoco|유가|원유|WTI|브렌트|oil|crude",
+   "members": {
+    "XOM": "엑슨모빌",
+    "CVX": "셰브론",
+    "OXY": "옥시덴탈",
+    "COP": "코노코필립스",
+    "SLB": "SLB"
+   },
+   "reason": "평균 4일 연속 상승 · 최근 5거래일 합계 +2.90%(일봉 종가 기준)",
+   "on": true,
+   "auto": true,
+   "kind": "📈 연일 상승",
+   "hl": "xyz:XLE",
+   "since": "2026-10-31"
+  },
+  {
    "id": "SE",
    "name": "씨 ADR",
    "market": "미국",
@@ -65,9 +166,10 @@
    "kw": "씨|Sea|\\bSE\\b",
    "kind": "⚡ 급등 대형주",
    "reason": "11/10(화) 정규장 개장 후 39분 +7.67% · 시가총액 약 476억 달러 · 업종 소프트웨어",
-   "on": true,
+   "on": false,
    "auto": true,
-   "since": "2026-11-11"
+   "since": "2026-11-11",
+   "until": "2026-11-14"
   },
   {
    "id": "ASX",
@@ -77,26 +179,10 @@
    "kw": "ASE|ASE|\\bASX\\b",
    "kind": "⚡ 급등 대형주",
    "reason": "11/10(화) 정규장 개장 후 39분 +6.74% · 시가총액 약 823억 달러 · 업종 반도체 장비 및 테스트",
-   "on": true,
+   "on": false,
    "auto": true,
-   "since": "2026-11-11"
-  },
-  {
-   "id": "NEOCLOUD",
-   "name": "코어위브·네오클라우드",
-   "market": "미국",
-   "hl": "xyz:CRWV",
-   "on": true,
-   "since": "2026-10-27",
-   "kw": "코어위브|CoreWeave|CRWV|네오클라우드|neocloud|네비우스|Nebius|NBIS|IREN|아이렌",
-   "reason": "미국 개장(23:30) 후 30분 · 평균 -9.83%(전일 종가 대비) · 개장 후 +4.13% · 4종목 중 4종목 하락 · 최저 네비우스 -16.95% · 관련 속보 7건(12시간)",
-   "members": {
-    "CRWV": "코어위브",
-    "NBIS": "네비우스",
-    "IREN": "IREN",
-    "CORZ": "코어사이언티픽"
-   },
-   "auto": true
+   "since": "2026-11-11",
+   "until": "2026-11-14"
   },
   {
    "id": "CRYPTO",
@@ -111,10 +197,11 @@
     "BMNR": "비트마인"
    },
    "reason": "미국 개장(23:30) 후 30분 · 평균 -4.62%(전일 종가 대비) · 개장 후 +1.28% · 5종목 중 5종목 하락 · 최저 스트래티지 -6.89% · 관련 속보 4건(12시간)",
-   "on": true,
+   "on": false,
    "auto": true,
    "hl": "xyz:COIN",
-   "since": "2026-10-31"
+   "since": "2026-10-31",
+   "until": "2026-11-14"
   },
   {
    "id": "MEMORY",
@@ -128,29 +215,11 @@
     "STX": "시게이트"
    },
    "reason": "미국 개장(23:30) 후 30분 · 평균 -3.00%(전일 종가 대비) · 개장 후 +2.75% · 4종목 중 4종목 하락 · 최저 샌디스크 -4.92% · 관련 속보 4건(12시간)",
-   "on": true,
+   "on": false,
    "auto": true,
    "hl": "xyz:MU",
-   "since": "2026-11-03"
-  },
-  {
-   "id": "ENERGY",
-   "name": "정유·에너지",
-   "market": "미국",
-   "kw": "엑슨|Exxon|셰브론|Chevron|옥시덴탈|Occidental|코노코|Conoco|유가|원유|WTI|브렌트|oil|crude",
-   "members": {
-    "XOM": "엑슨모빌",
-    "CVX": "셰브론",
-    "OXY": "옥시덴탈",
-    "COP": "코노코필립스",
-    "SLB": "SLB"
-   },
-   "reason": "평균 3일 연속 상승 · 최근 5거래일 합계 +1.49%(일봉 종가 기준)",
-   "on": true,
-   "auto": true,
-   "kind": "📈 연일 상승",
-   "hl": "xyz:XLE",
-   "since": "2026-10-31"
+   "since": "2026-11-03",
+   "until": "2026-11-14"
   },
   {
    "id": "OPTICAL",
@@ -222,48 +291,6 @@
    "on": false,
    "auto": true,
    "since": "2026-11-11",
-   "until": "2026-11-12"
-  },
-  {
-   "id": "USSEMI",
-   "name": "미국 반도체",
-   "market": "미국",
-   "kw": "엔비디아|Nvidia|NVIDIA|AMD|브로드컴|Broadcom|TSMC|Arm\\b|퀄컴|Qualcomm|마벨|Marvell|인텔|Intel|반도체|semiconductor|chip",
-   "members": {
-    "NVDA": "엔비디아",
-    "AMD": "AMD",
-    "AVGO": "브로드컴",
-    "TSM": "TSMC",
-    "ARM": "ARM",
-    "QCOM": "퀄컴",
-    "MRVL": "마벨",
-    "INTC": "인텔"
-   },
-   "reason": "미국 개장(23:30) 후 39분 · 평균 +1.38%(전일 종가 대비) · 개장 후 +3.29% · 8종목 중 6종목 상승 · 최고 AMD +5.35% · 관련 속보 4건(12시간) · 평균 3일 연속 상승",
-   "on": false,
-   "auto": true,
-   "hl": "xyz:SMH",
-   "since": "2026-10-31",
-   "until": "2026-11-12"
-  },
-  {
-   "id": "SPACE",
-   "name": "우주",
-   "market": "미국",
-   "kw": "로켓랩|Rocket Lab|AST스페이스모바일|AST SpaceMobile|인튜이티브 머신스|Intuitive Machines|스페이스X|SpaceX|우주|space",
-   "members": {
-    "RKLB": "로켓랩",
-    "ASTS": "AST스페이스모바일",
-    "LUNR": "인튜이티브머신스",
-    "PL": "플래닛랩스",
-    "FLY": "파이어플라이"
-   },
-   "reason": "평균 3일 연속 상승 · 최근 5거래일 합계 +16.62%(일봉 종가 기준)",
-   "on": false,
-   "auto": true,
-   "hl": "xyz:RKLB",
-   "since": "2026-11-10",
-   "kind": "📈 연일 상승",
    "until": "2026-11-12"
   },
   {
