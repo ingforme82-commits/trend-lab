@@ -20,7 +20,8 @@ from datetime import datetime, timezone
 ASSETS = [
     ("NQ", "나스닥100", "hl", "xyz:XYZ100", "pct", 0.50, ("AI·빅테크", "반도체", "지수", "연준·금리", "사이버보안", "원전")),
     ("SP", "S&P500", "hl", "xyz:SP500", "pct", 0.40, ("AI·빅테크", "반도체", "지수", "연준·금리", "원전", "중동·유가")),
-    ("K200", "코스피200", "hl", "xyz:KR200", "pct", 0.60, ("한국", "반도체", "지수", "원전", "방산", "2차전지", "조선")),
+    ("K200", "코스피200", "hl", "xyz:KR200", "pct", 0.60, ("한국", "반도체", "지수", "원전", "방산", "2차전지", "조선",
+                                                          "연준·금리", "AI·빅테크")),   # 11/14: 해외 금리·AI 재료도 한국장을 움직임
     ("WTI", "WTI", "hl", "xyz:CL", "pct", 1.00, ("중동·유가", "러·우")),
     ("BRENT", "브렌트", "hl", "xyz:BRENTOIL", "pct", 0.80, ("중동·유가", "러·우")),
     ("GOLD", "금", "hl", "xyz:GOLD", "pct", 0.45, ("연준·금리", "중동·유가")),
@@ -30,6 +31,7 @@ ASSETS = [
 WIN = 10            # 분
 TREND_1H = {"WTI": 1.0, "BRENT": 1.0}   # 60분 변화가 이 % 이상이면 평소 폭과 상관없이 변곡점(운영자 기준: 유가는 1%만 변해도)
 US_A, KR_A = {"NQ", "SP"}, {"K200"}
+KR_GLOBAL_TAGS = {"반도체", "연준·금리", "AI·빅테크"}   # 코스피200에 붙여도 되는 미국 뉴스 분야(한국 뉴스보다 낮은 순위)
 US_RX = re.compile(r"미국|나스닥|S&P|다우|뉴욕|월가|연준|파월|엔비디아|브로드컴|인텔|AMD|마이크론|테슬라|애플|오클로|뉴스케일|"
                    r"\$[A-Z]{1,5}\b|Nasdaq|Wall Street|\bFed\b|NYSE")
 KR_RX = re.compile(r"코스피|코스닥|한국|국내|삼성|하이닉스|한은|원/달러|원화|KOSPI|KOSDAQ|Korea|외국인|기관|국민성장")
@@ -90,7 +92,7 @@ def group_moments(moves: list[dict], gap_min: int = 6) -> None:
         m["grp"] = cur
 SIGMA = 4.0
 BEFORE, AFTER = 15, 3   # 변곡점 기준 뉴스 찾는 범위(분) — 움직임이 이어지는 동안(최대 AFTER_MAX분)도 본다
-AFTER_MAX = 30
+AFTER_MAX = 45   # 11/14: 길게 이어진 하락 중간의 원인 뉴스(11/13 말레이시아 발표 33분 뒤)도 보이게
 # 주요 가격대(이 단위의 배수를 3분 넘게 넘어서 유지하면 '가격대 돌파'로 기록)
 LEVEL_STEP = {"WTI": 5, "BRENT": 5, "GOLD": 100, "NQ": 1000, "SP": 100, "K200": 50, "US10Y": 0.1, "DXY": 1}
 LEVEL_HOLD = 3          # 분
@@ -317,11 +319,16 @@ def analyze(items: list[dict]) -> tuple[list[dict], dict]:
             if it.get("kind") in ("시황 분석", "증권사 시황", "관전 포인트", "섹터 시세"):   # 긴 분석 글·가격에서 만든 자동 집계는 뺀다
                 continue
             rg = region(it)
-            if (m["asset"] in KR_A and rg != "KR") or (m["asset"] in US_A and rg == "KR"):
-                continue                                  # 코스피200은 한국 관련어가 확인된 뉴스만, 미국 지수엔 한국 뉴스 제외
+            if m["asset"] in US_A and rg == "KR":
+                continue                                  # 미국 지수엔 한국 뉴스 제외
+            if m["asset"] in KR_A and rg == "US" and not KR_GLOBAL_TAGS & set(it.get("tags", [])):
+                continue                                  # 코스피200: 미국 뉴스는 반도체·금리·AI 분야만(11/13 메가스피드·PPI 때 0건이던 문제)
             match = sum(t in rel for t in it.get("tags", []))
             if -BEFORE <= dt <= after and match:          # 그 자산과 관련된 분야의 뉴스만 후보
                 score = 3 * match + (1 if it.get("hot") else 0) + (1 - abs(dt) / max(30, after)) + (1 if KEY_RX.search(it["text"]) else 0)
+                score += min(it.get("imp") or 0, 60) / 30          # 중요도 높은 뉴스 먼저(약한 기업 기사보다)
+                if m["asset"] in KR_A:
+                    score += {"KR": 1.5, "": 0.5}.get(rg, 0)      # 한국 뉴스 > 지역 불명 > 미국 뉴스
                 if it.get("kind") in ("증권사 시황", "시황 분석"):
                     score -= 2                          # 긴 분석 글보다 속보가 직접 원인일 가능성이 높다
                 cands.append((score, it))

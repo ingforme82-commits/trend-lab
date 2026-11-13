@@ -36,3 +36,4 @@ tools/health.json
 tools/health_state.json
 tools/healthcheck.log
 tools/upload_state.json
+tools/move_news.json

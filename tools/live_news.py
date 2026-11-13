@@ -536,6 +536,7 @@ def build() -> dict:
         sys.path.insert(0, str(Path(__file__).resolve().parent))
         from moves import analyze
         out["moves"], out["series"] = analyze(items)
+        keep_move_news(out["moves"])                     # 뉴스 목록에서 밀려나도 한 번 붙은 뉴스는 유지
         now_a = datetime.now(timezone.utc).timestamp() * 1000
         for m in out["moves"][:6]:                        # 🔔 새 변곡점(끝난 지 15분 안) → 텔레그램 이슈 알림
             if now_a - m["end"] < 15 * 60_000:
@@ -731,6 +732,38 @@ def _upload_full(data: dict) -> bool:
     except Exception:  # noqa: BLE001
         pass
     return True
+
+
+MOVE_NEWS = ROOT / "tools" / "move_news.json"     # 변곡점별로 붙었던 뉴스(이 PC 기준, 3일 보관)
+
+
+def keep_move_news(moves: list[dict]) -> None:
+    """11/14: 변곡점 뉴스는 매 회차 현재 목록(최대 500건)으로 다시 찾기 때문에, 바쁜 밤을 지나면 낮 변곡점의 뉴스가
+    목록에서 밀려나 0건이 됐다(11/13 코스피200 11:33 −2.5%). 처음 붙었던 뉴스를 변곡점 id 로 저장해 두고 합친다."""
+    try:
+        cache = json.loads(MOVE_NEWS.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        cache = {}
+    for m in moves:
+        prev = (cache.get(m.get("id")) or {}).get("items") or []
+        if not prev:
+            if m.get("items"):
+                cache[m["id"]] = {"items": m["items"], "end": m["end"]}
+            continue
+        seen, merged = set(), []
+        for it in prev + (m.get("items") or []):
+            if it["text"] not in seen:
+                seen.add(it["text"])
+                merged.append(it)
+        m["items"] = merged[:3]
+        m["news"] = [it["ts"] for it in m["items"]]
+        cache[m["id"]] = {"items": m["items"], "end": m["end"]}
+    cut = (datetime.now(timezone.utc).timestamp() - 3 * 86400) * 1000
+    cache = {k: v for k, v in cache.items() if v.get("end", 0) >= cut}
+    try:
+        MOVE_NEWS.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def main() -> None:
