@@ -170,6 +170,13 @@ def make(out: dict) -> dict:
     analysis = [{"ts": it["ts"], "text": it["text"][:120], "sub": (it.get("sub") or "")[:160], "src": it.get("src", ""), "imp": it.get("imp")} for it in ana]
     fut = futures()
     since_close(fut, out.get("kr") or {})
+    try:                                                  # NH 실제 선물(코스피200 주간·야간, CME E-mini) — 맨 앞에(11/15 운영자)
+        from nhfut import quotes as nh_fut
+        nq = nh_fut()
+        fut[:0] = [{"name": v["name"], "px": v["px"], "chg": v["chg"], "u": "", "src": "NH", "real": True,
+                    **({"base": v["base"]} if v.get("base") else {})} for k, v in nq.items() if v.get("chg") is not None]
+    except Exception:  # noqa: BLE001
+        pass
     tnx = out.get("us10y") or {}
     return {"at": int(now), "session": session(datetime.now(timezone.utc)), "futures": fut, "kr": out.get("kr") or {},
             "us10y": {"px": tnx.get("px"), "bp": tnx.get("bp")} if tnx.get("px") else None,

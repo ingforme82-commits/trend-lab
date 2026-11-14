@@ -557,7 +557,8 @@
       if (hu && hu.live) L.push(`⏱ 이번 시간(${hu.h}시~) 강세: ${(hu.sectors || []).slice(0, 2).map((g) => `${esc(g.name)} ${sg2(g.slot)}`).join(" · ")} | ${(hu.stocks || []).slice(0, 3).map((r) => `${esc(r.name)} ${sg2(r.slot)}`).join(" · ")}`);
       const kc = [["KOSPI", "코스피"], ["KR200", "코스피200"]].filter(([c]) => kr[c] && !kr[c].open).map(([c, n]) => `${n} ${(+kr[c].px).toLocaleString("ko-KR", { maximumFractionDigits: 2 })} ${sg2(kr[c].chg)}`);
       if (kc.length) L.push(`🏁 한국 마지막 종가${kr.KOSPI && kr.KOSPI.at ? ` <small class="dim">(${+kstDay(kr.KOSPI.at).slice(5, 7)}/${+kstDay(kr.KOSPI.at).slice(8)} 마감)</small>` : ""}: ${kc.join(" · ")}`);
-      const k = [...["코스피200", "삼성전자", "SK하이닉스"].map(fk), fv("원/달러")].filter(Boolean);
+      const rf = ["코스피200 야간선물", "코스피200 주간선물"].map((n) => fut[n] ? `<b>${esc(n)}</b> ${(+fut[n].px).toLocaleString("ko-KR", { maximumFractionDigits: 2 })} ${sg2(fut[n].chg)} <small class="dim">${esc(fut[n].base || "")} 대비 · NH</small>` : "").filter(Boolean);
+      const k = [...rf, ...["코스피200", "삼성전자", "SK하이닉스"].map(fk), fv("원/달러")].filter(Boolean);
       if (k.length) L.push(`🇰🇷 내일 한국장 연결: ${k.join(" · ")}`);
       const evT = (c) => new Date(`${c.date}T${c.time}:00+09:00`).getTime();
       const cs = (checks || []).filter((c) => c.time && evT(c) >= Date.now() - 30 * 60000 && evT(c) <= Date.now() + 12 * 3600e3).sort((a, b) => evT(a) - evT(b));

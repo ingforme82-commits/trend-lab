@@ -514,6 +514,8 @@ function liveBand() {
     // 주말: 정시 브리핑 대신 지금 시각 24시간 시세 하나로(운영자 지시 — 기준을 나누지 않음)
     icon = "🛰️"; title = "주말 · 한국 종가 + 24시간 시세";
     if (krClose()) out.push(krClose());
+    const kf = future("코스피200 야간선물") || future("코스피200 주간선물");
+    if (kf) out.push(kf.name + " " + Number(kf.px).toLocaleString("en-US", { maximumFractionDigits: 2 }) + " (" + (kf.base || "") + " 대비 " + pcLive(kf.chg) + ", NH)");
     out.push(live24());
     if (latest()) out.push(latest());
     at = brief.at || at;

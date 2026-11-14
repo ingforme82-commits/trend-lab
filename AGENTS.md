@@ -51,6 +51,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $o push -Message "무엇을 
 | KB 응답 확인 | 키는 사용자 환경변수(KB_APP_KEY/SECRET) | `market-site\backend\.venv\Scripts\python market-site\trader\kb_tool.py price 005930` (조회만, 키 출력 없음). Codex 실행 환경이 네트워크 차단이면 메인 노트북 PowerShell 에서 |
 | 키움 응답 확인 | 키는 사용자 환경변수(KIWOOM_APP_KEY/SECRET_KEY, 실전용·조회 전용) | `python tools/kiwoom.py` (코스피·코스닥 현재가·1분봉, 키 출력 없음). 키움은 **등록한 IP에서만** 열림 — 다른 PC는 openapi.kiwoom.com 에서 IP 등록 전엔 자동으로 건너뜀. `kt…`(주문) API는 모듈에서 막혀 있고 쓰지 않는다. 키움에는 뉴스 API 없음 |
 | 한투 응답 확인 | 키는 사용자 환경변수(KIS_APP_KEY/KIS_APP_SECRET, 조회 전용) | `python tools/kis.py` (코스피 지수 + 최근 뉴스 제목, 키 출력 없음). 뉴스(종합 시황/공시 제목)는 live_news 출처로 들어가며 출처 표기는 실제 언론사. 토큰 재발급은 알림·횟수 제한이 있어 캐시 재사용. 주문·계좌 TR(TT·VT·CT…)은 모듈에서 막힘 |
+| NH 선물 확인 | market-site ~/.nhplug 설정·토큰 공유(조회 전용) | `python tools/nhfut.py` (코스피200 주간·야간선물 최근월, CME E-mini S&P·나스닥). 현재가 API는 부호가 비어 있어 기간별 시세(dayPeriod)의 부호 있는 전일 대비를 씀, 야간은 주간 종가 대비. 시세 경로만 허용 |
 | 텔레그램·RSS 수집 시각 | 수집은 `live_news.py` 가 돌 때 같이 됨 | 텔레 저장본 `market-site\tg_research\data\tgr.sqlite3`(messages.collected_at, UTC), RSS `tools\rss_cache.json` 수정 시각 |
 
 ## 최신 운영 인계
