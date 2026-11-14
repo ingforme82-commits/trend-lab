@@ -762,7 +762,9 @@
     const krRow = (k) => { const L = [["KOSPI", "코스피"], ["KOSDAQ", "코스닥"], ["KR200", "코스피200"], ["SMSN", "삼성전자"], ["SKHX", "SK하이닉스"]].filter(([c]) => k && k[c] && k[c].px);
       if (!L.length) return "";
       const fv = (c, v) => c === "SMSN" || c === "SKHX" ? Math.round(v).toLocaleString("ko-KR") + "원" : v.toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-      return `<h4>🇰🇷 한국 증시 <small class="dim">(한국거래소 · 전일 종가 대비${L.some(([c]) => k[c].open) ? " · 장중" : " · 마감"})</small></h4><div class="bfs" style="margin-bottom:10px">${L.map(([c, n]) => `<span class="bf"><small>${n}</small> ${fv(c, k[c].px)} ${sg(k[c].chg)}</span>`).join("")}</div>`; };
+      return `<h4>🇰🇷 한국 증시 <small class="dim">(한국거래소 · 전일 종가 대비${L.some(([c]) => k[c].open) ? " · 장중" : " · 마감"}${(() => { const xs = L.map(([c]) => k[c]).filter((v) => v.xc);
+        if (!xs.length) return ""; const off = xs.filter((v) => v.off).length;
+        return off ? ` · ⚠ 증권사 값 불일치 ${off}건(다수 일치 값 사용)` : ` · ✔ 증권사 ${Math.min(...xs.map((v) => +v.xc.split("/")[0]))}~${Math.max(...xs.map((v) => +v.xc.split("/")[0]))}곳 일치`; })()})</small></h4><div class="bfs" style="margin-bottom:10px">${L.map(([c, n]) => `<span class="bf"><small>${n}</small> ${fv(c, k[c].px)} ${sg(k[c].chg)}</span>`).join("")}</div>`; };
     const li = (n) => `<li><b>${hm(n.ts)}</b> ${n.pivot ? "🔴 " : ""}${esc(n.text)} <small class="dim">${esc(n.src)}</small></li>`;
     const top = (b.session || fut) ? `<div class="bwide">${b.session ? `<p class="bsess">🕘 지금: <b>${esc(b.session)}</b></p>` : ""}
         ${krRow(b.kr)}

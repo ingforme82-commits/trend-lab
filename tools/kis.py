@@ -96,21 +96,28 @@ def get(path: str, tr_id: str, params: dict) -> dict:
         return {}
     hd = {"content-type": "application/json; charset=utf-8", "authorization": "Bearer " + tok, "appkey": ks[0], "appsecret": ks[1],
           "tr_id": tr_id, "custtype": "P"}
-    try:
-        r = urllib.request.urlopen(urllib.request.Request(BASE + path + "?" + urllib.parse.urlencode(params), headers=hd), timeout=8)
-        j = json.loads(r.read())
-    except urllib.error.HTTPError as e:
-        if e.code in (401, 403):
-            TOKEN.unlink(missing_ok=True)
-        _down(f"{tr_id} HTTP {e.code}")
+    # 요청 하나가 실패하면 그 요청만 빈 값. 한투 전체를 쉬는 건 토큰·접속 실패 때만(11/15: 잘못된 코드 한 번에 뉴스까지 10분 멈추던 문제)
+    for attempt in (0, 1):
+        try:
+            r = urllib.request.urlopen(urllib.request.Request(BASE + path + "?" + urllib.parse.urlencode(params), headers=hd), timeout=8)
+            j = json.loads(r.read())
+            break
+        except urllib.error.HTTPError as e:
+            body = e.read().decode("utf-8", "replace")
+            if e.code in (401, 403):
+                TOKEN.unlink(missing_ok=True)
+                _down(f"{tr_id} 인증 실패 HTTP {e.code}")
+                return {}
+            if "EGW00201" in body and attempt == 0:      # 초당 요청 한도 → 1초 뒤 한 번 더
+                time.sleep(1.0)
+                continue
+            return {}
+        except Exception as e:  # noqa: BLE001
+            _down(f"{tr_id} 접속 실패: {type(e).__name__}")
+            return {}
+    else:
         return {}
-    except Exception as e:  # noqa: BLE001
-        _down(f"{tr_id} 접속 실패: {type(e).__name__}")
-        return {}
-    if j.get("rt_cd") != "0":
-        _down(f"{tr_id}: {j.get('msg1', '')}")
-        return {}
-    return j
+    return j if j.get("rt_cd") == "0" else {}
 
 
 def news_titles() -> list[dict]:

@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import json
+import time
 import re
 import urllib.request
 from datetime import datetime, timezone
@@ -236,11 +237,27 @@ def kr_now() -> dict:
     """한국 증시: 코스피·코스닥·코스피200·삼성전자·SK하이닉스. 등락은 전일 종가 대비.
     키움(조회 전용) 먼저, 빠진 항목만 네이버(11/15 — 키움 IP 등록 안 된 PC는 전부 네이버)."""
     out = {}
-    try:
-        from kiwoom import kr_quotes
-        out = kr_quotes()
+    try:                                                  # 증권사 교차 확인(키움·한투·NH·네이버 다수 일치 값, 11/15) — 정규장 기준
+        from xbroker import check
+        import kiwoom
+        x = check().get("KRX") or {}
+        live = kiwoom.in_session()
+        last = kiwoom.index_minutes("001", hours=24 * 5)
+        at = int(time.time() * 1000) if live else (last[-1][0] + 60_000 if last else None)
+        for k, v in x.items():
+            if v.get("px") and v.get("chg") is not None:
+                out[k] = {"px": v["px"], "prev": round(v["px"] / (1 + v["chg"] / 100), 2), "chg": v["chg"], "at": at, "open": live,
+                          "src": "·".join(v["agree"]), "xc": f"{len(v['agree'])}/{len(v['srcs'])}", **({"off": v["off"]} if v["off"] else {})}
     except Exception:  # noqa: BLE001
         out = {}
+    if len(out) >= 5:
+        return out
+    try:
+        from kiwoom import kr_quotes
+        for k, v in kr_quotes().items():
+            out.setdefault(k, v)
+    except Exception:  # noqa: BLE001
+        pass
     if len(out) >= 5:
         return out
     try:
