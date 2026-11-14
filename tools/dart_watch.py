@@ -58,6 +58,36 @@ DIGEST_FLAG = Path.home() / ".tg_notify" / "dart_digest_day.txt"
 IR_KEYWORDS = re.compile(r"기업\s*설명회|컨퍼런스\s*콜|컨콜|conference\s*call", re.I)
 KEYWORDS = re.compile(r"잠정|분기보고서|반기보고서|사업보고서|손익구조|결산실적공시|실적\s*발표|경영\s*실적|" + IR_KEYWORDS.pattern, re.I)
 HOME = Path.home()
+# 배당 근거 공시 — MUST 회사만(2026-11-14 운영자: 케이프는 배당 목적 분할매수, 배당·기준일·자본준비금 감액 확인)
+DIV_KEYWORDS = re.compile(r"배당|감액|자본준비금|주주명부폐쇄|기준일|자기주식|주식소각|주주환원|주주총회소집", re.I)
+MUST_CODES = {WATCH[n] for n in MUST}
+
+
+def wanted(title: str, code: str) -> bool:
+    """실적·IR 공시(감시 회사 전체) 또는 배당 근거 공시(MUST 회사만)."""
+    return bool(KEYWORDS.search(title) or (code in MUST_CODES and DIV_KEYWORDS.search(title)))
+
+
+def div_numbers(key: str, rcept_no: str) -> list[str]:
+    """배당결정·기준일·주총소집 공시 본문에서 숫자만 뽑는다(원문 그대로, 권유 없음)."""
+    if not (key and rcept_no.isdigit()):
+        return []
+    try:
+        z = zipfile.ZipFile(BytesIO(_get(f"https://opendart.fss.or.kr/api/document.xml?crtfc_key={key}&rcept_no={rcept_no}", timeout=30)))
+        t = " ".join(html.unescape(re.sub(r"<[^>]+>", " ", z.read(n).decode("utf-8", "replace"))) for n in z.namelist())
+        t = " ".join(t.split())
+    except Exception:  # noqa: BLE001
+        return []
+    out = []
+    for lb, pat, unit in (("배당구분", r"배당구분\s+(\S+)", ""), ("1주당 배당금", r"1주당 배당금\(원\)\s+보통주식\s+([\d,]+)", "원"),
+                          ("시가배당율", r"시가배당율\(%\)\s+보통주식\s+([\d.]+)", "%"),
+                          ("기준일", r"(?:배당기준일|기준일)\s+(\d{4}-\d{2}-\d{2})", ""),
+                          ("지급 예정", r"배당금지급 예정일자\s+(\d{4}-\d{2}-\d{2})", ""),
+                          ("자본준비금", r"(자본준비금[^.]{0,80}감액[^.]{0,60})", "")):
+        m = re.search(pat, t)
+        if m:
+            out.append(f"{lb} {m.group(1)}{unit}")
+    return out
 STATE = HOME / ".tg_notify" / "dart_seen.json"
 CORP_CACHE = HOME / ".dart" / "corp_codes.json"
 UA = {"User-Agent": "Mozilla/5.0"}
@@ -289,7 +319,7 @@ def market_dart(key: str, bgn: str, end: str) -> list[dict]:
                 raise RuntimeError(f"DART {j.get('status')} {j.get('message')}")
             for r in j.get("list", []):
                 t = " ".join(r["report_nm"].split())
-                if KEYWORDS.search(t) and r.get("stock_code"):
+                if r.get("stock_code") and wanted(t, r["stock_code"]):
                     out.append({"id": r["rcept_no"], "name": r["corp_name"], "code": r["stock_code"], "cc": r["corp_code"],
                                 "date": r["rcept_dt"], "title": t, "url": f"https://dart.fss.or.kr/dsaf001/main.do?rcpNo={r['rcept_no']}"})
             if page >= int(j.get("total_page") or 1) or page >= 40:
@@ -313,7 +343,7 @@ def collect(days: int = 14) -> tuple[list[dict], str, list[dict]]:
     out = []
     for name, code in WATCH.items():                      # 키 없음·실패 → KIND 회사별
         try:
-            out += [d for d in from_kind(name, code, bgn, endd) if KEYWORDS.search(d["title"])]
+            out += [d for d in from_kind(name, code, bgn, endd) if wanted(d["title"], code)]
         except Exception:  # noqa: BLE001
             pass
         time.sleep(0.3)
@@ -322,7 +352,7 @@ def collect(days: int = 14) -> tuple[list[dict], str, list[dict]]:
 
 def deliver(kind: str, key: str, text: str) -> bool:
     """TRL 앱 푸시(등록 기기가 있으면 항상) + 텔레그램 봇이 켜져 있으면 텔레그램, 아니면 카톡 '나에게'
-    (카톡 OFF 여도 이 알림은 보냄 — 11/12 운영자 지시)."""
+    (카톡 OFF면 카톡은 보내지 않고 기록만 — 11/14 운영자: 카톡 예외 폐지)."""
     try:                                                    # 📲 앱 푸시: 첫 줄=제목, 나머지=본문, 본문 속 첫 링크를 누르면 열림
         from push_notify import SITE, push
         lines = [x for x in text.splitlines() if x.strip()]
@@ -464,11 +494,13 @@ def main() -> None:
         if first:
             continue
         extra = (quarter_numbers(key, d.get("cc", ""), d["title"]) if "분기보고서" in d["title"] or "반기보고서" in d["title"]
-                 else prelim_numbers(key, d["id"]) if re.search(r"잠정|손익구조", d["title"]) else [])
+                 else prelim_numbers(key, d["id"]) if re.search(r"잠정|손익구조", d["title"])
+                 else div_numbers(key, d["id"]) if DIV_KEYWORDS.search(d["title"]) else [])
         if not IR_KEYWORDS.search(d["title"]):
             extra.append(price_now(d["code"]))
         extra = [e for e in extra if e]
-        ttl = "🎤 IR·컨퍼런스콜" if IR_KEYWORDS.search(d["title"]) else "📑 실적 공시"
+        ttl = ("🎤 IR·컨퍼런스콜" if IR_KEYWORDS.search(d["title"]) else "📑 실적 공시" if KEYWORDS.search(d["title"])
+               else "💰 배당·주주환원 공시")
         star = "⭐ " if d["name"] in MUST else ""
         text = "\n".join([f"{star}{ttl} · {d['name']}({d['code']}) {GROUP.get(d['code'], '')}", d["title"],
                           f"접수 {d['date'][4:6]}/{d['date'][6:]}"] + extra + ([d["url"]] if d["url"] else []) + [f"출처 {src}"])
