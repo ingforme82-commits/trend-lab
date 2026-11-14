@@ -354,6 +354,35 @@ def fetch_rss() -> list[dict]:
     return cache["items"]
 
 
+KIS_RATE = re.compile(r"금리|연준|연은|Fed|FOMC|국채|물가|인플레|CPI|PPI|PCE|고용|실업|파월|통화정책|기준금리|환율|달러인덱스")
+
+
+def fetch_kis() -> list[dict]:
+    """한국투자증권 '종합 시황/공시' 뉴스 제목(조회 전용, 11/15). 출처는 실제 언론사(dorg) — 여러 언론사가 같은 소식을 내면
+    newsgroup 이 '복수 출처'로 확인한다. 시장과 관계없는 기사는 RSS 와 같은 기준으로 뺀다. 키 없는 PC는 빈 목록."""
+    try:
+        from kis import news_titles
+        raw = news_titles()
+    except Exception as e:  # noqa: BLE001
+        log(f"한투 뉴스 건너뜀: {type(e).__name__}: {e}")
+        return []
+    cutoff = (datetime.now(timezone.utc) - timedelta(hours=KEEP_H)).timestamp() * 1000
+    out = []
+    for n in raw:
+        title = n["text"]
+        if n["ts"] < cutoff or len(title) < 12 or BROKER.search(title) or JUNK.search(title):
+            continue
+        tg = tags_of(title)
+        if not tg or NONMKT.search(title) or (tg == ["한국"] and not KR_MKT.search(title)):
+            continue
+        if tg == ["연준·금리"] and not KIS_RATE.search(title):
+            continue                                    # '달러' 한 단어로 금리 분야가 붙는 미국 소형주 공시(배당·순손실·공모가) 제외
+        out.append({"ts": n["ts"], "src": n["src"], "kind": "뉴스", "lang": "ko", "via": "한투",
+                    "text": title[:140] + ("…" if len(title) > 140 else ""), "tags": tg, "hot": bool(HOT.search(title)),
+                    **({"codes": n["codes"][:5]} if n.get("codes") else {})})
+    return out
+
+
 TR_CACHE = ROOT / "tools" / "translate_cache.json"
 SEEN_CACHE = ROOT / "tools" / "seen_cache.json"         # RSS 기사 첫 수집 시각(보도 시각과 구분)
 RSS_HEALTH: dict = {}
@@ -497,9 +526,10 @@ def build() -> dict:
     except Exception as e:  # noqa: BLE001
         log(f"주도 섹터 건너뜀: {type(e).__name__}: {e}")
     tg_items = from_telegram()
-    mark_seen(rss)
+    kis_items = fetch_kis()
+    mark_seen(rss + kis_items)
     from newsgroup import group
-    allitems = group(tg_items + rss + sector_items)          # 같은 사건은 하나로(최초 보도 기준, 후속 출처는 also)
+    allitems = group(tg_items + rss + kis_items + sector_items)          # 같은 사건은 하나로(최초 보도 기준, 후속 출처는 also)
     items, per = [], {}
     n_strat = n_other = 0
     for it in allitems:
