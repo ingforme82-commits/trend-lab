@@ -16,7 +16,7 @@ from __future__ import annotations
 
 import re
 
-OFFICIAL = {"미 연준", "미 EIA"}
+OFFICIAL = {"미 연준", "미 EIA", "백악관", "미 상무부 BEA", "일본은행", "영란은행", "한국은행", "기획재정부"}   # 공식 기관 원문(11/15 추가)
 NOT_NEWS = {"섹터 시세", "증권사 시황", "시황 분석"}
 RUMOR = re.compile(r"루머|소문|찌라시|\b설\b|[가-힣]설$|미확인|소식통|관계자에 따르면|관계자들?에 따르면|익명|보도에 따르면|것으로 알려|전해졌|"
                    r"rumou?r|unconfirmed|reportedly|people familiar|sources? (?:say|said)|according to (?:people|sources|a report)|is said to", re.I)

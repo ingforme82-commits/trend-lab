@@ -132,6 +132,15 @@ FEEDS = [
     ("로이터", "https://news.google.com/rss/search?q=site:reuters.com+when:2h&hl=en-US&gl=US&ceid=US:en", "en"),
     ("미 연준", "https://www.federalreserve.gov/feeds/press_all.xml", "en"),
     ("미 EIA", "https://www.eia.gov/rss/todayinenergy.xml", "en"),
+    # 공식 기관 원문(11/15 운영자: X 유료 대신 무료 먼저 — X 속보 계정이 옮기는 원출처를 직접 받는다)
+    ("미 연준", "https://www.federalreserve.gov/feeds/speeches.xml", "en"),
+    ("백악관", "https://www.whitehouse.gov/news/feed/", "en"),
+    ("백악관", "https://www.whitehouse.gov/presidential-actions/feed/", "en"),
+    ("미 상무부 BEA", "https://apps.bea.gov/rss/rss.xml", "en"),
+    ("일본은행", "https://www.boj.or.jp/en/rss/whatsnew.xml", "en"),
+    ("영란은행", "https://www.bankofengland.co.uk/rss/news", "en"),
+    ("한국은행", "https://www.bok.or.kr/portal/bbs/B0000501/news.rss?menuNo=201264", "ko"),
+    ("기획재정부", "https://www.moef.go.kr/com/detailRssTagService.do?bbsId=MOSFBBS_000000000028", "ko"),
 ]
 
 BROKER = re.compile(r"목표주가|목표가|TP\s|투자의견|BUY|매수\(유지\)|Preview|프리뷰|리서치센터|Analyst|\(02-\d|투자포인트|"
@@ -299,6 +308,18 @@ def from_telegram() -> list[dict]:
     return out
 
 
+# 공식 기관 피드: 제목에 시장 단어가 없어도 들어오게 기본 분야를 붙인다(백악관은 시장 단어가 있을 때만)
+OFFICIAL_TAGS = {"미 연준": ["연준·금리"], "미 상무부 BEA": ["연준·금리"], "일본은행": ["연준·금리"], "영란은행": ["연준·금리"],
+                 "한국은행": ["한국", "연준·금리"], "기획재정부": ["한국"], "백악관": []}
+OFFICIAL_SKIP = re.compile(r"Nominations? Sent|Appointment|Vacanc|채용|인사|간담회 개최 안내|행사|기념식|봉사|시상|Recruit|Career|Webinar|"
+                           r"Accounts \(|Basic Figures|Held by the Bank|Time-Series|Statistics on|Fails|Monthly Report on|Bank of England Act", re.I)
+KR_GOV = re.compile(r"경제동향|고용|물가|수출|무역|세수|국채|환율|외환|예산|성장률|금리|부동산|시장|투자|반도체|관세|재정|국가채무|경제정책")   # 기재부: 지표·정책만
+# 백악관은 정책·시장 단어가 있을 때만(기념 메시지·영부인 행사 등 제외)
+WH_MKT = re.compile(r"tariff|trade|executive order|econom|China|Chinese|sanction|energy|oil|chip|semiconductor|tax|budget|Federal Reserve|"
+                    r"interest rate|deal|agreement|investment|AI|artificial intelligence|nuclear|defense|Korea|Japan|Iran|Russia|Ukraine|"
+                    r"price|inflation|jobs|manufactur|steel|shipbuild|export|import|crypto|bitcoin|stock|market", re.I)
+
+
 def fetch_rss() -> list[dict]:
     """RSS는 5분마다만 새로 받고, 그 사이에는 저장해 둔 것을 쓴다."""
     try:
@@ -338,10 +359,13 @@ def fetch_rss() -> list[dict]:
                 continue
             if dt < cutoff or len(title) < 12 or BROKER.search(title) or JUNK.search(title):
                 continue
-            tg = tags_of(title)
+            tg = tags_of(title) or OFFICIAL_TAGS.get(name, [])
             if not tg:                                  # 시장과 관계없는 일반 기사는 뺀다
                 continue
-            if lang == "ko" and (NONMKT.search(title) or (tg == ["한국"] and not KR_MKT.search(title))):
+            if name in OFFICIAL_TAGS and (OFFICIAL_SKIP.search(title) or (name == "백악관" and not WH_MKT.search(title))
+                                          or (name == "기획재정부" and not KR_GOV.search(title))):
+                continue                                # 공식 기관의 인사·행사·정기 통계 공지, 백악관 비정책 글
+            if lang == "ko" and name not in OFFICIAL_TAGS and (NONMKT.search(title) or (tg == ["한국"] and not KR_MKT.search(title))):
                 continue                                # 국내 종합 피드의 스포츠·연예('한국 야구' 등) — 11/13 변곡점에 잘못 붙던 문제
             h = re.sub(r"\s+", " ", title)
             items.append({"ts": int(dt.timestamp() * 1000), "src": name, "kind": "해외 뉴스" if lang == "en" else "뉴스",
