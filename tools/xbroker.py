@@ -19,7 +19,9 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-CACHE = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "trendlab" / "xbroker.json"
+import keystore  # noqa: E402
+
+CACHE = keystore.state_dir() / "xbroker.json"
 PRIO = ["키움", "한투", "NH", "KB", "네이버"]
 ITEMS = {  # key: (이름, 종류, 키움 코드, 한투 코드, 네이버 심볼)
     "KOSPI": ("코스피", "idx", "001", "0001", "^KS11"),

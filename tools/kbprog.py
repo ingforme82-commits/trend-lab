@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 import time
 import urllib.error
 import urllib.request
@@ -20,7 +21,10 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CACHE = ROOT / "tools" / "kbprog_cache.json"
-TOKDIR = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "trendlab"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import keystore  # noqa: E402
+
+TOKDIR = keystore.state_dir()                  # Windows %LOCALAPPDATA%/trendlab · 리눅스 ~/.local/state/trendlab
 TOKEN = TOKDIR / "kb_token.json"
 BASE = "https://developer.kbsec.com:32484"
 KST = timezone(timedelta(hours=9))
@@ -28,23 +32,15 @@ HDR = {"ipAddr": "127.0.0.1", "macAddr": "00:00:00:00:00:00"}
 
 
 def _keys() -> tuple[str, str] | None:
-    k, s = os.environ.get("KB_APP_KEY", "").strip(), os.environ.get("KB_APP_SECRET", "").strip()
-    if not (k and s) and os.name == "nt":                     # 예약 작업 등 새 환경변수를 못 받은 프로세스: 레지스트리(사용자)에서 직접
-        try:
-            import winreg
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as h:
-                k = k or str(winreg.QueryValueEx(h, "KB_APP_KEY")[0]).strip()
-                s = s or str(winreg.QueryValueEx(h, "KB_APP_SECRET")[0]).strip()
-        except OSError:
-            pass
-    return (k, s) if k and s else None
+    """키: 환경변수 → 비공개 키 파일 → Windows 레지스트리(keystore, PC·Oracle 공통)."""
+    return keystore.pair("KB_APP_KEY", "KB_APP_SECRET")
 
 
 def _post(url: str, body: dict, token: str | None = None) -> dict:
     h = {"Content-Type": "application/json", "Accept": "application/json"}
     if token:
         h["Authorization"] = f"bearer {token}"
-    down = Path(__file__).with_name("kb_down.txt")              # KB 서버 시간 초과 뒤 10분은 부르지 않음(속보 갱신이 멈추지 않게)
+    down = TOKDIR / "kb_down.txt"              # KB 서버 시간 초과 뒤 10분은 부르지 않음(속보 갱신이 멈추지 않게)
     try:
         last = float(down.read_text())
     except (OSError, ValueError):
@@ -78,7 +74,7 @@ def _token() -> str | None:
     if h.get("resultCode") != "200" or not b.get("access_token"):
         raise RuntimeError("KB 인증 거부(신청 상태·키 확인)")
     TOKDIR.mkdir(parents=True, exist_ok=True)
-    TOKEN.write_text(json.dumps({"v": b["access_token"], "exp": time.time() + float(b.get("expires_in") or 3600)}), encoding="utf-8")
+    keystore.write_private(TOKEN, json.dumps({"v": b["access_token"], "exp": time.time() + float(b.get("expires_in") or 3600)}))
     return b["access_token"]
 
 

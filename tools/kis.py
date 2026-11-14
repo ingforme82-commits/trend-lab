@@ -22,7 +22,10 @@ from pathlib import Path
 
 BASE = "https://openapi.koreainvestment.com:9443"
 KST = timezone(timedelta(hours=9))
-TOKDIR = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "trendlab"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import keystore  # noqa: E402
+
+TOKDIR = keystore.state_dir()                  # Windows %LOCALAPPDATA%/trendlab · 리눅스 ~/.local/state/trendlab
 TOKEN = TOKDIR / "kis_token.json"
 DOWN = TOKDIR / "kis_down.json"
 REST_S = 10 * 60
@@ -30,16 +33,8 @@ QUOTE_TR = ("FH",)                                         # 시세·뉴스 조�
 
 
 def _keys() -> tuple[str, str] | None:
-    k, s = os.environ.get("KIS_APP_KEY", "").strip(), os.environ.get("KIS_APP_SECRET", "").strip()
-    if not (k and s) and os.name == "nt":
-        try:
-            import winreg
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as h:
-                k = k or str(winreg.QueryValueEx(h, "KIS_APP_KEY")[0]).strip()
-                s = s or str(winreg.QueryValueEx(h, "KIS_APP_SECRET")[0]).strip()
-        except OSError:
-            pass
-    return (k, s) if k and s else None
+    """키: 환경변수 → 비공개 키 파일 → Windows 레지스트리(keystore, PC·Oracle 공통)."""
+    return keystore.pair("KIS_APP_KEY", "KIS_APP_SECRET")
 
 
 def _down(why: str | None = None) -> str | None:
@@ -80,7 +75,7 @@ def _token() -> str | None:
         _down(f"토큰 실패: {j.get('error_description', '')}")
         return None
     TOKDIR.mkdir(parents=True, exist_ok=True)
-    TOKEN.write_text(json.dumps({"v": j["access_token"], "exp": time.time() + int(j.get("expires_in") or 86400)}), encoding="utf-8")
+    keystore.write_private(TOKEN, json.dumps({"v": j["access_token"], "exp": time.time() + int(j.get("expires_in") or 86400)}))
     return j["access_token"]
 
 

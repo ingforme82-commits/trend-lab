@@ -94,14 +94,11 @@ UA = {"User-Agent": "Mozilla/5.0"}
 
 
 def dart_key() -> str:
-    k = os.environ.get("DART_API_KEY", "").strip()
-    if not k and os.name == "nt":
-        try:
-            import winreg
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as h:
-                k = str(winreg.QueryValueEx(h, "DART_API_KEY")[0]).strip()
-        except OSError:
-            pass
+    try:                                                   # 환경변수 → 비공개 키 파일 → Windows 레지스트리(PC·Oracle 공통)
+        import keystore
+        k = keystore.get("DART_API_KEY")
+    except Exception:  # noqa: BLE001
+        k = os.environ.get("DART_API_KEY", "").strip()
     if not k:
         try:
             for line in (HOME / ".dart" / ".env").read_text(encoding="utf-8-sig").splitlines():

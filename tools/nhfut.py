@@ -18,9 +18,21 @@ from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
 KST = timezone(timedelta(hours=9))
-VENV = Path(r"C:\projects\market-site\trader\.venv\Lib\site-packages")
 LIVE = "https://api.nhplug.com:8443"
-CACHE = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "trendlab" / "nhfut.json"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import keystore  # noqa: E402
+
+CACHE = keystore.state_dir() / "nhfut.json"
+
+
+def _nhplug_paths() -> list[Path]:
+    """nhplug 패키지 위치 후보(이미 import 되면 필요 없음): NHPLUG_SITE → market-site 가상환경(Windows) → Oracle ~/projects/.venvs/trl."""
+    root = Path(__file__).resolve().parents[2]              # …/projects
+    c = [Path(os.environ["NHPLUG_SITE"])] if os.environ.get("NHPLUG_SITE") else []
+    c.append(root / "market-site" / "trader" / ".venv" / "Lib" / "site-packages")
+    for base in (root / ".venvs" / "trl", root / "market-site" / "trader" / ".venv", Path.home() / "projects" / ".venvs" / "trl"):
+        c += sorted((base / "lib").glob("python3*/site-packages"))
+    return [p for p in c if (p / "nhplug").is_dir()]
 ALLOW = ("/krfuture/quote/", "/gbfuture/quote/", "/krstock/quote/")   # 시세 조회 경로만(주식 현재가는 증권사 교차 확인용)
 MON = "123456789ABC"                                       # KRX 월 코드(10·11·12월 = A·B·C)
 CME_MON = {3: "H", 6: "M", 9: "U", 12: "Z"}
@@ -63,9 +75,13 @@ def cme_code(root: str, today: date | None = None) -> str:
 def _call(path: str, inp: dict) -> dict:
     if not path.startswith(ALLOW):
         raise PermissionError("NH 선물 모듈은 시세 조회만 한다")
-    if str(VENV) not in sys.path:
-        sys.path.append(str(VENV))
-    from nhplug import call
+    try:
+        from nhplug import call
+    except ImportError:
+        for p in _nhplug_paths():
+            if str(p) not in sys.path:
+                sys.path.append(str(p))
+        from nhplug import call
     saved = os.environ.get("NHPLUG_BASE_URL")
     os.environ["NHPLUG_BASE_URL"] = LIVE                  # 시세는 운영 서버(설정은 모의투자 주소여도)
     try:

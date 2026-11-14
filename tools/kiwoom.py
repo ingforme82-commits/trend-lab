@@ -21,7 +21,10 @@ from pathlib import Path
 
 BASE = "https://api.kiwoom.com"
 KST = timezone(timedelta(hours=9))
-TOKDIR = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "trendlab"
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import keystore  # noqa: E402
+
+TOKDIR = keystore.state_dir()                  # Windows %LOCALAPPDATA%/trendlab · 리눅스 ~/.local/state/trendlab
 TOKEN = TOKDIR / "kiwoom_token.json"
 DOWN = TOKDIR / "kiwoom_down.json"            # 실패하면 30분 쉼(IP 미등록 PC·서버 장애 때 속보 갱신이 느려지지 않게)
 INDS = {"KOSPI": "001", "KOSDAQ": "101", "K200": "201"}   # 업종코드: 코스피 종합·코스닥 종합·코스피200
@@ -30,16 +33,8 @@ REST_S = 30 * 60
 
 
 def _keys() -> tuple[str, str] | None:
-    k, s = os.environ.get("KIWOOM_APP_KEY", "").strip(), os.environ.get("KIWOOM_SECRET_KEY", "").strip()
-    if not (k and s) and os.name == "nt":                 # 예약 작업 등 새 환경변수를 못 받은 프로세스: 레지스트리(사용자)에서
-        try:
-            import winreg
-            with winreg.OpenKey(winreg.HKEY_CURRENT_USER, "Environment") as h:
-                k = k or str(winreg.QueryValueEx(h, "KIWOOM_APP_KEY")[0]).strip()
-                s = s or str(winreg.QueryValueEx(h, "KIWOOM_SECRET_KEY")[0]).strip()
-        except OSError:
-            pass
-    return (k, s) if k and s else None
+    """키: 환경변수 → 비공개 키 파일 → Windows 레지스트리(keystore, PC·Oracle 공통)."""
+    return keystore.pair("KIWOOM_APP_KEY", "KIWOOM_SECRET_KEY")
 
 
 def _down(why: str | None = None) -> str | None:
@@ -91,7 +86,7 @@ def _token() -> str | None:
     except Exception:  # noqa: BLE001
         exp = time.time() + 6 * 3600
     TOKDIR.mkdir(parents=True, exist_ok=True)
-    TOKEN.write_text(json.dumps({"v": j["token"], "exp": exp}), encoding="utf-8")
+    keystore.write_private(TOKEN, json.dumps({"v": j["token"], "exp": exp}))
     return j["token"]
 
 
