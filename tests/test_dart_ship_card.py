@@ -48,5 +48,20 @@ class ShipCardTest(unittest.TestCase):
             self.assertFalse(ship_card_update("케이프", "영업(잠정)실적", "20261113", [], q))
 
 
+    def test_monthly_order_disclosure_skipped(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = card(Path(d), ["케이프"])
+            self.assertFalse(ship_card_update("케이프", "영업(잠정)실적(공정공시)", "20261019", [], p))
+
+    def test_one_line_per_company(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = card(Path(d), ["케이프"])
+            q = ["매출액 4,136억 (작년 같은 분기 대비 +39%)", "영업이익 409억 (작년 같은 분기 대비 +54%)"]
+            self.assertTrue(ship_card_update("한화엔진", "분기보고서 (2026.09)", "20261113", q, p))
+            pts = json.loads(p.read_text(encoding="utf-8"))["items"][1]["points"]
+            self.assertEqual([x for x in pts if "한화엔진" in x], ["✔ 11/13 한화엔진 — 매출액 4,136억 (+39%) · 영업이익 409억 (+54%)"])
+            self.assertFalse(ship_card_update("한화엔진", "분기보고서 (2026.09)", "20261114", [], p))
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -49,7 +49,7 @@ SHIP = {
     "성광벤드": "014620", "태광": "023160", "하이록코리아": "013030", "비엠티": "086670", "한라IMS": "092460",
     "오리엔탈정공": "014940", "한화엔진": "082740", "HD현대마린솔루션": "443060", "HD현대마린엔진": "071970",
     "삼성중공업": "010140", "한화오션": "042660", "HD한국조선해양": "009540", "HD현대중공업": "329180",
-    "에스엔시스": "0008Z0", "대한조선": "439260",
+    "에스엔시스": "0008Z0", "대한조선": "439260", "영광": "359410",
 }
 WATCH = {**SHIP, **SEMI}
 GROUP = {**{c: "🚢 조선" for c in SHIP.values()}, **{c: "💾 반도체 소부장" for c in SEMI.values()}}
@@ -156,6 +156,23 @@ def from_kind(name: str, code: str, bgn: str, end: str) -> list[dict]:
                         "date": td[1][:10].replace("-", ""), "title": td[3],
                         "url": f"https://kind.krx.co.kr/common/disclsviewer.do?method=search&acptno={acpt.group(1)}" if acpt else ""})
     return out
+
+
+def dart_twin(key: str, d: dict) -> dict:
+    """KIND에서 잡힌 공시(id 'K…')는 DART 접수번호가 없어 원문 숫자를 못 읽는다 → 같은 날 같은 제목의 DART 공시를 찾아
+    rno(접수번호)·cc(고유번호)를 붙인다. 못 찾으면 그대로(2026-11-14: 카드에 '숫자는 원문 확인'만 남던 원인)."""
+    if not (key and d["id"].startswith("K")):
+        return d
+    cc = d.get("cc") or corp_codes(key).get(d["code"], "")
+    if not cc:
+        return d
+    try:
+        lst = from_dart(key, d["name"], d["code"], cc, d["date"], d["date"])
+    except Exception:  # noqa: BLE001
+        return {**d, "cc": cc}
+    norm = lambda t: re.sub(r"\W", "", t)
+    m = next((x for x in lst if norm(x["title"]) == norm(d["title"])), None)
+    return {**d, "cc": cc, "rno": m["id"]} if m else {**d, "cc": cc}
 
 
 def eok(v: float) -> str:
@@ -395,11 +412,17 @@ def ship_card_update(name: str, title: str, date: str, extra: list[str], path: P
     if not it:
         return False
     nums = [e.split(" (")[0] for e in extra if re.match(r"(매출액|영업이익|당기순이익) ", e)][:2]
+    if not nums and re.search(r"잠정", title):
+        return False                       # 숫자 없는 '잠정' = HD현대 계열 월간 수주 공시 등 → 실적 아님
     chg = [m.group(1) for e in extra if re.match(r"(매출액|영업이익) ", e)
            for m in [re.search(r"작년 같은 분기 대비 ([^·)]+)", e)] if m][:2]
     body = " · ".join(f"{n} ({c.strip()})" if i < len(chg) else n for i, (n, c) in enumerate(zip(nums, chg + [""] * 2)))
     line = f"✔ {date[4:6]}/{date[6:]} {name} — " + (body or "실적 공시 나옴(숫자는 공시 원문 확인)")
-    pts = [p for p in it.get("points", []) if not p.startswith(f"✔ {date[4:6]}/{date[6:]} {name} ")]
+    mine = re.compile(rf"✔ \d\d/\d\d {re.escape(name)} — ")
+    old = [p for p in it.get("points", []) if mine.match(p)]
+    if not nums and any("실적 공시 나옴" not in p for p in old):
+        return False                       # 숫자 있는 줄이 이미 있으면 숫자 없는 새 공시로 덮지 않는다
+    pts = [p for p in it.get("points", []) if not mine.match(p)]   # 회사당 한 줄(잠정실적 → 분기보고서로 교체)
     pending = [n for n in it.get("pending", []) if n != name]
     pts = [line] + [p for p in pts if not p.startswith("⏳")]
     if pending:
@@ -493,9 +516,11 @@ def main() -> None:
     for d in new:
         if first:
             continue
-        extra = (quarter_numbers(key, d.get("cc", ""), d["title"]) if "분기보고서" in d["title"] or "반기보고서" in d["title"]
-                 else prelim_numbers(key, d["id"]) if re.search(r"잠정|손익구조", d["title"])
-                 else div_numbers(key, d["id"]) if DIV_KEYWORDS.search(d["title"]) else [])
+        t = dart_twin(key, d)
+        rno = t.get("rno", d["id"])
+        extra = (quarter_numbers(key, t.get("cc", ""), d["title"]) if "분기보고서" in d["title"] or "반기보고서" in d["title"]
+                 else prelim_numbers(key, rno) if re.search(r"잠정|손익구조", d["title"])
+                 else div_numbers(key, rno) if DIV_KEYWORDS.search(d["title"]) else [])
         if not IR_KEYWORDS.search(d["title"]):
             extra.append(price_now(d["code"]))
         extra = [e for e in extra if e]
