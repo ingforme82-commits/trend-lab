@@ -28,7 +28,7 @@ STATE = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "trendlab" / "m
 KST = timezone(timedelta(hours=9))
 TAG = "⚡ 지수 급변(자동)"
 LIMIT = {"나스닥100": 1.5, "S&P500": 1.0, "코스피200": 2.0}
-ASSET = {"NQ": "나스닥100", "SP": "S&P500", "K200": "코스피200"}
+ASSET = {"NQ": "나스닥100", "SP": "S&P500", "K200": "코스피200", "KOSPI": "코스피", "KOSDAQ": "코스닥"}
 MIN = 60_000
 IDX_RX = re.compile(r"나스닥|S&P|다우|증시|월가|뉴욕|코스피|코스닥|반도체|AI|엔비디아|연준|금리|국채|달러|유가|이란|관세|트럼프|"
                     r"Nasdaq|Wall Street|stocks|Fed|Treasury|yield|chip|Nvidia|rally|selloff", re.I)

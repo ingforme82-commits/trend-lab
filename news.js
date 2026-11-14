@@ -13,7 +13,7 @@
     { code: "US10Y", k: "srv:US10Y", n: "미 10년물 금리", d: 3, suf: "%", bp: true },
     { code: "DXY", k: "srv:DXY", n: "달러인덱스", d: 2 },
   ];
-  const COIN = { NQ: "xyz:XYZ100", SP: "xyz:SP500", K200: "xyz:KR200", WTI: "xyz:CL", BRENT: "xyz:BRENTOIL", GOLD: "xyz:GOLD", US10Y: "srv:US10Y", DXY: "srv:DXY" };
+  const COIN = { NQ: "xyz:XYZ100", SP: "xyz:SP500", K200: "xyz:KR200", WTI: "xyz:CL", BRENT: "xyz:BRENTOIL", GOLD: "xyz:GOLD", US10Y: "srv:US10Y", DXY: "srv:DXY", KOSPI: "srv:KOSPI", KOSDAQ: "srv:KOSDAQ" };
   const REACT = CARDS.slice(0, 3);   // 목록의 '이후' 변화: 나스닥100·코스피200·WTI
   const H = 24;
   const q = (s) => document.querySelector(s);

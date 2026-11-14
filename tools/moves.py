@@ -1,6 +1,8 @@
 """변곡점(평소보다 크게 움직이기 시작한 구간) 감지 + 직전 뉴스 연결.
 
 - 1분봉 24시간: 하이퍼리퀴드(나스닥100·코스피200·WTI·브렌트·금), 야후(미 10년물 금리 ^TNX, 달러인덱스 DXY)
+- 한국 정규장 실제 지수: 키움 REST 업종 1분봉(코스피·코스닥, 2026-11-15). 키움 키·IP 없는 PC는 건너뜀.
+  정규장 시간에는 코스피200 24시간 지수 대신 실제 코스피 변곡점을 쓴다(같은 움직임이 두 번 나오지 않게).
 - 5·10·30분 변화가 평소 변화폭(중앙값)의 4배와 자산별 최소 기준을 동시에 넘으면 급변으로 본다.
 - WTI는 60·180분 순변화 ±1%, 브렌트는 60분 1.5%·180분 2.5% 누적 움직임도 찾는다.
 - 이어지는 급변 분을 하나의 구간으로 묶고, 그 직전 저점(상승)·고점(하락)을 변곡점으로 잡는다.
@@ -22,6 +24,10 @@ ASSETS = [
     ("SP", "S&P500", "hl", "xyz:SP500", "pct", 0.40, ("AI·빅테크", "반도체", "지수", "연준·금리", "원전", "중동·유가")),
     ("K200", "코스피200", "hl", "xyz:KR200", "pct", 0.60, ("한국", "반도체", "지수", "원전", "방산", "2차전지", "조선",
                                                           "연준·금리", "AI·빅테크")),   # 11/14: 해외 금리·AI 재료도 한국장을 움직임
+    ("KOSPI", "코스피", "kw", "001", "pct", 0.50, ("한국", "반도체", "지수", "원전", "방산", "2차전지", "조선", "환율",
+                                                 "연준·금리", "AI·빅테크")),
+    ("KOSDAQ", "코스닥", "kw", "101", "pct", 0.60, ("한국", "반도체", "지수", "2차전지", "바이오", "원전", "방산", "환율",
+                                                   "연준·금리", "AI·빅테크")),
     ("WTI", "WTI", "hl", "xyz:CL", "pct", 1.00, ("중동·유가", "러·우")),
     ("BRENT", "브렌트", "hl", "xyz:BRENTOIL", "pct", 0.80, ("중동·유가", "러·우")),
     ("GOLD", "금", "hl", "xyz:GOLD", "pct", 0.45, ("연준·금리", "중동·유가")),
@@ -30,7 +36,7 @@ ASSETS = [
 ]
 WIN = 10            # 분
 TREND_1H = {"WTI": 1.0, "BRENT": 1.0}   # 60분 변화가 이 % 이상이면 평소 폭과 상관없이 변곡점(운영자 기준: 유가는 1%만 변해도)
-US_A, KR_A = {"NQ", "SP"}, {"K200"}
+US_A, KR_A = {"NQ", "SP"}, {"K200", "KOSPI", "KOSDAQ"}
 KR_GLOBAL_TAGS = {"반도체", "연준·금리", "AI·빅테크"}   # 코스피200에 붙여도 되는 미국 뉴스 분야(한국 뉴스보다 낮은 순위)
 US_RX = re.compile(r"미국|나스닥|S&P|다우|뉴욕|월가|연준|파월|엔비디아|브로드컴|인텔|AMD|마이크론|테슬라|애플|오클로|뉴스케일|"
                    r"\$[A-Z]{1,5}\b|Nasdaq|Wall Street|\bFed\b|NYSE")
@@ -60,6 +66,8 @@ def session_of(code: str, ts: int) -> str:
         if (k.weekday() < 5 and km >= 18 * 60) or (k.weekday() in (1, 2, 3, 4, 5) and km < 5 * 60):
             return "야간선물 시간"
         return "장외(24시간 지수)"
+    if code in ("KOSPI", "KOSDAQ"):
+        return "정규장"
     if code in US_A:
         n = datetime.fromtimestamp(ts / 1000, ZoneInfo("America/New_York"))
         nm = n.hour * 60 + n.minute
@@ -147,6 +155,9 @@ def fetch(asset) -> list[tuple[int, float]]:
     code, _, src, sym, *_ = asset
     now = int(datetime.now(timezone.utc).timestamp() * 1000)
     try:
+        if src == "kw":
+            from kiwoom import index_minutes             # 조회 전용, 실패하면 빈 목록
+            return index_minutes(sym, hours=24)
         if src == "hl":
             d = _post({"type": "candleSnapshot", "req": {"coin": sym, "interval": "1m", "startTime": now - 24 * 3600_000, "endTime": now}})
             return [(int(c["t"]), float(c["c"])) for c in d]
@@ -222,8 +233,10 @@ def detect(asset, rows: list[tuple[int, float]]) -> list[dict]:
 OIL_TREND_WINDOWS = ((60, 1.5), (180, 2.5))
 WTI_TREND_WINDOWS = ((60, 1.0), (180, 1.0))
 # 지수도 1·3시간 누적(11/12: 나스닥이 몇 시간 꾸준히 +3% 오르는 동안 10분 급변 기준만 있어 변곡점이 안 잡힌 문제)
-IDX_TREND_WINDOWS = {"NQ": ((60, 0.8), (180, 1.5)), "SP": ((60, 0.6), (180, 1.0)), "K200": ((60, 1.0), (180, 2.0))}
-IDX_MAX_GAP = {"K200": 10}               # 코스피200 24시간 선물은 밤에 체결이 드물어 1분봉 빈칸 허용(분)
+IDX_TREND_WINDOWS = {"NQ": ((60, 0.8), (180, 1.5)), "SP": ((60, 0.6), (180, 1.0)), "K200": ((60, 1.0), (180, 2.0)),
+                     "KOSPI": ((60, 0.8), (180, 1.5)), "KOSDAQ": ((60, 1.0), (180, 1.8))}
+KW_CODES = {"KOSPI", "KOSDAQ"}
+IDX_MAX_GAP = {"K200": 10, "KOSPI": 11, "KOSDAQ": 11}   # 키움 지수는 15:20~15:30 동시호가 10분 빈칸               # 코스피200 24시간 선물은 밤에 체결이 드물어 1분봉 빈칸 허용(분)
 
 
 def merge_moves(events: list[dict]) -> list[dict]:
@@ -266,7 +279,9 @@ def cumulative_moves(asset, rows: list[tuple[int, float]]) -> list[dict]:
                    for a, b in zip(segment, segment[1:])):
                 continue
             change = _chg(segment[0][1], segment[-1][1], unit)
-            path = sum(abs(b[1] - a[1]) for a, b in zip(segment, segment[1:]))
+            # 실제 지수(키움)는 1분마다 잔 등락이 많아 5분 간격으로 방향성을 본다(11/13 코스피 12~13시 -1.9%가 효율 0.36으로 빠지던 문제)
+            pts = segment[::5] + ([segment[-1]] if (len(segment) - 1) % 5 else []) if code in KW_CODES else segment
+            path = sum(abs(b[1] - a[1]) for a, b in zip(pts, pts[1:]))
             efficiency = abs(segment[-1][1] - segment[0][1]) / path if path else 0
             # WTI는 순변화 1% 자체를 신호로 삼는다(중간 흔들림으로 누락시키지 않음).
             min_eff = 0.0 if code == "WTI" else 0.45 if code in IDX_TREND_WINDOWS else 0.6   # 지수는 흔들리며 오르는 경우가 많아 0.45
@@ -286,6 +301,18 @@ def cumulative_moves(asset, rows: list[tuple[int, float]]) -> list[dict]:
     return out
 
 
+def drop_k200_dup(moves: list[dict]) -> list[dict]:
+    """한국 정규장에 실제 코스피 변곡점이 있으면, 같은 방향으로 시간이 겹치는 코스피200 24시간 지수 변곡점은 뺀다."""
+    ks = [m for m in moves if m["asset"] == "KOSPI"]
+    if not ks:
+        return moves
+    def dup(m: dict) -> bool:
+        return (m["asset"] == "K200" and session_of("K200", m["start"]) == "정규장"
+                and any((k["move"] > 0) == (m["move"] > 0) and k["start"] <= m["end"] + 5 * 60_000 and m["start"] <= k["end"] + 5 * 60_000
+                        for k in ks))
+    return [m for m in moves if not dup(m)]
+
+
 def _move_between(rows, t0, t1, unit):
     a = next((c for t, c in reversed(rows) if t <= t0), None)
     b = next((c for t, c in reversed(rows) if t <= t1), None)
@@ -300,6 +327,7 @@ def analyze(items: list[dict]) -> tuple[list[dict], dict]:
         rows = data[a[0]]
         moves += merge_moves(detect(a, rows) + cumulative_moves(a, rows))
         moves += level_cross(a[0], a[1], a[4], data[a[0]])   # 주요 가격대 돌파(예: WTI $85)
+    moves = drop_k200_dup(moves)
     moves.sort(key=lambda m: -m["start"])
     for k, m in enumerate(moves):
         m["id"] = f'{m["asset"]}-{"L" if m.get("kind") == "level" else "C" if m.get("kind") == "cumulative" else ""}{m["start"] // 60000}'
@@ -354,7 +382,7 @@ def analyze(items: list[dict]) -> tuple[list[dict], dict]:
     group_moments(moves)
     # 화면용: 금리·달러 5분 간격 시계열(하이퍼리퀴드에 없는 것)
     series = {}
-    for code in ("US10Y", "DXY"):
-        rows = data[code]
+    for code in ("US10Y", "DXY", "KOSPI", "KOSDAQ"):
+        rows = data.get(code) or []
         series[code] = [[t, round(c, 4)] for t, c in rows if (t // 60000) % 5 == 0]
     return moves[:40], series

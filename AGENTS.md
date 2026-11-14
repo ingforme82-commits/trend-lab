@@ -49,6 +49,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File $o push -Message "무엇을 
 | 밤사이 NH 모의 판정(22:35·04:50·04:55)이 기록에 없음, 아침에 예약 작업들이 결과 1 | 노트북 절전·종료(예약 작업 '깨우기' 꺼짐) | 미국장 동안 전원 연결·절전 해제. 놓친 판정은 되돌릴 수 없음 — `market-site\trader\logs\decisions_*.jsonl` 끊긴 시각 확인 |
 | NH 잔고 $0, 계좌 끝자리가 바뀜 | NH 모의 계좌가 새로 발급됨(기존 계좌 목록에서 사라짐) | `trader\.venv\Scripts\python nh_tool.py accounts` 로 확인 → 운영자가 NH 포털에서 모의 계좌·자금 확인. 주문은 운영자 확인 전 보내지 않음 |
 | KB 응답 확인 | 키는 사용자 환경변수(KB_APP_KEY/SECRET) | `market-site\backend\.venv\Scripts\python market-site\trader\kb_tool.py price 005930` (조회만, 키 출력 없음). Codex 실행 환경이 네트워크 차단이면 메인 노트북 PowerShell 에서 |
+| 키움 응답 확인 | 키는 사용자 환경변수(KIWOOM_APP_KEY/SECRET_KEY, 실전용·조회 전용) | `python tools/kiwoom.py` (코스피·코스닥 현재가·1분봉, 키 출력 없음). 키움은 **등록한 IP에서만** 열림 — 다른 PC는 openapi.kiwoom.com 에서 IP 등록 전엔 자동으로 건너뜀. `kt…`(주문) API는 모듈에서 막혀 있고 쓰지 않는다. 키움에는 뉴스 API 없음 |
 | 텔레그램·RSS 수집 시각 | 수집은 `live_news.py` 가 돌 때 같이 됨 | 텔레 저장본 `market-site\tg_research\data\tgr.sqlite3`(messages.collected_at, UTC), RSS `tools\rss_cache.json` 수정 시각 |
 
 ## 최신 운영 인계
