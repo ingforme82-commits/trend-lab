@@ -90,6 +90,30 @@ def cnbc_fx() -> dict:
     return out
 
 
+KR_24H = {"코스피200": ("xyz:KR200", "KR200"), "삼성전자": ("xyz:SMSN", "SMSN"), "SK하이닉스": ("xyz:SKHX", "SKHX")}
+
+
+def since_close(fut: list[dict], kr: dict) -> None:
+    """한국 24시간 시세(하이퍼리퀴드)에 '마지막 거래소 종가 이후 변화'를 붙인다(11/15 운영자 승인 — 주말에 24시간 -0.13%와
+    실제 금요일 종가 -1.05%가 섞여 보이던 문제). 한국장 중에는 붙이지 않는다(거래소 실시간이 기준)."""
+    import urllib.request
+    for f in fut:
+        m = KR_24H.get(f["name"])
+        k = kr.get(m[1]) if m else None
+        if not (m and k and k.get("at")) or k.get("open"):
+            continue
+        t = int(k["at"])
+        try:
+            body = json.dumps({"type": "candleSnapshot", "req": {"coin": m[0], "interval": "5m", "startTime": t - 15 * 60_000, "endTime": t + 5 * 60_000}}).encode()
+            cs = json.loads(urllib.request.urlopen(urllib.request.Request("https://api.hyperliquid.xyz/info", body,
+                                                                          {"Content-Type": "application/json"}), timeout=8).read())
+            base = float([c for c in cs if int(c["t"]) <= t][-1]["c"])
+        except Exception:  # noqa: BLE001
+            continue
+        if base > 0:
+            f.update(since_close=round((f["px"] / base - 1) * 100, 2), close_at=t, close_chg=k.get("chg"))
+
+
 def make(out: dict) -> dict:
     now = datetime.now(timezone.utc).timestamp() * 1000
     items = {it["ts"]: it for it in out.get("items", [])}
@@ -145,6 +169,7 @@ def make(out: dict) -> dict:
     ana = sorted((it for it in news if it.get("kind") in ("시황 분석", "증권사 시황")), key=lambda x: (-(x.get("imp") or 0), -x["ts"]))[:3]
     analysis = [{"ts": it["ts"], "text": it["text"][:120], "sub": (it.get("sub") or "")[:160], "src": it.get("src", ""), "imp": it.get("imp")} for it in ana]
     fut = futures()
+    since_close(fut, out.get("kr") or {})
     tnx = out.get("us10y") or {}
     return {"at": int(now), "session": session(datetime.now(timezone.utc)), "futures": fut, "kr": out.get("kr") or {},
             "us10y": {"px": tnx.get("px"), "bp": tnx.get("bp")} if tnx.get("px") else None,

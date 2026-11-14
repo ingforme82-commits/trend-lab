@@ -233,14 +233,25 @@ def _yield_yf(sym: str) -> dict:
 
 
 def kr_now() -> dict:
-    """한국 증시 실시간(네이버): 코스피·코스닥·코스피200·삼성전자·SK하이닉스. 등락은 전일 종가 대비."""
+    """한국 증시: 코스피·코스닥·코스피200·삼성전자·SK하이닉스. 등락은 전일 종가 대비.
+    키움(조회 전용) 먼저, 빠진 항목만 네이버(11/15 — 키움 IP 등록 안 된 PC는 전부 네이버)."""
+    out = {}
+    try:
+        from kiwoom import kr_quotes
+        out = kr_quotes()
+    except Exception:  # noqa: BLE001
+        out = {}
+    if len(out) >= 5:
+        return out
     try:
         from krx import quotes
         q = quotes(["^KS11", "^KQ11", "^KS200", "005930.KS", "000660.KS"])
     except Exception:  # noqa: BLE001
-        return {}
+        return out
     names = {"^KS11": "KOSPI", "^KQ11": "KOSDAQ", "^KS200": "KR200", "005930.KS": "SMSN", "000660.KS": "SKHX"}
-    return {names[k]: {"px": v["px"], "prev": v["prev"], "chg": v["chg"], "at": v["at"], "open": v["status"] == "OPEN"} for k, v in q.items()}
+    for k, v in q.items():
+        out.setdefault(names[k], {"px": v["px"], "prev": v["prev"], "chg": v["chg"], "at": v["at"], "open": v["status"] == "OPEN", "src": "네이버"})
+    return out
 
 
 REG = {"SP500": "^GSPC", "XYZ100": "^NDX", "EWY": "EWY", "KORU": "KORU", "SOXL": "SOXL"}

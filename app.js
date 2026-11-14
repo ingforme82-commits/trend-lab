@@ -500,13 +500,20 @@ function liveBand() {
       : x.sym + " " + sn + " 마지막 체결 " + cash(e.px) + " (" + pcLive(e.chg) + " · " + hhmm(KST(new Date(e.at || e.checked_at || 0))) + ")";
   });
   const future = (name) => (brief.futures || []).find((x) => x.name === name);
+  // 한국은 거래소 마지막 종가가 기준, 24시간 시세는 '야간·24시간 · 종가 이후 변화'로 따로(11/15 운영자 승인)
+  const krClose = () => [["KOSPI", "코스피"], ["KOSDAQ", "코스닥"]].filter(([c]) => kr[c] && kr[c].px != null && !kr[c].open)
+    .map(([c, n]) => n + " " + Number(kr[c].px).toLocaleString("ko-KR", { maximumFractionDigits: 2 }) + " (" + pcLive(kr[c].chg) + ")")
+    .join(" · ") + (idx.at && !idx.open ? " · " + (KST(new Date(idx.at)).getMonth() + 1) + "/" + KST(new Date(idx.at)).getDate() + " 마감" : "");
   const live24 = () => [["코스피200", ""], ["나스닥100", ""], ["S&P500", ""], ["WTI", "$"], ["브렌트", "$"], ["금", "$"], ["원/달러", ""]]
-    .map(([n, u]) => { const f = future(n); return f ? n + " " + u + Number(f.px).toLocaleString("en-US", { maximumFractionDigits: 2 }) + " (" + pcLive(f.chg) + ")" : ""; })
+    .map(([n, u]) => { const f = future(n); if (!f) return "";
+      const v = u + Number(f.px).toLocaleString("en-US", { maximumFractionDigits: 2 });
+      return f.since_close != null ? n + " 야간·24시간 " + v + " (종가 이후 " + pcLive(f.since_close) + ")" : n + " " + v + " (" + pcLive(f.chg) + ")"; })
     .filter(Boolean).join(" · ");
   let icon = "", title = "", at = window.trlUpdated || Date.now();
   if (!weekday) {
     // 주말: 정시 브리핑 대신 지금 시각 24시간 시세 하나로(운영자 지시 — 기준을 나누지 않음)
-    icon = "🛰️"; title = "주말 · 24시간 시세";
+    icon = "🛰️"; title = "주말 · 한국 종가 + 24시간 시세";
+    if (krClose()) out.push(krClose());
     out.push(live24());
     if (latest()) out.push(latest());
     at = brief.at || at;

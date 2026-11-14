@@ -537,6 +537,9 @@
     const today = kstDay(Date.now()), tmr = kstDay(Date.now() + 86400e3);
     const fut = {}; ((brief && brief.futures) || []).forEach((f) => { fut[f.name] = f; });
     const fv = (n) => { const f = fut[n]; return f ? `${esc(n)} ${f.u === "$" ? "$" : ""}${(+f.px).toLocaleString("ko-KR", { maximumFractionDigits: 2 })}${f.u === "원" ? "원" : ""} ${sg2(f.chg)}` : ""; };
+    // 한국 24시간 시세: 장 밖이면 '마지막 거래소 종가 이후 변화'(11/15 — 24시간 등락과 실제 종가가 섞여 보이던 문제)
+    const fk = (n) => { const f = fut[n]; if (!f) return ""; if (f.since_close == null) return fv(n);
+      return `${esc(n)} 야간·24시간 ${f.u === "$" ? "$" : ""}${(+f.px).toLocaleString("ko-KR", { maximumFractionDigits: 2 })} ${sg2(f.since_close)} <small class="dim">${kstDay(f.close_at) === kstDay(Date.now()) ? "" : `${+kstDay(f.close_at).slice(5, 7)}/${+kstDay(f.close_at).slice(8)} `}종가 이후</small>`; };
     const top3 = (gs) => (gs || []).slice(0, 3).map((g) => `${esc(g.name)} ${sg2(g.chg)} <small class="dim">상승 ${g.up}/${g.n}</small>`).join(" · ");
     const reg = window.trlReg || {}, kr = window.trlKr || {};
     const L = [];
@@ -552,8 +555,10 @@
       if (f.length) L.push(`📈 지수·유가(24시간 선물): ${f.join(" · ")}${brief && brief.us10y ? ` · 미 10년물 ${(+brief.us10y.px).toFixed(3)}%` : ""}`);
       const hu = leaders && leaders.hourly && leaders.hourly.us && (leaders.hourly.us.slots || [])[0];
       if (hu && hu.live) L.push(`⏱ 이번 시간(${hu.h}시~) 강세: ${(hu.sectors || []).slice(0, 2).map((g) => `${esc(g.name)} ${sg2(g.slot)}`).join(" · ")} | ${(hu.stocks || []).slice(0, 3).map((r) => `${esc(r.name)} ${sg2(r.slot)}`).join(" · ")}`);
-      const k = ["코스피200", "삼성전자", "SK하이닉스", "원/달러"].map(fv).filter(Boolean);
-      if (k.length) L.push(`🇰🇷 내일 한국장 연결(24시간 시세): ${k.join(" · ")}`);
+      const kc = [["KOSPI", "코스피"], ["KR200", "코스피200"]].filter(([c]) => kr[c] && !kr[c].open).map(([c, n]) => `${n} ${(+kr[c].px).toLocaleString("ko-KR", { maximumFractionDigits: 2 })} ${sg2(kr[c].chg)}`);
+      if (kc.length) L.push(`🏁 한국 마지막 종가${kr.KOSPI && kr.KOSPI.at ? ` <small class="dim">(${+kstDay(kr.KOSPI.at).slice(5, 7)}/${+kstDay(kr.KOSPI.at).slice(8)} 마감)</small>` : ""}: ${kc.join(" · ")}`);
+      const k = [...["코스피200", "삼성전자", "SK하이닉스"].map(fk), fv("원/달러")].filter(Boolean);
+      if (k.length) L.push(`🇰🇷 내일 한국장 연결: ${k.join(" · ")}`);
       const evT = (c) => new Date(`${c.date}T${c.time}:00+09:00`).getTime();
       const cs = (checks || []).filter((c) => c.time && evT(c) >= Date.now() - 30 * 60000 && evT(c) <= Date.now() + 12 * 3600e3).sort((a, b) => evT(a) - evT(b));
       if (cs.length) L.push(`🗓️ 앞으로 12시간 일정: ${cs.slice(0, 4).map((c) => `<b>${c.date !== today ? `${+c.date.slice(5, 7)}/${+c.date.slice(8)} ` : ""}${esc(c.time)}</b> ${esc(c.title)}`).join(" · ")}`);
@@ -562,7 +567,7 @@
       const us_ = [r("SP500", "S&P500"), r("XYZ100", "나스닥100"), r("SOXL", "SOXL"), r("KORU", "KORU"), r("EWY", "EWY")].filter(Boolean);
       if (us_.length) L.push(`🌙 간밤 미국 정규장: ${us_.join(" · ")}`);
       const ki = [["KOSPI", "코스피"], ["KOSDAQ", "코스닥"], ["KR200", "코스피200"]].filter(([k]) => kr[k]).map(([k, n]) => `${n} ${(+kr[k].px).toLocaleString("ko-KR", { maximumFractionDigits: 2 })} ${sg2(kr[k].chg)}`);
-      if (now.getHours() < 9 && fut["코스피200"]) L.push(`⏰ 개장 전 코스피200 야간(24시간): ${fv("코스피200")}`);
+      if (now.getHours() < 9 && fut["코스피200"]) L.push(`⏰ 개장 전: ${fk("코스피200")}`);
       if (ki.length) L.push(`🇰🇷 지수: ${ki.join(" · ")}`);
       const k = leaders && leaders.kr;
       if (k && (k.industry || []).length) L.push(`🏁 한국 주도 업종${k.open ? "(장중)" : "(직전 장 기준)"}: ${top3(k.industry)}`);
@@ -747,7 +752,9 @@
       return `<span class="bt">${esc(t.name)} <b>${t.n}</b>${k > 1 ? `<em>${k}일 연속</em>` : ""}</span>`; }).join("");
     const w = b.world || {};
     const fx = (f) => f.u === "$" ? "$" + f.px.toLocaleString("ko-KR", { maximumFractionDigits: 2 }) : f.px.toLocaleString("ko-KR", { maximumFractionDigits: 2 }) + (f.u === "원" || f.u === "엔" ? f.u : "");
-    const fut = (b.futures || []).map((f) => `<span class="bf"><small>${esc(f.name)}</small> ${fx(f)} ${sg(f.chg)}</span>`).join("")
+    const fut = (b.futures || []).map((f) => f.since_close != null
+        ? `<span class="bf"><small>${esc(f.name)} 야간·24시간</small> ${fx(f)} ${sg(f.since_close)} <small class="dim">종가 이후</small></span>`
+        : `<span class="bf"><small>${esc(f.name)}</small> ${fx(f)} ${sg(f.chg)}</span>`).join("")
       + (() => { const u = b.ust && b.ust["10Y"] ? b.ust : b.us10y ? { "10Y": b.us10y } : {};
         return ["2Y", "10Y", "30Y"].filter((k) => u[k]).map((k) => `<span class="bf"><small>미 ${k.replace("Y", "년물")}</small> ${u[k].px.toFixed(3)}% <b class="${cls(u[k].bp)}">${u[k].bp > 0 ? "+" : ""}${u[k].bp.toFixed(1)}bp</b></span>`).join("")
           + (u["2Y"] && u["10Y"] ? `<span class="bf"><small>10년−2년</small> ${Math.round((u["10Y"].px - u["2Y"].px) * 100)}bp</span>` : ""); })();

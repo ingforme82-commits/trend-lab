@@ -141,6 +141,40 @@ def index_now(code: str = "001") -> dict | None:
             "down": int(_num(j.get("fall")) or 0) + int(_num(j.get("lst")) or 0), "flat": int(_num(j.get("stdns")) or 0)}
 
 
+def stock_now(code: str) -> dict | None:
+    """주식기본정보(ka10001) → {name, px, chg(%)}."""
+    j, _ = call("ka10001", "/api/dostk/stkinfo", {"stk_cd": code})
+    px = _num(j.get("cur_prc"))
+    if not px:
+        return None
+    rt = str(j.get("flu_rt") or "").replace("+", "")
+    try:
+        chg = float(rt)
+    except ValueError:
+        chg = None
+    return {"name": j.get("stk_nm", code), "px": px, "chg": chg}
+
+
+def kr_quotes() -> dict:
+    """사이트 '한국 증시' 칸 형식(market_extra.kr_now 와 같음): KOSPI·KOSDAQ·KR200·SMSN·SKHX → {px, prev, chg, at, open}.
+    장중이면 at=지금, 장 밖이면 마지막 1분봉 시각(=마지막 거래소 체결). 실패한 항목은 빠진다."""
+    out = {}
+    live = in_session()
+    last = index_minutes("001", hours=24 * 5)
+    at = int(time.time() * 1000) if live else (last[-1][0] + 60_000 if last else None)
+    for key, code in (("KOSPI", "001"), ("KOSDAQ", "101"), ("KR200", "201")):
+        x = index_now(code)
+        if x and x.get("chg") is not None:
+            out[key] = {"px": x["px"], "prev": round(x["px"] / (1 + x["chg"] / 100), 2), "chg": x["chg"], "at": at, "open": live,
+                        "src": "키움"}
+    for key, code in (("SMSN", "005930"), ("SKHX", "000660")):
+        x = stock_now(code)
+        if x and x.get("chg") is not None:
+            out[key] = {"px": x["px"], "prev": round(x["px"] / (1 + x["chg"] / 100)), "chg": x["chg"], "at": at, "open": live,
+                        "src": "키움"}
+    return out
+
+
 def in_session(now: datetime | None = None) -> bool:
     k = (now or datetime.now(KST)).astimezone(KST)
     m = k.hour * 60 + k.minute
