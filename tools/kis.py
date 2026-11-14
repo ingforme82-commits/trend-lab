@@ -124,7 +124,8 @@ def news_titles() -> list[dict]:
         pass
     j = get("/uapi/domestic-stock/v1/quotations/news-title", "FHKST01011800",
             {"FID_NEWS_OFER_ENTP_CODE": "", "FID_COND_MRKT_CLS_CODE": "", "FID_INPUT_ISCD": "", "FID_TITL_CNTT": "",
-             "FID_INPUT_DATE_1": "", "FID_INPUT_HOUR_1": "", "FID_RANK_SORT_CLS_CODE": "", "FID_INPUT_SRNO": ""})
+             "FID_INPUT_DATE_1": datetime.now(KST).strftime("%Y%m%d"), "FID_INPUT_HOUR_1": "", "FID_RANK_SORT_CLS_CODE": "",
+             "FID_INPUT_SRNO": ""})          # 날짜를 비우면 '마지막 영업일' 기사만 온다(주말에 금요일 기사만 오던 문제, 11/15)
     out = []
     for x in j.get("output") or []:
         try:
