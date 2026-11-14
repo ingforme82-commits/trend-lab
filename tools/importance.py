@@ -39,6 +39,8 @@ def score(it: dict) -> int:
     s += KIND_BONUS.get(it.get("kind", ""), 0)
     s -= 10 if (it.get("tags") or []) == ["기타"] else 0
     s -= 5 if len(it.get("text", "")) < 20 else 0
+    if it.get("verify") in ("single", "unconfirmed"):
+        s = min(s, 54)                     # 메인 뉴스(55↑)는 공식·복수 출처만(운영자 11/14) — 한 곳·미확인은 속보 목록에만
     return max(0, min(100, s))
 
 

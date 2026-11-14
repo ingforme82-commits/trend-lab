@@ -16,6 +16,12 @@ class ImportanceTest(unittest.TestCase):
         it = {"text": "트럼프: 베네수엘라산 원유 100만 배럴을 수입할 것", "kind": "텔레그램", "tags": ["중동·유가"], "pivot": True}
         self.assertGreaterEqual(score(it), 60)
 
+    def test_single_source_not_main_news(self):
+        it = {"text": "트럼프: 베네수엘라산 원유 100만 배럴을 수입할 것", "kind": "텔레그램", "tags": ["중동·유가"], "pivot": True, "hot": True}
+        self.assertLessEqual(score({**it, "verify": "single"}), 54)
+        self.assertLessEqual(score({**it, "verify": "unconfirmed"}), 54)
+        self.assertGreaterEqual(score({**it, "verify": "multi"}), 60)
+
     def test_misc_is_low(self):
         self.assertEqual(level(score({"text": "점심 메뉴 추천 받습니다", "kind": "텔레그램", "tags": ["기타"]})), "하")
 

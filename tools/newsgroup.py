@@ -6,7 +6,9 @@
     official      : 공식 기관 출처(연준·EIA 등)
     multi         : 서로 다른 출처 2곳 이상
     single        : 한 곳에서만
-    unconfirmed   : 익명 소식통·보도 인용·루머 표현(공식 출처가 아니면 출처 수와 관계없이)
+    unconfirmed   : 익명 소식통·보도 인용·루머 표현(공식 출처가 아니면 출처 수와 관계없이), 커뮤니티가 원출처인 글
+  속보(hot)는 official·multi 일 때만 — single 은 watch(감시 중)로 두고, 다른 매체가 같은 소식을 내면 다음 갱신 때 자동으로 속보가 된다
+  (2026-11-14 운영자: "속보라도 출처에서 정확한것만 헤드라인에 … 중복해서 매체들에서 뉴스 발표하면 그 때 올리는게 맞겠지" — '헨슨 주앙' 밈 뒤).
   시세 데이터('섹터 시세')와 증권사 시황·분석 글은 검증 대상이 아니라 verify 를 넣지 않는다.
 """
 
@@ -18,6 +20,9 @@ OFFICIAL = {"미 연준", "미 EIA"}
 NOT_NEWS = {"섹터 시세", "증권사 시황", "시황 분석"}
 RUMOR = re.compile(r"루머|소문|찌라시|\b설\b|[가-힣]설$|미확인|소식통|관계자에 따르면|관계자들?에 따르면|익명|보도에 따르면|것으로 알려|전해졌|"
                    r"rumou?r|unconfirmed|reportedly|people familiar|sources? (?:say|said)|according to (?:people|sources|a report)|is said to", re.I)
+# 커뮤니티 원출처(osrc)·본문 표기 — 다른 채널이 옮겨도 독립 출처로 세지 않는다
+COMMUNITY = re.compile(r"루리웹|디시|DC\s*인사이드|더쿠|에펨|fmkorea|클리앙|뽐뿌|인벤|보배드림|네이트\s*판|블라인드|커뮤니티|"
+                       r"reddit|레딧|4chan", re.I)
 WINDOW_MS = 6 * 3600_000
 SIM = 0.5
 
@@ -38,13 +43,31 @@ def similar(a: set[str], b: set[str]) -> bool:
     return i / (la + lb - i) >= SIM
 
 
+def _community(m: dict) -> bool:
+    return bool(COMMUNITY.search(m.get("osrc") or "") or COMMUNITY.search(m.get("orig") or ""))
+
+
+def independent(members: list[dict]) -> int:
+    """독립 출처 수 = 채널·언론사(같은 채널 재게시는 1곳). 커뮤니티 원출처 글은 빼고, 같은 원출처를 여러 채널이 옮긴 건 1곳."""
+    keep = [m for m in members if not _community(m)]
+    srcs = {m["src"] for m in keep}
+    by_o: dict[str, set] = {}
+    for m in keep:
+        if m.get("osrc"):
+            by_o.setdefault(m["osrc"], set()).add(m["src"])
+    return max(0, len(srcs) - sum(len(v) - 1 for v in by_o.values()))
+
+
 def verify_of(members: list[dict]) -> str:
-    srcs = {m["src"] for m in members}                    # 독립 출처 = 채널·언론사(같은 채널 재게시는 1곳)
+    srcs = {m["src"] for m in members}
     if srcs & OFFICIAL or any(m.get("osrc") in OFFICIAL for m in members):
         return "official"
     if any(RUMOR.search(m["text"] + " " + m.get("orig", "")) for m in members):
         return "unconfirmed"
-    return "multi" if len(srcs) >= 2 else "single"
+    n = independent(members)
+    if n == 0:                                            # 커뮤니티발만 있음(예: 루리웹 → 텔레그램 '속보')
+        return "unconfirmed"
+    return "multi" if n >= 2 else "single"
 
 
 def group(items: list[dict]) -> list[dict]:
@@ -80,7 +103,9 @@ def group(items: list[dict]) -> list[dict]:
                 first["also"] = also[:6]
             first["nsrc"] = len(seen)
             first["verify"] = verify_of(gr["m"])
-            first["hot"] = any(m.get("hot") for m in gr["m"])
+            first["hot"] = any(m.get("hot") for m in gr["m"]) and first["verify"] in ("official", "multi")
+            if first["verify"] == "single" and any(m.get("hot") for m in gr["m"]):
+                first["watch"] = True                     # 속보 문구지만 한 곳뿐 → 감시 중(교차 보도되면 hot)
             tags = [t for t in dict.fromkeys(t for m in gr["m"] for t in m.get("tags", [])) if t != "기타"]
             first["tags"] = tags[:2] or first.get("tags", [])
         out.append(first)

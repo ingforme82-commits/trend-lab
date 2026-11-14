@@ -53,6 +53,30 @@ class GroupTest(unittest.TestCase):
         b = it(M, "김치터미널", "OpenAI 지수 시간 가설이 거짓임을 증명했다고 밝힘")
         self.assertEqual(group([a, b])[0]["verify"], "single")
 
+    def test_hot_only_when_verified(self):
+        a = it(0, "여의도스토리", "속보) 엔비디아 새로운 CEO 영입", hot=True)
+        g = group([a])[0]
+        self.assertEqual(g["verify"], "single")
+        self.assertFalse(g["hot"])
+        self.assertTrue(g["watch"])                       # 감시 중
+        b = it(20 * M, "연합뉴스", "속보 엔비디아 새로운 CEO 영입", kind="뉴스")
+        g = group([a, b])[0]                              # 다른 매체가 같은 소식 → 속보
+        self.assertEqual(g["verify"], "multi")
+        self.assertTrue(g["hot"])
+        self.assertNotIn("watch", g)
+
+    def test_community_origin_not_counted(self):
+        a = it(0, "여의도스토리", "속보) 엔비디아 새로운 CEO 영입", hot=True, osrc="루리웹")
+        b = it(M, "다른채널", "속보 엔비디아 새로운 CEO 영입", hot=True, osrc="루리웹")
+        g = group([a, b])[0]
+        self.assertEqual(g["verify"], "unconfirmed")
+        self.assertFalse(g["hot"])
+
+    def test_same_origin_relayed_by_two_channels_is_single(self):
+        a = it(0, "김치터미널", "Fox: 하원 예산안 표결 연기", osrc="Fox News")
+        b = it(M, "다른채널", "Fox 하원 예산안 표결 연기", osrc="Fox News")
+        self.assertEqual(group([a, b])[0]["verify"], "single")
+
     def test_official(self):
         self.assertEqual(verify_of([it(0, "미 연준", "FOMC statement")]), "official")
 
