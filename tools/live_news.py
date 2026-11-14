@@ -31,8 +31,8 @@ from html import unescape
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-TGR = Path(os.environ.get("TRL_TG_DIR", r"C:\projects\market-site\tg_research"))   # 텔레 수집기(메인 PC 전용)
-TGR_PY = TGR / ".venv" / "Scripts" / "python.exe"
+TGR = Path(os.environ.get("TRL_TG_DIR", r"C:\projects\market-site\tg_research" if os.name == "nt" else str(ROOT.parent / "market-site" / "tg_research")))   # 텔레 수집기(메인 PC 전용)
+TGR_PY = Path(os.environ.get("TRL_TG_PYTHON", str(TGR / ".venv" / "Scripts" / "python.exe") if os.name == "nt" else sys.executable))
 DB = TGR / "data" / "tgr.sqlite3"
 REPO = "ingforme82-commits/trend-lab"
 BRANCH = "live"
