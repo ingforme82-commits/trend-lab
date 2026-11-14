@@ -365,7 +365,7 @@
     spotIdx = ((spotIdx % spot.length) + spot.length) % spot.length;
     const nav = spot.length > 1 ? `<div class="spot-nav"><button class="spot-arrow" data-spot-step="-1" aria-label="이전">‹</button>${spot.map((x, i) =>
       `<button class="spot-dot${i === spotIdx ? " on" : ""}" data-spot-go="${i}" title="${esc(x.name)}">${esc(x.name)}</button>`).join("")}<button class="spot-arrow" data-spot-step="1" aria-label="다음">›</button></div>` : "";
-    box.innerHTML = `<p class="spot-h">🔥 오늘의 주요 종목군 <small>매일 미국 개장 30분 뒤 자동 선정 — 움직임 큰 종목군 · ⚡ 급등락 대형주 · 📈 연일 상승 종목군 · 추천 아님 · ${spot.length}개가 번갈아 보입니다</small></p>${nav}${spotCard(spot[spotIdx])}`;
+    box.innerHTML = `<p class="spot-h">🔥 오늘의 주요 종목군 <small>미국 개장 30분 뒤 자동 선정 · 1분마다 중복 합치기·관련 낮은 종목 빼기·순서 갱신 — 움직임 큰 종목군 · ⚡ 급등락 대형주 · 📈 연일 상승 종목군 · 추천 아님 · ${spot.length}개가 번갈아 보입니다</small></p>${nav}${spotCard(spot[spotIdx])}`;
     if (!spotTimer && spot.length > 1) {
       spotTimer = setInterval(() => { if (!spotHold && !memOpen) { spotIdx++; drawSpot(); } }, 8000);
       box.addEventListener("mouseenter", () => { spotHold = true; });

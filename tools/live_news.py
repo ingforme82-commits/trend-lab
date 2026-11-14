@@ -589,6 +589,11 @@ def build() -> dict:
         except Exception as e:  # noqa: BLE001
             log(f"공식 데이터 건너뜀: {type(e).__name__}: {e}")
         out["kr"] = kr_now()
+        try:                                              # 🔥 종목군 매분 정리: 중복 합치기·오래된/관련 낮은 카드 빼기·순서(11/15 운영자)
+            from spot_rank import renew
+            out["spot"] = renew(out["spot"], items, out["kr"], out["world"])
+        except Exception as e:  # noqa: BLE001
+            log(f"종목군 정리 건너뜀: {type(e).__name__}: {e}")
         out["reg"] = reg_quotes()
         try:                                              # 🌙 미국 시간외 시세판 + ±5%·±10% 첫 돌파 속보
             from ext_board import build as ext_board
