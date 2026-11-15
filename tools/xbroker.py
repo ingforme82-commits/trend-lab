@@ -83,7 +83,10 @@ def _nh() -> dict:
                 continue
             px, rt = _f(o.get("stck_prpr")), _f(o.get("prdy_ctrt"))
             if px:
-                if rt is not None and str(o.get("prdy_vrss_sign")) in ("4", "5") and rt > 0:
+                sg = str(o.get("prdy_vrss_sign") or "").strip()
+                if sg not in ("1", "2", "3", "4", "5"):
+                    rt = None                             # NH 현재가는 부호 칸이 비어 올 때가 있다 → 방향 모름(11/15 통합 +1.67% 오표시)
+                elif rt is not None and sg in ("4", "5") and rt > 0:
                     rt = -rt
                 out[(basis, k)] = (px, rt)
     try:                                                  # 코스피200 지수 = 선물의 기초자산 현재가
@@ -152,6 +155,11 @@ def check(force: bool = False) -> dict:
     out: dict = {"KRX": {}, "통합": {}, "fail": fail, "at": int(time.time() * 1000)}
     for (basis, k), vals in got.items():
         out[basis][k] = {"name": ITEMS[k][0], **consensus(vals, ITEMS[k][1]), "srcs": {s: v[0] for s, v in vals.items()}}
+    for k, u in out["통합"].items():                       # 통합 등락률을 모르면 KRX 전일 종가 기준으로 계산
+        x = out["KRX"].get(k)
+        if u.get("chg") is None and x and x.get("chg") is not None:
+            prev = x["px"] / (1 + x["chg"] / 100)
+            u["chg"] = round((u["px"] / prev - 1) * 100, 2)
     try:
         CACHE.parent.mkdir(parents=True, exist_ok=True)
         CACHE.write_text(json.dumps(out, ensure_ascii=False), encoding="utf-8")

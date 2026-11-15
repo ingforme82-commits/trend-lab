@@ -93,7 +93,7 @@ def _token() -> str | None:
     return j["token"]
 
 
-def call(api_id: str, path: str, body: dict, cont: str = "") -> tuple[dict, str]:
+def call(api_id: str, path: str, body: dict, cont: str = "", _retry: bool = True) -> tuple[dict, str]:
     """조회 TR 한 번. 반환 (응답, 다음 페이지 키 또는 ''). 쉬는 중·실패면 ({}, '')."""
     if api_id.startswith("kt"):                           # kt = 주문 계열 — 이 모듈에서는 막는다
         raise PermissionError("키움 주문 API는 쓰지 않는다(조회 전용)")
@@ -111,8 +111,11 @@ def call(api_id: str, path: str, body: dict, cont: str = "") -> tuple[dict, str]
         _down(f"{api_id} 접속 실패: {e}")
         return {}, ""
     if j.get("return_code") != 0:
-        if "토큰" in str(j.get("return_msg", "")):
-            TOKEN.unlink(missing_ok=True)                 # 토큰 만료·폐기 → 다음 호출에 새로
+        msg = str(j.get("return_msg", ""))
+        if "토큰" in msg or "Token" in msg:
+            TOKEN.unlink(missing_ok=True)                 # 토큰 만료·폐기 → 새로 받아 한 번 더
+            if _retry:                                    # 키움은 앱키당 토큰 1개 — PC·Oracle 이 번갈아 받으면 앞 토큰이 무효(8005)
+                return call(api_id, path, body, cont, _retry=False)
         _down(f"{api_id}: {j.get('return_msg', '')}")
         return {}, ""
     return j, (hd.get("next-key", "") if hd.get("cont-yn") == "Y" else "")
