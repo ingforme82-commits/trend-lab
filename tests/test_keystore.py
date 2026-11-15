@@ -23,6 +23,19 @@ class KeystoreTest(unittest.TestCase):
                 with mock.patch.dict(os.environ, {"KIS_APP_KEY": "from-env"}):
                     self.assertEqual(keystore.get("KIS_APP_KEY"), "from-env")      # 환경변수 우선
 
+    def test_nh_from_keys_file_then_nhplug_env(self):
+        with tempfile.TemporaryDirectory() as d:
+            kf, nf = Path(d) / "keys.env", Path(d) / "nh.env"
+            nf.write_text("NHPLUG_APP_KEY=nh-file\nNHPLUG_APP_SECRET=nh-sec\n", encoding="utf-8")
+            kf.write_text("KIS_APP_KEY=x\n", encoding="utf-8")
+            env = {"TRL_KEYS_FILE": str(kf), "NHPLUG_ENV_FILE": str(nf)}
+            with mock.patch.dict(os.environ, env), mock.patch.object(keystore, "_from_registry", lambda n: ""):
+                os.environ.pop("NHPLUG_APP_KEY", None)
+                self.assertEqual(keystore.get("NHPLUG_APP_KEY"), "nh-file")          # nhplug 설정 파일
+                self.assertEqual(keystore.get("KIS_APP_SECRET"), "")                 # NHPLUG_ 아닌 이름은 안 봄
+                kf.write_text("NHPLUG_APP_KEY=from-keys\n", encoding="utf-8")
+                self.assertEqual(keystore.get("NHPLUG_APP_KEY"), "from-keys")        # keys.env 우선
+
     def test_linux_state_dir(self):
         with tempfile.TemporaryDirectory() as d, mock.patch.dict(os.environ, {"XDG_STATE_HOME": d}):
             self.assertEqual(keystore.state_dir("posix"), Path(d) / "trendlab")

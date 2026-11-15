@@ -56,7 +56,7 @@ def nh_check():
     nhfut.CACHE.unlink(missing_ok=True)
     q = nhfut.quotes()
     if not q:
-        return False, "선물 조회 실패(~/.nhplug/.env·nhplug 패키지·운영 토큰 확인)"
+        return False, "선물 조회 실패(NHPLUG_APP_KEY·nhplug 패키지·운영 토큰 확인)"
     return True, " · ".join(f"{v['name']} {v['px']:,.2f}({v['chg']:+.2f}%)" for v in q.values())
 
 
@@ -77,7 +77,7 @@ def kb_check():
 CHECKS = {
     "키움": ("KIWOOM_APP_KEY", "KIWOOM_SECRET_KEY", kiwoom_check, "국내 지수·주가·1분봉(조회 전용, 등록 IP 필요)"),
     "한투": ("KIS_APP_KEY", "KIS_APP_SECRET", kis_check, "뉴스 제목·업종지수(조회 전용)"),
-    "NH": (None, None, nh_check, "코스피200 주간·야간선물·CME 지수선물·주가(조회 전용, ~/.nhplug)"),
+    "NH": ("NHPLUG_APP_KEY", "NHPLUG_APP_SECRET", nh_check, "코스피200 주간·야간선물·CME 지수선물·주가(조회 전용, ~/.nhplug)"),
     "KB": ("KB_APP_KEY", "KB_APP_SECRET", kb_check, "주가(통합)·종목별 프로그램매매(조회 전용)"),
 }
 
@@ -86,10 +86,7 @@ def run() -> dict:
     out = {"host": socket.gethostname(), "os": platform.system(), "at": int(time.time() * 1000),
            "keys_file": str(keystore.keys_file()), "keys_file_exists": keystore.keys_file().exists(), "providers": {}}
     for name, (a, b, fn, scope) in CHECKS.items():
-        if a:
-            key = keystore.has(a) and keystore.has(b)
-        else:
-            key = (Path.home() / ".nhplug" / ".env").exists()
+        key = keystore.has(a) and keystore.has(b)
         ok, detail, sec = _t(fn) if key else (False, "키 없음", 0.0)
         out["providers"][name] = {"key": key, "ok": ok, "detail": detail, "sec": sec, "scope": scope, "mode": "read-only"}
     try:

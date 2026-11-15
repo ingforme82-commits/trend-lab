@@ -75,6 +75,9 @@ def cme_code(root: str, today: date | None = None) -> str:
 def _call(path: str, inp: dict) -> dict:
     if not path.startswith(ALLOW):
         raise PermissionError("NH 선물 모듈은 시세 조회만 한다")
+    for n in ("NHPLUG_APP_KEY", "NHPLUG_APP_SECRET"):     # Oracle: keys.env 의 NH 키를 nhplug 에 넘긴다
+        if not os.environ.get(n) and keystore.get(n):
+            os.environ[n] = keystore.get(n)
     try:
         from nhplug import call
     except ImportError:

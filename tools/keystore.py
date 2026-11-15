@@ -13,7 +13,8 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-NAMES = ("KIWOOM_APP_KEY", "KIWOOM_SECRET_KEY", "KIS_APP_KEY", "KIS_APP_SECRET", "KB_APP_KEY", "KB_APP_SECRET", "DART_API_KEY")
+NAMES = ("KIWOOM_APP_KEY", "KIWOOM_SECRET_KEY", "KIS_APP_KEY", "KIS_APP_SECRET", "KB_APP_KEY", "KB_APP_SECRET", "DART_API_KEY",
+         "NHPLUG_APP_KEY", "NHPLUG_APP_SECRET")
 
 
 def keys_file() -> Path:
@@ -21,9 +22,21 @@ def keys_file() -> Path:
     return Path(p).expanduser() if p else Path.home() / ".config" / "trendlab" / "keys.env"
 
 
+def _nh_env() -> Path:
+    p = os.environ.get("NHPLUG_ENV_FILE", "").strip()
+    return Path(p).expanduser() if p else Path.home() / ".nhplug" / ".env"
+
+
 def _from_file(name: str) -> str:
+    v = _read(keys_file(), name)
+    if not v and name.startswith("NHPLUG_"):              # NH 는 nhplug 전용 설정 파일(~/.nhplug/.env)에도 있을 수 있다
+        v = _read(_nh_env(), name)
+    return v
+
+
+def _read(path: Path, name: str) -> str:
     try:
-        for line in keys_file().read_text(encoding="utf-8-sig").splitlines():
+        for line in path.read_text(encoding="utf-8-sig").splitlines():
             line = line.strip()
             if line and not line.startswith("#") and "=" in line:
                 k, v = line.split("=", 1)

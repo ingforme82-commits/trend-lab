@@ -5,7 +5,8 @@
   (서버) chmod 600 ~/.config/trendlab/keys.env && python3 ~/projects/trend-lab-site/tools/brokers_check.py
   (PC)   del %USERPROFILE%\\trl_keys_for_oracle.env  ← 옮긴 뒤 바로 지운다
 
-- 담는 키: 키움·한투·KB 앱키/시크릿, OpenDART. NH 는 Oracle 에 이미 ~/.nhplug/.env 가 있다(Codex 11/15 확인) — 담지 않는다.
+- 담는 키: 키움·한투·KB·NH 앱키/시크릿, OpenDART. NH 는 앱키·시크릿만(계좌·PIN 등 나머지 설정은 담지 않음).
+- 일부만: python tools/keys_export.py NHPLUG   ← 이름에 NHPLUG 가 든 키만
 - 이 파일은 저장소 밖(사용자 폴더)에만 만든다. GitHub·카톡·메일로 보내지 않는다(scp 는 암호화 전송).
 """
 
@@ -24,7 +25,10 @@ def main() -> None:
     if sys.stdout:
         sys.stdout.reconfigure(encoding="utf-8")
     lines, have = ["# TRL Oracle 비공개 키 파일 — 저장소·공개 위치에 두지 말 것. 권한 600."], []
+    only = sys.argv[1].upper() if len(sys.argv) > 1 else ""
     for n in keystore.NAMES:
+        if only and only not in n:
+            continue
         v = keystore.get(n)
         if v:
             lines.append(f"{n}={v}")
