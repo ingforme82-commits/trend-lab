@@ -55,7 +55,8 @@ def _down(why: str | None = None) -> str | None:
 
 def _http(path: str, body: dict, headers: dict) -> tuple[dict, dict]:
     req = urllib.request.Request(BASE + path, json.dumps(body).encode(),
-                                 {"Content-Type": "application/json;charset=UTF-8", **headers}, method="POST")
+                                 {"Content-Type": "application/json;charset=UTF-8", "Accept": "application/json",
+                                  "User-Agent": "trendlab/1.0", **headers}, method="POST")   # 기본 Python-urllib 이름은 키움 방화벽이 400(HTML)으로 막음(11/15 Oracle)
     try:
         r = urllib.request.urlopen(req, timeout=8)
         return json.loads(r.read()), dict(r.headers)
