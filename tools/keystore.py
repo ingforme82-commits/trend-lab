@@ -14,7 +14,7 @@ import os
 from pathlib import Path
 
 NAMES = ("KIWOOM_APP_KEY", "KIWOOM_SECRET_KEY", "KIS_APP_KEY", "KIS_APP_SECRET", "KB_APP_KEY", "KB_APP_SECRET", "DART_API_KEY",
-         "NHPLUG_APP_KEY", "NHPLUG_APP_SECRET")
+         "NHPLUG_APP_KEY", "NHPLUG_APP_SECRET", "LS_APP_KEY", "LS_APP_SECRET")
 
 
 def keys_file() -> Path:
