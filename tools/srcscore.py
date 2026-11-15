@@ -98,6 +98,23 @@ def rank(group: str, default: list[str], data: dict | None = None) -> list[str]:
     return out
 
 
+NAMES = {"kr": "국내 지수·주가(증권사 교차 확인)", "rt": "실시간 체결(웹소켓)", "fx:원/달러": "원/달러", "fx:달러인덱스": "달러인덱스"}
+
+
+def summary(data: dict | None = None) -> list[dict]:
+    """사이트 표시용: 그룹마다 점수 순 출처(키·값은 없음, 숫자만)."""
+    d = data if data is not None else _load()
+    now = time.time()
+    out = []
+    for g, srcs in sorted(d.items()):
+        rows = [{"src": s, "score": round(score(v), 2), "ok": round(v.get("ok", 0), 2), "agree": round(v.get("agree", 1), 2),
+                 "secs": round(v.get("secs") or 0, 1), "age": round(v.get("age") or 0), "n": v.get("n", 0),
+                 "rest": (v.get("skip_until") or 0) > now}
+                for s, v in sorted(srcs.items(), key=lambda kv: -score(kv[1]))]
+        out.append({"group": g, "name": NAMES.get(g, g), "rows": rows})
+    return out
+
+
 def table(data: dict | None = None) -> list[str]:
     d = data if data is not None else _load()
     lines = []

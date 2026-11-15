@@ -18,7 +18,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CACHE = ROOT / "tools" / "levetf_cache.json"
-ETF = [("SOXL", "SOXL", "미국 반도체 3배", "^SOX", "필라델피아 반도체지수"), ("KORU", "KORU", "한국 3배", "EWY", "EWY(MSCI 한국)")]
+ETF = [("SOXL", "SOXL", "미국 반도체 3배", "^SOX", "필라델피아 반도체지수"), ("SOXS", "SOXS", "미국 반도체 3배 인버스", "^SOX", "필라델피아 반도체지수"),
+       ("KORU", "KORU", "한국 3배", "EWY", "EWY(MSCI 한국)")]
+LEV = {"SOXS": -3}                                         # 11/16 운영자: SOXS 추가 — 기초 등락 × −3
 
 
 def extra_stats(past: list[dict], today: dict | None, vol_today: float | None, vols: list[float]) -> dict:
@@ -79,8 +81,9 @@ def build() -> dict:
             row["base_chg"] = b.get("chg")
             row["base_over_ma5"] = b.get("over_ma5")
             if row.get("chg") is not None and b.get("chg") is not None:
-                row["x3"] = round(b["chg"] * 3, 2)
-                row["x3_gap"] = round(row["chg"] - b["chg"] * 3, 2)
+                m = LEV.get(sym, 3)
+                row["x3"] = round(b["chg"] * m, 2)
+                row["x3_gap"] = round(row["chg"] - b["chg"] * m, 2)
         except Exception as e:  # noqa: BLE001
             row["err"] = type(e).__name__
         from extended import quote as ext_quote

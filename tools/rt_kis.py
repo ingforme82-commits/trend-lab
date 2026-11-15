@@ -30,10 +30,10 @@ BASE = "https://openapi.koreainvestment.com:9443"
 WS_HOST, WS_PORT = "ops.koreainvestment.com", 21000
 OUT = keystore.state_dir() / "rt.json"
 # 11/16 확인: 이 키는 접속 1개(두 번째는 ALREADY IN USE)·동시 구독 3종목까지(4번째 MAX SUBSCRIBE OVER)
-# → 시간대별로 3개씩 바꿔 받는다. 한국장(08:00~16:00 KST) 지수, 그 밖은 미국 반도체·한국 3배.
+# → 시간대별로 3개씩 바꿔 받는다. 한국장(08:00~16:00 KST) 지수, 그 밖은 SOXL·SOXS·KORU.
 MAX_SUBS = 3
 SUBS_KR = [("H0UPCNT0", "0001", "KOSPI", "코스피"), ("H0UPCNT0", "2001", "KR200", "코스피200"), ("H0UPCNT0", "1001", "KOSDAQ", "코스닥")]
-SUBS_US = [("HDFSCNT0", "DAMSSOXL", "SOXL", "SOXL"), ("HDFSCNT0", "DNASNVDA", "NVDA", "NVDA"), ("HDFSCNT0", "DAMSKORU", "KORU", "KORU")]
+SUBS_US = [("HDFSCNT0", "DAMSSOXL", "SOXL", "SOXL"), ("HDFSCNT0", "DAMSSOXS", "SOXS", "SOXS"), ("HDFSCNT0", "DAMSKORU", "KORU", "KORU")]   # 11/16 운영자: SOXS 추가(NVDA 는 1분 값)
 SUBS = SUBS_KR + SUBS_US
 
 

@@ -22,7 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import keystore  # noqa: E402
 
 CACHE = keystore.state_dir() / "xbroker.json"
-PRIO = ["키움", "한투", "NH", "KB", "네이버"]
+PRIO = ["키움", "한투", "NH", "KB", "LS", "토스", "DB", "네이버"]
 ITEMS = {  # key: (이름, 종류, 키움 코드, 한투 코드, 네이버 심볼)
     "KOSPI": ("코스피", "idx", "001", "0001", "^KS11"),
     "KOSDAQ": ("코스닥", "idx", "101", "1001", "^KQ11"),
@@ -110,8 +110,48 @@ def _naver() -> dict:
     return {("KRX", k): (q[v[4]]["px"], q[v[4]].get("chg")) for k, v in ITEMS.items() if v[4] in q and q[v[4]].get("px")}
 
 
-FETCH = {"키움": _kiwoom, "한투": _kis, "NH": _nh, "KB": _kb, "네이버": _naver}
-KEYS = {"키움": "KIWOOM_APP_KEY", "한투": "KIS_APP_KEY", "NH": "NHPLUG_APP_KEY", "KB": "KB_APP_KEY"}   # 키 없는 곳은 부르지 않는다(Oracle 의 KB 등)
+def _ls() -> dict:
+    import lsapi
+    out = {}
+    for k, (_, kind, kc, _, _) in ITEMS.items():
+        x = lsapi.index_now(k) if kind == "idx" else lsapi.stock_now(kc)
+        if x:
+            out[("KRX", k)] = (x["px"], x.get("chg"))
+    return out
+
+
+def _toss() -> dict:
+    import tossapi
+    out = {}
+    ind = tossapi.indicators()
+    for k in ("KOSPI", "KOSDAQ"):
+        if ind.get(k, {}).get("px"):
+            out[("KRX", k)] = (ind[k]["px"], None)
+    q = tossapi.quotes([ITEMS[k][2] for k in ("SMSN", "SKHX")])
+    for k in ("SMSN", "SKHX"):
+        x = q.get(ITEMS[k][2])
+        if x:
+            out[("KRX", k)] = (x["px"], x.get("chg"))      # 토스 REST 국내 = KRX(공식 설명). 다르면 점수판이 '어긋남'으로 센다
+    return out
+
+
+def _db() -> dict:
+    import dbapi
+    out = {}
+    for k, code in (("KOSPI", "0001"), ("KOSDAQ", "1001"), ("KR200", "2001")):
+        x = dbapi.index_now(code)
+        if x:
+            out[("KRX", k)] = (x["px"], x.get("chg"))
+    for k in ("SMSN", "SKHX"):
+        x = dbapi.stock_now(ITEMS[k][2])                  # UJ = 주식(통합, NXT 포함)
+        if x:
+            out[("통합", k)] = (x["px"], x.get("chg"))
+    return out
+
+
+FETCH = {"키움": _kiwoom, "한투": _kis, "NH": _nh, "KB": _kb, "LS": _ls, "토스": _toss, "DB": _db, "네이버": _naver}
+KEYS = {"키움": "KIWOOM_APP_KEY", "한투": "KIS_APP_KEY", "NH": "NHPLUG_APP_KEY", "KB": "KB_APP_KEY", "LS": "LS_APP_KEY",
+        "토스": "TOSS_CLIENT_ID", "DB": "DB_APP_KEY"}   # 키 없는 곳은 부르지 않는다(Oracle 의 KB 등)
 
 
 def consensus(vals: dict[str, tuple], kind: str, prio: list[str] | None = None) -> dict:
@@ -151,7 +191,7 @@ def check(force: bool = False) -> dict:
         r = f()
         secs[s] = time.time() - t0
         return r
-    with ThreadPoolExecutor(max_workers=5) as ex:
+    with ThreadPoolExecutor(max_workers=8) as ex:
         futs = {}
         for s, f in FETCH.items():
             if s in KEYS and not keystore.has(KEYS[s]):

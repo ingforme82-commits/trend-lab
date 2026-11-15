@@ -84,12 +84,32 @@ def ls_check():
     return True, f"코스피 {x['px']:,.2f}" + (f" · 삼성전자 {s['px']:,.0f}원" if s else "")
 
 
+def toss_check():
+    import tossapi
+    tossapi.DOWN.unlink(missing_ok=True)
+    x = tossapi.indicators()
+    if not x:
+        return False, tossapi._down() or "응답 없음"
+    return True, " · ".join(f"{k} {v['px']:,.2f}" for k, v in x.items())
+
+
+def db_check():
+    import dbapi
+    dbapi.DOWN.unlink(missing_ok=True)
+    s = dbapi.stock_now("005930")
+    if not s:
+        return False, dbapi._down() or "응답 없음(출력 필드명 확인 필요)"
+    return True, f"삼성전자 {s['px']:,.0f}원"
+
+
 CHECKS = {
     "키움": ("KIWOOM_APP_KEY", "KIWOOM_SECRET_KEY", kiwoom_check, "국내 지수·주가·1분봉(조회 전용, 등록 IP 필요)"),
     "한투": ("KIS_APP_KEY", "KIS_APP_SECRET", kis_check, "뉴스 제목·업종지수(조회 전용)"),
     "NH": ("NHPLUG_APP_KEY", "NHPLUG_APP_SECRET", nh_check, "코스피200 주간·야간선물·CME 지수선물·주가(조회 전용, ~/.nhplug)"),
     "KB": ("KB_APP_KEY", "KB_APP_SECRET", kb_check, "주가(통합)·종목별 프로그램매매(조회 전용, 해외 IP 차단 — Oracle 불가)"),
     "LS": ("LS_APP_KEY", "LS_APP_SECRET", ls_check, "국내 지수·주가(조회 전용)"),
+    "토스": ("TOSS_CLIENT_ID", "TOSS_CLIENT_SECRET", toss_check, "국내·미국 주가·코스피·코스닥·국채(조회 전용, 허용 IP 등록)"),
+    "DB": ("DB_APP_KEY", "DB_APP_SECRET", db_check, "국내 지수·주가·미국 주가(조회 전용)"),
 }
 
 

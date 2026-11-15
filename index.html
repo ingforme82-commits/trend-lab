@@ -82,7 +82,7 @@
     <div class="sec-head">
       <div>
         <h2>실시간 시세</h2>
-        <p class="sec-sub">24시간 선물(하이퍼리퀴드)은 '24시간' 대비, 정규장은 '정규장' 대비로 따로 표시합니다. 30초마다 갱신.</p>
+        <p class="sec-sub">칸마다 기준(전일 종가·24시간 전 등)을 숫자로 적습니다. 실시간 체결은 2초, 나머지는 30초마다 갱신.</p>
       </div>
       <p class="stamp" id="tickStamp">불러오는 중…</p>
     </div>
@@ -92,6 +92,7 @@
     <div class="sector-box" id="sectorBox" hidden></div>
     <div class="flow-box" id="flowBox" hidden></div>
     <div class="tick-grid" id="tickGrid"></div>
+    <details class="src-score" id="srcScore" hidden><summary>📊 출처 점수판 <small>— 어디 값을 먼저 쓰는지(성공률·일치율·응답 시간·신선도로 자동 조정)</small></summary><div id="srcScoreBody"></div></details>
     <p class="tick-group world-h">해외 지수 <small>정규장 시세(5분 갱신) · 대만은 24시간 ETF</small></p>
     <div class="tick-grid" id="worldGrid"></div>
   </div>
