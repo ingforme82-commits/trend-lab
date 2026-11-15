@@ -16,7 +16,7 @@ const TICKS = [
   { k: "SKHX", n: "SK하이닉스", d: 2, u: "$", won: true },
   { k: "EWY", n: "EWY (한국 ETF)", d: 2, u: "$" },
   { k: "KORU", n: "KORU (한국 3배)", d: 2, u: "$" },
-  { k: "KRW", n: "원/달러", d: 1, suf: "원" },
+  { k: "KRW", n: "원/달러", d: 1, suf: "원", fx: "원/달러" },
   { g: "미국 지수·반도체" },
   { k: "SP500", n: "S&P500", d: 1 },
   { k: "XYZ100", n: "나스닥100", d: 0 },
@@ -27,6 +27,7 @@ const TICKS = [
   { k: "BRENTOIL", n: "브렌트유", d: 2, u: "$" },
   { k: "GOLD", n: "금", d: 1, u: "$" },
   { k: "NATGAS", n: "천연가스", d: 3, u: "$" },
+  { k: "DXY", n: "달러인덱스", d: 2, fx: "달러인덱스" },
   { k: "UST2Y", n: "미 2년물 금리", srv: "tnx", t: "2Y" },
   { k: "US10Y", n: "미 10년물 금리", srv: "tnx", t: "10Y" },
   { k: "UST30Y", n: "미 30년물 금리", srv: "tnx", t: "30Y" },
@@ -55,6 +56,14 @@ async function loadTicks() {
         const status = r.market_note || (old ? "시세 지연 · 마지막 값" : "최근 시세");
         const stamp = r.at ? new Date(r.at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }) + " KST" : "시각 미확인";
         return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">${r.px.toFixed(3)}%</p><p class="t-ch ${c3}">${r.bp > 0 ? "▲" : r.bp < 0 ? "▼" : ""} ${r.bp > 0 ? "+" : ""}${r.bp.toFixed(1)}bp</p><p class="fine" style="margin:2px 0 0">전일 ${r.prev}%${sp}${" · " + esc(status)}</p><p class="fine">${esc(r.src || "출처 미확인")} · ${esc(stamp)}</p></div>`;
+      }
+      if (t.fx) {                                         // 달러: CNBC(실패 시 야후) 24시간 환율 — 하이퍼리퀴드 환율 상품은 거래가 멈춰 쓰지 않음(11/16)
+        const f = ((window.trlBrief || {}).futures || []).find((y) => y.name === t.fx && y.src !== "하이퍼리퀴드");
+        if (!f) return `<div class="tick"><p class="t-name">${t.n}</p><p class="t-px">-</p><p class="fine">불러오는 중</p></div>`;
+        const cf = f.chg > 0.005 ? "c-up" : f.chg < -0.005 ? "c-dn" : "c-fl";
+        const nf = (v) => (+v).toLocaleString("ko-KR", { minimumFractionDigits: t.d, maximumFractionDigits: t.d }) + (t.suf || "");
+        const stamp = f.at ? new Date(f.at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }) + " KST" : "";
+        return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">${nf(f.px)}</p><p class="t-ch ${cf}">${f.chg > 0 ? "▲" : f.chg < 0 ? "▼" : ""} ${f.chg > 0 ? "+" : ""}${(+f.chg).toFixed(2)}% <small>24시간 시장</small></p><p class="fine" style="margin:2px 0 0">기준 ${esc(f.base || "전일 종가")} ${f.ref != null ? nf(f.ref) : "-"}</p><p class="fine">${esc(f.src || "")}${stamp ? " · " + stamp : ""}</p></div>`;
       }
       if (t.srv) {                                        // 다우존스: 사이트 속보 데이터(야후)에서 — 미국장엔 지수, 그 외엔 선물
         const dw = window.trlDow || {};
@@ -88,7 +97,7 @@ async function loadTicks() {
       // 정규장 기준(한국: 네이버 마감값, 미국: 야후) — 24시간 대비와 따로 표시
       const rg = kr && kr.px ? { chg: kr.chg, at: kr.at, open: kr.open, src: "한국거래소" } : (window.trlReg || {})[t.k] ? { ...(window.trlReg || {})[t.k], src: "정규장" } : null;
       const reg = rg ? `<p class="t-meta">정규장 ${sg(rg.chg)} ${rg.open ? "장중" : `마감 ${mdhm(rg.at)}`}</p>` : "";
-      return `<div class="tick${flash}" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">${val}</p><p class="t-ch ${cls}">${ch > 0 ? "▲" : ch < 0 ? "▼" : ""} ${ch > 0 ? "+" : ""}${ch.toFixed(2)}% <small>24시간</small></p>${won}${reg}${meta}</div>`;
+      return `<div class="tick${flash}" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">${val}</p><p class="t-ch ${cls}">${ch > 0 ? "▲" : ch < 0 ? "▼" : ""} ${ch > 0 ? "+" : ""}${ch.toFixed(2)}% <small>24시간</small></p><p class="fine" style="margin:2px 0 0">기준 24시간 전 ${(t.u || "") + prev.toLocaleString("ko-KR", { minimumFractionDigits: t.d, maximumFractionDigits: t.d }) + (t.suf || "")}</p>${won}${reg}${meta}</div>`;
     }).join("");
     $("#tickGrid").innerHTML = html;
     setTimeout(() => document.querySelectorAll(".tick.flash").forEach((e) => e.classList.remove("flash")), 900);
@@ -507,7 +516,9 @@ function liveBand() {
   const live24 = () => [["코스피200", ""], ["나스닥100", ""], ["S&P500", ""], ["WTI", "$"], ["브렌트", "$"], ["금", "$"], ["원/달러", ""]]
     .map(([n, u]) => { const f = future(n); if (!f) return "";
       const v = u + Number(f.px).toLocaleString("en-US", { maximumFractionDigits: 2 });
-      return f.since_close != null ? n + " 야간·24시간 " + v + " (종가 이후 " + pcLive(f.since_close) + ")" : n + " " + v + " (" + pcLive(f.chg) + ")"; })
+      const rv = (x) => u + Number(x).toLocaleString("en-US", { maximumFractionDigits: 3 });
+      return f.since_close != null ? n + " 야간·24시간 " + v + " (종가 이후 " + pcLive(f.since_close) + (f.close_ref != null ? ", 종가 시각 " + rv(f.close_ref) : "") + ")"
+        : n + " " + v + " (" + pcLive(f.chg) + (f.ref != null ? ", 기준 " + (f.base || "") + " " + rv(f.ref) : "") + ")"; })
     .filter(Boolean).join(" · ");
   let icon = "", title = "", at = window.trlUpdated || Date.now();
   if (!weekday) {
@@ -515,7 +526,7 @@ function liveBand() {
     icon = "🛰️"; title = "주말 · 한국 종가 + 24시간 시세";
     if (krClose()) out.push(krClose());
     const kf = future("코스피200 야간선물") || future("코스피200 주간선물");
-    if (kf) out.push(kf.name + " " + Number(kf.px).toLocaleString("en-US", { maximumFractionDigits: 2 }) + " (" + (kf.base || "") + " 대비 " + pcLive(kf.chg) + ", NH)");
+    if (kf) out.push(kf.name + " " + Number(kf.px).toLocaleString("en-US", { maximumFractionDigits: 2 }) + " (" + (kf.base || "") + (kf.ref != null ? " " + Number(kf.ref).toLocaleString("en-US", { maximumFractionDigits: 2 }) : "") + " 대비 " + pcLive(kf.chg) + ", NH)");
     out.push(live24());
     if (latest()) out.push(latest());
     at = brief.at || at;

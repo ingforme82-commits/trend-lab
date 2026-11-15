@@ -536,10 +536,12 @@
     const md_ = mode(), now = kst(Date.now());
     const today = kstDay(Date.now()), tmr = kstDay(Date.now() + 86400e3);
     const fut = {}; ((brief && brief.futures) || []).forEach((f) => { fut[f.name] = f; });
-    const fv = (n) => { const f = fut[n]; return f ? `${esc(n)} ${f.u === "$" ? "$" : ""}${(+f.px).toLocaleString("ko-KR", { maximumFractionDigits: 2 })}${f.u === "원" ? "원" : ""} ${sg2(f.chg)}` : ""; };
+    const rn = (v, u) => `${u === "$" ? "$" : ""}${(+v).toLocaleString("ko-KR", { maximumFractionDigits: 3 })}${u === "원" ? "원" : ""}`;
+    const rfx = (f) => f && f.ref != null ? ` <small class="dim">(기준 ${esc(f.base || "")} ${rn(f.ref, f.u)})</small>` : "";   // 11/16 운영자: 기준 지표 숫자 명시
+    const fv = (n) => { const f = fut[n]; return f ? `${esc(n)} ${f.u === "$" ? "$" : ""}${(+f.px).toLocaleString("ko-KR", { maximumFractionDigits: 2 })}${f.u === "원" ? "원" : ""} ${sg2(f.chg)}${rfx(f)}` : ""; };
     // 한국 24시간 시세: 장 밖이면 '마지막 거래소 종가 이후 변화'(11/15 — 24시간 등락과 실제 종가가 섞여 보이던 문제)
     const fk = (n) => { const f = fut[n]; if (!f) return ""; if (f.since_close == null) return fv(n);
-      return `${esc(n)} 야간·24시간 ${f.u === "$" ? "$" : ""}${(+f.px).toLocaleString("ko-KR", { maximumFractionDigits: 2 })} ${sg2(f.since_close)} <small class="dim">${kstDay(f.close_at) === kstDay(Date.now()) ? "" : `${+kstDay(f.close_at).slice(5, 7)}/${+kstDay(f.close_at).slice(8)} `}종가 이후</small>`; };
+      return `${esc(n)} 야간·24시간 ${f.u === "$" ? "$" : ""}${(+f.px).toLocaleString("ko-KR", { maximumFractionDigits: 2 })} ${sg2(f.since_close)} <small class="dim">${kstDay(f.close_at) === kstDay(Date.now()) ? "" : `${+kstDay(f.close_at).slice(5, 7)}/${+kstDay(f.close_at).slice(8)} `}종가 이후${f.close_ref != null ? ` · 종가 시각 ${rn(f.close_ref, f.u)}` : ""}</small>`; };
     const top3 = (gs) => (gs || []).slice(0, 3).map((g) => `${esc(g.name)} ${sg2(g.chg)} <small class="dim">상승 ${g.up}/${g.n}</small>`).join(" · ");
     const reg = window.trlReg || {}, kr = window.trlKr || {};
     const L = [];
@@ -552,12 +554,12 @@
       const u = leaders && leaders.us;
       if (u && (u.industry || []).length) L.push(`🏁 미국 주도 업종${u.open ? "(장중)" : "(직전 장 기준)"}: ${top3(u.industry)}`);
       const f = ["나스닥100", "S&P500", "WTI", "브렌트", "달러인덱스"].map(fv).filter(Boolean);
-      if (f.length) L.push(`📈 지수·유가(24시간 선물): ${f.join(" · ")}${brief && brief.us10y ? ` · 미 10년물 ${(+brief.us10y.px).toFixed(3)}%` : ""}`);
+      if (f.length) L.push(`📈 지수·유가(24시간 선물): ${f.join(" · ")}${brief && brief.us10y ? ` · 미 10년물 ${(+brief.us10y.px).toFixed(3)}%${brief.ust && brief.ust["10Y"] && brief.ust["10Y"].prev != null ? ` <small class="dim">(전일 ${(+brief.ust["10Y"].prev).toFixed(3)}%)</small>` : ""}` : ""}`);
       const hu = leaders && leaders.hourly && leaders.hourly.us && (leaders.hourly.us.slots || [])[0];
       if (hu && hu.live) L.push(`⏱ 이번 시간(${hu.h}시~) 강세: ${(hu.sectors || []).slice(0, 2).map((g) => `${esc(g.name)} ${sg2(g.slot)}`).join(" · ")} | ${(hu.stocks || []).slice(0, 3).map((r) => `${esc(r.name)} ${sg2(r.slot)}`).join(" · ")}`);
       const kc = [["KOSPI", "코스피"], ["KR200", "코스피200"]].filter(([c]) => kr[c] && !kr[c].open).map(([c, n]) => `${n} ${(+kr[c].px).toLocaleString("ko-KR", { maximumFractionDigits: 2 })} ${sg2(kr[c].chg)}`);
       if (kc.length) L.push(`🏁 한국 마지막 종가${kr.KOSPI && kr.KOSPI.at ? ` <small class="dim">(${+kstDay(kr.KOSPI.at).slice(5, 7)}/${+kstDay(kr.KOSPI.at).slice(8)} 마감)</small>` : ""}: ${kc.join(" · ")}`);
-      const rf = ["코스피200 야간선물", "코스피200 주간선물"].map((n) => fut[n] ? `<b>${esc(n)}</b> ${(+fut[n].px).toLocaleString("ko-KR", { maximumFractionDigits: 2 })} ${sg2(fut[n].chg)} <small class="dim">${esc(fut[n].base || "")} 대비 · NH</small>` : "").filter(Boolean);
+      const rf = ["코스피200 야간선물", "코스피200 주간선물"].map((n) => fut[n] ? `<b>${esc(n)}</b> ${(+fut[n].px).toLocaleString("ko-KR", { maximumFractionDigits: 2 })} ${sg2(fut[n].chg)} <small class="dim">(기준 ${esc(fut[n].base || "")}${fut[n].ref != null ? " " + rn(fut[n].ref) : ""} · NH)</small>` : "").filter(Boolean);
       const k = [...rf, ...["코스피200", "삼성전자", "SK하이닉스"].map(fk), fv("원/달러")].filter(Boolean);
       if (k.length) L.push(`🇰🇷 내일 한국장 연결: ${k.join(" · ")}`);
       const evT = (c) => new Date(`${c.date}T${c.time}:00+09:00`).getTime();
@@ -754,21 +756,21 @@
     const w = b.world || {};
     const fx = (f) => f.u === "$" ? "$" + f.px.toLocaleString("ko-KR", { maximumFractionDigits: 2 }) : f.px.toLocaleString("ko-KR", { maximumFractionDigits: 2 }) + (f.u === "원" || f.u === "엔" ? f.u : "");
     const fut = (b.futures || []).map((f) => f.since_close != null
-        ? `<span class="bf"><small>${esc(f.name)} 야간·24시간</small> ${fx(f)} ${sg(f.since_close)} <small class="dim">종가 이후</small></span>`
-        : `<span class="bf"><small>${esc(f.name)}</small> ${fx(f)} ${sg(f.chg)}</span>`).join("")
+        ? `<span class="bf"><small>${esc(f.name)} 야간·24시간</small> ${fx(f)} ${sg(f.since_close)} <small class="dim">종가 이후${f.close_ref != null ? ` · 종가 시각 ${fx({ ...f, px: f.close_ref })}` : ""}</small></span>`
+        : `<span class="bf"><small>${esc(f.name)}</small> ${fx(f)} ${sg(f.chg)}${f.ref != null ? ` <small class="dim">기준 ${esc(f.base || "")} ${fx({ ...f, px: +f.ref })}${f.src ? " · " + esc(f.src) : ""}</small>` : ""}</span>`).join("")
       + (() => { const u = b.ust && b.ust["10Y"] ? b.ust : b.us10y ? { "10Y": b.us10y } : {};
-        return ["2Y", "10Y", "30Y"].filter((k) => u[k]).map((k) => `<span class="bf"><small>미 ${k.replace("Y", "년물")}</small> ${u[k].px.toFixed(3)}% <b class="${cls(u[k].bp)}">${u[k].bp > 0 ? "+" : ""}${u[k].bp.toFixed(1)}bp</b></span>`).join("")
+        return ["2Y", "10Y", "30Y"].filter((k) => u[k]).map((k) => `<span class="bf"><small>미 ${k.replace("Y", "년물")}</small> ${u[k].px.toFixed(3)}% <b class="${cls(u[k].bp)}">${u[k].bp > 0 ? "+" : ""}${u[k].bp.toFixed(1)}bp</b>${u[k].prev != null ? ` <small class="dim">전일 ${(+u[k].prev).toFixed(3)}%</small>` : ""}</span>`).join("")
           + (u["2Y"] && u["10Y"] ? `<span class="bf"><small>10년−2년</small> ${Math.round((u["10Y"].px - u["2Y"].px) * 100)}bp</span>` : ""); })();
     const krRow = (k) => { const L = [["KOSPI", "코스피"], ["KOSDAQ", "코스닥"], ["KR200", "코스피200"], ["SMSN", "삼성전자"], ["SKHX", "SK하이닉스"]].filter(([c]) => k && k[c] && k[c].px);
       if (!L.length) return "";
       const fv = (c, v) => c === "SMSN" || c === "SKHX" ? Math.round(v).toLocaleString("ko-KR") + "원" : v.toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       return `<h4>🇰🇷 한국 증시 <small class="dim">(한국거래소 · 전일 종가 대비${L.some(([c]) => k[c].open) ? " · 장중" : " · 마감"}${(() => { const xs = L.map(([c]) => k[c]).filter((v) => v.xc);
         if (!xs.length) return ""; const off = xs.filter((v) => v.off).length;
-        return off ? ` · ⚠ 증권사 값 불일치 ${off}건(다수 일치 값 사용)` : ` · ✔ 증권사 ${Math.min(...xs.map((v) => +v.xc.split("/")[0]))}~${Math.max(...xs.map((v) => +v.xc.split("/")[0]))}곳 일치`; })()})</small></h4><div class="bfs" style="margin-bottom:10px">${L.map(([c, n]) => `<span class="bf"><small>${n}</small> ${fv(c, k[c].px)} ${sg(k[c].chg)}</span>`).join("")}</div>`; };
+        return off ? ` · ⚠ 증권사 값 불일치 ${off}건(다수 일치 값 사용)` : ` · ✔ 증권사 ${Math.min(...xs.map((v) => +v.xc.split("/")[0]))}~${Math.max(...xs.map((v) => +v.xc.split("/")[0]))}곳 일치`; })()})</small></h4><div class="bfs" style="margin-bottom:10px">${L.map(([c, n]) => `<span class="bf"><small>${n}</small> ${fv(c, k[c].px)} ${sg(k[c].chg)}${k[c].chg != null && k[c].chg > -100 ? ` <small class="dim">전일 ${fv(c, k[c].px / (1 + k[c].chg / 100))}</small>` : ""}</span>`).join("")}</div>`; };
     const li = (n) => `<li><b>${hm(n.ts)}</b> ${n.pivot ? "🔴 " : ""}${esc(n.text)} <small class="dim">${esc(n.src)}</small></li>`;
     const top = (b.session || fut) ? `<div class="bwide">${b.session ? `<p class="bsess">🕘 지금: <b>${esc(b.session)}</b></p>` : ""}
         ${krRow(b.kr)}
-        ${fut ? `<h4>⏱️ 24시간 선물·환율 <small class="dim">(24시간 전 대비)</small></h4><div class="bfs">${fut}</div>` : ""}</div>
+        ${fut ? `<h4>⏱️ 24시간 선물·환율 <small class="dim">(항목마다 기준 표시)</small></h4><div class="bfs">${fut}</div>` : ""}</div>
       ${(b.macro || []).length ? `<div class="bcol"><h4>🧾 경제지표 발표 <small class="dim">최근 12시간</small></h4><ul class="bn">${b.macro.map(li).join("")}</ul></div>` : ""}
       ${(b.heads || []).length ? `<div class="bcol"><h4>📰 주요 속보 <small class="dim">최근 3시간</small></h4><ul class="bn">${b.heads.map(li).join("")}</ul></div>` : ""}
       ${(b.analysis || []).length ? `<div class="bcol"><h4>📝 텔레 시황 분석 <small class="dim">최근 12시간 · 중요도 순</small></h4><ul class="bn">${b.analysis.map((n) => `<li><b>${hm(n.ts)}</b> ${esc(n.text)}${n.sub ? `<br><small class="dim">${esc(n.sub)}</small>` : ""} <small class="dim">${esc(n.src)}</small></li>`).join("")}</ul></div>` : ""}` : "";

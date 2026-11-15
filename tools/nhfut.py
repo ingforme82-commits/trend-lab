@@ -136,13 +136,14 @@ def quotes() -> dict:
         dpx, dvs = _f(o.get("prpr")), _f(o.get("prdy_vrss"))
         if dp.get("rsp_cd") == "00000" and dpx:
             item = {"name": "코스피200 주간선물", "px": dpx, "chg": round(dvs / (dpx - dvs) * 100, 2) if dvs is not None and dpx != dvs else None,
-                    "sess": "day", "base": "전일 종가", "code": code, "at": now_ms, "src": "NH"}
+                    "sess": "day", "base": "전일 종가", "ref": round(dpx - dvs, 2) if dvs is not None else None,
+                    "code": code, "at": now_ms, "src": "NH"}
             if sess == "night":
                 n = _first(_call("/krfuture/quote/v1/night", {"iem_cd": code}), "Output_0")
                 npx = _f(n.get("prpr"))
                 if npx:
                     item.update(name="코스피200 야간선물", px=npx, chg=round((npx / dpx - 1) * 100, 2), sess="night", base="주간 종가",
-                                day_px=dpx)
+                                ref=dpx, day_px=dpx)
             out["K200F"] = item
     except Exception:  # noqa: BLE001
         pass
@@ -151,9 +152,12 @@ def quotes() -> dict:
             code = cme_code(root)
             d = _call("/gbfuture/quote/v1/current", {"exnm": "FCME", "iem_cd": code})
             o = _first(d, "Output_0")
-            px, rt = _f(o.get("last")), _f(o.get("rate"))
+            px, rt, df = _f(o.get("last")), _f(o.get("rate")), _f(o.get("diff"))
             if d.get("rsp_cd") == "00000" and px:
-                out[key] = {"name": name, "px": px, "chg": rt, "code": code, "at": now_ms, "src": "NH"}
+                ref = round(px - df, 2) if df is not None else None          # 등락률 기준 = 현재가 − 전일 대비(전일 정산가)
+                if ref and df:
+                    rt = round((px / ref - 1) * 100, 2)
+                out[key] = {"name": name, "px": px, "chg": rt, "base": "전일 정산가", "ref": ref, "code": code, "at": now_ms, "src": "NH"}
         except Exception:  # noqa: BLE001
             continue
     if out:

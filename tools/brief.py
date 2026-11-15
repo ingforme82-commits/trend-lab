@@ -63,10 +63,15 @@ def futures() -> list[dict]:
         if name in cn:                                   # 달러인덱스·원/달러·엔/달러는 CNBC 24시간 실시간(하이퍼리퀴드 상품은 거래 멈춤, 11/9 확인)
             out.append({"name": name, **cn[name], "u": u})
             continue
+        if name in CNBC_FX.values():                     # CNBC 실패 → 야후 24시간 환율·달러지수(하이퍼리퀴드는 거래 멈춤이라 쓰지 않음, 11/16)
+            y = yahoo_fx(name)
+            if y:
+                out.append({"name": name, **y, "u": u})
+            continue
         x = c.get(sym)
         if x and float(x.get("prevDayPx") or 0) and float(x.get("dayNtlVlm") or 0) > 0:   # 거래량 0 = 멈춘 상품은 싣지 않음
             px, prev = float(x["markPx"]), float(x["prevDayPx"])
-            out.append({"name": name, "px": px, "chg": round((px / prev - 1) * 100, 2), "u": u})
+            out.append({"name": name, "px": px, "chg": round((px / prev - 1) * 100, 2), "u": u, "base": "24시간 전", "ref": prev, "src": "하이퍼리퀴드"})
     return out
 
 
@@ -84,6 +89,7 @@ def cnbc_fx() -> dict:
             px, prev = float(str(q["last"]).replace(",", "")), float(str(q["previous_day_closing"]).replace(",", ""))
             if px > 0 and prev > 0 and q.get("symbol") in CNBC_FX:
                 out[CNBC_FX[q["symbol"]]] = {"px": round(px, 3), "chg": round((px / prev - 1) * 100, 2), "src": "CNBC",
+                                             "base": "전일 종가", "ref": round(prev, 3),
                                              "at": int(datetime.fromisoformat(q["last_time"]).timestamp() * 1000)}
     except Exception:  # noqa: BLE001
         pass
@@ -91,6 +97,23 @@ def cnbc_fx() -> dict:
 
 
 KR_24H = {"코스피200": ("xyz:KR200", "KR200"), "삼성전자": ("xyz:SMSN", "SMSN"), "SK하이닉스": ("xyz:SKHX", "SKHX")}
+
+
+YAHOO_FX = {"달러인덱스": "DX-Y.NYB", "원/달러": "KRW=X", "엔/달러": "JPY=X"}
+
+
+def yahoo_fx(name: str) -> dict | None:
+    """야후 24시간 환율·달러지수(평일 24시간 갱신). 기준 = 전일 종가(chartPreviousClose)."""
+    try:
+        u = f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.request.quote(YAHOO_FX[name])}?interval=1m&range=1d"
+        m = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"}), timeout=10).read())["chart"]["result"][0]["meta"]
+        px, prev = float(m["regularMarketPrice"]), float(m.get("chartPreviousClose") or m.get("previousClose") or 0)
+        if px > 0 and prev > 0:
+            return {"px": round(px, 3), "chg": round((px / prev - 1) * 100, 2), "src": "야후", "base": "전일 종가", "ref": round(prev, 3),
+                    "at": int(m.get("regularMarketTime", 0)) * 1000}
+    except Exception:  # noqa: BLE001
+        pass
+    return None
 
 
 def since_close(fut: list[dict], kr: dict) -> None:
@@ -111,7 +134,7 @@ def since_close(fut: list[dict], kr: dict) -> None:
         except Exception:  # noqa: BLE001
             continue
         if base > 0:
-            f.update(since_close=round((f["px"] / base - 1) * 100, 2), close_at=t, close_chg=k.get("chg"))
+            f.update(since_close=round((f["px"] / base - 1) * 100, 2), close_at=t, close_chg=k.get("chg"), close_ref=base)
 
 
 def make(out: dict) -> dict:
@@ -174,13 +197,14 @@ def make(out: dict) -> dict:
         from nhfut import quotes as nh_fut
         nq = nh_fut()
         fut[:0] = [{"name": v["name"], "px": v["px"], "chg": v["chg"], "u": "", "src": "NH", "real": True,
-                    **({"base": v["base"]} if v.get("base") else {})} for k, v in nq.items() if v.get("chg") is not None]
+                    **({"base": v["base"]} if v.get("base") else {}), **({"ref": v["ref"]} if v.get("ref") else {})}
+                   for k, v in nq.items() if v.get("chg") is not None]
     except Exception:  # noqa: BLE001
         pass
     tnx = out.get("us10y") or {}
     return {"at": int(now), "session": session(datetime.now(timezone.utc)), "futures": fut, "kr": out.get("kr") or {},
             "us10y": {"px": tnx.get("px"), "bp": tnx.get("bp")} if tnx.get("px") else None,
-            "ust": {k: {"px": v["px"], "bp": v["bp"]} for k, v in (out.get("ust") or {}).items()},
+            "ust": {k: {"px": v["px"], "bp": v["bp"], "prev": v.get("prev"), "src": v.get("src"), "at": v.get("at")} for k, v in (out.get("ust") or {}).items()},
             "official": out.get("official") or {},
             "macro": macro, "heads": heads, "analysis": analysis, "moves": moves, "trending": [{"name": t["name"], "n": t["n"]} for t in out.get("trending", [])[:5]],
             "sectors": sectors, "world": w, "spot": [{"name": s["name"], "chg": s.get("chg")} for s in out.get("spot", [])],
