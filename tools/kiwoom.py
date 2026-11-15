@@ -60,10 +60,12 @@ def _http(path: str, body: dict, headers: dict) -> tuple[dict, dict]:
         r = urllib.request.urlopen(req, timeout=8)
         return json.loads(r.read()), dict(r.headers)
     except urllib.error.HTTPError as e:
+        raw = e.read() or b"{}"
         try:
-            return json.loads(e.read() or b"{}"), {}
-        except ValueError:
-            return {"return_code": e.code, "return_msg": f"HTTP {e.code}"}, {}
+            return json.loads(raw), {}
+        except ValueError:                                 # 원문 앞부분을 남겨 원인(IP 미등록 등)을 볼 수 있게
+            txt = " ".join(raw.decode("utf-8", "replace").split())[:120]
+            return {"return_code": e.code, "return_msg": f"HTTP {e.code} {txt}".strip()}, {}
 
 
 def _token() -> str | None:
