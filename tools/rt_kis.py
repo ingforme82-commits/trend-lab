@@ -30,10 +30,10 @@ BASE = "https://openapi.koreainvestment.com:9443"
 WS_HOST, WS_PORT = "ops.koreainvestment.com", 21000
 OUT = keystore.state_dir() / "rt.json"
 # 11/16 확인: 이 키는 접속 1개(두 번째는 ALREADY IN USE)·동시 구독 3종목까지(4번째 MAX SUBSCRIBE OVER)
-# → 시간대별로 3개씩 바꿔 받는다. 한국장(08:00~16:00 KST) 지수, 그 밖은 SOXL·DRAM·KORU.
+# → 시간대별로 3개씩 바꿔 받는다. 한국장(08:00~16:00 KST) 지수, 그 밖은 SOXL·SKHY·KORU.
 MAX_SUBS = 3
 SUBS_KR = [("H0UPCNT0", "0001", "KOSPI", "코스피"), ("H0UPCNT0", "2001", "KR200", "코스피200"), ("H0UPCNT0", "1001", "KOSDAQ", "코스닥")]
-SUBS_US = [("HDFSCNT0", "DAMSSOXL", "SOXL", "SOXL"), ("HDFSCNT0", "DAMSDRAM", "DRAM", "DRAM"), ("HDFSCNT0", "DAMSKORU", "KORU", "KORU")]   # 11/16 운영자: 메모리 ETF DRAM(아멕스 코드로 조회 확인)
+SUBS_US = [("HDFSCNT0", "DAMSSOXL", "SOXL", "SOXL"), ("HDFSCNT0", "DNASSKHY", "SKHY", "SKHY"), ("HDFSCNT0", "DAMSKORU", "KORU", "KORU")]   # 11/16 운영자: SK하이닉스 ADR(나스닥 코드 확인). DRAM·MU 는 1분 값
 SUBS = SUBS_KR + SUBS_US
 
 

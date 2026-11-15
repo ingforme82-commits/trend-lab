@@ -9,6 +9,14 @@ const ymd = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0
 const DOW = ["일", "월", "화", "수", "목", "금", "토"];
 
 /* ───────── 1. 실시간 시세 (Hyperliquid) ───────── */
+// SKHY(SK하이닉스 ADR) 10주 = 원주 1주(SEC F-6). 원주 환산가 = 한국 종가 ÷ 10 ÷ 원/달러 → ADR 프리미엄(11/16 운영자)
+function skhyMeta(px) {
+  const k = (window.trlKr || {}).SKHX, fx = ((window.trlBrief || {}).futures || []).find((y) => y.name === "원/달러" && y.src !== "하이퍼리퀴드");
+  if (!k || !k.px || !fx || !fx.px || !px) return "";
+  const par = k.px / 10 / fx.px, prem = (px / par - 1) * 100;
+  return `<p class="t-meta">원주 환산 $${par.toFixed(2)} (한국 ${Math.round(k.px).toLocaleString("ko-KR")}원 ÷10 ÷${(+fx.px).toFixed(1)}) · 프리미엄 <b>${prem > 0 ? "+" : ""}${prem.toFixed(1)}%</b></p>`;
+}
+
 const TICKS = [
   { g: "한국 프록시" },
   { k: "KOSPI", n: "코스피", d: 2, krOnly: true },
@@ -24,6 +32,8 @@ const TICKS = [
   { k: "DOW", n: "다우존스", d: 0, srv: true },
   { k: "SOXL", n: "SOXL (반도체 3배)", d: 2, u: "$" },
   { k: "DRAM", n: "DRAM (메모리 ETF)", d: 2, u: "$", lev: true },
+  { k: "SKHY", n: "SKHY (SK하이닉스 ADR)", d: 2, u: "$", lev: true },
+  { k: "MU", n: "MU (마이크론)", d: 2, u: "$", lev: true },
   { g: "원자재·채권" },
   { k: "CL", n: "WTI 원유", d: 2, u: "$" },
   { k: "BRENTOIL", n: "브렌트유", d: 2, u: "$" },
@@ -72,7 +82,7 @@ async function loadTicks() {
         if (!x || x.px == null) return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">-</p><p class="fine">불러오는 중</p></div>`;
         const cl = x.chg > 0.005 ? "c-up" : x.chg < -0.005 ? "c-dn" : "c-fl";
         const ref = x.chg != null ? x.px / (1 + x.chg / 100) : null;
-        return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">$${(+x.px).toFixed(2)}</p><p class="t-ch ${cl}">${x.chg > 0 ? "▲" : x.chg < 0 ? "▼" : ""} ${x.chg > 0 ? "+" : ""}${(+x.chg).toFixed(2)}% <small>정규장</small></p><p class="fine" style="margin:2px 0 0">기준 전일 종가 ${ref ? "$" + ref.toFixed(2) : "-"}</p>${t.k === "DRAM" ? `<p class="t-meta">SK하이닉스·마이크론·삼성전자 비중 큼</p>` : ""}</div>`;
+        return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">$${(+x.px).toFixed(2)}</p><p class="t-ch ${cl}">${x.chg > 0 ? "▲" : x.chg < 0 ? "▼" : ""} ${x.chg > 0 ? "+" : ""}${(+x.chg).toFixed(2)}% <small>정규장</small></p><p class="fine" style="margin:2px 0 0">기준 전일 종가 ${ref ? "$" + ref.toFixed(2) : "-"}</p>${t.k === "DRAM" ? `<p class="t-meta">SK하이닉스·마이크론·삼성전자 비중 큼</p>` : ""}${t.k === "MU" ? `<p class="t-meta">미국 메모리 대장 — 삼성·하이닉스 업황 선행</p>` : ""}${t.k === "SKHY" ? skhyMeta(x.px) : ""}</div>`;
       }
       if (t.srv) {                                        // 다우존스: 사이트 속보 데이터(야후)에서 — 미국장엔 지수, 그 외엔 선물
         const dw = window.trlDow || {};
@@ -664,7 +674,7 @@ async function loadEducation() {
 /* ───────── 시작 ───────── */
 /* ───────── 1-1. 실시간 체결(Oracle 서버 KIS 웹소켓 → Cloudflare 터널, 2초마다) — 11/16 운영자 ───────── */
 // news.json 'rt_url' 이 있을 때만. 받은 종목 칸은 '실시간 체결' 값으로 바꾸고 기준(전일 종가)을 숫자로 적는다.
-const RT_NAMES = { KOSPI: "코스피", KR200: "코스피200", KOSDAQ: "코스닥", SOXL: "SOXL (반도체 3배)", DRAM: "DRAM (메모리 ETF)", NVDA: "NVDA", KORU: "KORU (한국 3배)", SMSN: "삼성전자", SKHX: "SK하이닉스" };
+const RT_NAMES = { KOSPI: "코스피", KR200: "코스피200", KOSDAQ: "코스닥", SOXL: "SOXL (반도체 3배)", DRAM: "DRAM (메모리 ETF)", SKHY: "SKHY (SK하이닉스 ADR)", MU: "MU (마이크론)", NVDA: "NVDA", KORU: "KORU (한국 3배)", SMSN: "삼성전자", SKHX: "SK하이닉스" };
 async function loadRt() {
   const u = window.trlRtUrl;
   if (!u) return;
@@ -678,11 +688,11 @@ async function loadRt() {
       if (!el) return;
       const c = r.chg > 0.005 ? "c-up" : r.chg < -0.005 ? "c-dn" : "c-fl";
       const won = k === "SMSN" || k === "SKHX";
-      const nf = (v) => won ? Math.round(v).toLocaleString("ko-KR") + "원" : (["SOXL", "DRAM", "NVDA", "KORU"].includes(k) ? "$" : "") + (+v).toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const nf = (v) => won ? Math.round(v).toLocaleString("ko-KR") + "원" : (["SOXL", "DRAM", "SKHY", "MU", "NVDA", "KORU"].includes(k) ? "$" : "") + (+v).toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const flash = el.dataset.rt && el.dataset.rt !== String(r.px) ? " flash" : "";
       el.dataset.rt = String(r.px);
       el.className = "tick" + flash;
-      el.innerHTML = `<p class="t-name">${RT_NAMES[k] || k}</p><p class="t-px">${nf(r.px)}</p><p class="t-ch ${c}">${r.chg > 0 ? "▲" : r.chg < 0 ? "▼" : ""} ${r.chg > 0 ? "+" : ""}${(+r.chg).toFixed(2)}% <small>실시간 체결</small></p><p class="fine" style="margin:2px 0 0">기준 전일 종가 ${nf(r.ref)}</p><p class="t-meta">KIS 웹소켓 · ${hhmm(KSTof(r.at))}:${String(KSTof(r.at).getSeconds()).padStart(2, "0")}</p>`;
+      el.innerHTML = `<p class="t-name">${RT_NAMES[k] || k}</p><p class="t-px">${nf(r.px)}</p><p class="t-ch ${c}">${r.chg > 0 ? "▲" : r.chg < 0 ? "▼" : ""} ${r.chg > 0 ? "+" : ""}${(+r.chg).toFixed(2)}% <small>실시간 체결</small></p><p class="fine" style="margin:2px 0 0">기준 전일 종가 ${nf(r.ref)}</p>${k === "SKHY" ? skhyMeta(r.px) : ""}<p class="t-meta">KIS 웹소켓 · ${hhmm(KSTof(r.at))}:${String(KSTof(r.at).getSeconds()).padStart(2, "0")}</p>`;
     });
   } catch { /* 실시간 경로 없으면 기존 1분 값 */ }
 }

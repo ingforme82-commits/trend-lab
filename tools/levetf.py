@@ -19,6 +19,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 CACHE = ROOT / "tools" / "levetf_cache.json"
 ETF = [("SOXL", "SOXL", "미국 반도체 3배", "^SOX", "필라델피아 반도체지수"), ("DRAM", "DRAM", "라운드힐 메모리 ETF(SK하이닉스·마이크론·삼성전자 중심)", None, ""),
+       ("SKHY", "SKHY", "SK하이닉스 ADR(나스닥, 10주 = 원주 1주)", None, ""), ("MU", "MU", "마이크론(미국 메모리 대장)", None, ""),
        ("KORU", "KORU", "한국 3배", "EWY", "EWY(MSCI 한국)")]
 LEV = {"SOXS": -3}                                         # 기초 등락 배수(기본 3). 11/16 운영자: 사이트 칸은 SOXS 대신 메모리 ETF DRAM(기초 비교 없음)
 
