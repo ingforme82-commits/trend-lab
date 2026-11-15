@@ -11,6 +11,7 @@ const DOW = ["일", "월", "화", "수", "목", "금", "토"];
 /* ───────── 1. 실시간 시세 (Hyperliquid) ───────── */
 const TICKS = [
   { g: "한국 프록시" },
+  { k: "KOSPI", n: "코스피", d: 2, krOnly: true },
   { k: "KR200", n: "코스피200", d: 2 },
   { k: "SMSN", n: "삼성전자", d: 2, u: "$", won: true },
   { k: "SKHX", n: "SK하이닉스", d: 2, u: "$", won: true },
@@ -75,14 +76,15 @@ async function loadTicks() {
           : "미니 다우 선물 · 장외";
         return `<div class="tick" data-k="DOW"><p class="t-name">${t.n}${live ? "" : " (선물)"}</p><p class="t-px">${Math.round(main.px).toLocaleString("ko-KR")}</p><p class="t-ch ${c2}">${main.chg > 0 ? "▲" : main.chg < 0 ? "▼" : ""} ${main.chg > 0 ? "+" : ""}${main.chg.toFixed(2)}%</p><p class="fine" style="margin:2px 0 0">${sub}</p></div>`;
       }
-      const x = map[t.k];
+      const x = t.krOnly ? null : map[t.k];
       const kr = (window.trlKr || {})[t.k];
+      if (t.krOnly && !(kr && kr.px)) return "";
       const sg = (v) => `<b class="${v > 0.005 ? "c-up" : v < -0.005 ? "c-dn" : "c-fl"}">${v > 0 ? "+" : ""}${v.toFixed(2)}%</b>`;
       const h24 = x && +x.prevDayPx ? (+x.markPx / +x.prevDayPx - 1) * 100 : null;
       const meta = x && +x.dayNtlVlm > 0 ? `<p class="t-meta">24h 거래대금 $${fmtVol(+x.dayNtlVlm)}${x.oraclePx && +x.oraclePx ? ` · 기초가격 대비 ${sg((+x.markPx / +x.oraclePx - 1) * 100)}` : ""}</p>` : "";
       if (kr && kr.px && (kr.open || !x)) {               // 한국 정규장: 한국거래소 실시간 가격 · 전일 종가 대비(네이버)
         const ck = kr.chg > 0.005 ? "c-up" : kr.chg < -0.005 ? "c-dn" : "c-fl";
-        const v = t.k === "KR200" ? kr.px.toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Math.round(kr.px).toLocaleString("ko-KR") + "원";
+        const v = t.k === "KR200" || t.k === "KOSPI" ? kr.px.toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Math.round(kr.px).toLocaleString("ko-KR") + "원";
         const age = Date.now() - kr.at > 10 * 60000 ? ` · <b class="h-warn">${Math.round((Date.now() - kr.at) / 60000)}분 전 값</b>` : "";
         return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">${v}</p><p class="t-ch ${ck}">${kr.chg > 0 ? "▲" : kr.chg < 0 ? "▼" : ""} ${kr.chg > 0 ? "+" : ""}${kr.chg.toFixed(2)}% <small>정규장</small></p>
           <p class="t-meta">한국거래소 ${hhmm(KSTof(kr.at))}${age}${h24 != null ? ` · 24h 프록시 ${sg(h24)}` : ""}</p>${meta}</div>`;
@@ -652,6 +654,32 @@ async function loadEducation() {
 }
 
 /* ───────── 시작 ───────── */
+/* ───────── 1-1. 실시간 체결(Oracle 서버 KIS 웹소켓 → Cloudflare 터널, 2초마다) — 11/16 운영자 ───────── */
+// news.json 'rt_url' 이 있을 때만. 받은 종목 칸은 '실시간 체결' 값으로 바꾸고 기준(전일 종가)을 숫자로 적는다.
+const RT_NAMES = { KOSPI: "코스피", KR200: "코스피200", KOSDAQ: "코스닥", SOXL: "SOXL (반도체 3배)", NVDA: "NVDA", KORU: "KORU (한국 3배)", SMSN: "삼성전자", SKHX: "SK하이닉스" };
+async function loadRt() {
+  const u = window.trlRtUrl;
+  if (!u) return;
+  try {
+    const j = await (await fetch(u + "/rt", { cache: "no-store", signal: AbortSignal.timeout(4000) })).json();
+    window.trlRt = j;
+    const now = Date.now();
+    Object.entries(j.q || {}).forEach(([k, r]) => {
+      if (!r || !r.px || now - r.at > 120000) return;            // 2분 넘은 값은 실시간이 아님 → 원래 칸 그대로
+      const el = document.querySelector(`.tick[data-k="${k}"]`);
+      if (!el) return;
+      const c = r.chg > 0.005 ? "c-up" : r.chg < -0.005 ? "c-dn" : "c-fl";
+      const won = k === "SMSN" || k === "SKHX";
+      const nf = (v) => won ? Math.round(v).toLocaleString("ko-KR") + "원" : (["SOXL", "NVDA", "KORU"].includes(k) ? "$" : "") + (+v).toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const flash = el.dataset.rt && el.dataset.rt !== String(r.px) ? " flash" : "";
+      el.dataset.rt = String(r.px);
+      el.className = "tick" + flash;
+      el.innerHTML = `<p class="t-name">${RT_NAMES[k] || k}</p><p class="t-px">${nf(r.px)}</p><p class="t-ch ${c}">${r.chg > 0 ? "▲" : r.chg < 0 ? "▼" : ""} ${r.chg > 0 ? "+" : ""}${(+r.chg).toFixed(2)}% <small>실시간 체결</small></p><p class="fine" style="margin:2px 0 0">기준 전일 종가 ${nf(r.ref)}</p><p class="t-meta">KIS 웹소켓 · ${hhmm(KSTof(r.at))}:${String(KSTof(r.at).getSeconds()).padStart(2, "0")}</p>`;
+    });
+  } catch { /* 실시간 경로 없으면 기존 1분 값 */ }
+}
+setInterval(loadRt, 2000);
+
 loadHeadline(); loadTicks(); loadChecks(); loadStudies(); loadEducation();   // 블로그 분석 글 피드는 2026-10-28 운영자 결정으로 뺌
 setInterval(loadTicks, 30000);
 

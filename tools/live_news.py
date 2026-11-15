@@ -688,6 +688,11 @@ def build() -> dict:
         out["brief"] = make_brief(out)
     except Exception as e:  # noqa: BLE001
         log(f"브리핑 건너뜀: {type(e).__name__}: {e}")
+    try:                                                  # 🔴 실시간 경로(11/16 운영자): Oracle 웹소켓 값을 사이트가 직접 받는 주소
+        from rt_serve import url as rt_url
+        out["rt_url"] = rt_url()
+    except Exception as e:  # noqa: BLE001
+        log(f"실시간 주소 건너뜀: {type(e).__name__}")
     try:                                                  # ⚡ 지수 선물 급변 → 이유 정리해 주요 이슈 자동 갱신(11/12 운영자)
         from move_issue import update as move_issue
         t = move_issue(out)
