@@ -24,8 +24,26 @@ RestartSec=10
 WantedBy=multi-user.target
 EOF
 done
+# 자동 업데이트(5분마다 git pull, 실시간 코드가 바뀌면 서비스 재시작) — 11/16 운영자
+sudo tee /etc/systemd/system/trl-autopull.service >/dev/null <<EOF
+[Unit]
+Description=TRL auto pull
+[Service]
+Type=oneshot
+User=${USER}
+ExecStart=/usr/bin/env bash ${REPO}/scripts/oracle_autopull.sh
+EOF
+sudo tee /etc/systemd/system/trl-autopull.timer >/dev/null <<EOF
+[Unit]
+Description=TRL auto pull every 5 min
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+[Install]
+WantedBy=timers.target
+EOF
 sudo systemctl daemon-reload
-sudo systemctl enable --now trl-rt_kis trl-rt_serve
+sudo systemctl enable --now trl-rt_kis trl-rt_serve trl-autopull.timer
 sleep 20
-systemctl --no-pager --lines=0 status trl-rt_kis trl-rt_serve | grep -E "●|Active"
+systemctl --no-pager --lines=0 status trl-rt_kis trl-rt_serve trl-autopull.timer | grep -E "●|Active"
 echo "터널 주소: $(cat ~/.local/state/trendlab/rt_url.txt 2>/dev/null || echo '아직 없음(30초 뒤 다시 확인)')"
