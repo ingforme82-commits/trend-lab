@@ -248,7 +248,11 @@ def clean_line(text: str, with_sub: bool = False) -> tuple[str, str, str]:
 
 
 def tags_of(text: str) -> list[str]:
-    return [n for n, pat in TAGS if re.search(pat, text[:500])][:2]
+    from newsgroup import SEMICONDUCTOR, select_tags
+    tags = [n for n, pat in TAGS if re.search(pat, text[:500])]
+    if SEMICONDUCTOR.search(text[:500]):
+        tags.append("반도체")
+    return select_tags(tags)
 
 
 URL_ONLY = re.compile(r"^\s*(https?://\S+)\s*$")

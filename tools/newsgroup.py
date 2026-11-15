@@ -16,9 +16,45 @@ from __future__ import annotations
 
 import re
 
+# 기업·인물 이름만 나온 기사와 번역 전 제목도 같은 반도체 분류를 사용한다.
+SEMICONDUCTOR = re.compile(
+    r"반도체|하이닉스|삼성전자|이오테크닉스|디아이티|제주반도체|코미코|하나마이크론|SK스퀘어|"
+    r"엔비디아|\bNVIDIA\b|\bNVDA\b|젠슨\s*황|\bJensen\s+Huang\b|"
+    r"\bAMD\b|브로드컴|\bBroadcom\b|\bAVGO\b|마이크론|\bMicron\b|\bTSMC\b|"
+    r"\bHBM\d*\b|메모리|D램|\bDRAM\b|낸드|\bNAND\b|\bSOX\b|램리서치|\bASML\b|\bchips?\b|\bsemiconductors?\b",
+    re.I,
+)
+EXAM_SOCIAL = re.compile(
+    r"세무사\s*(?:시험|수석|합격)|수습세무사|국가자격시험.*(?:부정|AI\s*안경)|"
+    r"(?:tax\s+accountant|certification)\s+exam.*(?:cheat|smart\s*glasses)|"
+    r"(?:AI|스마트)\s*안경.*(?:시험|부정행위)", re.I,
+)
+MARKET_LINK = re.compile(r"실적|매출|영업이익|공급\s*계약|수주|공시|주가|주식|상장사|earnings|revenue|shares|contract", re.I)
+COMPANY_LINK = re.compile(r"삼성전자|하이닉스|엔비디아|Nvidia|Meta\b|메타|Apple\b|애플|Google\b|구글|[가-힣A-Za-z]+\s*\([A-Z]{2,5}\)|\b(?:NVDA|META|AAPL|GOOGL)\b", re.I)
+
+
+def select_tags(tags: list[str]) -> list[str]:
+    """두 분야 표시 제한에서도 확인된 반도체 분류를 버리지 않는다."""
+    unique = list(dict.fromkeys(t for t in tags if t != "기타"))
+    if "반도체" in unique and "반도체" not in unique[:2]:
+        return unique[:1] + ["반도체"]
+    return unique[:2]
+
+
+def market_item(item: dict) -> dict | None:
+    """RSS·증권사·텔레그램·캐시 공통 정리. 입력과 시각·출처·가격은 바꾸지 않는다."""
+    text = item.get("text", "")[:500] + " " + item.get("orig", "")[:500]
+    if EXAM_SOCIAL.search(text) and not (COMPANY_LINK.search(text) and MARKET_LINK.search(text)):
+        return None
+    tags = list(item.get("tags", []))
+    if SEMICONDUCTOR.search(text):
+        tags.append("반도체")
+    return dict(item, tags=select_tags(tags))
+
 OFFICIAL = {"미 연준", "미 EIA", "백악관", "미 상무부 BEA", "일본은행", "영란은행", "한국은행", "기획재정부"}   # 공식 기관 원문(11/15 추가)
 NOT_NEWS = {"섹터 시세", "증권사 시황", "시황 분석"}
 RUMOR = re.compile(r"루머|소문|찌라시|\b설\b|[가-힣]설$|미확인|소식통|관계자에 따르면|관계자들?에 따르면|익명|보도에 따르면|것으로 알려|전해졌|"
+                   r"복귀\s*(?:논의|검토|타진)|discuss(?:es|ing)?\s+(?:a\s+)?comeback|"
                    r"rumou?r|unconfirmed|reportedly|people familiar|sources? (?:say|said)|according to (?:people|sources|a report)|is said to", re.I)
 # 커뮤니티 원출처(osrc)·본문 표기 — 다른 채널이 옮겨도 독립 출처로 세지 않는다
 COMMUNITY = re.compile(r"루리웹|디시|DC\s*인사이드|더쿠|에펨|fmkorea|클리앙|뽐뿌|인벤|보배드림|네이트\s*판|블라인드|커뮤니티|"
@@ -73,7 +109,8 @@ def verify_of(members: list[dict]) -> str:
 def group(items: list[dict]) -> list[dict]:
     """items(순서 무관) → 사건 대표 항목 목록(최신 최초보도 순). 원본 dict 는 바꾸지 않는다."""
     groups: list[dict] = []                     # {"g": bigrams, "m": [items]}
-    for it in sorted(items, key=lambda x: x["ts"]):       # 이른 것부터 → 첫 항목이 최초 보도
+    cleaned = [out for item in items if (out := market_item(item)) is not None]
+    for it in sorted(cleaned, key=lambda x: x["ts"]):       # 이른 것부터 → 첫 항목이 최초 보도
         if it.get("kind") in NOT_NEWS:
             groups.append({"g": set(), "m": [it]})
             continue
@@ -107,7 +144,7 @@ def group(items: list[dict]) -> list[dict]:
             if first["verify"] == "single" and any(m.get("hot") for m in gr["m"]):
                 first["watch"] = True                     # 속보 문구지만 한 곳뿐 → 감시 중(교차 보도되면 hot)
             tags = [t for t in dict.fromkeys(t for m in gr["m"] for t in m.get("tags", [])) if t != "기타"]
-            first["tags"] = tags[:2] or first.get("tags", [])
+            first["tags"] = select_tags(tags) or first.get("tags", [])
         out.append(first)
     return sorted(out, key=lambda x: -x["ts"])
 
