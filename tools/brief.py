@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import re
+import time
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -60,13 +61,10 @@ def futures() -> list[dict]:
     cn = cnbc_fx()
     out = []
     for sym, name, u in FUT:
-        if name in cn:                                   # 달러인덱스·원/달러·엔/달러는 CNBC 24시간 실시간(하이퍼리퀴드 상품은 거래 멈춤, 11/9 확인)
-            out.append({"name": name, **cn[name], "u": u})
-            continue
-        if name in CNBC_FX.values():                     # CNBC 실패 → 야후 24시간 환율·달러지수(하이퍼리퀴드는 거래 멈춤이라 쓰지 않음, 11/16)
-            y = yahoo_fx(name)
-            if y:
-                out.append({"name": name, **y, "u": u})
+        if name in CNBC_FX.values():                     # 달러: CNBC·야후 24시간 중 더 최근 값(점수판 기록). 하이퍼리퀴드 환율은 거래 멈춤이라 안 씀(11/16)
+            best = pick_fx(name, cn.get(name))
+            if best:
+                out.append({"name": name, **best, "u": u})
             continue
         x = c.get(sym)
         if x and float(x.get("prevDayPx") or 0) and float(x.get("dayNtlVlm") or 0) > 0:   # 거래량 0 = 멈춘 상품은 싣지 않음
@@ -114,6 +112,28 @@ def yahoo_fx(name: str) -> dict | None:
     except Exception:  # noqa: BLE001
         pass
     return None
+
+
+def pick_fx(name: str, cnbc: dict | None) -> dict | None:
+    """CNBC 와 야후 중 마지막 체결이 더 최근인 값(같으면 CNBC). 두 값 차이가 0.3% 넘으면 일치 실패로 기록."""
+    import srcscore
+    g, now = "fx:" + name, time.time()
+    cands = {}
+    if cnbc:
+        cands["CNBC"] = cnbc
+    else:
+        srcscore.record(g, "CNBC", False)
+    y = None if srcscore.skip(g, "야후") else yahoo_fx(name)
+    if y:
+        cands["야후"] = y
+    elif not srcscore.skip(g, "야후"):
+        srcscore.record(g, "야후", False)
+    if not cands:
+        return None
+    both = len(cands) == 2 and abs(cands["CNBC"]["px"] / cands["야후"]["px"] - 1) <= 0.003
+    for s, v in cands.items():
+        srcscore.record(g, s, True, agree=both if len(cands) == 2 else None, age_min=(now - (v.get("at") or 0) / 1000) / 60 if v.get("at") else None)
+    return max(cands.values(), key=lambda v: (v.get("at") or 0, v.get("src") == "CNBC"))
 
 
 def since_close(fut: list[dict], kr: dict) -> None:

@@ -114,8 +114,10 @@ FETCH = {"키움": _kiwoom, "한투": _kis, "NH": _nh, "KB": _kb, "네이버": _
 KEYS = {"키움": "KIWOOM_APP_KEY", "한투": "KIS_APP_KEY", "NH": "NHPLUG_APP_KEY", "KB": "KB_APP_KEY"}   # 키 없는 곳은 부르지 않는다(Oracle 의 KB 등)
 
 
-def consensus(vals: dict[str, tuple], kind: str) -> dict:
-    """vals {출처: (값, 등락%)} → {px, chg, agree:[..], off:[..]}. 지수는 0.02 이하, 주가는 같은 값만 일치."""
+def consensus(vals: dict[str, tuple], kind: str, prio: list[str] | None = None) -> dict:
+    """vals {출처: (값, 등락%)} → {px, chg, agree:[..], off:[..]}. 지수는 0.02 이하, 주가는 같은 값만 일치.
+    prio: 동률·대표값 순서(기본 PRIO, check 는 출처 점수판 순서를 넘긴다)."""
+    PRIO = prio or globals()["PRIO"]  # noqa: N806
     tol = 0.02 if kind == "idx" else 0.5
     best = []
     for s in sorted(vals, key=lambda x: PRIO.index(x)):
@@ -141,9 +143,23 @@ def check(force: bool = False) -> dict:
             return c
     except Exception:  # noqa: BLE001
         pass
-    got, fail = {}, []
+    import srcscore                                       # 11/16 출처 점수판: 응답 시간·일치율로 순서를 계속 고침
+    got, fail, secs, rested = {}, [], {}, []
+
+    def timed(s, f):
+        t0 = time.time()
+        r = f()
+        secs[s] = time.time() - t0
+        return r
     with ThreadPoolExecutor(max_workers=5) as ex:
-        futs = {s: ex.submit(f) for s, f in FETCH.items() if s not in KEYS or keystore.has(KEYS[s])}
+        futs = {}
+        for s, f in FETCH.items():
+            if s in KEYS and not keystore.has(KEYS[s]):
+                continue
+            if srcscore.skip("kr", s):
+                rested.append(s)                          # 연속 실패 → 잠시 쉼(그 뒤 한 번 다시)
+                continue
+            futs[s] = ex.submit(timed, s, f)
         for s, fu in futs.items():
             try:
                 r = fu.result(timeout=40)
@@ -151,11 +167,21 @@ def check(force: bool = False) -> dict:
                 r = {}
             if not r:
                 fail.append(s)
+                srcscore.record("kr", s, False)
             for key, v in r.items():
                 got.setdefault(key, {})[s] = v
-    out: dict = {"KRX": {}, "통합": {}, "fail": fail, "at": int(time.time() * 1000)}
+    prio = srcscore.rank("kr", PRIO)
+    out: dict = {"KRX": {}, "통합": {}, "fail": fail, "rested": rested, "prio": prio, "at": int(time.time() * 1000)}
+    agree: dict[str, list[bool]] = {}
     for (basis, k), vals in got.items():
-        out[basis][k] = {"name": ITEMS[k][0], **consensus(vals, ITEMS[k][1]), "srcs": {s: v[0] for s, v in vals.items()}}
+        out[basis][k] = {"name": ITEMS[k][0], **consensus(vals, ITEMS[k][1], prio), "srcs": {s: v[0] for s, v in vals.items()}}
+        if len(vals) >= 3:                                # 셋 이상일 때만 '맞다/틀리다'를 센다
+            for s in vals:
+                agree.setdefault(s, []).append(s in out[basis][k]["agree"])
+    for s in futs:
+        if s not in fail:
+            a = agree.get(s)
+            srcscore.record("kr", s, True, secs=secs.get(s), agree=(sum(a) / len(a) >= 0.5) if a else None)
     for k, u in out["통합"].items():                       # 통합 등락률을 모르면 KRX 전일 종가 기준으로 계산
         x = out["KRX"].get(k)
         if u.get("chg") is None and x and x.get("chg") is not None:
@@ -181,6 +207,9 @@ def main() -> None:
                   if v["chg"] is not None else f"  {v['name']} 채택 {v['px']:,.2f} · 일치 {'·'.join(v['agree'])}{off}")
     if r["fail"]:
         print("응답 없음:", ", ".join(r["fail"]))
+    if r.get("rested"):
+        print("쉬는 중(연속 실패):", ", ".join(r["rested"]))
+    print("우선순위(점수판):", " > ".join(r.get("prio") or PRIO))
 
 
 if __name__ == "__main__":
