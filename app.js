@@ -23,7 +23,7 @@ const TICKS = [
   { k: "XYZ100", n: "나스닥100", d: 0 },
   { k: "DOW", n: "다우존스", d: 0, srv: true },
   { k: "SOXL", n: "SOXL (반도체 3배)", d: 2, u: "$" },
-  { k: "SOXS", n: "SOXS (반도체 3배 인버스)", d: 2, u: "$", lev: true },
+  { k: "DRAM", n: "DRAM (메모리 ETF)", d: 2, u: "$", lev: true },
   { g: "원자재·채권" },
   { k: "CL", n: "WTI 원유", d: 2, u: "$" },
   { k: "BRENTOIL", n: "브렌트유", d: 2, u: "$" },
@@ -67,12 +67,12 @@ async function loadTicks() {
         const stamp = f.at ? new Date(f.at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false }) + " KST" : "";
         return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">${nf(f.px)}</p><p class="t-ch ${cf}">${f.chg > 0 ? "▲" : f.chg < 0 ? "▼" : ""} ${f.chg > 0 ? "+" : ""}${(+f.chg).toFixed(2)}% <small>24시간 시장</small></p><p class="fine" style="margin:2px 0 0">기준 ${esc(f.base || "전일 종가")} ${f.ref != null ? nf(f.ref) : "-"}</p><p class="fine">${esc(f.src || "")}${stamp ? " · " + stamp : ""}</p></div>`;
       }
-      if (t.lev) {                                        // SOXS: 하이퍼리퀴드에 없음 → 1분 시세(levetf, 야후) · 실시간은 loadRt 가 덮어씀
+      if (t.lev) {                                        // DRAM 등: 하이퍼리퀴드에 없음 → 1분 시세(levetf, 야후) · 실시간은 loadRt 가 덮어씀
         const x = ((window.trlLev || {}).items || []).find((y) => y.sym === t.k);
         if (!x || x.px == null) return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">-</p><p class="fine">불러오는 중</p></div>`;
         const cl = x.chg > 0.005 ? "c-up" : x.chg < -0.005 ? "c-dn" : "c-fl";
         const ref = x.chg != null ? x.px / (1 + x.chg / 100) : null;
-        return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">$${(+x.px).toFixed(2)}</p><p class="t-ch ${cl}">${x.chg > 0 ? "▲" : x.chg < 0 ? "▼" : ""} ${x.chg > 0 ? "+" : ""}${(+x.chg).toFixed(2)}% <small>정규장</small></p><p class="fine" style="margin:2px 0 0">기준 전일 종가 ${ref ? "$" + ref.toFixed(2) : "-"}</p>${x.x3 != null ? `<p class="t-meta">기초 ${x.base || ""} ${x.base_chg > 0 ? "+" : ""}${x.base_chg}% × −3 = ${x.x3 > 0 ? "+" : ""}${x.x3}%</p>` : ""}</div>`;
+        return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">$${(+x.px).toFixed(2)}</p><p class="t-ch ${cl}">${x.chg > 0 ? "▲" : x.chg < 0 ? "▼" : ""} ${x.chg > 0 ? "+" : ""}${(+x.chg).toFixed(2)}% <small>정규장</small></p><p class="fine" style="margin:2px 0 0">기준 전일 종가 ${ref ? "$" + ref.toFixed(2) : "-"}</p>${t.k === "DRAM" ? `<p class="t-meta">SK하이닉스·마이크론·삼성전자 비중 큼</p>` : ""}</div>`;
       }
       if (t.srv) {                                        // 다우존스: 사이트 속보 데이터(야후)에서 — 미국장엔 지수, 그 외엔 선물
         const dw = window.trlDow || {};
@@ -664,7 +664,7 @@ async function loadEducation() {
 /* ───────── 시작 ───────── */
 /* ───────── 1-1. 실시간 체결(Oracle 서버 KIS 웹소켓 → Cloudflare 터널, 2초마다) — 11/16 운영자 ───────── */
 // news.json 'rt_url' 이 있을 때만. 받은 종목 칸은 '실시간 체결' 값으로 바꾸고 기준(전일 종가)을 숫자로 적는다.
-const RT_NAMES = { KOSPI: "코스피", KR200: "코스피200", KOSDAQ: "코스닥", SOXL: "SOXL (반도체 3배)", SOXS: "SOXS (반도체 3배 인버스)", NVDA: "NVDA", KORU: "KORU (한국 3배)", SMSN: "삼성전자", SKHX: "SK하이닉스" };
+const RT_NAMES = { KOSPI: "코스피", KR200: "코스피200", KOSDAQ: "코스닥", SOXL: "SOXL (반도체 3배)", DRAM: "DRAM (메모리 ETF)", NVDA: "NVDA", KORU: "KORU (한국 3배)", SMSN: "삼성전자", SKHX: "SK하이닉스" };
 async function loadRt() {
   const u = window.trlRtUrl;
   if (!u) return;
@@ -678,7 +678,7 @@ async function loadRt() {
       if (!el) return;
       const c = r.chg > 0.005 ? "c-up" : r.chg < -0.005 ? "c-dn" : "c-fl";
       const won = k === "SMSN" || k === "SKHX";
-      const nf = (v) => won ? Math.round(v).toLocaleString("ko-KR") + "원" : (["SOXL", "SOXS", "NVDA", "KORU"].includes(k) ? "$" : "") + (+v).toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      const nf = (v) => won ? Math.round(v).toLocaleString("ko-KR") + "원" : (["SOXL", "DRAM", "NVDA", "KORU"].includes(k) ? "$" : "") + (+v).toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const flash = el.dataset.rt && el.dataset.rt !== String(r.px) ? " flash" : "";
       el.dataset.rt = String(r.px);
       el.className = "tick" + flash;
@@ -698,6 +698,7 @@ window.paintSrcScore = () => {
     + `<p class="fine">점수가 높은 출처를 먼저 씁니다. 3번 연속 실패하면 10분 쉬고 다시 시도합니다. 기록이 10번 넘어야 순서가 바뀝니다.</p>`;
   box.hidden = false;
 };
+window.paintSrcScore();                               // news.js 가 먼저 받아 둔 점수판이 있으면 바로 그림
 
 loadHeadline(); loadTicks(); loadChecks(); loadStudies(); loadEducation();   // 블로그 분석 글 피드는 2026-10-28 운영자 결정으로 뺌
 setInterval(loadTicks, 30000);

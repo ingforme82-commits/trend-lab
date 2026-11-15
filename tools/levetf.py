@@ -18,9 +18,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CACHE = ROOT / "tools" / "levetf_cache.json"
-ETF = [("SOXL", "SOXL", "미국 반도체 3배", "^SOX", "필라델피아 반도체지수"), ("SOXS", "SOXS", "미국 반도체 3배 인버스", "^SOX", "필라델피아 반도체지수"),
+ETF = [("SOXL", "SOXL", "미국 반도체 3배", "^SOX", "필라델피아 반도체지수"), ("DRAM", "DRAM", "라운드힐 메모리 ETF(SK하이닉스·마이크론·삼성전자 중심)", None, ""),
        ("KORU", "KORU", "한국 3배", "EWY", "EWY(MSCI 한국)")]
-LEV = {"SOXS": -3}                                         # 11/16 운영자: SOXS 추가 — 기초 등락 × −3
+LEV = {"SOXS": -3}                                         # 기초 등락 배수(기본 3). 11/16 운영자: 사이트 칸은 SOXS 대신 메모리 ETF DRAM(기초 비교 없음)
 
 
 def extra_stats(past: list[dict], today: dict | None, vol_today: float | None, vols: list[float]) -> dict:
@@ -77,6 +77,9 @@ def build() -> dict:
         row = {"sym": sym, "name": name, "base": bname}
         try:
             row.update(_one(sym))
+            if not base:
+                items.append(row)
+                continue
             b = _one(base)
             row["base_chg"] = b.get("chg")
             row["base_over_ma5"] = b.get("over_ma5")
