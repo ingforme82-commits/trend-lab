@@ -747,7 +747,7 @@ def upload(data: dict) -> bool:
 
 
 CMP_KEYS = ("items", "moves", "world", "spot", "trending", "sectors", "dow", "us10y", "ust", "kr", "momentum", "flows", "s7",
-            "leaders", "watch", "lev", "official")
+            "leaders", "watch", "lev", "official", "rt_url", "srcscore")   # 11/16: 실시간 주소·출처 점수판이 바뀌어도 올림
 UP_STATE = ROOT / "tools" / "upload_state.json"     # 마지막으로 올린 파일 sha·내용 지문(이 PC 기준)
 
 

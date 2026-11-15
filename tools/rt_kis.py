@@ -74,7 +74,7 @@ class WS:
             head += c
         if b" 101 " not in head.split(b"\r\n")[0]:
             raise ConnectionError(head.split(b"\r\n")[0].decode(errors="replace"))
-        self.s.settimeout(60)
+        self.s.settimeout(20)
 
     def _send(self, op: int, data: bytes) -> None:
         mask = os.urandom(4)
@@ -193,10 +193,14 @@ def run(seconds: float | None = None, verbose: bool = False) -> dict:
             cur = subs_now()
             subscribe(ws, ak, cur)
             srcscore.record("rt", "KIS-WS", True)
-            wait, last_w = 5, 0.0
+            wait, last_w = 5, time.time()
+            write(state)                                    # 체결이 없어도(장 밖) 살아 있음을 알린다 → rt_url 이 사이트에 실림
             while end is None or time.time() < end:
                 if subs_now() != cur:                       # 한국장 ↔ 미국 시간 바뀌면 다시 붙어 종목 교체
                     break
+                if time.time() - last_w >= 30:
+                    write(state)
+                    last_w = time.time()
                 try:
                     m = ws.recv()
                 except socket.timeout:
