@@ -111,6 +111,7 @@ def _naver() -> dict:
 
 
 FETCH = {"키움": _kiwoom, "한투": _kis, "NH": _nh, "KB": _kb, "네이버": _naver}
+KEYS = {"키움": "KIWOOM_APP_KEY", "한투": "KIS_APP_KEY", "NH": "NHPLUG_APP_KEY", "KB": "KB_APP_KEY"}   # 키 없는 곳은 부르지 않는다(Oracle 의 KB 등)
 
 
 def consensus(vals: dict[str, tuple], kind: str) -> dict:
@@ -142,7 +143,7 @@ def check(force: bool = False) -> dict:
         pass
     got, fail = {}, []
     with ThreadPoolExecutor(max_workers=5) as ex:
-        futs = {s: ex.submit(f) for s, f in FETCH.items()}
+        futs = {s: ex.submit(f) for s, f in FETCH.items() if s not in KEYS or keystore.has(KEYS[s])}
         for s, fu in futs.items():
             try:
                 r = fu.result(timeout=40)
