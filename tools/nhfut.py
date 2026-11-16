@@ -33,7 +33,7 @@ def _nhplug_paths() -> list[Path]:
     for base in (root / ".venvs" / "trl", root / "market-site" / "trader" / ".venv", Path.home() / "projects" / ".venvs" / "trl"):
         c += sorted((base / "lib").glob("python3*/site-packages"))
     return [p for p in c if (p / "nhplug").is_dir()]
-ALLOW = ("/krfuture/quote/", "/gbfuture/quote/", "/krstock/quote/")   # 시세 조회 경로만(주식 현재가는 증권사 교차 확인용)
+ALLOW = ("/krfuture/quote/", "/gbfuture/quote/", "/krstock/quote/", "/gbstock/quote/")   # 시세 조회 경로만(주식 현재가는 증권사 교차 확인용)
 MON = "123456789ABC"                                       # KRX 월 코드(10·11·12월 = A·B·C)
 CME_MON = {3: "H", 6: "M", 9: "U", 12: "Z"}
 
