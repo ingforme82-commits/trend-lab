@@ -4,7 +4,7 @@
 - 프로그램(종목별): FHPPG04650101 program-trade-by-stock, 시장 'UN'(통합 = KRX + 넥스트레이드 08:00 프리마켓 포함)
   → 오늘 누적 순매수 금액(원)·수량·시각. 08:00~15:40 자주 보는 종목은 2분, 나머지는 10분마다(장 밖은 30분).
 - 외국인·기관 장중 추정(종목별): HHPTJ04160200 investor-trend-estimate → 가장 최근 차수의 추정 순매수 수량.
-  거래소·증권사 가집계는 대략 외국인 09:20~09:30, 기관 09:50~10:00부터 나오고 장중 몇 차례 갱신된다. 09:15~15:40 5분마다.
+  거래소·증권사 가집계는 대략 외국인 09:20~09:30, 기관 09:50~10:00부터 나오고 장중 몇 차례 갱신된다. 09:15~15:40 2분 반마다.
   금액 = 추정 수량 × 현재가(추정치). 장 마감 뒤 확정치는 네이버 investor-trend(flows.py)가 맡는다.
 - 사실 집계이며 매수·매도 권유가 아니다. 키·토큰은 출력하지 않는다(kis.py 가 조회 TR 만 허용).
 """
@@ -115,7 +115,7 @@ def fetch(codes: list[str], hot: set[str] | None = None, now: datetime | None = 
         return t - e.get("t", 0) if e.get("day") == today else 1e9
 
     need_p = [x for x in codes if age("prog", x) > ((120 if x in hot else 600) if prog_on else 1800)] if (prog_on or wk) else []
-    need_e = [x for x in codes if age("est", x) > 300] if est_on else []
+    need_e = [x for x in codes if age("est", x) > 150] if est_on else []      # 차수 발표 뒤 늦어도 2~3분 안에 반영
 
     def one_p(x):
         q = lambda m: get("/uapi/domestic-stock/v1/quotations/program-trade-by-stock", "FHPPG04650101",   # noqa: E731
@@ -125,11 +125,19 @@ def fetch(codes: list[str], hot: set[str] | None = None, now: datetime | None = 
                 return q(m)
             except Exception:  # noqa: BLE001
                 return None
-        nx = safe("NX")                                   # 넥스트레이드 미상장 종목은 빈 값
-        kx = safe("J") if hm >= 900 else {}               # 정규장 전에는 넥스트레이드 프리마켓만
-        if nx is None and kx is None:
+        nx = safe("NX")                                   # 넥스트레이드 미상장 종목은 정상 응답(rt_cd 0)에 빈 output
+        kx = safe("J") if hm >= 900 else {"rt_cd": "0"}   # 정규장 전에는 넥스트레이드 프리마켓만
+        bad = lambda d: not d or d.get("rt_cd") != "0"    # noqa: E731  kis.get 은 실패(한도 초과 등)면 {} 를 돌려준다
+        if bad(nx) and bad(kx):
             return x, False
-        return x, parse_prog(kx or {}, nx or {}, today)
+        p = parse_prog({} if bad(kx) else kx, {} if bad(nx) else nx, today)
+        old = c["prog"].get(x) or {}
+        if p and old.get("day") == today:                 # 11/16 09:54: 한쪽 호출만 실패하면 합계가 틀어짐 → 그쪽은 직전 값 유지
+            for side, d in (("krx", kx), ("nxt", nx)):
+                if bad(d) and old.get(side) is not None:
+                    p[side] = old[side]
+            p["amt"] = (p.get("krx") or 0) + (p.get("nxt") or 0)
+        return x, p
 
     def one_e(x):
         try:
@@ -138,7 +146,7 @@ def fetch(codes: list[str], hot: set[str] | None = None, now: datetime | None = 
         except Exception:  # noqa: BLE001
             return x, False
 
-    with ThreadPoolExecutor(max_workers=4) as ex:
+    with ThreadPoolExecutor(max_workers=3) as ex:                              # 한투 초당 한도 여유(4 → 3)
         for x, v in ex.map(one_p, need_p):
             if v is not False:
                 c["prog"][x] = {**(v or {}), "day": today, "t": t, "none": v is None}
