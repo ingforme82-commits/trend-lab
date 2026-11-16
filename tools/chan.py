@@ -31,6 +31,7 @@ LIVE = keystore.state_dir() / "chan_live.json"
 LOG = keystore.state_dir() / "chan_log.json"
 NBARS = 45
 UA = {"User-Agent": "Mozilla/5.0"}
+ERRS: list[str] = []                                   # 이번 계산에서 빠진 종목·대체 경로(사이트 데이터 'errs' 로 보임)
 
 
 def _n(v) -> float:
@@ -131,6 +132,19 @@ def _kis_daily(code: str) -> list[list]:
     return rows[::-1]
 
 
+def _kiwoom_daily(code: str) -> list[list]:
+    """키움 주식일봉(ka10081) — 한투 일봉이 안 될 때만. 마지막 날 전일 대비(pred_pre)로 전날 종가를 맞춘다
+    (11/17 확인: 키움 일봉 11/13 종가 209,000 vs 거래소 206,000 — 다른 기준이 섞여 있어 전날 종가는 pred_pre 로 보정)."""
+    import kiwoom
+    j, _ = kiwoom.call("ka10081", "/api/dostk/chart", {"stk_cd": code, "base_dt": datetime.now(KST).strftime("%Y%m%d"), "upd_stkpc_tp": "1"})
+    raw = (j.get("stk_dt_pole_chart_qry") or [])[:90]
+    rows = [[r["dt"][4:6] + "/" + r["dt"][6:8], abs(_n(r["open_pric"])), abs(_n(r["high_pric"])), abs(_n(r["low_pric"])), abs(_n(r["cur_prc"]))]
+            for r in raw if _n(r.get("cur_prc"))][::-1]
+    if len(rows) >= 2 and raw and _n(raw[0].get("pred_pre")):
+        rows[-2][4] = rows[-1][4] - _n(raw[0]["pred_pre"])
+    return rows
+
+
 def _kis_now(code: str) -> list | None:
     import kis
     q = kis.get("/uapi/domestic-stock/v1/quotations/inquire-price", "FHKST01010100", {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": code}).get("output") or {}
@@ -159,9 +173,18 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
     dc = _load(DAILY)
     e = dc.get(code) or {}
     if e.get("day") != today or not e.get("rows"):              # 일봉 원본은 하루 한 번
+        rows = []
         try:
             rows = _kis_daily(code) if cc == "kr" else _yahoo(code, "6mo", "1d")
-        except Exception:  # noqa: BLE001
+        except Exception as x:  # noqa: BLE001
+            ERRS.append(f"{code} 일봉 {type(x).__name__}")
+        if not rows and cc == "kr":                              # 11/17: 서버에서 한투 일봉 실패 → 키움 일봉(ka10081)으로
+            ERRS.append(f"{code} 한투 일봉 없음 → 키움")
+            try:
+                rows = _kiwoom_daily(code)
+            except Exception as x:  # noqa: BLE001
+                ERRS.append(f"{code} 키움 일봉 {type(x).__name__}")
+        if not rows:
             rows = e.get("rows") or []
         if rows:
             dc[code] = {"day": today, "rows": rows[-90:]}
@@ -207,6 +230,7 @@ def _open_now(cc: str, now: datetime) -> bool:
 
 def build(now: datetime | None = None) -> dict:
     now = now or datetime.now(KST)
+    ERRS.clear()
     c = json.loads(CONF.read_text(encoding="utf-8"))
     groups, events = [], []
     log = _load(LOG); prev = log.get("last", {}); hist = log.get("events", [])
@@ -215,13 +239,13 @@ def build(now: datetime | None = None) -> dict:
         for code, name in g["items"]:
             try:
                 rows, live = bars(g["cc"], code, now)
-            except Exception:  # noqa: BLE001
-                continue
+            except Exception as x:  # noqa: BLE001
+                ERRS.append(f"{code} 시세 {type(x).__name__}"); continue
             if len(rows) < 20:
-                continue
+                ERRS.append(f"{code} 일봉 {len(rows)}개뿐"); continue
             ch = channel(rows, c["anchors"])
             if not ch:
-                continue
+                ERRS.append(f"{code} 채널 기준점 없음"); continue
             o, h, l, px = rows[-1][1:5]
             pc = rows[-2][4]
             cd = candle(o, h, l, px, pc)
@@ -251,7 +275,7 @@ def build(now: datetime | None = None) -> dict:
     fp = hashlib.sha1(json.dumps(body, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     at = log.get("at") if log.get("fp") == fp and log.get("at") else int(now.timestamp() * 1000)   # 내용이 같으면 시각도 그대로(주말에 매분 올리지 않게)
     _save(LOG, {"last": prev, "events": hist, "fp": fp, "at": at})
-    return {"at": at, **body}
+    return {"at": at, **body, "errs": ERRS[:20]}
 
 
 def _fmt(cc: str, v: float) -> str:
