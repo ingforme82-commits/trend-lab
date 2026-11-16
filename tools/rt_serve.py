@@ -1,7 +1,7 @@
 """실시간 값(rt.json)을 사이트로 바로 내보내는 작은 웹 서버 + Cloudflare 무료 터널. 2026-11-16 운영자 승인(③).
 
 GitHub 를 거치면 몇 분 늦는다 → Oracle 서버 → (Cloudflare 터널 https) → 사이트가 2초마다 직접 받는다.
-- 내보내는 것: 공개 시세(rt.json)뿐. 키·계좌·주문 정보는 없다. GET /rt 와 익명 집계 POST /presence만 받는다.
+- 공개 시세 GET /rt, 게시 검증을 통과한 공개 뉴스·채널·5일선 GET /news, 익명 집계 POST /presence만 받는다. 키·계좌·주문 정보는 내보내지 않는다.
 - 터널 주소(https://….trycloudflare.com)는 rt_url.txt 에 적고, live_news 가 news.json 'rt_url' 로 싣는다(주소가 바뀌어도 사이트가 따라감).
 - 비용 0: Cloudflare 무료 빠른 터널(계정·도메인 불필요). 고정 주소가 필요하면 도메인(연 1~2만 원) — 운영자 확인 뒤.
 
@@ -81,6 +81,7 @@ class H(BaseHTTPRequestHandler):
             self.send_header('Content-Type', 'application/json; charset=utf-8')
             self.send_header('Access-Control-Allow-Origin', '*')
             self.send_header('Access-Control-Expose-Headers', 'ETag')
+            self.send_header('X-Content-Type-Options', 'nosniff')
             self.send_header('Cache-Control', 'no-store')
             self.send_header('ETag', etag)
             self.end_headers()
