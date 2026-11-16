@@ -1,7 +1,7 @@
 """실시간 값(rt.json)을 사이트로 바로 내보내는 작은 웹 서버 + Cloudflare 무료 터널. 2026-11-16 운영자 승인(③).
 
 GitHub 를 거치면 몇 분 늦는다 → Oracle 서버 → (Cloudflare 터널 https) → 사이트가 2초마다 직접 받는다.
-- 내보내는 것: 공개 시세(rt.json)뿐. 키·계좌·주문 정보는 없다. GET /rt 만 받는다.
+- 내보내는 것: 공개 시세(rt.json)뿐. 키·계좌·주문 정보는 없다. GET /rt 와 익명 집계 POST /presence만 받는다.
 - 터널 주소(https://….trycloudflare.com)는 rt_url.txt 에 적고, live_news 가 news.json 'rt_url' 로 싣는다(주소가 바뀌어도 사이트가 따라감).
 - 비용 0: Cloudflare 무료 빠른 터널(계정·도메인 불필요). 고정 주소가 필요하면 도메인(연 1~2만 원) — 운영자 확인 뒤.
 
@@ -12,6 +12,7 @@ GitHub 를 거치면 몇 분 늦는다 → Oracle 서버 → (Cloudflare 터널 
 from __future__ import annotations
 
 import argparse
+import json
 import re
 import subprocess
 import sys
@@ -22,13 +23,46 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import keystore  # noqa: E402
+import visitor_stats  # noqa: E402
 
 RT = keystore.state_dir() / "rt.json"
 URL_FILE = keystore.state_dir() / "rt_url.txt"
 PORT = 8787
+VISITORS = keystore.state_dir() / 'visitors.sqlite3'
 
 
 class H(BaseHTTPRequestHandler):
+    def do_POST(self):  # noqa: N802
+        if self.path != '/presence':
+            self.send_error(404)
+            return
+        origin = self.headers.get('Origin')
+        if origin != visitor_stats.ORIGIN:
+            self.send_error(403)
+            return
+        try:
+            size = int(self.headers.get('Content-Length', '0'))
+            if not 0 < size <= 256:
+                self.send_error(413)
+                return
+            self.connection.settimeout(5)
+            payload = json.loads(self.rfile.read(size))
+            if not visitor_stats.valid(payload):
+                self.send_error(400)
+                return
+            visitor_stats.heartbeat(VISITORS, payload)
+        except (ValueError, UnicodeError):
+            self.send_error(400)
+            return
+        except Exception:
+            self.send_error(503)
+            return
+        self.send_response(204)
+        self.send_header('Access-Control-Allow-Origin', origin)
+        self.send_header('Vary', 'Origin')
+        self.send_header('Cache-Control', 'no-store')
+        self.end_headers()
+
     def do_GET(self):  # noqa: N802
         if self.path.split("?")[0] != "/rt":
             self.send_response(404)

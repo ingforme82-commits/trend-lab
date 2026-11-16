@@ -10,7 +10,7 @@
   if (me === "1") ls.set("trl-me", "1");
   if (me === "0") ls.set("trl-me", "");
   const skip = ls.get("trl-me") === "1" || /^(localhost|127\.0\.0\.1|\[::1\])$/.test(location.hostname) || location.protocol === "file:";
-  const hit = (key) => { if (!skip) fetch(API + key, { keepalive: true, mode: "cors" }).catch(() => {}); };
+  const hit = (key) => { if (!skip && ls.get("trl-analytics-off") !== "1" && navigator.globalPrivacyControl !== true && navigator.doNotTrack !== "1") fetch(API + key, { keepalive: true, mode: "cors" }).catch(() => {}); };
   window.trlCount = (ev) => { hit(`${ev}-${day}`); hit(`${ev}-total`); };
 
   window.trlCount("pv");                                  // 페이지뷰
