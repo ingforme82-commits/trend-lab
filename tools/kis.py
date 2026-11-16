@@ -29,7 +29,7 @@ TOKDIR = keystore.state_dir()                  # Windows %LOCALAPPDATA%/trendlab
 TOKEN = TOKDIR / "kis_token.json"
 DOWN = TOKDIR / "kis_down.json"
 REST_S = 10 * 60
-QUOTE_TR = ("FH", "HHDFS")                                # 시세·뉴스 조회 TR(FH…·해외 시세 HHDFS…)만 허용. 주문·계좌(TT…·VT…·CT…)는 막는다
+QUOTE_TR = ("FH", "HHDFS", "HHPTJ")                              # 시세·뉴스 조회 TR(FH…·해외 시세 HHDFS…)만 허용. 주문·계좌(TT…·VT…·CT…)는 막는다
 
 
 def _keys() -> tuple[str, str] | None:

@@ -201,8 +201,15 @@ def build() -> dict:
         prog = kb_prog(list(S7), set(S7))
     except Exception:  # noqa: BLE001
         prog = {}
+    try:                                                     # 한투 장중 수급(운영자 11/16)
+        import kisflow
+        kp, ke = kisflow.fetch(list(S7), set(S7))
+    except Exception:  # noqa: BLE001
+        kisflow, kp, ke = None, {}, {}
     for r in rows:
         r["prog"] = prog.get(r["code"])
+        if kisflow:
+            kisflow.merge(r, kp, ke)
         r["inv"] = parse_trend((tr_c.get(r["code"]) or {}).get("items") or [])
         r["win"] = parse_trader((wd_c.get(r["code"]) or {}).get("data") or [], today, r["px"])
         r.pop("pmcap", None)

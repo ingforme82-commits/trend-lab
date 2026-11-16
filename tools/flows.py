@@ -5,7 +5,8 @@
 - 시세·거래대금: 네이버 실시간(krx.quotes), 1분마다. 거래대금은 통합(KRX + 넥스트레이드 프리·애프터마켓)
 - 외국계 창구 순매수(장중): 다음 금융 trader/histories — 외국계 '증권사 창구' 합계라 외국인 투자자 수급과 다르다. 2분마다
 - 외국인·기관·개인 순매수(확정): 네이버 investor-trend(KRX), 장 마감 후 확정된 일별 값. 30분마다(15:40~19:00 은 10분마다)
-- 프로그램 매매(종목별): KB증권 Open API IVU10450(tools/kbprog.py, 키가 있을 때만) — 오늘 순매수(장중 누적)·5거래일 합계
+- 프로그램 매매(종목별): 오늘 = 한투 통합(KRX+넥스트레이드 08시 프리마켓, tools/kisflow.py), 5거래일 합계 = KB IVU10450(PC만)
+- 외국인·기관 장중 추정(가집계): 한투(tools/kisflow.py), 외국인 09:20~·기관 09:50~ 차수별. 확정치는 장 마감 뒤 네이버
 - 금액은 '순매수 수량 × 그날 종가(장중은 현재가)'로 계산한 추정치. 사실 집계이며 매수·매도 권유가 아니다.
 """
 
@@ -143,17 +144,26 @@ def build() -> dict:
         prog = kb_prog(codes, set(hot))
     except Exception:  # noqa: BLE001
         prog = {}
+    try:                                                     # 한투 장중 수급(운영자 11/16): 프로그램(통합, 08시~)·외국인·기관 추정
+        import kisflow
+        kp, ke = kisflow.fetch(codes, set(hot))
+    except Exception:  # noqa: BLE001
+        kisflow, kp, ke = None, {}, {}
     out = []
     for name, rows in alls.items():
         for r in rows:
             r["inv"] = parse_trend((cache["trend"].get(r["code"]) or {}).get("items") or [])
             r["win"] = parse_trader((cache["trader"].get(r["code"]) or {}).get("data") or [], today, r["px"])
             r["prog"] = prog.get(r["code"])
+            if kisflow:
+                kisflow.merge(r, kp, ke)
             r.pop("sym")
         out.append({"name": name, "icon": groups[name].get("icon", ""), "n": len(groups[name]["tickers"]),
                     "up": sum(1 for s in groups[name]["tickers"] if (q.get(s) or {}).get("chg", 0) > 0),
                     "val": sum((q.get(s) or {}).get("val") or 0 for s in groups[name]["tickers"]), "rows": rows})
-    return {"at": int(t * 1000), "open": is_open, "groups": out, "prog": bool(prog)}
+    rounds = sorted({e.get("round") for e in ke.values() if e.get("round")})
+    return {"at": int(t * 1000), "open": is_open, "groups": out, "prog": bool(prog or kp),
+            "est_round": rounds[-1] if rounds else None}
 
 
 def _close_ts(now: datetime) -> float:
