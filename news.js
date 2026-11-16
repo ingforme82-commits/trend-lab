@@ -639,7 +639,8 @@
   const md = (d) => d ? `${+d.slice(5, 7)}/${+d.slice(8, 10)}` : "";
   // 운영자 11/16: 장중엔 외국인(09:20~)·기관(09:50~) 추정 가집계를 먼저, 없으면 직전 확정치. 프로그램은 KRX·넥스트레이드(08시 프리마켓) 나눠 표시
   const sgE = (v) => v == null ? "-" : `${v > 0 ? "+" : v < 0 ? "−" : ""}${eok(Math.abs(v))}`;
-  const invCell = (r, k) => r.est ? `${eokS(r.est[k])}<small class="fl-k">추정 ${esc(r.est.round || "")}</small>` : r.inv ? eokS(r.inv[k]) : "-";
+  const invCell = (r, k) => r.est ? (r.est[k] == null ? `<span class="dim">-</span><small class="fl-k">${k === "org" ? "기관 09:50~" : "집계 전"}</small>`
+    : `${eokS(r.est[k])}<small class="fl-k">추정 ${esc(r.est.round || "")}</small>`) : r.inv ? eokS(r.inv[k]) : "-";
   const progCell = (r) => !r.prog ? '<span class="dim">-</span>' : `${eokS(r.prog.amt)}${r.prog.nxt != null && r.prog.krx != null ? `<small class="fl-k">KRX ${sgE(r.prog.krx)} · NXT ${sgE(r.prog.nxt)}</small>` : r.prog.nxt != null ? '<small class="fl-k">NXT 프리마켓</small>' : ""}`;
   const invSub = (rows, dd) => { const e = (rows.find((r) => r.est) || {}).est; return e ? `오늘 추정 ${e.round || ""}` : dd; };
   function flowTable(g, n, compact) {
@@ -717,7 +718,7 @@
     const sum = (rows, f) => rows.reduce((a, r) => a + (f(r) || 0), 0);
     const chips = gs.map((g) => { const v = g.val || sum(g.rows, (r) => r.val), w = sum(g.rows, (r) => r.win && r.win.amt);
       return `<button class="sc-chip fl-chip${flowOpen === g.name ? " on" : ""}" data-flow-open="${esc(g.name)}" aria-expanded="${flowOpen === g.name}">
-        ${g.icon || ""} ${esc(g.name)} <small>상승 ${g.up}/${g.n}</small> <small>대금 ${eok(v)}</small> <small>외국계 창구 ${eokS(w)}</small>${g.rows.some((r) => r.prog) ? ` <small>프로그램 ${eokS(sum(g.rows, (r) => r.prog && r.prog.amt))}</small>` : ""}${g.rows.some((r) => r.est) ? ` <small>외국인 추정 ${eokS(sum(g.rows, (r) => r.est && r.est.frgn))} · 기관 ${eokS(sum(g.rows, (r) => r.est && r.est.org))}</small>` : ""}</button>`; }).join("");
+        ${g.icon || ""} ${esc(g.name)} <small>상승 ${g.up}/${g.n}</small> <small>대금 ${eok(v)}</small> <small>외국계 창구 ${eokS(w)}</small>${g.rows.some((r) => r.prog) ? ` <small>프로그램 ${eokS(sum(g.rows, (r) => r.prog && r.prog.amt))}</small>` : ""}${g.rows.some((r) => r.est) ? ` <small>외국인 추정 ${eokS(sum(g.rows, (r) => r.est && r.est.frgn))}${g.rows.some((r) => r.est && r.est.org != null) ? ` · 기관 ${eokS(sum(g.rows, (r) => r.est && r.est.org))}` : ""}</small>` : ""}</button>`; }).join("");
     const g = gs.find((x) => x.name === flowOpen);
     box.innerHTML = `<p class="spot-h">💰 주도주 수급 <small>${st} · 종목군을 누르면 종목별 거래대금·수급이 보입니다</small></p>
       <div class="sc-bar">${chips}</div>

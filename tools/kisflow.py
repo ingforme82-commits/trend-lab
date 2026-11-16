@@ -78,7 +78,9 @@ def merge(r: dict, kp: dict, ke: dict) -> None:
         r["prog"] = {**p, "amt5": (r.get("prog") or {}).get("amt5")}
     e = ke.get(r.get("code"))
     if e and r.get("px"):
-        r["est"] = {"round": e.get("round"), "frgn": e["frgn_q"] * r["px"], "org": e["org_q"] * r["px"]}
+        # 0 은 '아직 집계 전'(기관은 09:50쯤부터) — 0억으로 보이지 않게 None
+        r["est"] = {"round": e.get("round"), "frgn": e["frgn_q"] * r["px"] if e.get("frgn_q") else None,
+                    "org": e["org_q"] * r["px"] if e.get("org_q") else None}
 
 
 # ── 수집 ──

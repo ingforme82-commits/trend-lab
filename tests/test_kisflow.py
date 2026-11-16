@@ -39,6 +39,13 @@ class T(unittest.TestCase):
         self.assertEqual(r["prog"]["amt5"], 99); self.assertEqual(r["prog"]["amt"], 5)
         self.assertEqual(r["est"], {"round": "1차", "frgn": 2000000, "org": -1000000})
 
+    def test_merge_org_not_yet(self):                      # 11/16 09:33 실측: 1차는 외국인만, 기관 000000000000000000
+        e = parse_est({"output2": [{"bsop_hour_gb": "1", "frgn_fake_ntby_qty": "-00000000000564000",
+                                    "orgn_fake_ntby_qty": "000000000000000000", "sum_fake_ntby_qty": "-00000000000564000"}]}, "2026-11-16")
+        r = {"code": "005930", "px": 206000}
+        merge(r, {}, {"005930": e})
+        self.assertEqual(r["est"]["frgn"], -564000 * 206000); self.assertIsNone(r["est"]["org"])
+
 
 if __name__ == "__main__":
     unittest.main()
