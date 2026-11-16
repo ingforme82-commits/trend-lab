@@ -858,3 +858,4 @@ body{overflow-x:hidden}
 .ch-meta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;font-size:12.5px;color:var(--sub);margin:6px 0 4px}
 .ch-meta b{color:var(--ink);font-weight:600}
 .ch-card .ch-chart{max-width:none}
+#chan{scroll-margin-top:64px}
