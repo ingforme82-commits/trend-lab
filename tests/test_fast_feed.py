@@ -52,6 +52,14 @@ class FastFeedTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             fast_feed.read_public(self.root)
 
+    def test_published_channel_and_ma5_survive_direct_delivery(self):
+        self.data['chan'] = {'groups':[{'items':[{'code':'NVDA','px':156.14,'ma5':165.56,'state':'채널 안'}]}]}
+        self.write()
+        public = json.loads(fast_feed.read_public(self.root)[0])
+        self.assertEqual(public['chan'], self.data['chan'])
+        self.assertLess(public['chan']['groups'][0]['items'][0]['px'], public['chan']['groups'][0]['items'][0]['ma5'])
+        self.assertNotIn('private_debug', public)
+
 
 if __name__ == '__main__':
     unittest.main()
