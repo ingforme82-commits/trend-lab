@@ -145,6 +145,18 @@ def _kiwoom_daily(code: str) -> list[list]:
     return rows
 
 
+def _naver_daily(code: str) -> list[list]:
+    """네이버 일봉(인증 없음) — 한투·키움이 서버에서 안 될 때(11/17)."""
+    import re
+    u = f"https://fchart.stock.naver.com/sise.nhn?symbol={code}&timeframe=day&count=90&requestType=0"
+    raw = urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=10).read().decode("euc-kr", "replace")
+    out = []
+    for m in re.finditer(r'data="(\d{8})\|(\d+)\|(\d+)\|(\d+)\|(\d+)\|', raw):
+        d, o, h, l, c = m.groups()
+        out.append([d[4:6] + "/" + d[6:8], float(o), float(h), float(l), float(c)])
+    return out
+
+
 def _kis_now(code: str) -> list | None:
     import kis
     q = kis.get("/uapi/domestic-stock/v1/quotations/inquire-price", "FHKST01010100", {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": code}).get("output") or {}
@@ -184,6 +196,12 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
                 rows = _kiwoom_daily(code)
             except Exception as x:  # noqa: BLE001
                 ERRS.append(f"{code} 키움 일봉 {type(x).__name__}")
+        if not rows and cc == "kr":
+            try:
+                rows = _naver_daily(code)
+                ERRS.append(f"{code} 네이버 일봉 사용")
+            except Exception as x:  # noqa: BLE001
+                ERRS.append(f"{code} 네이버 일봉 {type(x).__name__}")
         if not rows:
             rows = e.get("rows") or []
         if rows:
