@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path.home() / '.local/share/trl/site-runtime'
 PUBLIC = {'updated', 'items', 'moves', 'series', 'sectors', 'leaders', 'health', 'world', 'spot',
           'dow', 'us10y', 'ust', 'official', 'kr', 'reg', 'ext', 'momentum', 'lev', 'watch',
-          'flows', 's7', 'trending', 'tgsum', 'brief', 'rt_url', 'srcscore', 'auto_issues', 'runtime', 'connectivity24'}
+          'flows', 's7', 'chan', 'trending', 'tgsum', 'brief', 'rt_url', 'srcscore', 'auto_issues', 'runtime', 'connectivity24'}
 
 
 def read_public(root=ROOT):
