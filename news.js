@@ -40,6 +40,7 @@
   const keep = (j) => { if (j && (!newest || (j.updated || 0) >= (newest.updated || 0))) newest = j; return newest; };
   async function fetchNews() {
     const now = Date.now();
+    if (newest && window.trlNewsHealth?.direct && now - window.trlNewsHealth.checked < 15000) return newest;
     if (now > apiBlockedUntil && now - apiLastAt >= API_GAP) {
       apiLastAt = now;
       try {
@@ -50,9 +51,27 @@
     }
     try { return keep(await (await fetch(`${NEWS_URL}?t=${Math.floor(now / 60000)}`)).json()); } catch (e) { if (newest) return newest; throw e; }
   }
-  async function loadNews() {
+  let fastBusy = false, auxAt = 0, fastTag = '';
+  async function directNews() {
+    const url = window.trlRtUrl;
+    if (!/^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/.test(url || "")) return null;
+    const started = performance.now();
+    const response = await fetch(url + '/news?tag=' + encodeURIComponent(fastTag), {cache:'no-store', signal:AbortSignal.timeout(2500)});
+    if (!response.ok) throw Error('Direct news unavailable');
+    window.trlNewsHealth = {direct:true, checked:Date.now(), roundTripMs:performance.now()-started};
+    if (response.status === 204) return newest;
+    const data = await response.json();
+    if (!Array.isArray(data.items) || !Number.isFinite(data.updated)) throw Error('Invalid direct news');
+    fastTag = response.headers.get('ETag') || '';
+    window.trlNewsHealth = {direct:true, checked:Date.now(), roundTripMs:performance.now()-started};
+    return keep(data);
+  }
+  async function loadNews(preloaded = null) {
     try {
-      const j = await fetchNews();
+      const j = preloaded || await fetchNews();
+      if (!preloaded && !window.trlNewsHealth?.direct) window.trlNewsHealth = {direct:false, checked:Date.now()};
+      if (Date.now() - auxAt >= 55000) {
+      auxAt = Date.now();
       try {
         const response = await fetch(`https://raw.githubusercontent.com/ingforme82-commits/trend-lab/quotes/nh-quotes.json?t=${Math.floor(Date.now() / 60000)}`, { signal: AbortSignal.timeout(8000), cache: "no-store" });
         if (response.ok) {
@@ -65,6 +84,7 @@
           }
         }
       } catch { /* NH 갱신 실패 시 수집된 자료를 유지하되 조회 시각을 표시 */ }
+      }
       const board = (j.brief && j.brief.ext) || j.ext;              // 시간외 시세판(NH 우선, 실패 시 야후) — 1분마다
       for (const row of (j.lev && j.lev.items) || []) {
         const fresh = row.ext && !row.ext.stale && Date.now() - row.ext.checked_at < 3 * 60000;
@@ -76,6 +96,7 @@
       window.trlSrcScore = j.srcscore || null; if (typeof window.paintSrcScore === "function") window.paintSrcScore();
       window.trlRtUrl = /^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/.test(j.rt_url || "") ? j.rt_url : null; window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlUst = j.ust || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; flows = j.flows || null; s7 = normalizeS7(j); leaders = j.leaders || null; watch = j.watch || null; lev = j.lev || null; window.trlBrief = brief || {}; window.trlFlows = flows || {}; window.trlS7 = s7 || {}; window.trlLev = lev || {}; window.trlUpdated = j.updated || Date.now(); if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } if (typeof window.loadBand === "function" && !window.__pinNotice) window.loadBand(); window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
       window.trlMoves = moves; window.trlSeries = series; window.trlNews = news;
+      window.dispatchEvent(new Event('trl:news'));
       drawHealth(j.updated);
       drawTicker();
     } catch { setText("#newsStamp", "속보를 불러오지 못했습니다."); }
@@ -1022,6 +1043,17 @@
   document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshLive(); });
   window.addEventListener("online", refreshLive);
   setInterval(refreshLive, 60000);                 // 속보·변곡점 1분마다
+  const refreshDirect = async () => {
+    if (document.hidden || fastBusy) return;
+    fastBusy = true;
+    try {
+      const data = await directNews();
+      if (data && data.updated > (window.trlUpdated || 0)) { await loadNews(data); redraw(); }
+    } catch { window.trlNewsHealth = {direct:false, checked:Date.now(), failed:true}; }
+    finally { fastBusy = false; window.dispatchEvent(new Event('trl:news')); }
+  };
+  setInterval(refreshDirect, 10000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshDirect(); });
   // 새 버전이 배포되면 오래 열어 둔 페이지도 스스로 새로고침(11/9: 고친 코드가 배포됐는데 열린 창은 옛 코드로 '시간외 확인 불가'를 계속 보여 줌)
   (() => {
     let first = null;

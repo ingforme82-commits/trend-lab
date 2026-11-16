@@ -20,10 +20,12 @@ import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from urllib.parse import parse_qs, urlsplit
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import keystore  # noqa: E402
 import visitor_stats  # noqa: E402
+import fast_feed  # noqa: E402
 
 RT = keystore.state_dir() / "rt.json"
 URL_FILE = keystore.state_dir() / "rt_url.txt"
@@ -64,6 +66,27 @@ class H(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self):  # noqa: N802
+        if self.path.split('?')[0] == '/news':
+            try:
+                body, etag = fast_feed.read_public()
+            except Exception:
+                self.send_response(503)
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.send_header('Cache-Control', 'no-store')
+                self.end_headers()
+                return
+            not_modified = self.headers.get('If-None-Match') == etag
+            query_match = parse_qs(urlsplit(self.path).query).get('tag', [''])[0] == etag
+            self.send_response(204 if query_match else 304 if not_modified else 200)
+            self.send_header('Content-Type', 'application/json; charset=utf-8')
+            self.send_header('Access-Control-Allow-Origin', '*')
+            self.send_header('Access-Control-Expose-Headers', 'ETag')
+            self.send_header('Cache-Control', 'no-store')
+            self.send_header('ETag', etag)
+            self.end_headers()
+            if not not_modified and not query_match:
+                self.wfile.write(body)
+            return
         if self.path.split("?")[0] != "/rt":
             self.send_response(404)
             self.end_headers()
