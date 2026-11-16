@@ -116,6 +116,8 @@ def call(api_id: str, path: str, body: dict, cont: str = "", _retry: bool = True
             TOKEN.unlink(missing_ok=True)                 # 토큰 만료·폐기 → 새로 받아 한 번 더
             if _retry:                                    # 키움은 앱키당 토큰 1개 — PC·Oracle 이 번갈아 받으면 앞 토큰이 무효(8005)
                 return call(api_id, path, body, cont, _retry=False)
+        if "입력 값" in msg or "입력값" in msg:           # 11/17: 요청 하나의 입력 오류로 키움 전체를 쉬게 하지 않는다(한투 11/15 수정과 같음)
+            return {}, ""
         _down(f"{api_id}: {j.get('return_msg', '')}")
         return {}, ""
     return j, (hd.get("next-key", "") if hd.get("cont-yn") == "Y" else "")

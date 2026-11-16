@@ -149,6 +149,11 @@ def build() -> dict:
         kp, ke = kisflow.fetch(codes, set(hot))
     except Exception:  # noqa: BLE001
         kisflow, kp, ke = None, {}, {}
+    try:                                                     # 키움 장중 투자자 집계(운영자 11/17, 교차 확인)
+        import kwflow
+        kw = kwflow.fetch(codes, set(hot))
+    except Exception:  # noqa: BLE001
+        kwflow, kw = None, {}
     out = []
     for name, rows in alls.items():
         for r in rows:
@@ -157,6 +162,8 @@ def build() -> dict:
             r["prog"] = prog.get(r["code"])
             if kisflow:
                 kisflow.merge(r, kp, ke)
+            if kwflow:
+                kwflow.merge(r, kw)
             r.pop("sym")
         out.append({"name": name, "icon": groups[name].get("icon", ""), "n": len(groups[name]["tickers"]),
                     "up": sum(1 for s in groups[name]["tickers"] if (q.get(s) or {}).get("chg", 0) > 0),

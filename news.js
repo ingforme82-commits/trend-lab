@@ -636,7 +636,8 @@
   const sortSt = { flow: { k: "chg", d: -1 }, s7: { k: null, d: -1 }, sec: { k: "chg", d: -1 }, ld: { k: "score", d: -1 }, ldm: { k: "val", d: -1 }, hr: { k: "slot", d: -1 } };
   const SORTK = {
     name: (r) => r.name, chg: (r) => r.chg, val: (r) => r.val, mcap: (r) => r.mcap, pts: (r) => r.pts, w: (r) => r.w,
-    win: (r) => r.win ? r.win.amt : null, frgn: (r) => r.est ? r.est.frgn : r.inv ? r.inv.frgn : null, org: (r) => r.est ? r.est.org : r.inv ? r.inv.org : null,
+    win: (r) => r.win ? r.win.amt : null, frgn: (r) => r.est && r.est.frgn != null ? r.est.frgn : r.est_kw && r.est_kw.frgn != null ? r.est_kw.frgn : r.inv ? r.inv.frgn : null,
+    org: (r) => r.est && r.est.org != null ? r.est.org : r.est_kw && r.est_kw.org != null ? r.est_kw.org : r.inv ? r.inv.org : null,
     s5: (r) => r.inv ? (r.inv.frgn5 || 0) + (r.inv.org5 || 0) : null, score: (r) => r.score, breadth: (r) => r.breadth, slot: (r) => r.slot, prog: (r) => r.prog ? r.prog.amt : null, prog5: (r) => r.prog ? r.prog.amt5 : null,
   };
   function sortRows(rows, t) {
@@ -660,8 +661,11 @@
   const md = (d) => d ? `${+d.slice(5, 7)}/${+d.slice(8, 10)}` : "";
   // 운영자 11/16: 장중엔 외국인(09:20~)·기관(09:50~) 추정 가집계를 먼저, 없으면 직전 확정치. 프로그램은 KRX·넥스트레이드(08시 프리마켓) 나눠 표시
   const sgE = (v) => v == null ? "-" : `${v > 0 ? "+" : v < 0 ? "−" : ""}${eok(Math.abs(v))}`;
-  const invCell = (r, k) => r.est ? (r.est[k] == null ? `<span class="dim">-</span><small class="fl-k">${k === "org" ? "기관 09:50~" : "집계 전"}</small>`
-    : `${eokS(r.est[k])}<small class="fl-k">추정 ${esc(r.est.round || "")}</small>`) : r.inv ? eokS(r.inv[k]) : "-";
+  // 운영자 11/17: 키움 장중 집계(est_kw)를 두 번째 증권사로 나란히 — 한투 추정이 없으면 키움 값을 본 값으로
+  const kwSub = (r, k) => r.est_kw && r.est_kw[k] != null ? `<small class="fl-k">키움 ${sgE(r.est_kw[k])}</small>` : "";
+  const invCell = (r, k) => r.est ? (r.est[k] == null ? `<span class="dim">-</span><small class="fl-k">${k === "org" ? "기관 09:50~" : "집계 전"}</small>${kwSub(r, k)}`
+    : `${eokS(r.est[k])}<small class="fl-k">한투 추정 ${esc(r.est.round || "")}</small>${kwSub(r, k)}`)
+    : r.est_kw && r.est_kw[k] != null ? `${eokS(r.est_kw[k])}<small class="fl-k">키움 장중 ${esc(r.est_kw.hm || "")}</small>` : r.inv ? eokS(r.inv[k]) : "-";
   const progCell = (r) => !r.prog ? '<span class="dim">-</span>' : `${eokS(r.prog.amt)}${r.prog.nxt != null && r.prog.krx != null ? `<small class="fl-k">KRX ${sgE(r.prog.krx)} · NXT ${sgE(r.prog.nxt)}</small>` : r.prog.nxt != null ? '<small class="fl-k">NXT 프리마켓</small>' : ""}`;
   const invSub = (rows, dd) => { const e = (rows.find((r) => r.est) || {}).est; return e ? `오늘 추정 ${e.round || ""}` : dd; };
   function flowTable(g, n, compact) {
@@ -745,7 +749,7 @@
       <div class="sc-bar">${chips}</div>
       ${g ? `<div class="sc-panel">${sortChips("flow", [["chg", "등락률순"], ["val", "거래대금순"], ["mcap", "시가총액순"], ["frgn", "외국인순"], ["org", "기관순"], ["win", "외국계 창구순"], ["prog", "프로그램순"], ["name", "이름순"]])}${flowTable(g, 99)}
       <p class="mm-f">종목군 전 종목 · 정렬 버튼이나 표 머리글을 누르면 순서가 바뀌고, 다시 누르면 반대로 · 외국계 창구는 종목군 상위 종목만 2분마다 · 거래대금은 통합(KRX + 넥스트레이드 프리·애프터마켓), 작은 글씨는 KRX만 · 금액은 순매수 수량 × 종가(장중 현재가)로 계산한 추정치(억 원)<br>
-      외국계 창구 = 외국계 증권사 창구 합계(장중, 다음 금융) — 외국인 투자자 수급과 다름 · 외국인·기관 = 장중엔 증권사 추정 가집계(한투, 외국인 09:20~·기관 09:50~ 차수별, '추정 n차' 표시, 수량 × 현재가), 없으면 거래소 확정치(네이버, 장 마감 후 확정·그 전엔 직전 거래일)<br>
+      외국계 창구 = 외국계 증권사 창구 합계(장중, 다음 금융) — 외국인 투자자 수급과 다름 · 외국인·기관 = 장중엔 증권사 추정 가집계(한투, 아래 작은 글씨는 키움 장중 집계 · 외국인 09:20~·기관 09:50~ 차수별, '추정 n차' 표시, 수량 × 현재가), 없으면 거래소 확정치(네이버, 장 마감 후 확정·그 전엔 직전 거래일)<br>
       프로그램 = 종목별 프로그램 순매수 오늘 누적(한투, KRX + 넥스트레이드 08시 프리마켓, 주요 종목 2분마다) · 5일 합계는 KB증권 · 사실 집계이며 매수·매도 권유가 아닙니다</p></div>` : ""}`;
   }
 
