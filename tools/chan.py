@@ -69,10 +69,18 @@ def channel(rows: list[list], anchors: dict) -> dict | None:
     def pick(arr, ab, f):
         idx = [i for i in range(len(d)) if ab[0] <= d[i] <= ab[1]]
         return f(idx, key=lambda i: arr[i]) if idx else None
-    h1, h2 = pick(H, anchors["hi1"], max), pick(H, anchors["hi2"], max)
-    l1, l2 = pick(L, anchors["lo1"], min), pick(L, anchors["lo2"], min)
-    if None in (h1, h2, l1, l2) or h1 == h2 or l1 == l2:
+    h1, l1 = pick(H, anchors["hi1"], max), pick(L, anchors["lo1"], min)
+    if h1 is None or l1 is None:
         return None
+    # 11/17: 두 번째 점은 '이후 고점이 모두 선 아래, 이후 저점이 모두 선 위'가 되게 고른다(선을 뚫는 고점이 없게).
+    # 후보 = 기준 구간 시작일부터 어제(마지막 봉 제외 — 오늘 봉은 진행 중일 수 있음)까지
+    last = len(rows) - 2
+    hc = [j for j in range(h1 + 1, last + 1) if d[j] >= anchors["hi2"][0]]
+    lc = [j for j in range(l1 + 1, last + 1) if d[j] >= anchors["lo2"][0]]
+    if not hc or not lc:
+        return None
+    h2 = max(hc, key=lambda j: (H[j] - H[h1]) / (j - h1))
+    l2 = min(lc, key=lambda j: (L[j] - L[l1]) / (j - l1))
     su = (H[h2] - H[h1]) / (h2 - h1); sl = (L[l2] - L[l1]) / (l2 - l1)
     up = lambda i: H[h1] + su * (i - h1)                  # noqa: E731
     lo = lambda i: L[l1] + sl * (i - l1)                  # noqa: E731

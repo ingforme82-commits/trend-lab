@@ -15,7 +15,7 @@ def rows():
     hi = {"10/28": 200, "11/11": 170}; lo = {"10/22": 150, "11/05": 120}
     out = []
     for d in days:
-        h = hi.get(d, 165); l = lo.get(d, 140)
+        h = hi.get(d, 160); l = lo.get(d, 140)
         out.append([d, 150, h, l, 150])
     return out
 
