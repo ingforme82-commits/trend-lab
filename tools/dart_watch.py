@@ -396,6 +396,24 @@ HEADLINE = Path(__file__).resolve().parents[1] / "data" / "headline.json"
 SHIP_CARD = "🚢 조선기자재 3분기 실적"      # 주요 이슈 카드(운영자 11/12 요청: 앱에서 실시간). 카드가 있을 때만 갱신
 
 
+def refresh_ship_card_counts(item: dict) -> None:
+    """본문 회사 수로 제목을 갱신하고 숫자 미확인을 미발표와 구분한다."""
+    rows = {}
+    for point in item.get("points", []):
+        match = re.match(r"✔ \d\d/\d\d (.+?) — ", point)
+        if match:
+            rows[match.group(1)] = point
+    pending = list(dict.fromkeys(n for n in item.get("pending", []) if n not in rows))
+    unchecked = sum("숫자는 공시 원문 확인" in p or "정확한 금액 확인 중" in p for p in rows.values())
+    item.update(reported_count=len(rows), pending=pending, unverified_count=unchecked)
+    summary = item.get("title_summary", "회사별 실적·연결 범위 구분")
+    item["title"] = f"3분기 공시 기록 {len(rows)}곳 — {summary}"
+    if pending:
+        item["title"] += f" · 미발표 {len(pending)}곳"
+    if unchecked:
+        item["title"] += f" · 숫자 대조 중 {unchecked}곳"
+
+
 def ship_card_update(name: str, title: str, date: str, extra: list[str], path: Path = HEADLINE) -> bool:
     """조선 감시 회사의 실적 공시가 새로 잡히면 주요 이슈 카드 맨 위에 한 줄 넣고 '발표 대기'에서 뺀다.
     카드(태그 SHIP_CARD)가 없으면 아무것도 하지 않는다. 숫자는 공시 원문 그대로(권유 없음)."""
@@ -411,9 +429,16 @@ def ship_card_update(name: str, title: str, date: str, extra: list[str], path: P
     nums = [e.split(" (")[0] for e in extra if re.match(r"(매출액|영업이익|당기순이익) ", e)][:2]
     if not nums and re.search(r"잠정", title):
         return False                       # 숫자 없는 '잠정' = HD현대 계열 월간 수주 공시 등 → 실적 아님
-    chg = [m.group(1) for e in extra if re.match(r"(매출액|영업이익) ", e)
-           for m in [re.search(r"작년 같은 분기 대비 ([^·)]+)", e)] if m][:2]
-    body = " · ".join(f"{n} ({c.strip()})" if i < len(chg) else n for i, (n, c) in enumerate(zip(nums, chg + [""] * 2)))
+    parts = []
+    for entry in extra:
+        if not re.match(r"(매출액|영업이익|당기순이익) ", entry):
+            continue
+        amount = entry.split(" (")[0]
+        change = re.search(r"작년 같은 분기 대비 ([^·)]+)", entry)
+        parts.append(f"{amount} ({change.group(1).strip()})" if change else amount)
+        if len(parts) == 2:
+            break
+    body = " · ".join(parts)
     line = f"✔ {date[4:6]}/{date[6:]} {name} — " + (body or "실적 공시 나옴(숫자는 공시 원문 확인)")
     mine = re.compile(rf"✔ \d\d/\d\d {re.escape(name)} — ")
     old = [p for p in it.get("points", []) if mine.match(p)]
@@ -425,6 +450,7 @@ def ship_card_update(name: str, title: str, date: str, extra: list[str], path: P
     if pending:
         pts.append("⏳ 발표 대기: " + " · ".join(pending))
     it.update(points=pts, pending=pending, when=f"{datetime.now():%m/%d %H시 %M분} 자동 갱신")
+    refresh_ship_card_counts(it)
     h["updated"] = f"{datetime.now():%Y-%m-%d %H:%M}"
     path.write_text(json.dumps(h, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
     return True
