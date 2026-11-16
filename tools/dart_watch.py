@@ -188,6 +188,11 @@ def quarter_numbers(key: str, cc: str, title: str) -> list[str]:
     except Exception:  # noqa: BLE001
         return []
     rows = j.get("list") or []
+    if m.group(1) == "2026" and m.group(2) == "09":
+        # 응답이 전분기·누적·재무상태표이면 26Q3 손익으로 쓰지 않는다.
+        rows = [r for r in rows if r.get("bsns_year") == "2026"
+                and r.get("reprt_code") == "11014" and r.get("sj_div") in ("IS", "CIS")
+                and re.sub(r"[^0-9]", "", str(r.get("thstrm_dt") or "")) == "2026070120260930"]
     fs = "CFS" if any(r.get("fs_div") == "CFS" for r in rows) else "OFS"
     num = lambda v: float(str(v).replace(",", "")) if str(v or "").replace(",", "").lstrip("-").isdigit() else None
     data = {}
@@ -195,7 +200,11 @@ def quarter_numbers(key: str, cc: str, title: str) -> list[str]:
         r = next((r for r in rows if r.get("fs_div") == fs and r.get("account_nm", "").replace(" ", "").startswith(acc)), None)
         if r and num(r.get("thstrm_amount")) is not None:
             data[acc] = {"cur": num(r.get("thstrm_amount")), "yoy": num(r.get("frmtrm_q_amount") or r.get("frmtrm_amount")), "qoq": None}
-    return describe(data, "연결 기준" if fs == "CFS" else "별도 기준") if data else []
+    out = describe(data, "연결 기준" if fs == "CFS" else "별도 기준") if data else []
+    proof = ship_period_proof(rows)
+    if out and proof:
+        out.append(proof)
+    return out
 
 
 UNIT = {"원": 1, "천원": 1e3, "백만원": 1e6, "억원": 1e8}
@@ -393,6 +402,28 @@ def deliver(kind: str, key: str, text: str) -> bool:
 
 
 HEADLINE = Path(__file__).resolve().parents[1] / "data" / "headline.json"
+def ship_period_proof(rows: list[dict]) -> str:
+    """26Q3의 두 손익 항목·3개월 기간·회계기준·접수번호가 일치할 때만 증빙한다."""
+    picked = []
+    for account in ("매출액", "영업이익"):
+        candidates = [r for r in rows if r.get("account_nm", "").replace(" ", "").startswith(account)
+                      and r.get("sj_div") in ("IS", "CIS")]
+        candidates = [r for r in candidates if r.get("bsns_year") == "2026"
+                      and r.get("reprt_code") == "11014"
+                      and re.sub(r"[^0-9]", "", str(r.get("thstrm_dt") or "")) == "2026070120260930"]
+        row = next((r for r in candidates if r.get("fs_div") == "CFS"), None)
+        row = row or next((r for r in candidates if r.get("fs_div") == "OFS"), None)
+        if not row or row.get("currency") not in ("KRW", "원") or not re.fullmatch(r"-?[0-9,]+", str(row.get("thstrm_amount", ""))):
+            return ""
+        picked.append(row)
+    if len({r.get("fs_div") for r in picked}) != 1:
+        return ""
+    receipts = {r.get("rcept_no", "") for r in picked}
+    if len(receipts) != 1 or not re.fullmatch(r"\d{14}", next(iter(receipts))):
+        return ""
+    return f"검증정보: OpenDART|2026Q3|2026-07-01|2026-09-30|{picked[0]['fs_div']}|{picked[0]['rcept_no']}"
+
+
 SHIP_CARD = "🚢 조선기자재 3분기 실적"      # 주요 이슈 카드(운영자 11/12 요청: 앱에서 실시간). 카드가 있을 때만 갱신
 
 
@@ -404,8 +435,12 @@ def refresh_ship_card_counts(item: dict) -> None:
         if match:
             rows[match.group(1)] = point
     pending = list(dict.fromkeys(n for n in item.get("pending", []) if n not in rows))
-    unchecked = sum("숫자는 공시 원문 확인" in p or "정확한 금액 확인 중" in p for p in rows.values())
+    unchecked = sum("미확인" in p or "숫자는 공시 원문 확인" in p or "정확한 금액 확인 중" in p for p in rows.values())
     item.update(reported_count=len(rows), pending=pending, unverified_count=unchecked)
+    if item.get("verification_policy") == "period_source_required":
+        item["materials_matched_count"] = len(rows) - unchecked
+        item["title"] = f"26Q3 매출·영업이익 자료 대조 {len(rows) - unchecked}곳 · 미확인 {unchecked}곳"
+        return
     summary = item.get("title_summary", "회사별 실적·연결 범위 구분")
     item["title"] = f"3분기 공시 기록 {len(rows)}곳 — {summary}"
     if pending:
@@ -426,19 +461,33 @@ def ship_card_update(name: str, title: str, date: str, extra: list[str], path: P
     it = next((x for x in h.get("items", []) if x.get("tag") == SHIP_CARD), None)
     if not it:
         return False
+    proof = next((e for e in extra if re.fullmatch(
+        r"검증정보: OpenDART\|2026Q3\|2026-07-01\|2026-09-30\|(CFS|OFS)\|\d{14}", e)), "")
+    if it.get("verification_policy") == "period_source_required":
+        if not proof or not all(any(e.startswith(a + " ") for e in extra) for a in ("매출액", "영업이익")):
+            return False
     nums = [e.split(" (")[0] for e in extra if re.match(r"(매출액|영업이익|당기순이익) ", e)][:2]
     if not nums and re.search(r"잠정", title):
         return False                       # 숫자 없는 '잠정' = HD현대 계열 월간 수주 공시 등 → 실적 아님
     parts = []
-    for entry in extra:
+    entries = extra
+    if it.get("verification_policy") == "period_source_required":
+        entries = [next(e for e in extra if e.startswith(a + " ")) for a in ("매출액", "영업이익")]
+    for entry in entries:
         if not re.match(r"(매출액|영업이익|당기순이익) ", entry):
             continue
         amount = entry.split(" (")[0]
         change = re.search(r"작년 같은 분기 대비 ([^·)]+)", entry)
+        if it.get("verification_policy") == "period_source_required":
+            change = None  # 전년 비교 기간까지 검증하기 전에는 증감률을 붙이지 않는다.
         parts.append(f"{amount} ({change.group(1).strip()})" if change else amount)
         if len(parts) == 2:
             break
     body = " · ".join(parts)
+    if proof:
+        fields = proof.split("|")
+        basis = "연결" if fields[-2] == "CFS" else "별도"
+        body = f"26Q3 {body} [{basis}·7~9월 3개월 · 출처 OpenDART · 접수 {fields[-1]}]"
     line = f"✔ {date[4:6]}/{date[6:]} {name} — " + (body or "실적 공시 나옴(숫자는 공시 원문 확인)")
     mine = re.compile(rf"✔ \d\d/\d\d {re.escape(name)} — ")
     old = [p for p in it.get("points", []) if mine.match(p)]
