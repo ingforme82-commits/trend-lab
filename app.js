@@ -675,15 +675,30 @@ async function loadEducation() {
 /* ───────── 1-1. 실시간 체결(Oracle 서버 KIS 웹소켓 → Cloudflare 터널, 2초마다) — 11/16 운영자 ───────── */
 // news.json 'rt_url' 이 있을 때만. 받은 종목 칸은 '실시간 체결' 값으로 바꾸고 기준(전일 종가)을 숫자로 적는다.
 const RT_NAMES = { KOSPI: "코스피", KR200: "코스피200", KOSDAQ: "코스닥", SOXL: "SOXL (반도체 3배)", DRAM: "DRAM (메모리 ETF)", SKHY: "SKHY (SK하이닉스 ADR)", MU: "MU (마이크론)", NVDA: "NVDA", KORU: "KORU (한국 3배)", SMSN: "삼성전자", SKHX: "SK하이닉스" };
+let rtBusy = false;
+function expireRt() {
+  document.querySelectorAll('.tick[data-rt-at]').forEach(el => {
+    if (Date.now() - Number(el.dataset.rtAt) > 15000) {
+      const label = el.querySelector('.t-ch small');
+      if (label) label.textContent = '수신 지연 · 마지막 값';
+    }
+  });
+}
 async function loadRt() {
+  expireRt();
   const u = window.trlRtUrl;
-  if (!u) return;
+  if (!u || document.hidden || rtBusy) return;
+  rtBusy = true;
+  const started = performance.now();
   try {
-    const j = await (await fetch(u + "/rt", { cache: "no-store", signal: AbortSignal.timeout(4000) })).json();
+    const response = await fetch(u + "/rt", { cache: "no-store", signal: AbortSignal.timeout(4000) });
+    if (!response.ok) throw Error('Quote connection failed');
+    const j = await response.json();
     window.trlRt = j;
+    window.trlRtHealth = { checked: Date.now(), roundTripMs: performance.now() - started, ok: true };
     const now = Date.now();
     Object.entries(j.q || {}).forEach(([k, r]) => {
-      if (!r || !r.px || now - r.at > 120000) return;            // 2분 넘은 값은 실시간이 아님 → 원래 칸 그대로
+      if (!Object.hasOwn(RT_NAMES, k) || !r || !Number.isFinite(r.px) || r.px <= 0 || !Number.isFinite(r.ref) || r.ref <= 0 || !Number.isFinite(r.chg) || !Number.isFinite(r.at) || r.at <= 0 || r.at > now + 1000 || now - r.at > 15000) return;
       const el = document.querySelector(`.tick[data-k="${k}"]`);
       if (!el) return;
       const c = r.chg > 0.005 ? "c-up" : r.chg < -0.005 ? "c-dn" : "c-fl";
@@ -691,10 +706,12 @@ async function loadRt() {
       const nf = (v) => won ? Math.round(v).toLocaleString("ko-KR") + "원" : (["SOXL", "DRAM", "SKHY", "MU", "NVDA", "KORU"].includes(k) ? "$" : "") + (+v).toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const flash = el.dataset.rt && el.dataset.rt !== String(r.px) ? " flash" : "";
       el.dataset.rt = String(r.px);
+      el.dataset.rtAt = String(r.at);
       el.className = "tick" + flash;
       el.innerHTML = `<p class="t-name">${RT_NAMES[k] || k}</p><p class="t-px">${nf(r.px)}</p><p class="t-ch ${c}">${r.chg > 0 ? "▲" : r.chg < 0 ? "▼" : ""} ${r.chg > 0 ? "+" : ""}${(+r.chg).toFixed(2)}% <small>실시간 체결</small></p><p class="fine" style="margin:2px 0 0">기준 전일 종가 ${nf(r.ref)}</p>${k === "SKHY" ? skhyMeta(r.px) : ""}<p class="t-meta">KIS 웹소켓 · ${hhmm(KSTof(r.at))}:${String(KSTof(r.at).getSeconds()).padStart(2, "0")}</p>`;
     });
-  } catch { /* 실시간 경로 없으면 기존 1분 값 */ }
+  } catch { window.trlRtHealth = { checked: Date.now(), ok: false }; }
+  finally { rtBusy = false; window.dispatchEvent(new Event('trl:quotes')); }
 }
 setInterval(loadRt, 2000);
 
@@ -712,4 +729,3 @@ window.paintSrcScore();                               // news.js 가 먼저 받�
 
 loadHeadline(); loadTicks(); loadChecks(); loadStudies(); loadEducation();   // 블로그 분석 글 피드는 2026-10-28 운영자 결정으로 뺌
 setInterval(loadTicks, 30000);
-
