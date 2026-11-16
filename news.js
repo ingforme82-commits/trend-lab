@@ -94,7 +94,7 @@
       news = j.items || []; moves = j.moves || []; series = j.series || {}; health = j.health || null;
       tgsum = j.tgsum || null; window.trlAuto = j.auto_issues || []; if (typeof window.renderHeadline === "function") window.renderHeadline(); world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
       window.trlSrcScore = j.srcscore || null; if (typeof window.paintSrcScore === "function") window.paintSrcScore();
-      window.trlRtUrl = /^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/.test(j.rt_url || "") ? j.rt_url : null; window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlUst = j.ust || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; flows = j.flows || null; s7 = normalizeS7(j); leaders = j.leaders || null; watch = j.watch || null; lev = j.lev || null; window.trlBrief = brief || {}; window.trlFlows = flows || {}; window.trlS7 = s7 || {}; window.trlLev = lev || {}; window.trlUpdated = j.updated || Date.now(); if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } if (typeof window.loadBand === "function" && !window.__pinNotice) window.loadBand(); window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true;
+      window.trlRtUrl = /^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/.test(j.rt_url || "") ? j.rt_url : null; window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlUst = j.ust || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; flows = j.flows || null; s7 = normalizeS7(j); leaders = j.leaders || null; watch = j.watch || null; lev = j.lev || null; window.trlBrief = brief || {}; window.trlFlows = flows || {}; window.trlS7 = s7 || {}; window.trlLev = lev || {}; window.trlUpdated = j.updated || Date.now(); if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } if (typeof window.loadBand === "function" && !window.__pinNotice) window.loadBand(); window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true; window.trlChan = j.chan || null;
       window.trlMoves = moves; window.trlSeries = series; window.trlNews = news;
       window.dispatchEvent(new Event('trl:news'));
       drawHealth(j.updated);
@@ -706,6 +706,74 @@
     copy.reconcile = { verified, total: (copy.rows || []).length };
     return copy;
   }
+  /* ── 📐 추세 판단(운영자 11/17): 하락 채널 상단 돌파(+1%·5일선 위)가 진짜 반등 · 실시간 캔들 · 기록 ── */
+  let chanOpen = null;
+  const CH_ST = {"돌파 확인": "ok", "돌파 시도(장중)": "try", "채널 위·5일선 아래": "warn", "상단 근접": "near", "채널 안": "in", "하단 이탈": "bad"};
+  const CH_FLAG = {kr: "🇰🇷", us: "🇺🇸", jp: "🇯🇵"};
+  const chFmt = (cc, v) => v == null ? "-" : cc === "us" ? "$" + (+v).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2})
+    : Math.round(v).toLocaleString("ko-KR") + (cc === "jp" ? "엔" : "원");
+  function chGlyph(r) {                                       // 오늘 봉(시가·고가·저가·현재가) 작은 그림
+    const [, o, h, l, c] = r, rng = (h - l) || 1, Y = (v) => 3 + (h - v) / rng * 26, col = c >= o ? "var(--up)" : "var(--down)";
+    return `<svg class="ch-gl" viewBox="0 0 14 32" aria-hidden="true"><line x1="7" x2="7" y1="${Y(h)}" y2="${Y(l)}" stroke="${col}" stroke-width="1.4"/><rect x="2.5" y="${Y(Math.max(o, c))}" width="9" height="${Math.max(1.5, Math.abs(Y(o) - Y(c)))}" fill="${col}" rx="1"/></svg>`;
+  }
+  function chChart(it, cc) {
+    const rows = it.rows, n = rows.length, N = n + 1, W = 640, H = 230, M = {l: 6, r: 74, t: 10, b: 20};
+    const up = (i) => it.up_now + it.su * (i - (n - 1)), lo = (i) => it.lo_now + it.sl * (i - (n - 1));
+    let ymax = Math.max(...rows.map((r) => r[2])), ymin = Math.min(...rows.map((r) => r[3]));
+    ymin = Math.max(Math.min(ymin, lo(n)), ymin * 0.85);
+    const pad = (ymax - ymin) * 0.05; ymax += pad; ymin -= pad;
+    const pw = W - M.l - M.r, ph = H - M.t - M.b, st = pw / N, X = (i) => M.l + st * (i + 0.5), Y = (v) => M.t + (ymax - v) / (ymax - ymin) * ph;
+    const cid = "cc" + it.code.replace(/\W/g, "");
+    let s = `<defs><clipPath id="${cid}"><rect x="${M.l}" y="${M.t}" width="${pw}" height="${ph}"/></clipPath></defs>`;
+    for (let k = 0; k <= 3; k++) { const v = ymin + (ymax - ymin) * k / 3;
+      s += `<line x1="${M.l}" x2="${W - M.r}" y1="${Y(v)}" y2="${Y(v)}" class="ch-grid"/><text x="${W - M.r + 5}" y="${Y(v) + 3}" class="ch-ax">${chFmt(cc, v)}</text>`; }
+    for (let i = 0; i < n - 4; i += 10) s += `<text x="${X(i)}" y="${H - 5}" class="ch-ax" text-anchor="middle">${rows[i][0]}</text>`;
+    s += `<text x="${X(n - 1)}" y="${H - 5}" class="ch-ax" text-anchor="middle">${rows[n - 1][0]}</text><g clip-path="url(#${cid})">`;
+    const a0 = Math.min(it.hi[0], it.lo[0]);
+    s += `<polygon class="ch-band" points="${X(a0)},${Y(up(a0))} ${X(n)},${Y(up(n))} ${X(n)},${Y(lo(n))} ${X(a0)},${Y(lo(a0))}"/>`;
+    const cw = Math.max(2, st * 0.6);
+    rows.forEach((r, i) => { const [, o, h, l, c] = r, col = c >= o ? "var(--up)" : "var(--down)";
+      s += `<line x1="${X(i)}" x2="${X(i)}" y1="${Y(h)}" y2="${Y(l)}" stroke="${col}"/><rect x="${X(i) - cw / 2}" y="${Y(Math.max(o, c))}" width="${cw}" height="${Math.max(1, Math.abs(Y(o) - Y(c)))}" fill="${col}" rx="1"${i === n - 1 && it.live ? ' class="ch-live"' : ""}/>`; });
+    const ma = rows.map((_, i) => i >= 4 ? rows.slice(i - 4, i + 1).reduce((a, r) => a + r[4], 0) / 5 : null);
+    s += `<polyline class="ch-ma" points="${ma.map((v, i) => v == null ? "" : `${X(i)},${Y(v)}`).join(" ").trim()}"/>`;
+    s += `<line x1="${X(it.hi[0])}" y1="${Y(up(it.hi[0]))}" x2="${X(n - 1)}" y2="${Y(up(n - 1))}" class="ch-res"/><line x1="${X(n - 1)}" y1="${Y(up(n - 1))}" x2="${X(n)}" y2="${Y(up(n))}" class="ch-res ch-dash"/>`;
+    s += `<line x1="${X(it.lo[0])}" y1="${Y(lo(it.lo[0]))}" x2="${X(n - 1)}" y2="${Y(lo(n - 1))}" class="ch-sup"/><line x1="${X(n - 1)}" y1="${Y(lo(n - 1))}" x2="${X(n)}" y2="${Y(lo(n))}" class="ch-sup ch-dash"/></g>`;
+    it.hi.forEach((i) => s += `<circle cx="${X(i)}" cy="${Y(rows[i][2])}" r="3.5" class="ch-dot-r"/>`);
+    it.lo.forEach((i) => s += `<circle cx="${X(i)}" cy="${Y(rows[i][3])}" r="3.5" class="ch-dot-s"/>`);
+    return `<svg class="ch-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(it.name)} 일봉·하락 채널·5일선">${s}</svg>
+      <p class="ch-leg"><i class="lr"></i>상단선(직전 고점) <i class="ls"></i>하단선(직전 저점) <i class="lm"></i>5일선 · 점선 = 다음 거래일까지 연장${it.live ? " · 마지막 봉은 진행 중" : ""}</p>`;
+  }
+  function drawChan() {
+    const box = q("#chan"), c = window.trlChan; if (!box) return;
+    if (!c || !(c.groups || []).length) { box.hidden = true; return; }
+    box.hidden = false;
+    q("#chanRule").textContent = c.rule || "";
+    q("#chanStamp").textContent = `${hm(c.at)} 기준 · 1분마다`;
+    let html = "", lastC = null;
+    c.groups.forEach((g) => {
+      if (g.country !== lastC) { if (lastC) html += `</div>`; html += `<div class="ch-country"><p class="ch-ch">${CH_FLAG[g.cc] || ""} ${esc(g.country)}</p>`; lastC = g.country; }
+      const many = g.items.length > 1;
+      html += `<div class="ch-sec"><p class="ch-sh">${esc(g.sector)}${many ? "<small>10월 말 고점 대비 덜 빠진 순</small>" : ""}</p><div class="fl-scroll"><table class="ch-t">
+        <tr><th></th><th>종목</th><th>지금</th><th>오늘 캔들</th><th>상단선 · 5일선</th><th>다음 거래일 상단까지</th><th>추세 상태</th></tr>`;
+      g.items.forEach((it) => {
+        const key = it.code, open = chanOpen === key;
+        const mdl = many ? `<span class="ch-md m${Math.min(it.rank, 4)}">${it.rank <= 3 ? ["금", "은", "동"][it.rank - 1] : it.rank}</span>` : "";
+        html += `<tr class="ch-row${open ? " on" : ""}" data-chan-open="${esc(key)}" tabindex="0" title="눌러서 차트 보기"><td>${mdl}</td><td class="ch-nm">${esc(it.name)}</td>
+          <td class="mn">${chFmt(g.cc, it.px)} <b class="${it.chg >= 0 ? "up" : "down"}">${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%</b></td>
+          <td class="ch-cd">${chGlyph(it.rows[it.rows.length - 1])}<span>${esc(it.candle.name)}${it.live ? ' <em class="ch-now">진행 중</em>' : ""}</span></td>
+          <td class="mn">${chFmt(g.cc, it.up_now)} · ${chFmt(g.cc, it.ma5)}</td>
+          <td class="mn">${it.gap_next > 0 ? "+" : ""}${(+it.gap_next).toFixed(1)}%</td>
+          <td><span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span></td></tr>`;
+        if (open) html += `<tr class="ch-ex"><td colspan="7">${chChart(it, g.cc)}</td></tr>`;
+      });
+      html += `</table></div></div>`;
+    });
+    if (lastC) html += `</div>`;
+    q("#chanBoard").innerHTML = html;
+    const lg = c.log || [];
+    q("#chanLogBox").hidden = !lg.length;
+    q("#chanLog").innerHTML = lg.map((e) => `<li><time>${md(new Date(e.ts + 9 * 3600e3).toISOString().slice(0, 10))} ${hm(e.ts)}</time> ${esc(e.text)}</li>`).join("");
+  }
   function drawS7() {
     const box = q("#s7Box"); if (!box) return;
     if (!s7 || !(s7.rows || []).length) { box.hidden = true; return; }
@@ -1008,7 +1076,7 @@
     });
   }
 
-  const redraw = () => { drawTgSum(); drawHeroLive(); drawWorld(); drawSpot(); drawWatch(); drawSectors(); drawS7(); drawFlows(); drawBrief(); if (full) { drawCharts(); drawMoves(); drawTrend(); drawList(); } };
+  const redraw = () => { drawChan(); drawTgSum(); drawHeroLive(); drawWorld(); drawSpot(); drawWatch(); drawSectors(); drawS7(); drawFlows(); drawBrief(); if (full) { drawCharts(); drawMoves(); drawTrend(); drawList(); } };
   const setKw = (label, pat) => {
     try { kwFilter = { label, rx: new RegExp(pat, "i") }; } catch { kwFilter = null; }
     tag = "전체"; shown = 30; drawTrend(); drawList(); q("#news").scrollIntoView({ behavior: "smooth" });
@@ -1034,6 +1102,7 @@
       if (t === "flow") drawFlows(); else if (t === "s7") drawS7(); else drawSectors();
       return;
     }
+    const co = e.target.closest("[data-chan-open]"); if (co) { const n = co.dataset.chanOpen; chanOpen = chanOpen === n ? null : n; drawChan(); return; }
     const fo = e.target.closest("[data-flow-open]"); if (fo) { const n = fo.dataset.flowOpen; flowOpen = flowOpen === n ? null : n; drawFlows(); return; }
     const tg = e.target.closest("[data-sec-toggle]");
     if (tg) { const n = tg.dataset.secToggle; openSector = openSector === n ? null : n; drawSectors(); return; }

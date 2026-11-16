@@ -662,6 +662,11 @@ def build() -> dict:
             out["s7"] = s7()
         except Exception as e:  # noqa: BLE001
             log(f"S7 건너뜀: {type(e).__name__}: {e}")
+        try:                                              # 📐 추세 판단(운영자 11/17): 하락 채널·5일선·실시간 캔들 — 사이트 맨 위 칸
+            from chan import build as chan
+            out["chan"] = chan()
+        except Exception as e:  # noqa: BLE001
+            log(f"추세 판단 건너뜀: {type(e).__name__}: {e}")
         out["trending"] = trending(items)
     except Exception as e:  # noqa: BLE001
         log(f"해외 지수·종목 건너뜀: {type(e).__name__}: {e}")
@@ -751,7 +756,7 @@ def upload(data: dict) -> bool:
 
 
 CMP_KEYS = ("items", "moves", "world", "spot", "trending", "sectors", "dow", "us10y", "ust", "kr", "momentum", "flows", "s7",
-            "leaders", "watch", "lev", "official", "rt_url", "srcscore")   # 11/16: 실시간 주소·출처 점수판이 바뀌어도 올림
+            "leaders", "watch", "lev", "official", "rt_url", "srcscore", "chan")   # 11/16: 실시간 주소·출처 점수판이 바뀌어도 올림
 UP_STATE = ROOT / "tools" / "upload_state.json"     # 마지막으로 올린 파일 sha·내용 지문(이 PC 기준)
 
 
