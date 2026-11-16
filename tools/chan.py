@@ -161,7 +161,17 @@ def _kis_now(code: str) -> list | None:
     import kis
     q = kis.get("/uapi/domestic-stock/v1/quotations/inquire-price", "FHKST01010100", {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": code}).get("output") or {}
     o, h, l, c = (_n(q.get(k)) for k in ("stck_oprc", "stck_hgpr", "stck_lwpr", "stck_prpr"))
-    return [datetime.now(KST).strftime("%m/%d"), o, h, l, c] if o and c else None
+    if o and c:
+        return [datetime.now(KST).strftime("%m/%d"), o, h, l, c]
+    try:                                                   # 11/17: 서버에서 한투가 안 되면 네이버 실시간(거래소 시가·고가·저가·현재가)
+        u = f"https://polling.finance.naver.com/api/realtime/domestic/stock/{code}"
+        x = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=8).read())["datas"][0]
+        if str(x.get("localTradedAt", ""))[:10] != datetime.now(KST).strftime("%Y-%m-%d"):
+            return None                                    # 오늘 체결이 아직 없음(장 전)
+        o, h, l, c = (_n(x.get(k)) for k in ("openPriceRaw", "highPriceRaw", "lowPriceRaw", "closePriceRaw"))
+        return [datetime.now(KST).strftime("%m/%d"), o, h, l, c] if o and c else None
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _load(p: Path) -> dict:

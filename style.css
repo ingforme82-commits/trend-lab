@@ -846,3 +846,15 @@ body{overflow-x:hidden}
 .chan-log li{padding:4px 0;border-top:1px dashed var(--line)}
 .chan-log time{color:var(--sub);font-variant-numeric:tabular-nums;margin-right:6px}
 .ch-foot{font-size:12.5px;color:var(--sub);margin:10px 0 0}
+
+/* 📐 추세 판단 그래프 카드(11/17) */
+.ch-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:860px){.ch-grid2{grid-template-columns:1fr}}
+.ch-card{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 12px 8px;min-width:0}
+.ch-top{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:14px}
+.ch-top .ch-nm{font-size:15px}
+.ch-top b.up{color:var(--up)} .ch-top b.down{color:var(--down)}
+.ch-top .ch-st{margin-left:auto}
+.ch-meta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;font-size:12.5px;color:var(--sub);margin:6px 0 4px}
+.ch-meta b{color:var(--ink);font-weight:600}
+.ch-card .ch-chart{max-width:none}

@@ -743,30 +743,28 @@
     return `<svg class="ch-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(it.name)} 일봉·하락 채널·5일선">${s}</svg>
       <p class="ch-leg"><i class="lr"></i>상단선(직전 고점) <i class="ls"></i>하단선(직전 저점) <i class="lm"></i>5일선 · 점선 = 다음 거래일까지 연장${it.live ? " · 마지막 봉은 진행 중" : ""}</p>`;
   }
-  function drawChan() {
+  function drawChan() {                                       // 11/17 운영자: 표 대신 채널 그래프를 항상 펼쳐서(1분마다 갱신)
     const box = q("#chan"), c = window.trlChan; if (!box) return;
     if (!c || !(c.groups || []).length) { box.hidden = true; return; }
     box.hidden = false;
     q("#chanRule").textContent = c.rule || "";
-    q("#chanStamp").textContent = `${hm(c.at)} 기준 · 1분마다`;
+    const live = c.groups.some((g) => g.items.some((it) => it.live));
+    q("#chanStamp").textContent = `${hm(c.at)} 기준 · 1분마다${live ? " · 진행 중인 봉 있음" : ""}`;
     let html = "", lastC = null;
     c.groups.forEach((g) => {
       if (g.country !== lastC) { if (lastC) html += `</div>`; html += `<div class="ch-country"><p class="ch-ch">${CH_FLAG[g.cc] || ""} ${esc(g.country)}</p>`; lastC = g.country; }
       const many = g.items.length > 1;
-      html += `<div class="ch-sec"><p class="ch-sh">${esc(g.sector)}${many ? "<small>10월 말 고점 대비 덜 빠진 순</small>" : ""}</p><div class="fl-scroll"><table class="ch-t">
-        <tr><th></th><th>종목</th><th>지금</th><th>오늘 캔들</th><th>상단선 · 5일선</th><th>다음 거래일 상단까지</th><th>추세 상태</th></tr>`;
+      html += `<div class="ch-sec"><p class="ch-sh">${esc(g.sector)}${many ? "<small>10월 말 고점 대비 덜 빠진 순</small>" : ""}</p><div class="ch-grid2">`;
       g.items.forEach((it) => {
-        const key = it.code, open = chanOpen === key;
         const mdl = many ? `<span class="ch-md m${Math.min(it.rank, 4)}">${it.rank <= 3 ? ["금", "은", "동"][it.rank - 1] : it.rank}</span>` : "";
-        html += `<tr class="ch-row${open ? " on" : ""}" data-chan-open="${esc(key)}" tabindex="0" title="눌러서 차트 보기"><td>${mdl}</td><td class="ch-nm">${esc(it.name)}</td>
-          <td class="mn">${chFmt(g.cc, it.px)} <b class="${it.chg >= 0 ? "up" : "down"}">${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%</b></td>
-          <td class="ch-cd">${chGlyph(it.rows[it.rows.length - 1])}<span>${esc(it.candle.name)}${it.live ? ' <em class="ch-now">진행 중</em>' : ""}</span></td>
-          <td class="mn">${chFmt(g.cc, it.up_now)} · ${chFmt(g.cc, it.ma5)}</td>
-          <td class="mn">${it.gap_next > 0 ? "+" : ""}${(+it.gap_next).toFixed(1)}%</td>
-          <td><span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span></td></tr>`;
-        if (open) html += `<tr class="ch-ex"><td colspan="7">${chChart(it, g.cc)}</td></tr>`;
+        html += `<article class="ch-card">
+          <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b><span class="mn">${chFmt(g.cc, it.px)}</span><b class="${it.chg >= 0 ? "up" : "down"}">${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%</b><span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span></div>
+          <div class="ch-meta">${chGlyph(it.rows[it.rows.length - 1])}<span>${esc(it.candle.name)}${it.live ? ' <em class="ch-now">진행 중</em>' : ""}</span>
+            <span>상단선 <b class="mn">${chFmt(g.cc, it.up_now)}</b></span><span>5일선 <b class="mn">${chFmt(g.cc, it.ma5)}</b></span>
+            <span>다음 거래일 상단까지 <b class="mn">${it.gap_next > 0 ? "+" : ""}${(+it.gap_next).toFixed(1)}%</b></span></div>
+          ${chChart(it, g.cc)}</article>`;
       });
-      html += `</table></div></div>`;
+      html += `</div></div>`;
     });
     if (lastC) html += `</div>`;
     q("#chanBoard").innerHTML = html;
@@ -1102,7 +1100,6 @@
       if (t === "flow") drawFlows(); else if (t === "s7") drawS7(); else drawSectors();
       return;
     }
-    const co = e.target.closest("[data-chan-open]"); if (co) { const n = co.dataset.chanOpen; chanOpen = chanOpen === n ? null : n; drawChan(); return; }
     const fo = e.target.closest("[data-flow-open]"); if (fo) { const n = fo.dataset.flowOpen; flowOpen = flowOpen === n ? null : n; drawFlows(); return; }
     const tg = e.target.closest("[data-sec-toggle]");
     if (tg) { const n = tg.dataset.secToggle; openSector = openSector === n ? null : n; drawSectors(); return; }
