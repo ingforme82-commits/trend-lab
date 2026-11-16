@@ -609,11 +609,14 @@ async function loadBand() {
   if (window.__pinNotice) return;
   try {
     const live = liveBand();
+    const sig = ((window.trlChan || {}).signals || [])[0];          // 📐 5일선 돌파 시그널이 있으면 띠 맨 앞(11/17)
+    const sigHtml = sig ? '<a href="#chan" class="band-sig">' + esc(sig.text) + '</a> · ' : '';
     if (live) {
       const node = $("#notice");
       if (!node) return;
-      node.innerHTML = '<div class="wrap"><a href="#brief" class="band-a">' + live.icon + ' <b>' + live.date + ' ' + live.title + '</b> <small>(' + live.time + ')</small> · ' + esc(live.text) + '</a></div>';
+      node.innerHTML = '<div class="wrap band-w"><span class="band-in">' + sigHtml + '<a href="#brief" class="band-a">' + live.icon + ' <b>' + live.date + ' ' + live.title + '</b> <small>(' + live.time + ')</small> · ' + esc(live.text) + '</a></span></div>';
       node.hidden = false;
+      bandFit();
       return;
     }
     const b = await fetch('data/briefs.json?t=' + Math.floor(Date.now() / 60000)).then((r) => r.json());
@@ -623,10 +626,20 @@ async function loadBand() {
     if (!t) return;
     const parts = BAND[h.slot], d = h.day.slice(5).replace("-", "/").replace(/^0/, "");
     const slotLabel = h.headline ? hhmm(KST(new Date(h.at))) + " KST 기준" : "(" + h.slot + " 정리)";
-    $("#notice").innerHTML = '<div class="wrap"><a href="#brief" class="band-a">' + parts[0] + ' <b>' + d + " " + parts[1] + '</b> <small>' + slotLabel + '</small> · ' + esc(t) + '</a></div>';
+    $("#notice").innerHTML = '<div class="wrap band-w"><span class="band-in">' + sigHtml + '<a href="#brief" class="band-a">' + parts[0] + ' <b>' + d + " " + parts[1] + '</b> <small>' + slotLabel + '</small> · ' + esc(t) + '</a></span></div>';
     $("#notice").hidden = false;
+    bandFit();
   } catch { /* 띠 없이 */ }
 }
+// 11/17 운영자: 띠는 스크롤해도 늘 보이게(메뉴 막대 안) — 한 줄을 넘으면 옆으로 흘러가게
+function bandFit() {
+  const w = document.querySelector("#notice .band-w"), i = document.querySelector("#notice .band-in");
+  if (!w || !i) return;
+  const over = i.scrollWidth - w.clientWidth;
+  i.classList.toggle("run", over > 8);
+  if (over > 8) i.style.setProperty("--band-dur", Math.max(18, Math.round(i.scrollWidth / 45)) + "s");
+}
+window.addEventListener("resize", () => bandFit());
 window.loadBand = loadBand;
 setInterval(() => { if (!window.__pinNotice) loadBand(); }, 60000);
 

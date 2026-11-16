@@ -262,6 +262,7 @@ def build(now: datetime | None = None) -> dict:
     c = json.loads(CONF.read_text(encoding="utf-8"))
     groups, events = [], []
     log = _load(LOG); prev = log.get("last", {}); hist = log.get("events", [])
+    signals = [s for s in log.get("signals", []) if now.timestamp() * 1000 - s["ts"] < 20 * 3600_000]   # 오늘(20시간 안) 시그널만
     for g in c["groups"]:
         items = []
         for code, name in g["items"]:
@@ -293,6 +294,17 @@ def build(now: datetime | None = None) -> dict:
             if live and cd["kind"] in ("bigup", "bigdn", "hammer", "shoot", "doji") and was.get("shape") != f"{stamp}:{cd['kind']}":
                 events.append({"ts": int(now.timestamp() * 1000), "code": code, "text": f"{name}: 오늘 캔들 {cd['name']} (시가 대비 {cd['vs_open']:+.2f}%, {_fmt(g['cc'], px)})"})
                 was = {**was, "shape": f"{stamp}:{cd['kind']}"}
+            # 11/17 운영자: 오늘 봉이 5일선을 위로 넘으면 시그널(어제 종가는 어제까지 5일선 아래였을 때). 하루 한 번
+            closes = [r[4] for r in rows]
+            ma5_prev = sum(closes[-6:-1]) / 5 if len(closes) >= 6 else None
+            it["gap_low"] = round((ch["lo_now"] / px - 1) * 100, 2)             # 하락 추세 지속 시 다음 채널 지지선까지
+            it["above_ma5"] = px > ch["ma5"]
+            if live and ma5_prev and pc <= ma5_prev and px > ch["ma5"] and was.get("ma5sig") != stamp:
+                sig = {"ts": int(now.timestamp() * 1000), "day": stamp, "code": code, "name": name, "cc": g["cc"],
+                       "text": f"📐 5일선 돌파 시그널 — {name} {_fmt(g['cc'], px)}가 5일선 {_fmt(g['cc'], ch['ma5'])} 위로 (어제 {_fmt(g['cc'], pc)}는 5일선 아래) · 채널 상단선 {_fmt(g['cc'], ch['up_now'])}까지 {((ch['up_now'] / px - 1) * 100):+.1f}%"}
+                signals.append(sig)
+                events.append({"ts": sig["ts"], "code": code, "text": sig["text"]})
+                was = {**was, "ma5sig": stamp}
             prev[key] = {**was, "state": st}
         items.sort(key=lambda x: -x["dd"])
         for i, it in enumerate(items):
@@ -302,10 +314,10 @@ def build(now: datetime | None = None) -> dict:
     if events:
         hist = (hist + events)[-60:]
     import hashlib
-    body = {"rule": c["rule"], "groups": groups, "log": hist[-20:][::-1]}
+    body = {"rule": c["rule"], "stance": c.get("stance", ""), "groups": groups, "log": hist[-20:][::-1], "signals": signals[::-1]}
     fp = hashlib.sha1(json.dumps(body, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     at = log.get("at") if log.get("fp") == fp and log.get("at") else int(now.timestamp() * 1000)   # 내용이 같으면 시각도 그대로(주말에 매분 올리지 않게)
-    _save(LOG, {"last": prev, "events": hist, "fp": fp, "at": at})
+    _save(LOG, {"last": prev, "events": hist, "fp": fp, "at": at, "signals": signals})
     return {"at": at, **body, "errs": ERRS[:20]}
 
 

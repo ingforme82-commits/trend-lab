@@ -665,6 +665,10 @@ def build() -> dict:
         try:                                              # 📐 추세 판단(운영자 11/17): 하락 채널·5일선·실시간 캔들 — 사이트 맨 위 칸
             from chan import build as chan
             out["chan"] = chan()
+            for s in (out["chan"] or {}).get("signals", [])[:8]:         # 📐 5일선 돌파 시그널 → 속보 목록에도(11/17 운영자)
+                out["items"].append({"ts": s["ts"], "got": s["ts"], "src": "트렌드랩 추세 판단", "kind": "추세 시그널",
+                                     "text": s["text"], "tags": ["한국" if s.get("cc") == "kr" else "반도체", "추세"], "hot": True})
+            out["items"].sort(key=lambda i: -i["ts"])
         except Exception as e:  # noqa: BLE001
             log(f"추세 판단 건너뜀: {type(e).__name__}: {e}")
         out["trending"] = trending(items)

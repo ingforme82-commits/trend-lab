@@ -868,3 +868,19 @@ body{overflow-x:hidden}
   .nav-in{flex-wrap:wrap;height:auto;padding-block:8px;row-gap:6px}
   .nav-links{display:flex;order:3;flex-basis:100%;margin-left:0;justify-content:flex-start;gap:16px;font-size:13.5px;padding-bottom:2px}
 }
+
+/* 시황 띠: 메뉴 막대 안(스크롤해도 보임), 한 줄 — 넘치면 흘러감(11/17) */
+.nav .notice{padding:6px 0;font-size:13px;text-align:left}
+.notice .band-w{overflow:hidden;white-space:nowrap}
+.notice .band-in{display:inline-block;white-space:nowrap}
+.notice .band-in.run{padding-left:100%;animation:band-run var(--band-dur,30s) linear infinite}
+.notice .band-in.run:hover{animation-play-state:paused}
+.notice a{color:inherit;text-decoration:none}
+.notice .band-sig{background:var(--navy);color:var(--gold);padding:1px 8px;border-radius:999px;font-weight:800}
+@keyframes band-run{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+@media (prefers-reduced-motion:reduce){.notice .band-in.run{animation:none;padding-left:0}.notice .band-w{overflow-x:auto}}
+/* 5일선 시그널 */
+.ch-sigbox{background:#fff7e0;border:1px solid var(--gold);border-radius:10px;padding:8px 12px;margin:0 0 12px;font-size:14px}
+.ch-sigbox p{margin:2px 0}
+.ch-sig{background:var(--gold);color:var(--navy);font-size:12px;font-weight:800;padding:2px 8px;border-radius:999px}
+.ch-stance{color:var(--gold-d)}

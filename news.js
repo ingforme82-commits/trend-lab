@@ -747,7 +747,11 @@
     const box = q("#chan"), c = window.trlChan; if (!box) return;
     if (!c || !(c.groups || []).length) { box.hidden = true; return; }
     box.hidden = false;
-    q("#chanRule").textContent = c.rule || "";
+    q("#chanRule").innerHTML = `${esc(c.rule || "")}${c.stance ? `<br><b class="ch-stance">${esc(c.stance)}</b>` : ""}`;
+    const sg = c.signals || [];
+    const sgBox = q("#chanSig");
+    if (sgBox) { sgBox.hidden = !sg.length; sgBox.innerHTML = sg.map((s) => `<p>⏱ ${hm(s.ts)} ${esc(s.text)}</p>`).join(""); }
+    const sigCodes = new Set(sg.map((s) => s.code));
     const live = c.groups.some((g) => g.items.some((it) => it.live));
     q("#chanStamp").textContent = `${hm(c.at)} 기준 · 1분마다${live ? " · 진행 중인 봉 있음" : ""}`;
     let html = "", lastC = null;
@@ -758,10 +762,11 @@
       g.items.forEach((it) => {
         const mdl = many ? `<span class="ch-md m${Math.min(it.rank, 4)}">${it.rank <= 3 ? ["금", "은", "동"][it.rank - 1] : it.rank}</span>` : "";
         html += `<article class="ch-card">
-          <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b><span class="mn">${chFmt(g.cc, it.px)}</span><b class="${it.chg >= 0 ? "up" : "down"}">${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%</b><span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span></div>
+          <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b><span class="mn">${chFmt(g.cc, it.px)}</span><b class="${it.chg >= 0 ? "up" : "down"}">${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%</b>${sigCodes.has(it.code) ? '<span class="ch-sig">5일선 돌파</span>' : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span></div>
           <div class="ch-meta">${chGlyph(it.rows[it.rows.length - 1])}<span>${esc(it.candle.name)}${it.live ? ' <em class="ch-now">진행 중</em>' : ""}</span>
             <span>상단선 <b class="mn">${chFmt(g.cc, it.up_now)}</b></span><span>5일선 <b class="mn">${chFmt(g.cc, it.ma5)}</b></span>
-            <span>다음 거래일 상단까지 <b class="mn">${it.gap_next > 0 ? "+" : ""}${(+it.gap_next).toFixed(1)}%</b></span></div>
+            <span>다음 거래일 상단까지 <b class="mn">${it.gap_next > 0 ? "+" : ""}${(+it.gap_next).toFixed(1)}%</b></span>
+            ${it.gap_low != null ? `<span>하단선(지지) <b class="mn">${chFmt(g.cc, it.lo_now)}</b> 까지 <b class="mn">${(+it.gap_low).toFixed(1)}%</b></span>` : ""}</div>
           ${chChart(it, g.cc)}</article>`;
       });
       html += `</div></div>`;

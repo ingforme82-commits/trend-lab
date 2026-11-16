@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261117-nav">
+<link rel="stylesheet" href="style.css?v=20261117-sig">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0f1b2d">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
@@ -50,10 +50,9 @@
     <button class="btn btn-ghost btn-sm" id="pushBtn" type="button" hidden>🔔 알림 받기</button>
     <a class="btn btn-kakao btn-sm" href="https://invite.kakao.com/tc/p7OX5rMjd0" target="_blank" rel="noopener">오픈채팅</a>
   </div>
+  <div class="notice" id="notice" hidden></div>
 </header>
 <div class="ticker" id="ticker" hidden></div>
-
-<div class="notice" id="notice" hidden></div>
 
 <main id="top">
 
@@ -81,6 +80,7 @@
       </div>
       <p class="stamp" id="chanStamp"></p>
     </div>
+    <div class="ch-sigbox" id="chanSig" hidden></div>
     <div id="chanBoard"></div>
     <p class="ch-foot">채널 = 직전 고점 2개를 이은 상단선과 직전 저점 2개를 이은 하단선 · 돌파 확인 = 종가가 상단선 +1% 위이면서 5일선 위 · 그래프는 1분마다 갱신(진행 중인 봉 포함) · 사실과 숫자를 정리한 자료이며 매수·매도 권유가 아닙니다.</p>
   </div>
@@ -268,9 +268,9 @@
 <script src="count.js?v=20261116-visitors"></script>
 <script src="presence.js?v=20261116-visitors"></script>
 <script src="flow-core.js?v=20261116-flow"></script>
-<script src="app.js?v=20261116-flow"></script>
+<script src="app.js?v=20261117-sig"></script>
 <script src="chart.js"></script>
-<script src="news.js?v=20261117-nav"></script>
+<script src="news.js?v=20261117-sig"></script>
 <!-- 11/17 운영자: 지수 흐름·분할 칸(flow.js)은 내림 — 추세 판단 채널 그래프가 대신 맨 위 -->
 </body>
 </html>
