@@ -250,6 +250,9 @@ def build(now: datetime | None = None) -> dict:
             pc = rows[-2][4]
             cd = candle(o, h, l, px, pc)
             st = state(ch, px, live)
+            was0 = (prev.get(code) or {}).get("state")       # 11/17: 3% 경계에서 오락가락(채널 안↔상단 근접) 막기 — 나갈 때는 3.5%
+            if was0 == "상단 근접" and st == "채널 안" and ch["gap_next"] <= 3.5:
+                st = "상단 근접"
             it = {"code": code, "name": name, "day": rows[-1][0], "live": live, "px": px, "chg": round((px / pc - 1) * 100, 2),
                   "candle": cd, "state": st, "rows": [[r[0]] + [round(x, 2) for x in r[1:5]] for r in rows],
                   **{k: (round(v, 4) if isinstance(v, float) else v) for k, v in ch.items()}}
