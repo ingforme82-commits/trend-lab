@@ -859,3 +859,12 @@ body{overflow-x:hidden}
 .ch-meta b{color:var(--ink);font-weight:600}
 .ch-card .ch-chart{max-width:none}
 #chan{scroll-margin-top:64px}
+
+/* 메뉴 한 줄(11/17 운영자: 2줄로 되지 않게) — 넘치면 옆으로 밀어서 */
+.nav-links{flex:1 1 auto;min-width:0;justify-content:flex-end;white-space:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+.nav-links::-webkit-scrollbar{display:none}
+.nav-links a{flex:none}
+@media (max-width:760px){
+  .nav-in{flex-wrap:wrap;height:auto;padding-block:8px;row-gap:6px}
+  .nav-links{display:flex;order:3;flex-basis:100%;margin-left:0;justify-content:flex-start;gap:16px;font-size:13.5px;padding-bottom:2px}
+}

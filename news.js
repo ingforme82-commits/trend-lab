@@ -768,9 +768,7 @@
     });
     if (lastC) html += `</div>`;
     q("#chanBoard").innerHTML = html;
-    const lg = c.log || [];
-    q("#chanLogBox").hidden = !lg.length;
-    q("#chanLog").innerHTML = lg.map((e) => `<li><time>${md(new Date(e.ts + 9 * 3600e3).toISOString().slice(0, 10))} ${hm(e.ts)}</time> ${esc(e.text)}</li>`).join("");
+    // 11/17 운영자: 추세 기록 칸은 내림 — 그래프만 실시간으로
   }
   function drawS7() {
     const box = q("#s7Box"); if (!box) return;
