@@ -112,3 +112,6 @@
 - 공개live15:25UTC스냅샷오프라인재계산: 코스피상3하3확인·코스닥상3하2대기. 모든종목을억지로3회확인처리하지않음. 전체18종목약0.03초시험(실거래판정/성능통계아님).
 - news/style캐시20261118-three-contacts,sw trl-app-v23-three-contacts. 실제Pages배포와Oracle5분autopull후접촉필드확인은별도수행.
 - 교육근거3회접촉원칙: StockCharts ChartSchool Trend Lines. 0.75%·3봉간격은운영설정이며해당교육자료가보증한수치아님.
+
+### 11/18 00:36 3점 검증·정렬 실제 반영
+- PR#6 main914bb8a Pages배포success. 공개live15:35:59UTC에서contact_policy=min_touches3/tolerance0.75/min_spacing3,첫그룹코스피·코스닥순서확인. KOSPI상3하3/channel_validtrue, KOSDAQ상3하2/channel_validfalse·접촉검증대기. 총18종목보존,chan.errs없음. 미확인을확인으로강제하지않는실제출력검증. 브라우저실기기시각검증은미수행.
