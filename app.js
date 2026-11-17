@@ -754,7 +754,7 @@ async function loadRt() {
       el.dataset.rt = String(r.px);
       el.dataset.rtAt = String(r.at);
       el.className = "tick" + flash;
-      el.innerHTML = `<p class="t-name">${RT_NAMES[k] || k}</p><p class="t-px">${nf(r.px)}</p><p class="t-ch ${c}">${r.chg > 0 ? "▲" : r.chg < 0 ? "▼" : ""} ${r.chg > 0 ? "+" : ""}${(+r.chg).toFixed(2)}% <small>실시간 체결</small></p><p class="fine" style="margin:2px 0 0">기준 전일 종가 ${nf(r.ref)}</p>${k === "SKHY" ? skhyMeta(r.px) : ""}<p class="t-meta">KIS 웹소켓 · ${hhmm(KSTof(r.at))}:${String(KSTof(r.at).getSeconds()).padStart(2, "0")}</p>`;
+      el.innerHTML = `<p class="t-name">${RT_NAMES[k] || k}</p><p class="t-px">${nf(r.px)}</p><p class="t-ch ${c}">${r.chg > 0 ? "▲" : r.chg < 0 ? "▼" : ""} ${r.chg > 0 ? "+" : ""}${(+r.chg).toFixed(2)}% <small>${r.mk === "NXT" ? "넥스트레이드 체결" : "실시간 체결"}</small></p><p class="fine" style="margin:2px 0 0">기준 전일 종가 ${nf(r.ref)}${r.mk ? ` · ${r.mk === "NXT" ? "넥스트레이드(NXT)" : "통합(KRX+NXT)"}` : ""}</p>${k === "SKHY" ? skhyMeta(r.px) : ""}<p class="t-meta">KIS 웹소켓 · ${hhmm(KSTof(r.at))}:${String(KSTof(r.at).getSeconds()).padStart(2, "0")}</p>`;
     });
   } catch { window.trlRtHealth = { checked: Date.now(), ok: false }; }
   finally { rtBusy = false; window.dispatchEvent(new Event('trl:quotes')); }

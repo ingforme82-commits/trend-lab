@@ -2,6 +2,8 @@
 
 1분마다 묻는 방식(REST) 대신 체결이 날 때마다 받는다. 표준 라이브러리만 씀(서버에 추가 설치 없음).
 - 국내 주식 H0STCNT0, 국내 지수 H0UPCNT0, 미국 주식 HDFSCNT0(지연 없는 무료 범위는 KIS 정책을 따름)
+- 넥스트레이드(NXT) 프리·애프터마켓: 국내주식 통합 체결 H0UNCNT0(KRX+NXT, 칸 배치는 H0STCNT0과 같음 — KIS 공식 예제 ccnl_total).
+  2026-11-18 운영자 "넥장까지 실시간". 08:00~09:00·15:30~20:00 KST 는 지수가 안 움직이므로 삼성전자·SK하이닉스 NXT 체결로 바꿔 받는다.
 - 등락률 = 현재가 ÷ (현재가 − 부호 있는 전일 대비) − 1 → 기준(전일 종가)도 함께 저장(ref)
 - 끊기면 다시 붙음(5→60초). 연결·수신 결과는 출처 점수판(srcscore 'rt')에 기록
 - 키: keystore KIS_APP_KEY/KIS_APP_SECRET(값은 출력하지 않음)
@@ -30,22 +32,27 @@ BASE = "https://openapi.koreainvestment.com:9443"
 WS_HOST, WS_PORT = "ops.koreainvestment.com", 21000
 OUT = keystore.state_dir() / "rt.json"
 # 11/16 확인: 이 키는 접속 1개(두 번째는 ALREADY IN USE)·동시 구독 3종목까지(4번째 MAX SUBSCRIBE OVER)
-# → 시간대별로 3개씩 바꿔 받는다. 한국장(08:00~16:00 KST) 지수, 그 밖은 SOXL·SKHY·KORU.
+# → 시간대별로 3개씩 바꿔 받는다. KRX 정규장(09:00~15:30 KST) 지수, NXT 프리(08:00~09:00)·애프터(15:30~20:00) 삼성전자·SK하이닉스, 그 밖은 SOXL·SKHY·KORU.
 MAX_SUBS = 3
 SUBS_KR = [("H0UPCNT0", "0001", "KOSPI", "코스피"), ("H0UPCNT0", "2001", "KR200", "코스피200"), ("H0UPCNT0", "1001", "KOSDAQ", "코스닥")]
 SUBS_US = [("HDFSCNT0", "DAMSSOXL", "SOXL", "SOXL"), ("HDFSCNT0", "DNASSKHY", "SKHY", "SKHY"), ("HDFSCNT0", "DAMSKORU", "KORU", "KORU")]   # 11/16 운영자: SK하이닉스 ADR(나스닥 코드 확인). DRAM·MU 는 1분 값
-SUBS = SUBS_KR + SUBS_US
+SUBS_NXT = [("H0UNCNT0", "005930", "SMSN", "삼성전자"), ("H0UNCNT0", "000660", "SKHX", "SK하이닉스")]   # 통합 체결 — 장 밖엔 NXT 체결만 들어옴
+SUBS = SUBS_KR + SUBS_NXT + SUBS_US
 
 
 def subs_now(now: float | None = None) -> list[tuple]:
     from datetime import datetime, timedelta, timezone
     k = datetime.fromtimestamp(now or time.time(), timezone(timedelta(hours=9)))
-    kr = k.weekday() < 5 and 8 <= k.hour < 16
-    return (SUBS_KR if kr else SUBS_US)[:MAX_SUBS]
+    m = k.hour * 60 + k.minute
+    if k.weekday() < 5 and 9 * 60 <= m < 15 * 60 + 30:      # KRX 정규장
+        return SUBS_KR[:MAX_SUBS]
+    if k.weekday() < 5 and 8 * 60 <= m < 20 * 60:           # NXT 프리마켓(08:00~08:50)·애프터마켓(15:40~20:00) — 단일가 구간 포함
+        return SUBS_NXT[:MAX_SUBS]
+    return SUBS_US[:MAX_SUBS]
 
 
 # 체결 메시지에서 (현재가, 부호, 전일 대비, 시각) 칸 위치
-FIELDS = {"H0STCNT0": (2, 3, 4, 1), "H0UPCNT0": (2, 3, 4, 1), "HDFSCNT0": (11, 12, 13, 7)}
+FIELDS = {"H0STCNT0": (2, 3, 4, 1), "H0UNCNT0": (2, 3, 4, 1), "H0UPCNT0": (2, 3, 4, 1), "HDFSCNT0": (11, 12, 13, 7)}
 
 
 def approval_key() -> str:
@@ -150,7 +157,11 @@ def parse(msg: str, keymap: dict) -> list[dict]:
     key = keymap.get((tr, code)) or keymap.get((tr, rec[1] if len(rec) > 1 else ""))
     if not key or px <= 0 or ref <= 0:
         return []
-    return [{"key": key, "px": px, "chg": round((px / ref - 1) * 100, 2), "ref": round(ref, 4), "t": rec[it]}]
+    out = {"key": key, "px": px, "chg": round((px / ref - 1) * 100, 2), "ref": round(ref, 4), "t": rec[it]}
+    if tr == "H0UNCNT0":
+        t = rec[it].strip()
+        out["mk"] = "KRX+NXT" if t[:4].isdigit() and "0900" <= t[:4] < "1530" else "NXT"   # 체결 시각으로 세션 구분
+    return [out]
 
 
 def subscribe(ws: WS, ak: str, subs: list[tuple]) -> None:

@@ -22,7 +22,7 @@
 - 점검: `python3 tools/brokers_check.py` — 11/16: 키움·한투·NH·KB ✅, LS·토스·DB 키 대기.
 - 교차 확인 `tools/xbroker.py`: 키움·한투·NH·KB·LS·토스·DB·네이버 → 다수 일치 값. 기준을 섞지 않음(KRX 정규장 / 통합 NXT 포함).
 - **출처 점수판** `tools/srcscore.py`: 성공률·일치율·응답 시간·신선도로 우선순위 자동 조정, 3번 연속 실패면 10분 쉼. 사이트 시세 칸 아래 '📊 출처 점수판'.
-- KIS 웹소켓 제약(11/16 실측): **키당 접속 1개, 동시 3종목**. PC에서 `rt_kis.py`를 돌리면 서버 접속이 끊긴다. 한국장 08~16시 코스피·코스피200·코스닥, 그 밖 SOXL·SKHY·KORU.
+- KIS 웹소켓 제약(11/16 실측): **키당 접속 1개, 동시 3종목**. PC에서 `rt_kis.py`를 돌리면 서버 접속이 끊긴다. KRX 정규장 09:00~15:30 코스피·코스피200·코스닥, NXT 프리(08:00~09:00)·애프터(15:30~20:00) 삼성전자·SK하이닉스(H0UNCNT0 통합 체결, 11/18), 그 밖 SOXL·SKHY·KORU.
 - 키움: 서버 IP 등록 + User-Agent 필요. 한투 업종코드 2001(코스피200) REST는 HTTP 500(웹소켓은 됨).
 - 새 키 받을 이름: `LS_APP_KEY/LS_APP_SECRET`, `TOSS_CLIENT_ID/TOSS_CLIENT_SECRET`(허용 IP에 Oracle IP), `DB_APP_KEY/DB_APP_SECRET`. 받으면 PC 등록 → `python tools/keys_export.py LS_ TOSS_ DB_` → scp → 서버 chmod 600 → PC 파일 삭제 → 서버 brokers_check.
 
