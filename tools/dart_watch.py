@@ -461,6 +461,8 @@ def ship_card_update(name: str, title: str, date: str, extra: list[str], path: P
     it = next((x for x in h.get("items", []) if x.get("tag") == SHIP_CARD), None)
     if not it:
         return False
+    if name in it.get("manual_review_required", []):
+        return False  # 분기 표기 이의 제기: 원문 재검증 후 명시적으로 해제한다.
     proof = next((e for e in extra if re.fullmatch(
         r"검증정보: OpenDART\|2026Q3\|2026-07-01\|2026-09-30\|(CFS|OFS)\|\d{14}", e)), "")
     if it.get("verification_policy") == "period_source_required":
