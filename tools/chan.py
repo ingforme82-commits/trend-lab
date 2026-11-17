@@ -64,37 +64,58 @@ def candle(o: float, h: float, l: float, c: float, prev: float) -> dict:
             "vs_open": round((c / o - 1) * 100, 2)}
 
 
-def channel(rows: list[list], anchors: dict) -> dict | None:
-    """rows [[MM/DD, o, h, l, c], ...] → 채널 선·상태. 기준 구간에 봉이 없으면 None."""
-    d = [r[0] for r in rows]; H = [r[2] for r in rows]; L = [r[3] for r in rows]
+def channel(rows: list[list], anchors: dict, contact_rules: dict | None = None,
+            *, last_closed: bool = False) -> dict | None:
+    """상·하단 각각 3회 접촉과 경미한 겹침을 검증. 진행 중 봉은 선 학습에서 제외."""
+    from channel_fit import fit_recent_side
+    rules = contact_rules or {}
+    tolerance = float(rules.get("tolerance_pct", 0.75))
+    spacing = int(rules.get("min_spacing_bars", 3))
+    required = max(3, int(rules.get("min_touches", 3)))
+    dates = [r[0] for r in rows]
+    high = [r[2] for r in rows]
+    low = [r[3] for r in rows]
+    last = len(rows) - (1 if last_closed else 2)
 
-    def pick(arr, ab, f):
-        idx = [i for i in range(len(d)) if ab[0] <= d[i] <= ab[1]]
-        return f(idx, key=lambda i: arr[i]) if idx else None
-    h1, l1 = pick(H, anchors["hi1"], max), pick(L, anchors["lo1"], min)
+    def seed(values, window, choose):
+        eligible = [i for i in range(last + 1) if window[0] <= dates[i] <= window[1]]
+        return choose(eligible, key=lambda i: values[i]) if eligible else None
+
+    h1, l1 = seed(high, anchors["hi1"], max), seed(low, anchors["lo1"], min)
     if h1 is None or l1 is None:
         return None
-    # 11/17: 두 번째 점은 '이후 고점이 모두 선 아래, 이후 저점이 모두 선 위'가 되게 고른다(선을 뚫는 고점이 없게).
-    # 후보 = 기준 구간 시작일부터 어제(마지막 봉 제외 — 오늘 봉은 진행 중일 수 있음)까지
-    last = len(rows) - 2
-    hc = [j for j in range(h1 + 1, last + 1) if d[j] >= anchors["hi2"][0]]
-    lc = [j for j in range(l1 + 1, last + 1) if d[j] >= anchors["lo2"][0]]
-    if not hc or not lc:
+    kwargs = dict(tolerance_pct=tolerance, min_spacing=spacing, min_touches=required)
+    upper = fit_recent_side(high, dates, h1, anchors["hi2"][0], last, True, **kwargs)
+    lower = fit_recent_side(low, dates, l1, anchors["lo2"][0], last, False, **kwargs)
+    if not upper or not lower:
         return None
-    h2 = max(hc, key=lambda j: (H[j] - H[h1]) / (j - h1))
-    l2 = min(lc, key=lambda j: (L[j] - L[l1]) / (j - l1))
-    su = (H[h2] - H[h1]) / (h2 - h1); sl = (L[l2] - L[l1]) / (l2 - l1)
-    up = lambda i: H[h1] + su * (i - h1)                  # noqa: E731
-    lo = lambda i: L[l1] + sl * (i - l1)                  # noqa: E731
-    n = len(rows) - 1; px = rows[n][4]
+    up = lambda i: upper["slope"] * i + upper["intercept"]
+    lo = lambda i: lower["slope"] * i + lower["intercept"]
+    n = len(rows) - 1
+    px = rows[n][4]
+    width_valid = all(up(i) > lo(i) > 0 for i in range(max(upper["start"], lower["start"]), n + 2))
+    verified = upper["verified"] and lower["verified"] and width_valid
     closes = [r[4] for r in rows]
-    ma5 = sum(closes[-5:]) / min(5, len(closes))
-    return {"hi": [h1, h2], "lo": [l1, l2], "su": su, "sl": sl, "up_now": up(n), "lo_now": lo(n), "up_next": up(n + 1), "lo_next": lo(n + 1),
-            "pos": (px - lo(n)) / (up(n) - lo(n)) * 100 if up(n) != lo(n) else 50, "ma5": ma5, "gap_next": (up(n + 1) / px - 1) * 100,
-            "dd": (px / H[h1] - 1) * 100, "peak": H[h1], "peak_day": d[h1]}
+    return {"hi": upper["touches"], "lo": lower["touches"],
+            "upper_start": upper["start"], "lower_start": lower["start"],
+            "su": upper["slope"], "sl": lower["slope"],
+            "up_now": up(n), "lo_now": lo(n), "up_next": up(n + 1), "lo_next": lo(n + 1),
+            "pos": (px - lo(n)) / (up(n) - lo(n)) * 100 if up(n) > lo(n) else None,
+            "ma5": sum(closes[-5:]) / min(5, len(closes)), "gap_next": (up(n + 1) / px - 1) * 100,
+            "dd": (px / high[h1] - 1) * 100, "peak": high[h1], "peak_day": dates[h1],
+            "upper_touch_count": len(upper["touches"]), "lower_touch_count": len(lower["touches"]),
+            "upper_verified": upper["verified"], "lower_verified": lower["verified"],
+            "channel_valid": verified, "channel_width_valid": width_valid,
+            "touch_tolerance_pct": tolerance, "touch_min_spacing": spacing, "touch_required": required,
+            "touch_lookback_bars": len(rows),
+            "upper_overlap_pct": upper["max_overlap_pct"], "lower_overlap_pct": lower["max_overlap_pct"]}
 
 
 def state(ch: dict, px: float, live: bool) -> str:
+    if ch.get("channel_width_valid") is False:
+        return "채널선 교차·재확인"
+    if ch.get("channel_valid") is False:
+        return "접촉 검증 대기"
     above = px > ch["up_now"] * 1.01
     if above and px > ch["ma5"]:
         return "돌파 시도(장중)" if live else "돌파 확인"
@@ -268,8 +289,9 @@ def build(now: datetime | None = None) -> dict:
     INDEX_META.clear()
     c = json.loads(CONF.read_text(encoding="utf-8"))
     groups, events = [], []
-    log = _load(LOG); prev = log.get("last", {}); hist = log.get("events", [])
-    signals = [s for s in log.get("signals", []) if now.timestamp() * 1000 - s["ts"] < 20 * 3600_000]   # 오늘(20시간 안) 시그널만
+    contact_policy = json.dumps(c.get("contact_rules") or {}, sort_keys=True)
+    log = _load(LOG); prev = log.get("last", {}) if log.get("contact_policy") == contact_policy else {}; hist = log.get("events", [])
+    signals = [s for s in log.get("signals", []) if now.timestamp() * 1000 - s["ts"] < 20 * 3600_000 and s.get("contact_policy") == contact_policy]   # 오늘(20시간 안) 시그널만
     for g in c["groups"]:
         items = []
         for code, name in g["items"]:
@@ -279,7 +301,7 @@ def build(now: datetime | None = None) -> dict:
                 ERRS.append(f"{code} 시세 {type(x).__name__}"); continue
             if len(rows) < 20:
                 ERRS.append(f"{code} 일봉 {len(rows)}개뿐"); continue
-            ch = channel(rows, c["anchors"])
+            ch = channel(rows, c["anchors"], c.get("contact_rules"), last_closed=not live)
             if not ch:
                 ERRS.append(f"{code} 채널 기준점 없음"); continue
             o, h, l, px = rows[-1][1:5]
@@ -310,14 +332,15 @@ def build(now: datetime | None = None) -> dict:
             ma5_prev = sum(closes[-6:-1]) / 5 if len(closes) >= 6 else None
             it["gap_low"] = round((ch["lo_now"] / px - 1) * 100, 2)             # 하락 추세 지속 시 다음 채널 지지선까지
             it["above_ma5"] = px > ch["ma5"]
-            if live and ma5_prev and pc <= ma5_prev and px > ch["ma5"] and was.get("ma5sig") != stamp:
-                sig = {"ts": int(now.timestamp() * 1000), "day": stamp, "code": code, "name": name, "cc": g["cc"],
+            if live and ch["channel_valid"] and ma5_prev and pc <= ma5_prev and px > ch["ma5"] and was.get("ma5sig") != stamp:
+                sig = {"ts": int(now.timestamp() * 1000), "day": stamp, "code": code, "name": name, "cc": g["cc"], "contact_policy": contact_policy,
                        "text": f"📐 5일선 돌파 시그널 — {name} {_fmt(g['cc'], px)}가 5일선 {_fmt(g['cc'], ch['ma5'])} 위로 (어제 {_fmt(g['cc'], pc)}는 5일선 아래) · 채널 상단선 {_fmt(g['cc'], ch['up_now'])}까지 {((ch['up_now'] / px - 1) * 100):+.1f}%"}
                 signals.append(sig)
                 events.append({"ts": sig["ts"], "code": code, "text": sig["text"]})
                 was = {**was, "ma5sig": stamp}
             prev[key] = {**was, "state": st}
-        items.sort(key=lambda x: -x["dd"])
+        if g["cc"] != "kr_index":
+            items.sort(key=lambda x: -x["dd"])
         for i, it in enumerate(items):
             it["rank"] = i + 1
         if items:
@@ -325,10 +348,10 @@ def build(now: datetime | None = None) -> dict:
     if events:
         hist = (hist + events)[-60:]
     import hashlib
-    body = {"rule": c["rule"], "stance": c.get("stance", ""), "groups": groups, "log": hist[-20:][::-1], "signals": signals[::-1]}
+    body = {"contact_policy": contact_policy, "rule": c["rule"], "stance": c.get("stance", ""), "groups": groups, "log": hist[-20:][::-1], "signals": signals[::-1]}
     fp = hashlib.sha1(json.dumps(body, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     at = log.get("at") if log.get("fp") == fp and log.get("at") else int(now.timestamp() * 1000)   # 내용이 같으면 시각도 그대로(주말에 매분 올리지 않게)
-    _save(LOG, {"last": prev, "events": hist, "fp": fp, "at": at, "signals": signals})
+    _save(LOG, {"contact_policy": contact_policy, "last": prev, "events": hist, "fp": fp, "at": at, "signals": signals})
     return {"at": at, **body, "errs": ERRS[:20]}
 
 

@@ -729,19 +729,20 @@
       s += `<line x1="${M.l}" x2="${W - M.r}" y1="${Y(v)}" y2="${Y(v)}" class="ch-grid"/><text x="${W - M.r + 5}" y="${Y(v) + 3}" class="ch-ax">${chFmt(cc, v)}</text>`; }
     for (let i = 0; i < n - 4; i += 10) s += `<text x="${X(i)}" y="${H - 5}" class="ch-ax" text-anchor="middle">${rows[i][0]}</text>`;
     s += `<text x="${X(n - 1)}" y="${H - 5}" class="ch-ax" text-anchor="middle">${rows[n - 1][0]}</text><g clip-path="url(#${cid})">`;
-    const a0 = Math.min(it.hi[0], it.lo[0]);
-    s += `<polygon class="ch-band" points="${X(a0)},${Y(up(a0))} ${X(n)},${Y(up(n))} ${X(n)},${Y(lo(n))} ${X(a0)},${Y(lo(a0))}"/>`;
+    const upperStart = it.upper_start ?? it.hi[0], lowerStart = it.lower_start ?? it.lo[0];
+    const a0 = Math.max(upperStart, lowerStart);
+    if (it.channel_valid !== false) s += `<polygon class="ch-band" points="${X(a0)},${Y(up(a0))} ${X(n)},${Y(up(n))} ${X(n)},${Y(lo(n))} ${X(a0)},${Y(lo(a0))}"/>`;
     const cw = Math.max(2, st * 0.6);
     rows.forEach((r, i) => { const [, o, h, l, c] = r, col = c >= o ? "var(--up)" : "var(--down)";
       s += `<line x1="${X(i)}" x2="${X(i)}" y1="${Y(h)}" y2="${Y(l)}" stroke="${col}"/><rect x="${X(i) - cw / 2}" y="${Y(Math.max(o, c))}" width="${cw}" height="${Math.max(1, Math.abs(Y(o) - Y(c)))}" fill="${col}" rx="1"${i === n - 1 && it.live ? ' class="ch-live"' : ""}/>`; });
     const ma = rows.map((_, i) => i >= 4 ? rows.slice(i - 4, i + 1).reduce((a, r) => a + r[4], 0) / 5 : null);
     s += `<polyline class="ch-ma" points="${ma.map((v, i) => v == null ? "" : `${X(i)},${Y(v)}`).join(" ").trim()}"/>`;
-    s += `<line x1="${X(it.hi[0])}" y1="${Y(up(it.hi[0]))}" x2="${X(n - 1)}" y2="${Y(up(n - 1))}" class="ch-res"/><line x1="${X(n - 1)}" y1="${Y(up(n - 1))}" x2="${X(n)}" y2="${Y(up(n))}" class="ch-res ch-dash"/>`;
-    s += `<line x1="${X(it.lo[0])}" y1="${Y(lo(it.lo[0]))}" x2="${X(n - 1)}" y2="${Y(lo(n - 1))}" class="ch-sup"/><line x1="${X(n - 1)}" y1="${Y(lo(n - 1))}" x2="${X(n)}" y2="${Y(lo(n))}" class="ch-sup ch-dash"/></g>`;
+    s += `<line x1="${X(upperStart)}" y1="${Y(up(upperStart))}" x2="${X(n - 1)}" y2="${Y(up(n - 1))}" class="ch-res${it.upper_verified === false ? " ch-unverified" : ""}"/><line x1="${X(n - 1)}" y1="${Y(up(n - 1))}" x2="${X(n)}" y2="${Y(up(n))}" class="ch-res ch-dash${it.upper_verified === false ? " ch-unverified" : ""}"/>`;
+    s += `<line x1="${X(lowerStart)}" y1="${Y(lo(lowerStart))}" x2="${X(n - 1)}" y2="${Y(lo(n - 1))}" class="ch-sup${it.lower_verified === false ? " ch-unverified" : ""}"/><line x1="${X(n - 1)}" y1="${Y(lo(n - 1))}" x2="${X(n)}" y2="${Y(lo(n))}" class="ch-sup ch-dash${it.lower_verified === false ? " ch-unverified" : ""}"/></g>`;
     it.hi.forEach((i) => s += `<circle cx="${X(i)}" cy="${Y(rows[i][2])}" r="3.5" class="ch-dot-r"/>`);
     it.lo.forEach((i) => s += `<circle cx="${X(i)}" cy="${Y(rows[i][3])}" r="3.5" class="ch-dot-s"/>`);
     return `<svg class="ch-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(it.name)} 일봉·하락 채널·5일선">${s}</svg>
-      <p class="ch-leg"><i class="lr"></i>상단선(직전 고점) <i class="ls"></i>하단선(직전 저점) <i class="lm"></i>5일선 · 점선 = 다음 거래일까지 연장${it.live ? " · 마지막 봉은 진행 중" : ""}</p>`;
+      <p class="ch-leg"><i class="lr"></i>상단선(고점 접촉) <i class="ls"></i>하단선(저점 접촉) <i class="lm"></i>5일선 · 점선 = 연장·미검증 참고선${it.live ? " · 마지막 봉은 진행 중" : ""}</p>`;
   }
   function drawChan() {                                       // 11/17 운영자: 표 대신 채널 그래프를 항상 펼쳐서(1분마다 갱신)
     const box = q("#chan"), c = window.trlChan; if (!box) return;
@@ -757,12 +758,13 @@
     let html = "", lastC = null;
     c.groups.forEach((g) => {
       if (g.country !== lastC) { if (lastC) html += `</div>`; html += `<div class="ch-country"><p class="ch-ch">${CH_FLAG[g.cc] || ""} ${esc(g.country)}</p>`; lastC = g.country; }
-      const many = g.items.length > 1;
+      const many = g.items.length > 1 && g.cc !== "kr_index";
       html += `<div class="ch-sec"><p class="ch-sh">${esc(g.sector)}${many ? "<small>10월 말 고점 대비 덜 빠진 순</small>" : ""}</p><div class="ch-grid2">`;
       g.items.forEach((it) => {
         const mdl = many ? `<span class="ch-md m${Math.min(it.rank, 4)}">${it.rank <= 3 ? ["금", "은", "동"][it.rank - 1] : it.rank}</span>` : "";
         html += `<article class="ch-card">
           <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b><span class="mn">${chFmt(g.cc, it.px)}</span><b class="${it.chg >= 0 ? "up" : "down"}">${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%</b>${sigCodes.has(it.code) ? '<span class="ch-sig">5일선 돌파</span>' : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span></div>
+          ${it.upper_touch_count != null ? `<div class="ch-contacts"><span class="${it.upper_verified ? "ch-contact-ok" : "ch-contact-wait"}">상단 ${it.upper_touch_count}회 ${it.upper_verified ? "접촉 확인" : "검증 대기"}</span><span class="${it.lower_verified ? "ch-contact-ok" : "ch-contact-wait"}">하단 ${it.lower_touch_count}회 ${it.lower_verified ? "접촉 확인" : "검증 대기"}</span><small>오차 ${it.touch_tolerance_pct}% · ${it.touch_min_spacing}거래일 간격 · 최근 ${it.touch_lookback_bars || it.rows.length}봉</small></div>` : ""}
           <div class="ch-meta">${chGlyph(it.rows[it.rows.length - 1])}<span>${esc(it.candle.name)}${it.live ? ' <em class="ch-now">진행 중</em>' : ""}</span>
             <span>상단선 <b class="mn">${chFmt(g.cc, it.up_now)}</b></span><span>5일선 <b class="mn">${chFmt(g.cc, it.ma5)}</b></span>
             <span>다음 거래일 상단까지 <b class="mn">${it.gap_next > 0 ? "+" : ""}${(+it.gap_next).toFixed(1)}%</b></span>
