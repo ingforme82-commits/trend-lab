@@ -1,4 +1,4 @@
-"""🏛 공식 발표 데이터(무료·키 없음) — 미 재무부 국채 종가 · EIA 주간 석유 재고 · BLS 물가·고용. news.json official.
+"""🏛 공식 발표 데이터(무료) — 미 재무부 국채 종가 · EIA 주간 석유 재고 · BLS 물가·고용 · 한국은행 ECOS(11/18, 키 필요). news.json official.
 
 - 재무부: home.treasury.gov 일별 수익률 곡선 CSV(공식 종가, 장 마감 후 갱신) — 3개월·2년·10년·30년, 10년−2년, 10년−3개월
 - EIA: ir.eia.gov/wpsr/table1.csv (주간 석유 현황 보고서 표1, 백만 배럴) — 상업용 원유·SPR·휘발유·정제유, 전주 대비
@@ -19,7 +19,7 @@ from pathlib import Path
 
 CACHE = Path(__file__).resolve().parent / "official_cache.json"
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-TTL = {"ust": 3 * 3600, "eia": 3 * 3600, "bls": 12 * 3600}
+TTL = {"ust": 3 * 3600, "eia": 3 * 3600, "bls": 12 * 3600, "bok": 3 * 3600}
 BLS = {"CUUR0000SA0": "CPI", "CUUR0000SA0L1E": "근원 CPI", "WPUFD4": "PPI(최종 수요)", "CES0000000001": "비농업 고용", "LNS14000000": "실업률"}
 EIA_ROWS = {"Commercial (Excluding SPR)": "상업용 원유", "Strategic Petroleum Reserve (SPR)": "전략비축유(SPR)",
             "Total Motor Gasoline": "휘발유", "Distillate Fuel Oil": "정제유(디젤 등)"}
@@ -121,11 +121,19 @@ def build() -> dict:
                 c["bls"] = {"t": now, "v": v}
         except Exception:  # noqa: BLE001
             pass
+    if not fresh("bok"):                                          # 11/18 한국은행 ECOS(키 ECOS_API_KEY) — 원/달러 매매기준율·국고채 3년·기준금리
+        try:
+            import ecos
+            v = {k: x for k, x in ecos.build().items() if k in ("usdkrw", "ktb3y", "base")}
+            if v:
+                c["bok"] = {"t": now, "v": v}
+        except Exception:  # noqa: BLE001
+            pass
     try:
         CACHE.write_text(json.dumps(c, ensure_ascii=False), encoding="utf-8")
     except OSError:
         pass
-    return {k: c[k]["v"] for k in ("ust", "eia", "bls") if c.get(k)}
+    return {k: c[k]["v"] for k in ("ust", "eia", "bls", "bok") if c.get(k)}
 
 
 if __name__ == "__main__":

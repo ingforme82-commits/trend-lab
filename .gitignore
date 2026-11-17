@@ -37,3 +37,5 @@ tools/health_state.json
 tools/healthcheck.log
 tools/upload_state.json
 tools/move_news.json
+tools/quote_xcheck.log
+tools/quote_xcheck.txt
