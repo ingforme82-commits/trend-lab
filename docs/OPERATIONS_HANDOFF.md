@@ -148,3 +148,7 @@
 - 참고5일선은이전정규장종가와오늘통합가격의평균,정규장SMA와별도표시. display.signal_eligible=false,시간외로돌파확정/주문시그널생성안함.정규장과확장가격·판정나란히문구표시.기존2점채널/PC2열·모바일1열유지.
 - 미국기존_open_now 고정EST를America/New_York로수정(DST).새수집캐시55초·4worker·요청10초timeout.키/증권사토큰사용없음.새주문/타이머/웹소켓변경없음.
 - JS문법V8확인.별도오프라인Python/Node회귀GitHubActions검증후병합.실서버최초데이터·Pages배포는별도관측필요.로컬호스트명령응답이정지되어로컬실행완료로보고하지않음.
+
+### 확장세션 차트 코드·배포 검증
+- PR#8 main a29508d57773b0ec2c320e6d3b0af43bdee1b3e2 병합. GitHubActions push/PR 두 실행 모두 Python 채널·접촉·지수·신규세션 회귀와 Node 문법·렌더 검사 성공. 신규 세션검사15개,기존채널5+접촉10+지수10을포함해총40개.
+- Pages 배포 success 확인. Oracle는다음autopull/수집게시본에서display/source_at/session/live를별도확인중. 실제기기시각QA 미실행.
