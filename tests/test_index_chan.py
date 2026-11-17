@@ -102,8 +102,8 @@ class IndexDataTests(unittest.TestCase):
 
     def test_config_indices_first_and_tsm_preserved(self):
         c = json.loads((Path(__file__).resolve().parents[1] / "data" / "channels.json").read_text(encoding="utf-8"))
-        self.assertEqual([g["items"][0][0] for g in c["groups"][:2]], ["KOSPI", "KOSDAQ"])
-        self.assertEqual([g["cc"] for g in c["groups"][:2]], ["kr_index", "kr_index"])
+        self.assertEqual([code for code, _ in c["groups"][0]["items"]], ["KOSPI", "KOSDAQ"])
+        self.assertEqual(c["groups"][0]["cc"], "kr_index")
         self.assertEqual(sum(code == "TSM" for g in c["groups"] for code, _ in g["items"]), 1)
 
     def test_build_does_not_confirm_breakout_on_unverified_index_data(self):

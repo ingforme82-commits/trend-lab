@@ -901,3 +901,14 @@ body{overflow-x:hidden}
 @media (max-width:520px){.brand-txt{display:none}.nav-in .btn-sm{padding:6px 10px;font-size:12.5px}.nav-in{gap:8px}}
 @media (max-width:760px){.nav-in .btn{margin-left:0}.nav-in .brand{margin-right:auto}}
 @media (max-width:520px){.nav-in .btn{padding:6px 9px!important;font-size:12px!important;min-height:0}}
+
+/* 채널 접촉 검증 · PC 2열 / 모바일 1열 (11/18) */
+.ch-grid2{align-items:stretch}
+.ch-card{display:flex;flex-direction:column}
+.ch-contacts{display:flex;flex-wrap:wrap;gap:5px 10px;align-items:center;margin:7px 0;font-size:12px}
+.ch-contact-ok{color:#176345;background:#e4f2e9;padding:2px 7px;border-radius:6px}
+.ch-contact-wait{color:#795718;background:#fff2d9;padding:2px 7px;border-radius:6px}
+.ch-contacts small{color:var(--sub)}
+.ch-chart .ch-unverified{stroke-dasharray:6 5;opacity:.55}
+@media(min-width:861px){.ch-card>.ch-meta{min-height:62px}.ch-card>.ch-top{min-height:44px}.ch-grid2>.ch-card{width:100%;box-sizing:border-box}}
+@media(max-width:860px){.ch-card{padding:10px}.ch-contacts small{flex-basis:100%}}
