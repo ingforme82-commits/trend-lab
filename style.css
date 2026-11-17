@@ -912,3 +912,4 @@ body{overflow-x:hidden}
 .ch-chart .ch-unverified{stroke-dasharray:6 5;opacity:.55}
 @media(min-width:861px){.ch-card>.ch-meta{min-height:62px}.ch-card>.ch-top{min-height:44px}.ch-grid2>.ch-card{width:100%;box-sizing:border-box}}
 @media(max-width:860px){.ch-card{padding:10px}.ch-contacts small{flex-basis:100%}}
+.earn .eu{color:var(--up)} .earn .ed{color:var(--down)} .earn .c-title small{font-weight:400;color:var(--sub);font-size:13px}
