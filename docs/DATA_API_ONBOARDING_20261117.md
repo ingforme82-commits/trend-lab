@@ -75,3 +75,12 @@
 - 운영실 목표: 공급자별설정유무·마지막실제조회성공·원천시각·지연·오류코드·대체출처·TRL반영상태. 키등록/REST성공/WebSocket연속수신/공개게시/모의전략활용을별도단계로표시.
 - 매매 반영은우선관찰기록으로검증. 뉴스추가만으로자동주문조건변경/실행자전환하지않음. PC꺼짐독립운영/브로커완전대사/중복주문방지검증완료로오인금지. 기존주문·타이머변경없음.
 - 현재확인상태는상단실측기록유지: ECOS조회PASS,KRX401,Alpaca/Finnhub오라클결과대기,SEC연락처준비대기,LS보류. 이 절은실행계획이며신규구현·모든연결완료기록이아님.
+
+
+## 2026-11-18 02:40 Claude: ECOS·Finnhub·Alpaca 연결 구현(계획 2·3번 일부)
+- 키: PC 사용자 환경변수 ECOS_API_KEY·KRX_API_KEY·FINNHUB_API_KEY·ALPACA_API_KEY·ALPACA_SECRET_KEY(keystore NAMES 추가). Alpaca는 APCA_API_KEY_ID 이름도 읽음(quote_xcheck). 이름 통일 필요.
+- tools/ecos.py → official.py bok(원/달러 매매기준율·국고채3년·기준금리, 3시간 캐시) → news.js 공식 발표 데이터 칸. Oracle은 ECOS 키 등록돼 있어 pull 뒤 표시 예상(실제 반영은 서버 news.json으로 확인 필요).
+- tools/finnhub.py(시세·실적일정·종목뉴스), tools/krxapi.py(401 상태 확인용), tools/quote_xcheck.py(TRL lev ↔ Finnhub·Alpaca IEX, kr 지수 ↔ ECOS, 3배 ETF 허용 1.5%) — PC 예약 TRL_QUOTE_XCHECK 매시 07분, 불일치는 tg_alert.
+- 대조 결과(02:10): 미국 5종목 일치(시차 1~2분). KOSPI 전일 종가 TRL 5100.59 ↔ ECOS 5100.50 불일치(반올림 등락률로 역산 추정) — 원인 미수정.
+- tools/earnings_cal.py → data/earnings.json → 사이트 미국 주요 실적 일정 칸. Finnhub·야후 날짜 대조(MRVL·PDD 출처 다름, MU·NKE·LULU 추정, FDX 야후 지난 분기). 현재는 PC 수동 생성 — 정기 갱신(Oracle)은 미정.
+- 미국 주문 병행: market-site trader/alpaca_mirror.py(NH 미국 주문을 Alpaca paper에 복사, PC 예약 NH_MOCK_ALPACA_MIRROR). SEC 원문은 연락처 UA 필요로 미조회(SEC_CONTACT_EMAIL 대기).
