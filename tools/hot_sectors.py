@@ -195,11 +195,32 @@ def update(d: dict | None = None) -> list[dict]:
     for x in res:
         if x["key"] not in st["seen"]:
             st["seen"][x["key"]] = now.strftime("%H:%M")
-            new.append({"text": f"🔥 주도 섹터 포착 — {line(x)}"})
+            ev = {"ts": int(time.time() * 1000), "text": f"🔥 주도 섹터 포착 — {line(x)}"}
+            new.append(ev)
+            st.setdefault("events", []).append(ev)
     st.update(at=int(time.time() * 1000), phase=ph, res=[{**x, "first": st["seen"][x["key"]]} for x in res][:8])
     DIR.mkdir(parents=True, exist_ok=True)
     STATE.write_text(json.dumps(st, ensure_ascii=False), encoding="utf-8")
     return new
+
+
+def events() -> list[dict]:
+    """오늘 포착 속보(속보 목록에 매번 다시 넣는다 — 추세 시그널과 같은 방식)."""
+    try:
+        st = json.loads(STATE.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return []
+    day = datetime.now(KST).strftime("%Y-%m-%d")
+    if st.get("day") != day:
+        return []
+    ev = st.get("events")
+    if ev is None:                                         # 이 기능 전에 잡힌 것: 첫 포착 시각으로 만든다
+        ev = []
+        for x in st.get("res") or []:
+            h, m = map(int, (x.get("first") or "09:00").split(":"))
+            ts = int(datetime.strptime(day, "%Y-%m-%d").replace(hour=h, minute=m, tzinfo=KST).timestamp() * 1000)
+            ev.append({"ts": ts, "text": f"🔥 주도 섹터 포착 — {line(x)}"})
+    return ev[-12:]
 
 
 def current() -> dict | None:

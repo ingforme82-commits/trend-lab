@@ -556,9 +556,7 @@ def build() -> dict:
     try:                                                  # 🔥 오늘 주도 섹터(자동, 11/17 운영자) — 15%↑ 2종목 이상·평균 +5% 이상 업종·테마만
         from hot_sectors import update as hot_update
         t_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
-        for h in hot_update():
-            sector_items.append({"ts": t_ms, "got": t_ms, "src": "트렌드랩 자동 집계", "kind": "주도 섹터", "text": h["text"],
-                                 "tags": ["한국"], "hot": True})
+        for h in hot_update():                            # 속보 목록에는 아래(추세 판단 다음)에서 오늘 포착분을 매번 넣는다
             log(h["text"][:100])
     except Exception as e:  # noqa: BLE001
         log(f"오늘 주도 섹터 건너뜀: {type(e).__name__}: {e}")
@@ -680,6 +678,14 @@ def build() -> dict:
             out["items"].sort(key=lambda i: -i["ts"])
         except Exception as e:  # noqa: BLE001
             log(f"추세 판단 건너뜀: {type(e).__name__}: {e}")
+        try:                                              # 🔥 오늘 주도 섹터 포착(11/17 운영자) → 속보 목록
+            from hot_sectors import events as hot_events
+            for h in hot_events():
+                out["items"].append({"ts": h["ts"], "got": h["ts"], "src": "트렌드랩 자동 집계", "kind": "주도 섹터",
+                                     "text": h["text"], "tags": ["한국", "주도 섹터"], "hot": True})
+            out["items"].sort(key=lambda i: -i["ts"])
+        except Exception as e:  # noqa: BLE001
+            log(f"주도 섹터 속보 건너뜀: {type(e).__name__}: {e}")
         out["trending"] = trending(items)
     except Exception as e:  # noqa: BLE001
         log(f"해외 지수·종목 건너뜀: {type(e).__name__}: {e}")
