@@ -84,3 +84,8 @@
 - 운영자: 미국장시작후실시간TRL추세판단을전략에적용,TSMC추가. data/channels.json에미국파운드리별도그룹TSM/TSMC ADR추가(16종목). 대만2330·NTD와혼용금지. 기존공통채널·5일선·장중시도/종가확인로직그대로,새기준점/가격임의생성없음.
 - 기존 trader/chan_rules.py는사이트chan을strategy에서읽고있으나TSM은현재미국자동주문UNIVERSE에없음. TSM은관찰추가이며자동주문대상추가/그룹확인분모·비중변경아님. 실주문/타이머/웹소켓구독수변경없음. KIS키당3종목제한보존.
 - 점검시공개live채널15종목확인. main설정변경과Oracle5분autopull후실제TSM관측은구분해보고. 출처공식TSMC투자자페이지에서NYSE TSM/TWSE2330구분확인. 향후신선도개선필요: chan미국시간봉60m·캐시1분이고개별원천체결시각검증부족;chan_rules는일부상태에서최대48배TTL허용·누락시기존판정유지. tick실시간/낡은데이터차단을검증완료했다고말하지않음.
+
+## 2026-11-17 운영자 무료 API 가입 시작·공동 작업
+- 운영자가KRX/ECOS/LS/Alpaca Paper/Finnhub를직접가입·키발급,SEC연락처결정후상태전달예정. 키발급/연결완료아님. 상세공통작업표: [DATA_API_ONBOARDING_20261117.md](DATA_API_ONBOARDING_20261117.md). Claude는착수전이표읽고중복편집피하기.
+- Codex가공식자료대조:LS는xingAPI선행,Alpaca무료주식실시간IEX범위,SEC공개자료조회는키/회원가입불필요. KRX/ECOS/Finnhub세부동적화면은미확인으로발급시간/한도단정금지.
+- 기존krx.py는네이버시세이며거래소공식API가아님. 신규키이름들은keystore.NAMES/keys_export허용목록확장필요,설정병합등록으로기존키보존. 실제발급/Oracle조회완료와계약범위확인전공개게시활성화금지.
