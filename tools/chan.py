@@ -31,6 +31,7 @@ LIVE = keystore.state_dir() / "chan_live.json"
 LOG = keystore.state_dir() / "chan_log.json"
 NBARS = 45
 UA = {"User-Agent": "Mozilla/5.0"}
+INDEX_META: dict[str, dict] = {}
 ERRS: list[str] = []                                   # 이번 계산에서 빠진 종목·대체 경로(사이트 데이터 'errs' 로 보임)
 
 
@@ -191,6 +192,11 @@ def _save(p: Path, d: dict) -> None:
 
 def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
     """(일봉 + 오늘 봉, 오늘 봉이 진행 중인가)."""
+    if cc == "kr_index":
+        from index_chan import bars as index_bars
+        rows, live, meta = index_bars(code, now, daily_path=DAILY, live_path=LIVE, yahoo=_yahoo)
+        INDEX_META[code] = meta
+        return rows, live
     today = now.strftime("%Y-%m-%d")
     dc = _load(DAILY)
     e = dc.get(code) or {}
@@ -259,6 +265,7 @@ def _open_now(cc: str, now: datetime) -> bool:
 def build(now: datetime | None = None) -> dict:
     now = now or datetime.now(KST)
     ERRS.clear()
+    INDEX_META.clear()
     c = json.loads(CONF.read_text(encoding="utf-8"))
     groups, events = [], []
     log = _load(LOG); prev = log.get("last", {}); hist = log.get("events", [])
@@ -279,12 +286,16 @@ def build(now: datetime | None = None) -> dict:
             pc = rows[-2][4]
             cd = candle(o, h, l, px, pc)
             st = state(ch, px, live)
+            if g["cc"] == "kr_index" and INDEX_META.get(code, {}).get("stale"):
+                st = "자료 확인 중"
             was0 = (prev.get(code) or {}).get("state")       # 11/17: 3% 경계에서 오락가락(채널 안↔상단 근접) 막기 — 나갈 때는 3.5%
             if was0 == "상단 근접" and st == "채널 안" and ch["gap_next"] <= 3.5:
                 st = "상단 근접"
             it = {"code": code, "name": name, "day": rows[-1][0], "live": live, "px": px, "chg": round((px / pc - 1) * 100, 2),
                   "candle": cd, "state": st, "rows": [[r[0]] + [round(x, 2) for x in r[1:5]] for r in rows],
                   **{k: (round(v, 4) if isinstance(v, float) else v) for k, v in ch.items()}}
+            if g["cc"] == "kr_index":
+                it.update(INDEX_META.get(code, {}))
             items.append(it)
             key = f"{code}"
             was = prev.get(key) or {}
@@ -322,6 +333,8 @@ def build(now: datetime | None = None) -> dict:
 
 
 def _fmt(cc: str, v: float) -> str:
+    if cc == "kr_index":
+        return f"{v:,.2f}pt"
     return f"${v:,.2f}" if cc == "us" else (f"{v:,.0f}엔" if cc == "jp" else f"{v:,.0f}원")
 
 

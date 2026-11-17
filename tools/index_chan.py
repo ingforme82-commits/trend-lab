@@ -1,0 +1,151 @@
+"""코스피·코스닥 전용 일봉/현재봉. 주식 조회·주문 경로와 분리한다."""
+from __future__ import annotations
+
+import json
+import math
+import urllib.request
+from datetime import datetime, timedelta
+from pathlib import Path
+
+INDEXES = {"KOSPI": ("0001", "^KS11"), "KOSDAQ": ("1001", "^KQ11")}
+UA = {"User-Agent": "Mozilla/5.0"}
+MAX_LIVE_AGE = 180
+
+
+def _ohlc(values) -> list[float] | None:
+    try:
+        o, h, l, c = [float(str(v).replace(",", "")) for v in values]
+    except (ValueError, TypeError):
+        return None
+    if not all(math.isfinite(v) and v > 0 for v in (o, h, l, c)):
+        return None
+    if l > min(o, c) or h < max(o, c) or h < l:
+        return None
+    return [o, h, l, c]
+
+
+def parse_history(data: dict, now: datetime) -> list[list]:
+    rows = {}
+    for item in data.get("output2") or []:
+        day = str(item.get("stck_bsop_date") or "")
+        try:
+            date = datetime.strptime(day, "%Y%m%d").date()
+        except ValueError:
+            continue
+        values = _ohlc(item.get(k) for k in ("bstp_nmix_oprc", "bstp_nmix_hgpr", "bstp_nmix_lwpr", "bstp_nmix_prpr"))
+        if values and date <= now.date():
+            rows[day] = [date.strftime("%m/%d"), *values]
+    return [rows[k] for k in sorted(rows)]
+
+
+def parse_quote(item: dict, code: str, now: datetime) -> dict | None:
+    if item.get("itemCode") != code:
+        return None
+    try:
+        source = datetime.fromisoformat(item.get("localTradedAt") or "")
+        if source.tzinfo is None:
+            return None
+        source = source.astimezone(now.tzinfo)
+    except (TypeError, ValueError):
+        return None
+    age = (now - source).total_seconds()
+    if age < -5 or age > 7 * 86400:
+        return None
+    values = _ohlc(item.get(k + "Raw") or item.get(k) for k in ("openPrice", "highPrice", "lowPrice", "closePrice"))
+    if not values:
+        return None
+    market_open = item.get("marketStatus") == "OPEN"
+    # 시장 제공 상태를 사용해 수능일 등 시각 변경·휴장 때 정규시간만으로 열림을 추정하지 않는다.
+    live = market_open and source.date() == now.date() and 0 <= age <= MAX_LIVE_AGE
+    return {"row": [source.strftime("%m/%d"), *values], "source_at": int(source.timestamp() * 1000),
+            "source_day": source.date().isoformat(), "source": "네이버 지수", "market_open": market_open,
+            "live": live, "stale": market_open and not live,
+            "quality_note": "장중 제공 지수" if live else "제공 지수 지연·실시간 판단 보류" if market_open else "장 종료·마지막 제공 지수"}
+
+
+def _read(path: Path) -> dict:
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _save(path: Path, data: dict) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+
+
+def _history(code: str, now: datetime, yahoo) -> tuple[list[list], str]:
+    try:
+        import kis
+        data = kis.get("/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice", "FHKUP03500100",
+                       {"FID_COND_MRKT_DIV_CODE": "U", "FID_INPUT_ISCD": INDEXES[code][0],
+                        "FID_INPUT_DATE_1": (now - timedelta(days=150)).strftime("%Y%m%d"),
+                        "FID_INPUT_DATE_2": now.strftime("%Y%m%d"), "FID_PERIOD_DIV_CODE": "D"})
+        rows = parse_history(data, now)
+        if len(rows) >= 20:
+            return rows, "한국투자증권 지수 일봉"
+    except Exception:  # noqa: BLE001
+        pass
+    rows = yahoo(INDEXES[code][1], "6mo", "1d")
+    rows = [r for r in rows if len(r) == 5 and _ohlc(r[1:])]
+    if len(rows) < 20:
+        raise ValueError("Insufficient index history")
+    return rows, "야후 지수 일봉"
+
+
+def _quote(code: str, now: datetime) -> dict | None:
+    request = urllib.request.Request(f"https://polling.finance.naver.com/api/realtime/domestic/index/{code}", headers=UA)
+    data = json.loads(urllib.request.urlopen(request, timeout=8).read())
+    return next((q for item in data.get("datas", []) if (q := parse_quote(item, code, now))), None)
+
+
+def bars(code: str, now: datetime, *, daily_path: Path, live_path: Path, yahoo) -> tuple[list[list], bool, dict]:
+    if code not in INDEXES:
+        raise ValueError("Unknown index")
+    today = now.date().isoformat()
+    daily = _read(daily_path)
+    entry = daily.get(code) or {}
+    warning = ""
+    if entry.get("day") != today or not entry.get("rows"):
+        try:
+            rows, source = _history(code, now, yahoo)
+            if rows:
+                entry = {"day": today, "rows": rows[-90:], "source": source}
+                daily[code] = entry
+                _save(daily_path, daily)
+        except Exception:  # noqa: BLE001
+            warning = "일봉 갱신 실패·기존 자료"
+    rows = [list(r) for r in entry.get("rows") or []]
+    meta = {"instrument_type": "index", "unit": "pt", "daily_source": entry.get("source", "미확인"),
+            "source": entry.get("source", "미확인"), "source_at": None, "stale": True,
+            "checked_at": int(now.timestamp() * 1000), "quality_note": warning or "현재봉 제공 시각 미확인·일봉 기준"}
+    live_cache = _read(live_path)
+    cached = live_cache.get(code) or {}
+    quote = cached.get("quote")
+    if not (quote and 0 <= now.timestamp() - cached.get("t", 0) < 55):
+        try:
+            quote = _quote(code, now)
+            live_cache[code] = {"t": now.timestamp(), "quote": quote}
+            _save(live_path, live_cache)
+        except Exception:  # noqa: BLE001
+            quote = None  # 실패한 현재 조회를 이전 봉으로 대체해 실시간이라고 표시하지 않는다.
+    active = False
+    if quote:
+        source = datetime.fromtimestamp(quote["source_at"] / 1000, now.tzinfo)
+        age = (now - source).total_seconds()
+        row = quote["row"]
+        # 캐시된 OPEN 상태도 현재 기준으로 재검증한다.
+        active = bool(quote["market_open"] and source.date() == now.date() and 0 <= age <= MAX_LIVE_AGE)
+        if not rows or rows[-1][0] == row[0]:
+            rows = rows[:-1] + [row] if rows else [row]
+        elif row[0] > rows[-1][0] or (rows[-1][0].startswith("12/") and row[0].startswith("01/")):
+            rows.append(row)
+        else:
+            active = False
+        meta.update(source=quote["source"], source_at=quote["source_at"],
+                    stale=bool(quote["market_open"] and not active),
+                    quality_note="장중 제공 지수" if active else "제공 지수 지연·실시간 판단 보류" if quote["market_open"] else "장 종료·마지막 제공 지수")
+    if warning:
+        meta["quality_note"] += " · " + warning
+    return rows[-45:], active, meta

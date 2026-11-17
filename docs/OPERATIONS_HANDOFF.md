@@ -89,3 +89,12 @@
 - 운영자가KRX/ECOS/LS/Alpaca Paper/Finnhub를직접가입·키발급,SEC연락처결정후상태전달예정. 키발급/연결완료아님. 상세공통작업표: [DATA_API_ONBOARDING_20261117.md](DATA_API_ONBOARDING_20261117.md). Claude는착수전이표읽고중복편집피하기.
 - Codex가공식자료대조:LS는xingAPI선행,Alpaca무료주식실시간IEX범위,SEC공개자료조회는키/회원가입불필요. KRX/ECOS/Finnhub세부동적화면은미확인으로발급시간/한도단정금지.
 - 기존krx.py는네이버시세이며거래소공식API가아님. 신규키이름들은keystore.NAMES/keys_export허용목록확장필요,설정병합등록으로기존키보존. 실제발급/Oracle조회완료와계약범위확인전공개게시활성화금지.
+
+## 2026-11-18 코스피·코스닥 추세 차트 · Codex
+- 운영자 요청: 두 지수의 추세 추종 차트를 TRL에 게시. data/channels.json 맨 앞에 kr_index/KOSPI·KOSDAQ 단독 그룹 추가(총18종목); 원화 주식 코드·메달 순위와 혼용하지 않음. 기존 TSM/16종목 보존.
+- tools/index_chan.py 지수 전용 어댑터: 한국투자증권 업종 기간별 시세(FHKUP03500100,U,0001/1001) 일봉 → 실패 시Yahoo ^KS11/^KQ11 일봉. 현재봉은 네이버 지수 OHLC+localTradedAt+marketStatus. 주식 엔드포인트 호출/인증키 추가/주문 없음.
+- 소수점 지수값 유지, pt 표시. 날짜·OHLC·양수/유한값·종목코드 검증. 시장 OPEN이어도 원천 제공시각이 당일3분이내가 아니면 live=false·자료확인중. 휴장·수능 등은 제공자의 marketStatus로 확인. 조회실패 때 과거현재봉을 새실시간봉으로 재사용하지 않음. 일봉출처·현재출처·제공시각·지연상태 표시.
+- 기존캔들·5일선·상하단선·다음봉연장·장중시도/종가확인 기준 적용. stale 지수는 돌파확인/새5일선시그널 생성하지 않음. 20일/60일선이나새주문조건은추가하지않음. 지수 자체를 매매대상코드로등록하지않음.
+- Python회귀13 PASS(기존3+지수10); Node VM 차트2개렌더·pt소수점·원화/USD보존·출처·NaN없음PASS; JS/sw문법PASS. 브라우저QA 도구/Playwright없어실기기390/1280시각검증미실행. index.html news버전 및sw VERSION=trl-app-v22-index-charts 갱신.
+- 참고공식스키마: koreainvestment/open-trading-api examples_llm/domestic_stock/inquire_daily_indexchartprice. 네이버실제JSON에서OHLC/marketStatus/localTradedAt 확인. 아직KRX공식OpenAPI신청완료로보고하지않음.
+- TSM이Oracle공개live15:06UTC게시본chan에포함된것확인. 새지수의실서버응답은코드병합/5분autopull후별도확인필요.
