@@ -66,16 +66,17 @@ def candle(o: float, h: float, l: float, c: float, prev: float) -> dict:
 
 def channel(rows: list[list], anchors: dict, contact_rules: dict | None = None,
             *, last_closed: bool = False) -> dict | None:
-    """상·하단 각각 3회 접촉과 경미한 겹침을 검증. 진행 중 봉은 선 학습에서 제외."""
-    from channel_fit import fit_recent_side
+    """기존 하락 구간의 두 기준점으로 선을 고정하고 추가 접촉 횟수만 표시."""
+    from channel_fit import anchored_side
     rules = contact_rules or {}
     tolerance = float(rules.get("tolerance_pct", 0.75))
     spacing = int(rules.get("min_spacing_bars", 3))
-    required = max(3, int(rules.get("min_touches", 3)))
+    required = 2
     dates = [r[0] for r in rows]
     high = [r[2] for r in rows]
     low = [r[3] for r in rows]
-    last = len(rows) - (1 if last_closed else 2)
+    # 마지막 봉은 돌파·이탈을 검사할 대상이므로 마감 여부와 무관하게 선 계산에서 제외한다.
+    last = len(rows) - 2
 
     def seed(values, window, choose):
         eligible = [i for i in range(last + 1) if window[0] <= dates[i] <= window[1]]
@@ -84,9 +85,9 @@ def channel(rows: list[list], anchors: dict, contact_rules: dict | None = None,
     h1, l1 = seed(high, anchors["hi1"], max), seed(low, anchors["lo1"], min)
     if h1 is None or l1 is None:
         return None
-    kwargs = dict(tolerance_pct=tolerance, min_spacing=spacing, min_touches=required)
-    upper = fit_recent_side(high, dates, h1, anchors["hi2"][0], last, True, **kwargs)
-    lower = fit_recent_side(low, dates, l1, anchors["lo2"][0], last, False, **kwargs)
+    kwargs = dict(tolerance_pct=tolerance, min_spacing=spacing)
+    upper = anchored_side(high, dates, h1, anchors["hi2"][0], last, True, **kwargs)
+    lower = anchored_side(low, dates, l1, anchors["lo2"][0], last, False, **kwargs)
     if not upper or not lower:
         return None
     up = lambda i: upper["slope"] * i + upper["intercept"]
@@ -105,6 +106,8 @@ def channel(rows: list[list], anchors: dict, contact_rules: dict | None = None,
             "dd": (px / high[h1] - 1) * 100, "peak": high[h1], "peak_day": dates[h1],
             "upper_touch_count": len(upper["touches"]), "lower_touch_count": len(lower["touches"]),
             "upper_verified": upper["verified"], "lower_verified": lower["verified"],
+            "upper_reinforced": len(upper["touches"]) >= 3, "lower_reinforced": len(lower["touches"]) >= 3,
+            "line_method": "fixed_two_anchor",
             "channel_valid": verified, "channel_width_valid": width_valid,
             "touch_tolerance_pct": tolerance, "touch_min_spacing": spacing, "touch_required": required,
             "touch_lookback_bars": len(rows),
