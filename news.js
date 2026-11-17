@@ -742,7 +742,7 @@
     it.hi.forEach((i) => s += `<circle cx="${X(i)}" cy="${Y(rows[i][2])}" r="3.5" class="ch-dot-r"/>`);
     it.lo.forEach((i) => s += `<circle cx="${X(i)}" cy="${Y(rows[i][3])}" r="3.5" class="ch-dot-s"/>`);
     return `<svg class="ch-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(it.name)} 일봉·하락 채널·5일선">${s}</svg>
-      <p class="ch-leg"><i class="lr"></i>상단선(고점 접촉) <i class="ls"></i>하단선(저점 접촉) <i class="lm"></i>5일선 · 점선 = 연장·미검증 참고선${it.live ? " · 마지막 봉은 진행 중" : ""}</p>`;
+      <p class="ch-leg"><i class="lr"></i>상단선(고점 접촉) <i class="ls"></i>하단선(저점 접촉) <i class="lm"></i>5일선${it.reference_only ? "(통합가 참고)" : ""} · 점선 = 연장·미검증 참고선${it.live ? " · 마지막 봉은 진행 중" : ""}</p>`;
   }
   function drawChan() {                                       // 11/17 운영자: 표 대신 채널 그래프를 항상 펼쳐서(1분마다 갱신)
     const chNxt = (x) => {                                  // 🌙 넥장(NXT) 기준 위치 — 거래소 판정과 따로(11/18 운영자)
@@ -761,19 +761,20 @@
     const sgBox = q("#chanSig");
     if (sgBox) { sgBox.hidden = !sg.length; sgBox.innerHTML = sg.map((s) => `<p>⏱ ${hm(s.ts)} ${esc(s.text)}</p>`).join(""); }
     const sigCodes = new Set(sg.map((s) => s.code));
-    const live = c.groups.some((g) => g.items.some((it) => it.live));
+    const live = c.groups.some((g) => g.items.some((it) => it.display ? it.display.live : it.live));
     q("#chanStamp").textContent = `${hm(c.at)} 기준 · 1분마다${live ? " · 진행 중인 봉 있음" : ""}`;
     let html = "", lastC = null;
     c.groups.forEach((g) => {
       if (g.country !== lastC) { if (lastC) html += `</div>`; html += `<div class="ch-country"><p class="ch-ch">${CH_FLAG[g.cc] || ""} ${esc(g.country)}</p>`; lastC = g.country; }
       const many = g.items.length > 1 && g.cc !== "kr_index";
       html += `<div class="ch-sec"><p class="ch-sh">${esc(g.sector)}${many ? "<small>10월 말 고점 대비 덜 빠진 순</small>" : ""}</p><div class="ch-grid2">`;
-      g.items.forEach((it) => {
+      g.items.forEach((regular) => {
+        const it = regular.display ? {...regular, ...regular.display} : regular;
         const mdl = many ? `<span class="ch-md m${Math.min(it.rank, 4)}">${it.rank <= 3 ? ["금", "은", "동"][it.rank - 1] : it.rank}</span>` : "";
         html += `<article class="ch-card">
-          <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b><span class="mn">${chFmt(g.cc, it.px)}</span><b class="${it.chg >= 0 ? "up" : "down"}">${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%</b>${sigCodes.has(it.code) ? '<span class="ch-sig">5일선 돌파</span>' : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span></div>
+          <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b><span class="mn">${chFmt(g.cc, it.px)}</span><b class="${it.chg >= 0 ? "up" : "down"}">${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%</b>${sigCodes.has(it.code) ? '<span class="ch-sig">정규장 5일선 돌파</span>' : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span></div>
           ${it.upper_touch_count != null ? `<div class="ch-contacts"><span class="${it.upper_verified ? "ch-contact-ok" : "ch-contact-wait"}">상단 ${it.upper_touch_count}${it.upper_touch_count >= 3 ? "회" : "점"} ${it.upper_verified ? (it.upper_touch_count >= 3 ? "접촉 보강" : "기준선") : "재확인"}</span><span class="${it.lower_verified ? "ch-contact-ok" : "ch-contact-wait"}">하단 ${it.lower_touch_count}${it.lower_touch_count >= 3 ? "회" : "점"} ${it.lower_verified ? (it.lower_touch_count >= 3 ? "접촉 보강" : "기준선") : "재확인"}</span><small>추가 접촉 오차 ${it.touch_tolerance_pct}% · ${it.touch_min_spacing}거래일 간격 · 최근 ${it.touch_lookback_bars || it.rows.length}봉</small></div>` : ""}
-          ${chNxt(it.nxt)}
+          ${regular.display ? `<p class="ch-leg"><b>${esc(it.scope)} · ${esc(it.session)} · ${esc(it.quality_note)}</b> · ${esc(it.source)} · ${esc(it.time_kind)} ${hm(it.source_at)}<br>${esc(it.history_note)} · 등락률은 전일 정규장 종가 대비 · 5일선·채널 위치는 참고값<br>정규장 차트 ${chFmt(g.cc, regular.px)} · ${esc(regular.state)} · 5일선 ${chFmt(g.cc, regular.ma5)} · 시간외 값으로 정규장 돌파를 확정하지 않음</p>` : `${it.session_note ? `<p class="ch-leg">${esc(it.session_note)}</p>` : ""}${chNxt(it.nxt)}`}
           <div class="ch-meta">${chGlyph(it.rows[it.rows.length - 1])}<span>${esc(it.candle.name)}${it.live ? ' <em class="ch-now">진행 중</em>' : ""}</span>
             <span>상단선 <b class="mn">${chFmt(g.cc, it.up_now)}</b></span><span>5일선 <b class="mn">${chFmt(g.cc, it.ma5)}</b></span>
             <span>다음 거래일 상단까지 <b class="mn">${it.gap_next > 0 ? "+" : ""}${(+it.gap_next).toFixed(1)}%</b></span>

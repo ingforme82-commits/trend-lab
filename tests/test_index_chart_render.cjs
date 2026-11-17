@@ -50,3 +50,21 @@ const css = fs.readFileSync(path.join(root, "style.css"), "utf8");
 assert.ok(css.includes("grid-template-columns:repeat(2,minmax(0,1fr))"));
 assert.ok(css.includes("@media (max-width:860px){.ch-grid2{grid-template-columns:1fr}}"));
 console.log("두 기준점 실선·추가 접촉 보강·지수 순서·PC 2열/모바일 1열: PASS");
+
+const regular = {...item("NVDA", "엔비디아"), instrument_type: "stock", px: 150, state: "채널 안", ma5: 160};
+regular.display = {...item("NVDA", "엔비디아"), instrument_type: "stock", px: 175, ma5: 155,
+  reference_only: true, signal_eligible: false, source_at: 1000, checked_at: 2000,
+  source: "확장세션 공급자", scope: "미국 확장세션", session: "애프터마켓",
+  quality_note: "진행 중", time_kind: "5분봉 시작", history_note: "과거 정규장 · 오늘 확장세션",
+  state: "돌파 시도(세션 참고)", live: true};
+context.window.trlChan.groups = [{cc: "us", country: "미국", sector: "합성 검사", items: [regular]}];
+context.render();
+const extended = elements.get("#chanBoard").innerHTML;
+assert.ok(extended.includes("$175.00"));
+assert.ok(extended.includes("정규장 차트 $150.00"));
+assert.ok(extended.includes("애프터마켓") && extended.includes("5분봉 시작"));
+assert.ok(extended.includes("5일선(통합가 참고)"));
+assert.ok(!extended.includes("NaN") && !extended.includes("Infinity"));
+assert.equal(regular.px, 150);
+assert.equal(regular.state, "채널 안");
+console.log("확장세션 표시 가격·원천시각·정규장 판정 분리: PASS");

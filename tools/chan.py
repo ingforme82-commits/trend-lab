@@ -10,6 +10,7 @@
 - 캔들: 장대양봉·장대음봉·망치형(아래꼬리)·윗꼬리·도지·양봉·음봉 — 오늘(진행 중) 봉 기준
 - 넥장(NXT, 11/18 운영자 "추세판단 업데이트"): 한국 종목은 08:00~09:00 프리·15:30 이후 애프터 체결가로 '넥장 기준' 위치를 따로 계산한다
         (it['nxt']). 거래소(KRX) 일봉·상태·5일선 시그널은 그대로 두고 섞지 않는다. 출처 = 네이버 NXT 실시간(체결 시각 오늘인 것만).
+- 통합/시간외 차트: session_chan.py가 화면용 display를 만든다. 국내 오늘 KRX+NXT 통합 OHLC, 미국 오늘 프리+정규+애프터 5분봉. 과거 정규장 일봉과 구분 표시. 정규장 상태·주문용 signals는 보존한다.
 - 기록: 상태·눈에 띄는 캔들이 바뀌면 state_dir/chan_log.json 에 쌓고 최근 것을 사이트 '기록'에 보여 준다
 사실과 숫자만 계산한다. 매수·매도 권유가 아니다. 키·토큰은 출력하지 않는다.
 """
@@ -21,6 +22,7 @@ import time
 import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -328,7 +330,7 @@ def _open_now(cc: str, now: datetime) -> bool:
     if cc == "jp":
         hm = now.hour * 100 + now.minute
         return now.weekday() < 5 and 900 <= hm < 1530
-    ny = now.astimezone(timezone(timedelta(hours=-5)))       # 뉴욕(겨울, EST)
+    ny = now.astimezone(ZoneInfo("America/New_York"))       # DST 포함
     m = ny.hour * 60 + ny.minute
     return ny.weekday() < 5 and 570 <= m < 960
 
@@ -338,6 +340,8 @@ def build(now: datetime | None = None) -> dict:
     ERRS.clear()
     INDEX_META.clear()
     c = json.loads(CONF.read_text(encoding="utf-8"))
+    from session_chan import collect as collect_sessions, display as display_session
+    session_quotes, session_errors = collect_sessions(c["groups"], now, keystore.state_dir() / "chan_sessions.json")
     groups, events = [], []
     contact_policy = json.dumps(c.get("contact_rules") or {}, sort_keys=True)
     log = _load(LOG); prev = log.get("last", {}) if log.get("contact_policy") == contact_policy else {}; hist = log.get("events", [])
@@ -373,6 +377,18 @@ def build(now: datetime | None = None) -> dict:
                 nq = nxq[code]
                 it["nxt"] = {**nq, "vs_krx": round((nq["px"] / px - 1) * 100, 2) if rows[-1][0] == now.strftime("%m/%d") else None,
                              **nxt_view(rows, ch, nq["px"], now.strftime("%m/%d"))}
+            if g["cc"] in ("kr", "us"):
+                sq = session_quotes.get(code)
+                if sq:
+                    try:
+                        view = display_session(rows, sq, c["anchors"], c.get("contact_rules"), now=now,
+                                               channel=channel, candle=candle, state=state)
+                        if view:
+                            it["display"] = view
+                    except (ValueError, TypeError, KeyError, IndexError):
+                        session_errors.append(f"{code} 확장차트 계산 확인")
+                if "display" not in it:
+                    it["session_note"] = "통합·확장세션 OHLC 미확인 — 정규장 차트 표시"
             items.append(it)
             key = f"{code}"
             was = prev.get(key) or {}
@@ -403,7 +419,7 @@ def build(now: datetime | None = None) -> dict:
     if events:
         hist = (hist + events)[-60:]
     import hashlib
-    body = {"contact_policy": contact_policy, "rule": c["rule"], "stance": c.get("stance", ""), "groups": groups, "log": hist[-20:][::-1], "signals": signals[::-1]}
+    body = {"contact_policy": contact_policy, "rule": c["rule"], "stance": c.get("stance", ""), "groups": groups, "log": hist[-20:][::-1], "signals": signals[::-1], "session_errs": session_errors[:20]}
     fp = hashlib.sha1(json.dumps(body, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     at = log.get("at") if log.get("fp") == fp and log.get("at") else int(now.timestamp() * 1000)   # 내용이 같으면 시각도 그대로(주말에 매분 올리지 않게)
     _save(LOG, {"contact_policy": contact_policy, "last": prev, "events": hist, "fp": fp, "at": at, "signals": signals})

@@ -1,0 +1,30 @@
+name: Session chart regression
+on:
+  push:
+    branches: [codex/extended-session-charts-20261118]
+  pull_request:
+    paths:
+      - 'tools/chan.py'
+      - 'tools/session_chan.py'
+      - 'tests/test_session_chan.py'
+      - 'tests/test_index_chart_render.cjs'
+      - 'news.js'
+      - '.github/workflows/session-charts.yml'
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Python regressions without broker credentials or network
+        run: |
+          python3 -m unittest discover -s tests -p 'test_chan*.py' -v
+          python3 -m unittest discover -s tests -p 'test_index_chan.py' -v
+          python3 -m unittest discover -s tests -p 'test_session_chan.py' -v
+      - name: JavaScript syntax and chart rendering
+        run: |
+          node --check news.js
+          node --check sw.js
+          node tests/test_index_chart_render.cjs
