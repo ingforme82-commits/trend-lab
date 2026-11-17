@@ -464,12 +464,18 @@ def fix_terms(en: str, ko: str) -> str:
 
 
 def translate(items: list[dict]) -> None:
-    """영문 헤드라인을 한국어로 바꾼다(원문은 orig에 보관). 번역은 저장해 두고 다시 하지 않는다."""
+    """영문 헤드라인을 한국어로 바꾼다(원문은 orig에 보관). 번역은 저장해 두고 다시 하지 않는다.
+    대기열은 피드 등록 순서가 아니라 최신 기사(ts) 우선으로 처리한다 — FT·CNBC·WSJ처럼 피드가 많은 매체가
+    캡 밖으로 밀려 계속 영문 그대로 남는 문제(11/17 확인) 수정."""
     try:
         cache = json.loads(TR_CACHE.read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001
         cache = {}
-    todo = list(dict.fromkeys(it["text"] for it in items if it.get("lang") == "en" and it["text"] not in cache))
+    latest_ts: dict[str, int] = {}
+    for it in items:
+        if it.get("lang") == "en":
+            latest_ts[it["text"]] = max(latest_ts.get(it["text"], 0), it["ts"])
+    todo = sorted((t for t in latest_ts if t not in cache), key=lambda t: -latest_ts[t])
     if todo:
         got = {}
         if cache.get("_claude_off_until", 0) < datetime.now(timezone.utc).timestamp():
@@ -482,12 +488,12 @@ def translate(items: list[dict]) -> None:
             except Exception:  # noqa: BLE001
                 return t, None
         from concurrent.futures import ThreadPoolExecutor
-        with ThreadPoolExecutor(max_workers=6) as ex:   # 11/13: 하나씩 → 동시에
-            for t, k in ex.map(_tr, [t for t in todo[:80] if t not in got]):
+        with ThreadPoolExecutor(max_workers=12) as ex:  # 11/17: 80건 캡 제거 + 동시 처리량 상향
+            for t, k in ex.map(_tr, [t for t in todo if t not in got]):
                 if k:
                     got[t] = k
         cache.update({k: v for k, v in got.items() if v})
-        keep = {it["text"] for it in items}
+        keep = set(latest_ts)
         cache = {k: v for k, v in cache.items() if k in keep or k.startswith("_")}   # 오래된 번역 정리
         TR_CACHE.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
     for it in items:
