@@ -152,3 +152,9 @@
 ### 확장세션 차트 코드·배포 검증
 - PR#8 main a29508d57773b0ec2c320e6d3b0af43bdee1b3e2 병합. GitHubActions push/PR 두 실행 모두 Python 채널·접촉·지수·신규세션 회귀와 Node 문법·렌더 검사 성공. 신규 세션검사15개,기존채널5+접촉10+지수10을포함해총40개.
 - Pages 배포 success 확인. Oracle는다음autopull/수집게시본에서display/source_at/session/live를별도확인중. 실제기기시각QA 미실행.
+
+### 11/18 08:36 실제 확장세션 게시 확인
+- Oracle live 4bbc5550893b9d95b346db5310237a44cf78d141(2026-11-17T23:36:55Z)에서display11개확인: 국내NXT프리4개(삼성전자·SK하이닉스·SK스퀘어·삼성전기),미국애프터7개(SKHY/MU/SNDK/NVDA/KORU/SOXL/TSM). 모두live=true·stalefalse,session_errs빈목록.
+- 삼성전자우005935는통합OHLC미확인으로정규장차트대체문구. 미수신종목을통합성공으로처리안함. 지수·일본포함기존18종목보존.
+- display11개reference_onlytrue/signal_eligiblefalse확인,원천시각필드존재·비정상수치없음. 참고예: 삼성전자정규장189800/통합197400,NVDA정규155.46/확장162.5735. 당시스냅샷이며현재시세로재사용금지. 공급자별가격대조검증완료로표현하지않음.
+- Pages배포success확인. 실제기기브라우저시각QA미실행. 과거봉은정규장,오늘봉만통합/확장OHLC라는제한을화면에표시. 사용자자동매매기준확대나전체과거통합백테스트완료아님.
