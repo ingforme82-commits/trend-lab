@@ -553,6 +553,15 @@ def build() -> dict:
             _alert("주도 섹터", ch["text"], ch["text"])
     except Exception as e:  # noqa: BLE001
         log(f"주도 섹터 건너뜀: {type(e).__name__}: {e}")
+    try:                                                  # 🔥 오늘 주도 섹터(자동, 11/17 운영자) — 15%↑ 2종목 이상·평균 +5% 이상 업종·테마만
+        from hot_sectors import update as hot_update
+        t_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
+        for h in hot_update():
+            sector_items.append({"ts": t_ms, "got": t_ms, "src": "트렌드랩 자동 집계", "kind": "주도 섹터", "text": h["text"],
+                                 "tags": ["한국"], "hot": True})
+            log(h["text"][:100])
+    except Exception as e:  # noqa: BLE001
+        log(f"오늘 주도 섹터 건너뜀: {type(e).__name__}: {e}")
     tg_items = from_telegram()
     kis_items = fetch_kis()
     mark_seen(rss + kis_items)
@@ -733,7 +742,8 @@ def build() -> dict:
         from macro_issue import current as macro_cur
         from move_issue import current as move_cur
         from market_card import current as market_cur
-        out["auto_issues"] = [x for x in (market_cur(), macro_cur(), move_cur()) if x]
+        from hot_sectors import current as hot_cur
+        out["auto_issues"] = [x for x in (market_cur(), hot_cur(), macro_cur(), move_cur()) if x]
     except Exception as e:  # noqa: BLE001
         log(f"자동 카드 건너뜀: {type(e).__name__}: {e}")
     return out
