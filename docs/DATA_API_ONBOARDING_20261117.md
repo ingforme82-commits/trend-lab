@@ -54,3 +54,13 @@
 - Finnhub: https://finnhub.io/docs/api · https://finnhub.io/pricing (이 환경에서 동적 본문 미확인, 구체 요금/한도 확정하지 않음)
 - SEC 공개 API: https://www.sec.gov/search-filings/edgar-application-programming-interfaces
 - SEC User-Agent/접근 제한: https://www.sec.gov/about/webmaster-frequently-asked-questions
+
+
+## 2026-11-18 미국 정부 공식 자료 보강·가입 진행 상태
+- 운영자 SEC 이메일 회원가입 완료 보고. 독자용 공개 submissions/XBRL API는 가입·API 키가 필요 없으며 연락처를 포함한 식별 User-Agent 설정 필요. 이메일은 공개 문서에 기록하지 않음. SEC_CONTACT_EMAIL 비공개 설정 준비 요청 중.
+- 현재 코드 확인: live_news.py의 연준 보도자료·연설/백악관/BEA RSS, official.py의 재무부 일별금리/EIA 주간재고/BLS 통계 조회 존재. 코드 존재와 Oracle 최신 수집 성공을 구분. 중복 수집기 추가보다 기존 경로 상태 검증 우선.
+- 보강 순서: SEC NVDA 대표 submissions 조회 → NVDA/TSM/MU 등 watchlist CIK 검증 → 8-K/10-Q/10-K/6-K/20-F 이벤트 정규화 → 출처/접수번호/제출시각/대상기간·개정여부 대조 후 기존 뉴스 파이프라인 연결. 접수일·보고기간·달력분기를 혼동하지 않고 단순 metadata만으로 당분기 실적 확정 금지.
+- 정책/거시 우선순위: Fed(FOMC·발언), BLS(물가·고용), BEA(GDP·PCE), Treasury(국채), EIA(원유), White House·상무부 BIS(관세·수출통제). 검증된 공식 RSS/API만 사용; 차단/빈응답은 실패 상태로 유지하고 우회 성공으로 표시하지 않음.
+- 관측 시각/수집 시각·수정치 구분, accession 중복 제거, 캐시·백오프, SEC 공식 상한10req/s보다 낮은 순차 조회. 회원가입만으로 실연결/공개게재/실시간 알림 완료라고 보고하지 않음.
+- 사용자 제공 Oracle 결과 01:34KST: ECOS 기준금리58행 조회 PASS(최신관측20261115), KRX kospi_dd_trd/kosdaq_dd_trd HTTP401. 두 키 비공개등록,기존키보존. TRL 자동게시 미변경.
+- LS는 최근 계좌개설 제한으로 보류(사용자 보고). Alpaca Paper·Finnhub 키 로컬존재 확인, 실제 Oracle 신규조회 결과는 대기. 전체 API 성공으로 표시 금지.
