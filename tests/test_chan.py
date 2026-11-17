@@ -3,7 +3,8 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from chan import candle, channel, state  # noqa: E402
+from chan import candle, channel, nxt_view, nxt_window, state  # noqa: E402
+from datetime import datetime, timedelta, timezone  # noqa: E402
 
 A = {"hi1": ["10/26", "10/31"], "hi2": ["11/09", "11/13"], "lo1": ["10/19", "10/24"], "lo2": ["11/03", "11/12"]}
 
@@ -35,6 +36,25 @@ class T(unittest.TestCase):
         self.assertEqual(state(ch, 105, True), "돌파 시도(장중)")
         self.assertEqual(state(ch, 100.5, False), "상단 근접")     # +1% 안은 돌파 아님
         self.assertEqual(state(ch, 79, False), "하단 이탈")
+
+    def test_nxt_window(self):
+        kst = timezone(timedelta(hours=9))
+        at = lambda h, m=0, d=18: nxt_window(datetime(2026, 11, d, h, m, tzinfo=kst))
+        self.assertTrue(at(8, 10)); self.assertFalse(at(9)); self.assertFalse(at(15, 29))
+        self.assertTrue(at(15, 30)); self.assertTrue(at(21)); self.assertFalse(at(7, 59)); self.assertFalse(at(16, 0, 21))
+
+    def test_nxt_view_after_and_pre(self):
+        r = rows()
+        ch = channel(r, A)
+        after = nxt_view(r, ch, 175.0, "11/16")                  # 오늘 봉(11/16) 있음 → 오늘 칸 선, 종가 자리에 넥장가
+        self.assertEqual(after["session"], "애프터")
+        self.assertAlmostEqual(after["up"], round(ch["up_now"], 2))
+        self.assertAlmostEqual(after["ma5"], round((150 * 4 + 175) / 5, 2))
+        self.assertEqual(after["state"], "돌파 시도(넥장)")      # 상단 161 +1% 위 · 5일선 155 위
+        pre = nxt_view(r, ch, 150.0, "11/17")                    # 오늘 봉 전 → 다음 칸 선
+        self.assertEqual(pre["session"], "프리")
+        self.assertAlmostEqual(pre["up"], round(ch["up_next"], 2))
+        self.assertAlmostEqual(pre["ma5"], 150.0)
 
     def test_candles(self):
         self.assertEqual(candle(100, 112, 99, 111, 100)["kind"], "bigup")

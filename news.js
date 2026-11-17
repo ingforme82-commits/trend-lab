@@ -745,6 +745,14 @@
       <p class="ch-leg"><i class="lr"></i>상단선(고점 접촉) <i class="ls"></i>하단선(저점 접촉) <i class="lm"></i>5일선 · 점선 = 연장·미검증 참고선${it.live ? " · 마지막 봉은 진행 중" : ""}</p>`;
   }
   function drawChan() {                                       // 11/17 운영자: 표 대신 채널 그래프를 항상 펼쳐서(1분마다 갱신)
+    const chNxt = (x) => {                                  // 🌙 넥장(NXT) 기준 위치 — 거래소 판정과 따로(11/18 운영자)
+      if (!x || !(x.px > 0)) return "";
+      const old = !x.at || Date.now() - x.at > 10 * 60000;
+      const won = (v) => Math.round(v).toLocaleString("ko-KR");
+      return `<div class="ch-nxt">🌙 <b>넥장 ${esc(x.session || "")}</b> <span class="mn">${won(x.px)}</span>${x.chg != null ? ` <b class="${x.chg >= 0 ? "up" : "down"}">${x.chg > 0 ? "+" : ""}${(+x.chg).toFixed(2)}%</b>` : ""}${x.vs_krx != null ? ` <small>오늘 거래소 종가 대비 ${x.vs_krx > 0 ? "+" : ""}${(+x.vs_krx).toFixed(2)}%</small>` : ""}
+        <span class="ch-st s-${CH_ST[String(x.state).replace("(넥장)", "(장중)")] || "in"}">${esc(x.state)}</span>
+        <small>넥장가 기준 5일선 <b class="mn">${won(x.ma5)}</b>${x.above_ma5 ? " 위" : " 아래"} · 상단선 <b class="mn">${won(x.up)}</b> 까지 ${x.gap_up > 0 ? "+" : ""}${(+x.gap_up).toFixed(1)}% · NXT ${x.at ? hm(x.at) : "-"} 체결${x.status === "CLOSE" ? " · 마감" : ""}${old ? " · <b>지연</b>" : ""} · 거래소 판정은 정규장 종가로</small></div>`;
+    };
     const box = q("#chan"), c = window.trlChan; if (!box) return;
     if (!c || !(c.groups || []).length) { box.hidden = true; return; }
     box.hidden = false;
@@ -765,6 +773,7 @@
         html += `<article class="ch-card">
           <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b><span class="mn">${chFmt(g.cc, it.px)}</span><b class="${it.chg >= 0 ? "up" : "down"}">${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%</b>${sigCodes.has(it.code) ? '<span class="ch-sig">5일선 돌파</span>' : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span></div>
           ${it.upper_touch_count != null ? `<div class="ch-contacts"><span class="${it.upper_verified ? "ch-contact-ok" : "ch-contact-wait"}">상단 ${it.upper_touch_count}${it.upper_touch_count >= 3 ? "회" : "점"} ${it.upper_verified ? (it.upper_touch_count >= 3 ? "접촉 보강" : "기준선") : "재확인"}</span><span class="${it.lower_verified ? "ch-contact-ok" : "ch-contact-wait"}">하단 ${it.lower_touch_count}${it.lower_touch_count >= 3 ? "회" : "점"} ${it.lower_verified ? (it.lower_touch_count >= 3 ? "접촉 보강" : "기준선") : "재확인"}</span><small>추가 접촉 오차 ${it.touch_tolerance_pct}% · ${it.touch_min_spacing}거래일 간격 · 최근 ${it.touch_lookback_bars || it.rows.length}봉</small></div>` : ""}
+          ${chNxt(it.nxt)}
           <div class="ch-meta">${chGlyph(it.rows[it.rows.length - 1])}<span>${esc(it.candle.name)}${it.live ? ' <em class="ch-now">진행 중</em>' : ""}</span>
             <span>상단선 <b class="mn">${chFmt(g.cc, it.up_now)}</b></span><span>5일선 <b class="mn">${chFmt(g.cc, it.ma5)}</b></span>
             <span>다음 거래일 상단까지 <b class="mn">${it.gap_next > 0 ? "+" : ""}${(+it.gap_next).toFixed(1)}%</b></span>

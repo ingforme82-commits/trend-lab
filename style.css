@@ -853,6 +853,8 @@ body{overflow-x:hidden}
 .ch-card{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 12px 8px;min-width:0}
 .ch-top{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:14px}
 .ch-top .ch-nm{font-size:15px}
+.ch-nxt{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin:6px 0 2px;padding:6px 8px;border:1px dashed var(--line,#3a4a6a);border-radius:8px;font-size:13px}
+.ch-nxt b.up{color:var(--up)} .ch-nxt b.down{color:var(--down)} .ch-nxt small{opacity:.8}
 .ch-top b.up{color:var(--up)} .ch-top b.down{color:var(--down)}
 .ch-top .ch-st{margin-left:auto}
 .ch-meta{display:flex;flex-wrap:wrap;align-items:center;gap:4px 12px;font-size:12.5px;color:var(--sub);margin:6px 0 4px}

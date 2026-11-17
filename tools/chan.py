@@ -8,6 +8,8 @@
 - 상태: 채널 안 / 상단 근접(다음 거래일 상단까지 3% 안) / 채널 위·5일선 아래(돌파 미확인) / 돌파 시도(장중 상단 +1%·5일선 위) /
         돌파 확인(종가 상단 +1%·5일선 위) / 하단 이탈
 - 캔들: 장대양봉·장대음봉·망치형(아래꼬리)·윗꼬리·도지·양봉·음봉 — 오늘(진행 중) 봉 기준
+- 넥장(NXT, 11/18 운영자 "추세판단 업데이트"): 한국 종목은 08:00~09:00 프리·15:30 이후 애프터 체결가로 '넥장 기준' 위치를 따로 계산한다
+        (it['nxt']). 거래소(KRX) 일봉·상태·5일선 시그널은 그대로 두고 섞지 않는다. 출처 = 네이버 NXT 실시간(체결 시각 오늘인 것만).
 - 기록: 상태·눈에 띄는 캔들이 바뀌면 state_dir/chan_log.json 에 쌓고 최근 것을 사이트 '기록'에 보여 준다
 사실과 숫자만 계산한다. 매수·매도 권유가 아니다. 키·토큰은 출력하지 않는다.
 """
@@ -199,6 +201,51 @@ def _kis_now(code: str) -> list | None:
         return None
 
 
+def nxt_window(now: datetime) -> bool:
+    """넥스트레이드 시간: 평일 08:00~09:00 프리마켓, 15:30 이후 애프터마켓(20:00 마감 뒤엔 마지막 체결을 '마감'으로)."""
+    hm = now.hour * 100 + now.minute
+    return now.weekday() < 5 and (800 <= hm < 900 or hm >= 1530)
+
+
+def _nxt_quotes(codes: list[str], now: datetime) -> dict:
+    """{code: {px, chg, at, status}} — 네이버 NXT 실시간, 55초 캐시. 오늘 체결이 없는 종목은 뺀다."""
+    if not codes or not nxt_window(now):
+        return {}
+    lc = _load(LIVE); c = lc.get("_nxt") or {}
+    if time.time() - c.get("t", 0) < 55 and set(codes) <= set(c.get("codes", [])):
+        return c.get("q") or {}
+    from krx import BASE, _parse
+    q = {}
+    try:
+        u = f"{BASE}/NXT/stock/{','.join(codes)}"
+        for d in json.loads(urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=8).read()).get("datas", []):
+            if str(d.get("localTradedAt", ""))[:10] != now.strftime("%Y-%m-%d"):
+                continue                                   # 오늘 넥장 체결 없음 → 어제 값을 현재처럼 쓰지 않는다
+            r = _parse(d)
+            if r and r.get("px"):
+                q[d["itemCode"]] = {"px": r["px"], "chg": r.get("chg"), "at": r.get("at"), "status": d.get("marketStatus", "")}
+    except Exception as x:  # noqa: BLE001
+        ERRS.append(f"넥장 시세 {type(x).__name__}")
+        return c.get("q") or {} if time.time() - c.get("t", 0) < 300 else {}
+    lc["_nxt"] = {"t": time.time(), "codes": codes, "q": q}
+    _save(LIVE, lc)
+    return q
+
+
+def nxt_view(rows: list[list], ch: dict, px: float, today: str) -> dict:
+    """넥장 가격을 오늘 종가 자리에 넣었을 때의 위치. 프리마켓(오늘 봉 없음)은 다음 칸 선, 애프터는 오늘 칸 선."""
+    closes = [r[4] for r in rows]
+    if rows[-1][0] == today:                               # 애프터마켓: 거래소 오늘 봉이 있음
+        up, lo, up_nx = ch["up_now"], ch["lo_now"], ch["up_next"]
+        ma5 = (sum(closes[-5:-1]) + px) / 5
+    else:                                                  # 프리마켓: 오늘 봉 전
+        up, lo, up_nx = ch["up_next"], ch["lo_next"], ch["up_next"] + (ch["up_next"] - ch["up_now"])
+        ma5 = (sum(closes[-4:]) + px) / 5
+    st = state({**ch, "up_now": up, "lo_now": lo, "ma5": ma5, "gap_next": (up_nx / px - 1) * 100}, px, True)
+    return {"state": st.replace("(장중)", "(넥장)"), "ma5": round(ma5, 2), "above_ma5": px > ma5,
+            "up": round(up, 2), "lo": round(lo, 2), "gap_up": round((up / px - 1) * 100, 2), "session": "애프터" if rows[-1][0] == today else "프리"}
+
+
 def _load(p: Path) -> dict:
     try:
         return json.loads(p.read_text(encoding="utf-8"))
@@ -295,6 +342,7 @@ def build(now: datetime | None = None) -> dict:
     contact_policy = json.dumps(c.get("contact_rules") or {}, sort_keys=True)
     log = _load(LOG); prev = log.get("last", {}) if log.get("contact_policy") == contact_policy else {}; hist = log.get("events", [])
     signals = [s for s in log.get("signals", []) if now.timestamp() * 1000 - s["ts"] < 20 * 3600_000 and s.get("contact_policy") == contact_policy]   # 오늘(20시간 안) 시그널만
+    nxq = _nxt_quotes([code for g in c["groups"] if g["cc"] == "kr" for code, _ in g["items"]], now)
     for g in c["groups"]:
         items = []
         for code, name in g["items"]:
@@ -321,6 +369,10 @@ def build(now: datetime | None = None) -> dict:
                   **{k: (round(v, 4) if isinstance(v, float) else v) for k, v in ch.items()}}
             if g["cc"] == "kr_index":
                 it.update(INDEX_META.get(code, {}))
+            if g["cc"] == "kr" and code in nxq:
+                nq = nxq[code]
+                it["nxt"] = {**nq, "vs_krx": round((nq["px"] / px - 1) * 100, 2) if rows[-1][0] == now.strftime("%m/%d") else None,
+                             **nxt_view(rows, ch, nq["px"], now.strftime("%m/%d"))}
             items.append(it)
             key = f"{code}"
             was = prev.get(key) or {}
