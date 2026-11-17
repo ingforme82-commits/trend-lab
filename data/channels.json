@@ -22,6 +22,28 @@
  },
  "groups": [
   {
+   "cc": "kr_index",
+   "country": "한국",
+   "sector": "코스피 지수",
+   "items": [
+    [
+     "KOSPI",
+     "코스피"
+    ]
+   ]
+  },
+  {
+   "cc": "kr_index",
+   "country": "한국",
+   "sector": "코스닥 지수",
+   "items": [
+    [
+     "KOSDAQ",
+     "코스닥"
+    ]
+   ]
+  },
+  {
    "cc": "kr",
    "country": "한국",
    "sector": "메모리 반도체",

@@ -709,8 +709,8 @@
   /* ── 📐 추세 판단(운영자 11/17): 하락 채널 상단 돌파(+1%·5일선 위)가 진짜 반등 · 실시간 캔들 · 기록 ── */
   let chanOpen = null;
   const CH_ST = {"돌파 확인": "ok", "돌파 시도(장중)": "try", "채널 위·5일선 아래": "warn", "상단 근접": "near", "채널 안": "in", "하단 이탈": "bad"};
-  const CH_FLAG = {kr: "🇰🇷", us: "🇺🇸", jp: "🇯🇵"};
-  const chFmt = (cc, v) => v == null ? "-" : cc === "us" ? "$" + (+v).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2})
+  const CH_FLAG = {kr: "🇰🇷", kr_index: "🇰🇷", us: "🇺🇸", jp: "🇯🇵"};
+  const chFmt = (cc, v) => v == null ? "-" : cc === "kr_index" ? (+v).toLocaleString("ko-KR", {minimumFractionDigits: 2, maximumFractionDigits: 2}) + "pt" : cc === "us" ? "$" + (+v).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2})
     : Math.round(v).toLocaleString("ko-KR") + (cc === "jp" ? "엔" : "원");
   function chGlyph(r) {                                       // 오늘 봉(시가·고가·저가·현재가) 작은 그림
     const [, o, h, l, c] = r, rng = (h - l) || 1, Y = (v) => 3 + (h - v) / rng * 26, col = c >= o ? "var(--up)" : "var(--down)";
@@ -767,6 +767,7 @@
             <span>상단선 <b class="mn">${chFmt(g.cc, it.up_now)}</b></span><span>5일선 <b class="mn">${chFmt(g.cc, it.ma5)}</b></span>
             <span>다음 거래일 상단까지 <b class="mn">${it.gap_next > 0 ? "+" : ""}${(+it.gap_next).toFixed(1)}%</b></span>
             ${it.gap_low != null ? `<span>하단선(지지) <b class="mn">${chFmt(g.cc, it.lo_now)}</b> 까지 <b class="mn">${(+it.gap_low).toFixed(1)}%</b></span>` : ""}</div>
+          ${it.instrument_type === "index" ? `<p class="ch-leg">${esc(it.day)} · ${esc(it.quality_note || "제공 상태 확인 중")} · ${esc(it.source || "출처 미확인")}${it.source_at ? ` · 제공 ${hm(it.source_at)}` : ""} · 일봉 ${esc(it.daily_source || "미확인")}</p>` : ""}
           ${chChart(it, g.cc)}</article>`;
       });
       html += `</div></div>`;
