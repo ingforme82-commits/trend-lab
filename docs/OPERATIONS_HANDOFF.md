@@ -98,3 +98,6 @@
 - Python회귀13 PASS(기존3+지수10); Node VM 차트2개렌더·pt소수점·원화/USD보존·출처·NaN없음PASS; JS/sw문법PASS. 브라우저QA 도구/Playwright없어실기기390/1280시각검증미실행. index.html news버전 및sw VERSION=trl-app-v22-index-charts 갱신.
 - 참고공식스키마: koreainvestment/open-trading-api examples_llm/domestic_stock/inquire_daily_indexchartprice. 네이버실제JSON에서OHLC/marketStatus/localTradedAt 확인. 아직KRX공식OpenAPI신청완료로보고하지않음.
 - TSM이Oracle공개live15:06UTC게시본chan에포함된것확인. 새지수의실서버응답은코드병합/5분autopull후별도확인필요.
+
+### 11/18 00:11 실제 반영 확인
+- PR#5 main597600a Pages배포success확인. 공개live15:10:55UTC 게시본에서 kr_index/KOSPI·KOSDAQ 각45일봉 확인. 11/17 마지막값4968.48pt·650.06pt,둘다live=false/채널안/장종료·마지막제공지수. 현재봉네이버·일봉야후대체사용,channel errs없음. 한투일봉실연결성공으로보고하지않음. 모바일/PC실기기시각검사는미수행.
