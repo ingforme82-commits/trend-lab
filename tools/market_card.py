@@ -65,6 +65,43 @@ def intraday(rows: list[tuple[int, float]], day: str) -> dict | None:
     return {"open": r[0][1], "hi": hi[1], "hi_t": hi[0], "lo": lo[1], "lo_t": lo[0], "last": r[-1][1]}
 
 
+NAVER = {"001": "KOSPI", "101": "KOSDAQ"}
+
+
+def _naver_json(url: str):
+    import urllib.request
+    return json.loads(urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=8).read())
+
+
+def naver_index_now(code: str, d: dict | None = None) -> dict | None:
+    """네이버 지수 현재가(서버용 대체). 상승·하락 종목 수는 S7(네이버) 값이 있으면 그걸 쓴다."""
+    try:
+        x = _naver_json(f"https://polling.finance.naver.com/api/realtime/domestic/index/{NAVER[code]}")["datas"][0]
+        px = float(x["closePriceRaw"])
+    except Exception:  # noqa: BLE001
+        return None
+    k = ((d or {}).get("s7") or {}).get("kospi" if code == "001" else "kosdaq") or {}
+    return {"name": "코스피" if code == "001" else "코스닥", "px": px, "chg": float(x.get("fluctuationsRatioRaw") or 0),
+            "up": k.get("up"), "down": k.get("dn")}
+
+
+def naver_index_minutes(code: str, day: str) -> list[tuple[int, float]]:
+    """네이버 지수 1분봉 → [(ms, 지수)] (봉 시작 시각, 오래된 것부터)."""
+    ymd = day.replace("-", "")
+    try:
+        rows = _naver_json(f"https://api.stock.naver.com/chart/domestic/index/{NAVER[code]}/minute?startDateTime={ymd}0900&endDateTime={ymd}1530")
+    except Exception:  # noqa: BLE001
+        return []
+    out = []
+    for r in rows or []:
+        try:
+            ts = datetime.strptime(r["localDateTime"], "%Y%m%d%H%M%S").replace(tzinfo=KST)
+            out.append((int(ts.timestamp() * 1000), float(r["currentPrice"])))
+        except Exception:  # noqa: BLE001
+            continue
+    return sorted(out)
+
+
 def manual_today(day: str, path: Path | None = None) -> bool:
     try:
         h = json.loads((path or HEAD).read_text(encoding="utf-8"))
@@ -82,9 +119,18 @@ def compose(d: dict, now_ms: int, idx: dict | None = None, mins: dict | None = N
         return None
     day = now.strftime("%Y-%m-%d")
     if idx is None or mins is None:
-        from kiwoom import index_minutes, index_now
-        idx = {c: index_now(c) for c in ("001", "101")}
-        mins = {c: index_minutes(c, hours=12) for c in ("001", "101")}
+        idx, mins = {}, {}
+        try:                                              # 키움(PC) — 서버(Oracle)는 키움이 막혀 예외 → 네이버로(11/17 장중 카드 멈춤)
+            from kiwoom import index_minutes, index_now
+            idx = {c: index_now(c) for c in ("001", "101")}
+            mins = {c: index_minutes(c, hours=12) for c in ("001", "101")}
+        except Exception:  # noqa: BLE001
+            pass
+        for c in ("001", "101"):
+            if not idx.get(c):
+                idx[c] = naver_index_now(c, d)
+            if not mins.get(c):
+                mins[c] = naver_index_minutes(c, day)
     ks, kq = idx.get("001"), idx.get("101")
     if not ks:                                            # 키움이 안 되는 PC: S7(네이버) 수치로 대신
         k = (d.get("s7") or {}).get("kospi") or {}
