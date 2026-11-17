@@ -23,6 +23,7 @@ const TICKS = [
   { k: "KR200", n: "코스피200", d: 2 },
   { k: "SMSN", n: "삼성전자", d: 2, u: "$", won: true },
   { k: "SKHX", n: "SK하이닉스", d: 2, u: "$", won: true },
+  { k: "SKSQ", n: "SK스퀘어", rt: true },                // 하이퍼리퀴드에 없음 → 실시간 체결(loadRt)만, 11/18 운영자
   { k: "EWY", n: "EWY (한국 ETF)", d: 2, u: "$" },
   { k: "KORU", n: "KORU (한국 3배)", d: 2, u: "$" },
   { k: "KRW", n: "원/달러", d: 1, suf: "원", fx: "원/달러" },
@@ -83,6 +84,14 @@ async function loadTicks() {
         const cl = x.chg > 0.005 ? "c-up" : x.chg < -0.005 ? "c-dn" : "c-fl";
         const ref = x.chg != null ? x.px / (1 + x.chg / 100) : null;
         return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">$${(+x.px).toFixed(2)}</p><p class="t-ch ${cl}">${x.chg > 0 ? "▲" : x.chg < 0 ? "▼" : ""} ${x.chg > 0 ? "+" : ""}${(+x.chg).toFixed(2)}% <small>정규장</small></p><p class="fine" style="margin:2px 0 0">기준 전일 종가 ${ref ? "$" + ref.toFixed(2) : "-"}</p>${t.k === "DRAM" ? `<p class="t-meta">SK하이닉스·마이크론·삼성전자 비중 큼</p>` : ""}${t.k === "MU" ? `<p class="t-meta">미국 메모리 대장 — 삼성·하이닉스 업황 선행</p>` : ""}${t.k === "SKHY" ? skhyMeta(x.px) : ""}</div>`;
+      }
+      if (t.rt) {                                         // 실시간 체결 전용 칸(SK스퀘어): 마지막 체결이 15초 안이면 값, 아니면 안내
+        const r = ((window.trlRt || {}).q || {})[t.k];
+        if (r && r.px > 0 && r.ref > 0 && Date.now() - r.at < 15000) {
+          const c = r.chg > 0.005 ? "c-up" : r.chg < -0.005 ? "c-dn" : "c-fl";
+          return `<div class="tick" data-k="${t.k}" data-rt-at="${r.at}"><p class="t-name">${t.n}</p><p class="t-px">${Math.round(r.px).toLocaleString("ko-KR")}원</p><p class="t-ch ${c}">${r.chg > 0 ? "▲" : r.chg < 0 ? "▼" : ""} ${r.chg > 0 ? "+" : ""}${(+r.chg).toFixed(2)}% <small>${r.mk === "NXT" ? "넥스트레이드 체결" : "실시간 체결"}</small></p><p class="fine" style="margin:2px 0 0">기준 전일 종가 ${Math.round(r.ref).toLocaleString("ko-KR")}원</p></div>`;
+        }
+        return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">-</p><p class="fine">넥스트레이드 시간(08~09시·15:30~20시) 실시간 체결</p></div>`;
       }
       if (t.srv) {                                        // 다우존스: 사이트 속보 데이터(야후)에서 — 미국장엔 지수, 그 외엔 선물
         const dw = window.trlDow || {};
@@ -720,7 +729,7 @@ async function loadEducation() {
 /* ───────── 시작 ───────── */
 /* ───────── 1-1. 실시간 체결(Oracle 서버 KIS 웹소켓 → Cloudflare 터널, 2초마다) — 11/16 운영자 ───────── */
 // news.json 'rt_url' 이 있을 때만. 받은 종목 칸은 '실시간 체결' 값으로 바꾸고 기준(전일 종가)을 숫자로 적는다.
-const RT_NAMES = { KOSPI: "코스피", KR200: "코스피200", KOSDAQ: "코스닥", SOXL: "SOXL (반도체 3배)", DRAM: "DRAM (메모리 ETF)", SKHY: "SKHY (SK하이닉스 ADR)", MU: "MU (마이크론)", NVDA: "NVDA", KORU: "KORU (한국 3배)", SMSN: "삼성전자", SKHX: "SK하이닉스" };
+const RT_NAMES = { KOSPI: "코스피", KR200: "코스피200", KOSDAQ: "코스닥", SOXL: "SOXL (반도체 3배)", DRAM: "DRAM (메모리 ETF)", SKHY: "SKHY (SK하이닉스 ADR)", MU: "MU (마이크론)", NVDA: "NVDA", KORU: "KORU (한국 3배)", SMSN: "삼성전자", SKHX: "SK하이닉스", SKSQ: "SK스퀘어" };
 let rtBusy = false;
 function expireRt() {
   document.querySelectorAll('.tick[data-rt-at]').forEach(el => {
@@ -748,7 +757,7 @@ async function loadRt() {
       const el = document.querySelector(`.tick[data-k="${k}"]`);
       if (!el) return;
       const c = r.chg > 0.005 ? "c-up" : r.chg < -0.005 ? "c-dn" : "c-fl";
-      const won = k === "SMSN" || k === "SKHX";
+      const won = k === "SMSN" || k === "SKHX" || k === "SKSQ";
       const nf = (v) => won ? Math.round(v).toLocaleString("ko-KR") + "원" : (["SOXL", "DRAM", "SKHY", "MU", "NVDA", "KORU"].includes(k) ? "$" : "") + (+v).toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
       const flash = el.dataset.rt && el.dataset.rt !== String(r.px) ? " flash" : "";
       el.dataset.rt = String(r.px);

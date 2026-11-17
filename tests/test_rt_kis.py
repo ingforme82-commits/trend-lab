@@ -42,7 +42,7 @@ class RtTest(unittest.TestCase):
     def test_nxt_session_windows(self):
         kst = timezone(timedelta(hours=9))
         at = lambda h, mi=0, d=16: rt_kis.subs_now(datetime(2026, 11, d, h, mi, tzinfo=kst).timestamp())
-        self.assertEqual([x[2] for x in at(8, 10)], ["SMSN", "SKHX"])      # NXT 프리마켓
+        self.assertEqual([x[2] for x in at(8, 10)], ["SMSN", "SKHX", "SKSQ"])      # NXT 프리마켓
         self.assertEqual(at(9)[0][2], "KOSPI")
         self.assertEqual(at(15, 29)[0][2], "KOSPI")
         self.assertEqual(at(15, 30)[0][2], "SMSN")                          # NXT 애프터마켓

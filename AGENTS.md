@@ -142,7 +142,7 @@ cd trend-lab && pip install -r requirements.txt
 - 카카오톡 알림은 더 보내지 않습니다. 이전 NH 모의 주문 알림 예외도 해제합니다. 카톡 중단 파일을 유지합니다.
 
 ## 실시간 경로(11/16 운영자)
-- `tools/rt_kis.py`: KIS 웹소켓 실시간 체결 → 저장소 밖 `rt.json`. **키당 접속 1개·동시 3종목**(11/16 확인) → Oracle 서버에서만 실행(PC에서 돌리면 서버 접속이 끊김). KRX 정규장 09:00~15:30 코스피·코스피200·코스닥, **NXT 프리 08:00~09:00·애프터 15:30~20:00 삼성전자·SK하이닉스(통합 체결 H0UNCNT0, 사이트 '넥스트레이드 체결' 표시, 11/18 운영자 "넥장까지 실시간")**, 그 밖은 SOXL·SKHY·KORU.
+- `tools/rt_kis.py`: KIS 웹소켓 실시간 체결 → 저장소 밖 `rt.json`. **키당 접속 1개·동시 3종목**(11/16 확인) → Oracle 서버에서만 실행(PC에서 돌리면 서버 접속이 끊김). KRX 정규장 09:00~15:30 코스피·코스피200·코스닥, **NXT 프리 08:00~09:00·애프터 15:30~20:00 삼성전자·SK하이닉스·SK스퀘어(통합 체결 H0UNCNT0, 사이트 '넥스트레이드 체결' 표시, 11/18 운영자 "넥장까지 실시간")**, 그 밖은 SOXL·SKHY·KORU.
 - `tools/rt_serve.py`: 127.0.0.1:8787 `/rt` + Cloudflare 무료 빠른 터널 → 주소를 news.json `rt_url` 로 → 사이트 `app.js loadRt()` 가 2초마다.
 - 설치: 서버에서 `bash scripts/oracle_rt_setup.sh`(systemd `trl-rt_kis`·`trl-rt_serve`).
 - `tools/srcscore.py`: 출처 점수판(성공률·일치율·응답 시간·신선도) — 증권사 교차 확인·달러 출처 순서를 자동 조정. `python tools/srcscore.py` 로 표 확인.
