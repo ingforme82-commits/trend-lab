@@ -109,6 +109,18 @@ class PeriodProofTests(unittest.TestCase):
                                     ["매출액 189억", "영업이익 -1억"], path))
             self.assertEqual(path.read_text(encoding="utf-8"), original)
 
+    def test_disputed_cape_cannot_be_automatically_reinstated(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder) / "card.json"
+            original = json.dumps(dict(items=[dict(tag="ship",
+                points=["✔ 11/17 케이프 — 26Q3 매출·영업이익 미확인"],
+                verification_policy="period_source_required", manual_review_required=["케이프"])]))
+            path.write_text(original, encoding="utf-8")
+            proof = namespace["ship_period_proof"](self.rows())
+            self.assertFalse(update("케이프", "분기보고서 (2026.09)", "20261117",
+                                    ["매출액 1199억", "영업이익 -30억", proof], path))
+            self.assertEqual(path.read_text(encoding="utf-8"), original)
+
     def test_strict_card_accepts_both_numbers_with_matching_period_and_source(self):
         with tempfile.TemporaryDirectory() as folder:
             path = Path(folder) / "card.json"
