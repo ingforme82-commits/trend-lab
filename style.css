@@ -884,3 +884,20 @@ body{overflow-x:hidden}
 .ch-sigbox p{margin:2px 0}
 .ch-sig{background:var(--gold);color:var(--navy);font-size:12px;font-weight:800;padding:2px 8px;border-radius:999px}
 .ch-stance{color:var(--gold-d)}
+
+/* 11/17 운영자: PC 맨 위 글자가 두 줄로 꺾이지 않게 · 시황 띠는 흐르지 않고 고정 */
+.brand,.nav-in .btn{flex:none;white-space:nowrap}
+.nav-links{justify-content:safe flex-end}
+@media (min-width:761px) and (max-width:1439px){.brand-txt{display:none}.nav-links{gap:14px;font-size:13.5px}}
+.notice .band-w{display:flex;align-items:flex-start;gap:12px;overflow:visible;white-space:normal}
+.notice .band-lab{flex:none;white-space:nowrap;padding-right:12px;border-right:1px solid rgba(15,27,45,.25)}
+.notice .band-items{flex:1 1 auto;min-width:0;display:flex;flex-wrap:wrap;gap:2px 14px;max-height:3em;overflow:hidden;line-height:1.5}
+.notice .bi{white-space:nowrap}
+.notice .band-sig{padding:0 8px}
+@media (max-width:760px){
+  .notice .band-items{flex-wrap:nowrap;max-height:none;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  .notice .band-items::-webkit-scrollbar{display:none}
+}
+@media (max-width:520px){.brand-txt{display:none}.nav-in .btn-sm{padding:6px 10px;font-size:12.5px}.nav-in{gap:8px}}
+@media (max-width:760px){.nav-in .btn{margin-left:0}.nav-in .brand{margin-right:auto}}
+@media (max-width:520px){.nav-in .btn{padding:6px 9px!important;font-size:12px!important;min-height:0}}

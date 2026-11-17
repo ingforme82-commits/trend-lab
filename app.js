@@ -610,11 +610,11 @@ async function loadBand() {
   try {
     const live = liveBand();
     const sig = ((window.trlChan || {}).signals || [])[0];          // 📐 5일선 돌파 시그널이 있으면 띠 맨 앞(11/17)
-    const sigHtml = sig ? '<a href="#chan" class="band-sig">' + esc(sig.text) + '</a> · ' : '';
+    const sigHtml = sig ? '<a href="#chan" class="bi band-sig">' + esc(sig.text) + '</a>' : '';
     if (live) {
       const node = $("#notice");
       if (!node) return;
-      node.innerHTML = '<div class="wrap band-w"><span class="band-in">' + sigHtml + '<a href="#brief" class="band-a">' + live.icon + ' <b>' + live.date + ' ' + live.title + '</b> <small>(' + live.time + ')</small> · ' + esc(live.text) + '</a></span></div>';
+      node.innerHTML = bandHtml(live.icon + ' <b>' + live.date + ' ' + live.title + '</b> <small>' + live.time + '</small>', live.text, sigHtml);
       node.hidden = false;
       bandFit();
       return;
@@ -626,19 +626,29 @@ async function loadBand() {
     if (!t) return;
     const parts = BAND[h.slot], d = h.day.slice(5).replace("-", "/").replace(/^0/, "");
     const slotLabel = h.headline ? hhmm(KST(new Date(h.at))) + " KST 기준" : "(" + h.slot + " 정리)";
-    $("#notice").innerHTML = '<div class="wrap band-w"><span class="band-in">' + sigHtml + '<a href="#brief" class="band-a">' + parts[0] + ' <b>' + d + " " + parts[1] + '</b> <small>' + slotLabel + '</small> · ' + esc(t) + '</a></span></div>';
+    $("#notice").innerHTML = bandHtml(parts[0] + ' <b>' + d + " " + parts[1] + '</b> <small>' + slotLabel + '</small>', t, sigHtml);
     $("#notice").hidden = false;
     bandFit();
   } catch { /* 띠 없이 */ }
 }
-// 11/17 운영자: 띠는 스크롤해도 늘 보이게(메뉴 막대 안) — 한 줄을 넘으면 옆으로 흘러가게
-function bandFit() {
-  const w = document.querySelector("#notice .band-w"), i = document.querySelector("#notice .band-in");
-  if (!w || !i) return;
-  const over = i.scrollWidth - w.clientWidth;
-  i.classList.toggle("run", over > 8);
-  if (over > 8) i.style.setProperty("--band-dur", Math.max(18, Math.round(i.scrollWidth / 45)) + "s");
+// 11/17 운영자: 띠는 스크롤해도 늘 보이게(메뉴 막대 안) · 흐르지 않고 고정 — 표식(날짜·장)은 왼쪽 고정,
+// 항목은 ' · ' 단위로 끊어 단어가 잘리지 않게(PC 최대 2줄, 모바일 1줄은 손가락으로 밀어 보기)
+function bandSplit(s) {
+  const out = []; let depth = 0, cur = "";
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === "(") depth++; else if (ch === ")") depth = Math.max(0, depth - 1);
+    if (depth === 0 && s.startsWith(" · ", i)) { out.push(cur); cur = ""; i += 2; continue; }
+    cur += ch;
+  }
+  out.push(cur);
+  return out.map((x) => x.trim()).filter(Boolean);
 }
+function bandHtml(label, text, sigHtml) {
+  const items = bandSplit(text || "").map((x) => '<a href="#brief" class="bi">' + esc(x) + '</a>').join("");
+  return '<div class="wrap band-w" title="' + esc(text || "") + '"><a href="#brief" class="band-lab">' + label + '</a><div class="band-items">' + (sigHtml || "") + items + '</div></div>';
+}
+function bandFit() { /* 11/17: 흐르는 띠 없앰(고정 표시) — 예전 호출 자리 유지 */ }
 window.addEventListener("resize", () => bandFit());
 window.loadBand = loadBand;
 setInterval(() => { if (!window.__pinNotice) loadBand(); }, 60000);
