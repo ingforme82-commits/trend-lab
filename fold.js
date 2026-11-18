@@ -37,9 +37,11 @@
     b.type = "button"; b.className = "btn btn-ghost-dark btn-fold"; b.dataset.fold = key; b.textContent = label;
     return b;
   };
-  const dropBtn = (el, key) => {
-    const n = el.nextElementSibling;
-    if (n && n.dataset && n.dataset.fold === key) n.remove();
+  const syncBtn = (el, key, label) => {
+    const n = el.nextElementSibling, existing = n && n.dataset && n.dataset.fold === key ? n : null;
+    if (!label) { if (existing) existing.remove(); return; }
+    if (existing) { if (existing.textContent !== label) existing.textContent = label; }
+    else el.after(btn(key, label));
   };
 
   function foldItems([id, nm, np, sel]) {
@@ -50,31 +52,39 @@
     kids = kids.filter((c) => !c.classList.contains("arc-intro"));
     const extra = kids.length - limit;
     kids.forEach((c, i) => c.classList.toggle("fold-hide", !open.has(key) && i >= limit));
-    dropBtn(box, key);
-    if (extra > 0) box.after(btn(key, open.has(key) ? "접기" : `더 보기 +${extra}`));
+    syncBtn(box, key, extra > 0 ? (open.has(key) ? "접기" : `더 보기 +${extra}`) : "");
   }
 
   function clampOne(el, key, h) {
-    dropBtn(el, key);
-    el.classList.remove("fold-clamp"); el.style.removeProperty("--fold-h");
-    if (open.has(key) || el.scrollHeight <= h + 160) {  // 조금 넘는 건 자르지 않는다
-      if (open.has(key) && el.scrollHeight > h + 160) el.after(btn(key, "접기"));
-      return;
-    }
-    el.style.setProperty("--fold-h", h + "px"); el.classList.add("fold-clamp");
-    el.after(btn(key, "펼쳐 보기 ▾"));
+    // scrollHeight is the full content height even while max-height clips it.
+    // Do not temporarily unfold the page merely to measure it.
+    const needs = el.scrollHeight > h + 160, clamped = needs && !open.has(key);
+    el.classList.toggle("fold-clamp", clamped);
+    if (clamped) { if (el.style.getPropertyValue("--fold-h") !== h + "px") el.style.setProperty("--fold-h", h + "px"); }
+    else if (el.style.getPropertyValue("--fold-h")) el.style.removeProperty("--fold-h");
+    syncBtn(el, key, needs ? (open.has(key) ? "접기" : "펼쳐 보기 ▾") : "");
   }
   function clampAll([sel, hm, hp]) {
     document.querySelectorAll(sel).forEach((el, i) => clampOne(el, `c:${sel}:${i}`, mobile() ? hm : hp));
   }
 
-  let busy = false, timer = 0, mo = null;
+  let busy = false, queued = false, mo = null;
   function apply() {
-    if (busy) return; busy = true;
-    try { ITEMS.forEach(foldItems); CLAMP.forEach(clampAll); }
-    finally { if (mo) mo.takeRecords(); busy = false; }   // 내가 만든 변화(버튼)는 다시 감지하지 않는다
+    if (busy) return;
+    const work = () => {
+      busy = true;
+      try { ITEMS.forEach(foldItems); CLAMP.forEach(clampAll); }
+      finally { if (mo) mo.takeRecords(); busy = false; }
+    };
+    if (window.trlViewport && !window.trlViewport.updating) window.trlViewport.update(work);
+    else work();
   }
-  const later = () => { clearTimeout(timer); timer = setTimeout(apply, 120); };
+  window.trlFold = {apply};
+  const later = () => {
+    if (busy || queued) return;
+    queued = true;
+    queueMicrotask(() => { queued = false; apply(); });
+  };
 
   document.addEventListener("click", (e) => {
     const b = e.target.closest("[data-fold]"); if (!b) return;
@@ -92,7 +102,8 @@
     ids.forEach((id) => { const el = document.getElementById(id); if (el) mo.observe(el, { childList: true, subtree: true }); });
     apply();
     window.addEventListener("resize", later);
-    setInterval(apply, 15000);   // 이미지·차트가 늦게 커지는 경우 대비
+    document.addEventListener("load", later, true); // 늦게 로드되는 이미지
+    if (document.fonts) document.fonts.ready.then(later);
   }
   document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", watch) : watch();
 })();

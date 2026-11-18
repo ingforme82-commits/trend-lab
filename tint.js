@@ -111,7 +111,8 @@
   let mo = null, pend = new Set(), timer = 0;
   const flush = () => {
     const roots = [...pend]; pend.clear();
-    roots.filter((r) => r.isConnected && !roots.some((o) => o !== r && o.contains(r))).forEach(run);
+    const paint = () => roots.filter((r) => r.isConnected && !roots.some((o) => o !== r && o.contains(r))).forEach(run);
+    if (window.trlViewport) window.trlViewport.update(paint); else paint();
     if (mo) mo.takeRecords();   // 내가 넣은 색 칠은 다시 감지하지 않는다
   };
   function start() {

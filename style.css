@@ -950,3 +950,8 @@ body{overflow-x:hidden}
 .tn-v{font-weight:700}
 .ticker .tn-up,.hero .tn-up,.sec-dark .tn-up,.cm-tip .tn-up,.sc-chip.on .tn-up{color:#ff8a92}
 .ticker .tn-dn,.hero .tn-dn,.sec-dark .tn-dn,.cm-tip .tn-dn,.sc-chip.on .tn-dn{color:#8fb6ff}
+
+/* 실시간 DOM 갱신 중에는 수동 위치 보존과 브라우저 자동 앵커가 경쟁하지 않게 한다. */
+html.trl-live-update,html.trl-live-update body{overflow-anchor:none!important;scroll-behavior:auto!important}
+#trlUpdateButton{position:fixed;right:16px;bottom:16px;z-index:1000;max-width:calc(100vw - 32px)}
+.t-px,.t-ch,.mn{font-variant-numeric:tabular-nums}

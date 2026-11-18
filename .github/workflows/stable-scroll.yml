@@ -1,0 +1,37 @@
+name: Stable reading viewport regression
+on:
+  pull_request:
+    paths:
+      - 'viewport.js'
+      - 'fold.js'
+      - 'tint.js'
+      - 'pwa.js'
+      - 'app.js'
+      - 'news.js'
+      - 'style.css'
+      - 'tests/browser_scroll_check.py'
+permissions:
+  contents: read
+jobs:
+  viewport:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Existing JavaScript regressions
+        run: |
+          node --check viewport.js
+          node --check app.js
+          node --check news.js
+          node --check fold.js
+          node --check tint.js
+          node --check pwa.js
+          node tests/test_ipo_calendar.cjs
+          node tests/test_moves_display.cjs
+          node tests/test_index_chart_render.cjs
+      - name: Install headless browser in CI only
+        run: |
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps chromium
+      - name: Chromium mobile and desktop reading position
+        run: python3 tests/browser_scroll_check.py

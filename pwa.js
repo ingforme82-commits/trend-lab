@@ -5,7 +5,7 @@ const VAPID_PUBLIC = "BKwWSi_sQqLn6ROiJ8CR0AecFzcWyuYUvjQ_cps6NNVinyzus6NKCbP2DN
     let reloading = false;
     const hadController = !!navigator.serviceWorker.controller;
     navigator.serviceWorker.addEventListener("controllerchange", () => {
-      if (hadController && !reloading) { reloading = true; location.reload(); }
+      if (hadController && !reloading) { reloading = true; window.trlViewport?.offerUpdate(); }
     });
     window.addEventListener("load", () => {
       navigator.serviceWorker.register("sw.js", { updateViaCache: "none" }).then((reg) => {
