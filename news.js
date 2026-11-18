@@ -1132,14 +1132,17 @@
     document.addEventListener("click", (e) => {
       const a = e.target.closest(".tk-i"); if (!a) return;
       e.preventDefault(); sel = +a.dataset.ts; tag = "전체"; shown = Math.max(shown, 40);
-      drawCharts(); drawList(); q("#news").scrollIntoView({ behavior: "smooth" });
+      drawCharts(); drawList();
+      goNews(q(`#newsList li[data-ts="${sel}"]`));   // 누른 속보 그 줄로 이동해 고정
     });
   }
 
+  // 속보 칸으로 이동: 즉시 이동 + 잠깐 고정(viewport.js go). 없으면 예전 방식
+  const goNews = (el) => { const t = el || q("#news"); if (!t) return; if (window.trlViewport && window.trlViewport.go) window.trlViewport.go(t); else t.scrollIntoView({ block: "start" }); };
   const redraw = () => (window.trlViewport ? window.trlViewport.update : (fn) => fn())(() => { drawChan(); drawTgSum(); drawHeroLive(); drawWorld(); drawSpot(); drawWatch(); drawSectors(); drawS7(); drawFlows(); drawBrief(); if (full) { drawCharts(); drawMoves(); drawTrend(); drawList(); } });
   const setKw = (label, pat) => {
     try { kwFilter = { label, rx: new RegExp(pat, "i") }; } catch { kwFilter = null; }
-    tag = "전체"; shown = 30; drawTrend(); drawList(); q("#news").scrollIntoView({ behavior: "smooth" });
+    tag = "전체"; shown = 30; drawTrend(); drawList(); goNews();
   };
   document.addEventListener("click", (e) => {
     const mx = e.target.closest(".mn-x, .mn-full");
@@ -1165,7 +1168,7 @@
     const fo = e.target.closest("[data-flow-open]"); if (fo) { const n = fo.dataset.flowOpen; flowOpen = flowOpen === n ? null : n; drawFlows(); return; }
     const tg = e.target.closest("[data-sec-toggle]");
     if (tg) { const n = tg.dataset.secToggle; openSector = openSector === n ? null : n; drawSectors(); return; }
-    const st = e.target.closest("[data-sec-tag]"); if (st && q("#news")) { kwFilter = null; tag = st.dataset.secTag; shown = 30; drawTrend(); drawList(); q("#news").scrollIntoView({ behavior: "smooth" }); return; }
+    const st = e.target.closest("[data-sec-tag]"); if (st && q("#news")) { kwFilter = null; tag = st.dataset.secTag; shown = 30; drawTrend(); drawList(); goNews(); return; }
     const sk = e.target.closest("[data-spot-kw]"); if (sk && q("#news")) { setKw(sk.dataset.spotName, sk.dataset.spotKw); return; }
     const sc = e.target.closest("[data-spot-chart]"); if (sc && window.trlChart) window.trlChart.open({ coin: sc.dataset.spotChart, name: sc.dataset.spotName, sel: null, news });
   });

@@ -44,8 +44,46 @@
       if(el)el.scrollLeft=x.left;
     });
   }
+  /* ── 이동 고정(11/18 운영자 "속보 클릭해도 딱 고정이 안 됨") ──
+   * 부드러운 스크롤 도중 1분·2초 자동 갱신이 위치를 다시 맞추면서 이동이 중간에 끊기고,
+   * 위쪽 칸 높이가 바뀌면 도착 지점이 밀렸다. 그래서 클릭 이동은 즉시 이동 + 2.5초 동안 그 항목을
+   * 메뉴 바로 아래에 붙잡아 둔다(갱신·접기·이미지 로딩으로 높이가 변해도 다시 맞춤). 손으로 스크롤하면 바로 풀린다. */
+  let lock=null, lockRaf=0;
+  const navH=()=>Math.ceil(document.querySelector(".nav")?.getBoundingClientRect().bottom||0);
+  const jump=(top)=>{try{window.scrollTo({left:scrollX,top:Math.max(0,top),behavior:"instant"});}catch{window.scrollTo(scrollX,Math.max(0,top));}};
+  function hold(){
+    if(!lock)return;
+    if(!lock.el.isConnected||performance.now()>lock.until){lock=null;return;}
+    const want=navH()+8, d=lock.el.getBoundingClientRect().top-want;
+    if(Math.abs(d)>1)jump(scrollY+d);
+    lockRaf=requestAnimationFrame(hold);
+  }
+  function go(el,ms=2500){
+    if(!el)return;
+    lock={el,until:performance.now()+ms};
+    root.classList.add("trl-live-update");
+    jump(scrollY+el.getBoundingClientRect().top-(navH()+8));
+    cancelAnimationFrame(lockRaf);lockRaf=requestAnimationFrame(hold);
+    setTimeout(()=>{if(!lock)root.classList.remove("trl-live-update");},ms+50);
+  }
+  const unlock=()=>{if(lock){lock=null;cancelAnimationFrame(lockRaf);root.classList.remove("trl-live-update");}};
+  ["wheel","touchstart","keydown"].forEach((t)=>addEventListener(t,unlock,{passive:true}));
+  // 같은 페이지 안 링크(#news 등)는 모두 즉시 이동 + 고정으로
+  document.addEventListener("click",(e)=>{
+    if(e.defaultPrevented||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey)return;
+    const a=e.target.closest('a[href^="#"]');if(!a)return;
+    const id=decodeURIComponent(a.getAttribute("href").slice(1));const el=id?document.getElementById(id):null;if(!el)return;
+    e.preventDefault();
+    if(location.hash!=="#"+id)history.replaceState(null,"","#"+id);
+    go(el);
+  });
   function update(fn) {
     if(depth) return fn();
+    if(lock&&lock.el.isConnected){             // 이동 고정 중: 그 항목 기준으로만 위치를 맞춘다
+      depth++;root.classList.add("trl-live-update");
+      try{const r=fn();window.trlFold?.apply();const d=lock.el.getBoundingClientRect().top-(navH()+8);if(Math.abs(d)>1)jump(scrollY+d);return r;}
+      finally{depth--;}
+    }
     const mark=scrollY>80?anchor():null, beforeY=scrollY, beforeX=scrollX, saved=state();
     depth++;
     root.classList.add("trl-live-update");
@@ -80,5 +118,5 @@
     button.addEventListener("click",()=>location.reload());
     document.body.append(button);
   }
-  window.trlViewport={update,html,offerUpdate,get updating(){return depth>0;}};
+  window.trlViewport={update,html,offerUpdate,go,get updating(){return depth>0;}};
 })();
