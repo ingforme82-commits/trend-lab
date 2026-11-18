@@ -734,6 +734,35 @@
     const [, o, h, l, c] = r, rng = (h - l) || 1, Y = (v) => 3 + (h - v) / rng * 26, col = c >= o ? "var(--up)" : "var(--down)";
     return `<svg class="ch-gl" viewBox="0 0 14 32" aria-hidden="true"><line x1="7" x2="7" y1="${Y(h)}" y2="${Y(l)}" stroke="${col}" stroke-width="1.4"/><rect x="2.5" y="${Y(Math.max(o, c))}" width="9" height="${Math.max(1.5, Math.abs(Y(o) - Y(c)))}" fill="${col}" rx="1"/></svg>`;
   }
+  // 📏 수평선(운영자 11/19 "수평 및 채널 추세선에서 움직이는 걸 숫자로"): 좌우 3봉보다 높은 고점·낮은 저점(스윙) 중
+  // 현재가 바로 위 고점 = 수평 저항, 바로 아래 저점 = 수평 지지. ±1% 안에 고가(저가)가 닿은 봉 수 = 접촉 횟수.
+  function chLevels(rows, px) {
+    const n = rows.length, k = 3, from = Math.max(0, n - 80), ph = [], pl = [];
+    for (let i = from + k; i < n - 2; i++) {
+      let isH = true, isL = true;
+      for (let j = i - k; j <= Math.min(n - 1, i + k); j++) { if (j === i) continue; if (rows[j][2] > rows[i][2]) isH = false; if (rows[j][3] < rows[i][3]) isL = false; }
+      if (isH) ph.push(i); if (isL) pl.push(i);
+    }
+    const touch = (v, col) => rows.slice(from).filter((r) => Math.abs(r[col] / v - 1) <= 0.01).length;
+    const pick = (idx, col, above) => { let best = null;
+      idx.forEach((i) => { const v = rows[i][col]; if (above ? v > px : v < px) if (!best || (above ? v < best.v : v > best.v)) best = {i, v}; });
+      return best && {...best, n: touch(best.v, col)}; };
+    return {res: pick(ph, 2, true), sup: pick(pl, 3, false), top: Math.max(...rows.slice(from).map((r) => r[2]))};
+  }
+  function chNums(it, cc, L) {                                // 차트 아래 숫자 줄: 값 + 현재가에서의 거리
+    const px = it.px, d = (v) => `${v / px - 1 > 0 ? "+" : ""}${((v / px - 1) * 100).toFixed(1)}%`;
+    const cell = (k, lab, v, sub) => `<div class="cn ${k}"><span>${lab}</span><b>${v == null ? "-" : chFmt(cc, v)}</b><small>${sub ?? (v == null ? "" : d(v))}</small></div>`;
+    const ok = it.channel_valid !== false && it.channel_width_valid !== false, w = it.up_now - it.lo_now;
+    const pos = ok && w > 0 ? (px - it.lo_now) / w * 100 : null;
+    let h = `<div class="ch-num">${cell("px", "현재가", px, "")}`
+      + cell("res", "채널 상단", ok ? it.up_now : null, ok ? null : "재확인 중") + cell("sup", "채널 하단", ok ? it.lo_now : null, ok ? null : "재확인 중")
+      + cell("hr", "수평 저항", L.res ? L.res.v : null, L.res ? `${d(L.res.v)} · 접촉 ${L.res.n}회` : `구간 고점 ${chFmt(cc, L.top)} 위`)
+      + cell("hs", "수평 지지", L.sup ? L.sup.v : null, L.sup ? `${d(L.sup.v)} · 접촉 ${L.sup.n}회` : "아래 저점 없음")
+      + cell("ma", "5일선", it.ma5, null) + `</div>`;
+    if (pos != null) { const g = Math.max(0, Math.min(100, pos));
+      h += `<div class="ch-pos"><span>채널 안 위치</span><div class="ch-pos-bar"><i style="left:${g}%"></i></div><b>${pos.toFixed(0)}%</b><small>하단 0 · 상단 100${pos > 100 ? " · 상단 위" : pos < 0 ? " · 하단 아래" : ""}</small></div>`; }
+    return h;
+  }
   function chChart(it, cc) {
     const rows = it.rows, n = rows.length, N = n + 1, W = 640, H = 230, M = {l: 6, r: 74, t: 10, b: 20};
     const up = (i) => it.up_now + it.su * (i - (n - 1)), lo = (i) => {
@@ -770,8 +799,19 @@
     s += `<polyline points="${supportPoints.map(i => `${X(i)},${Y(lo(i))}`).join(" ")}" fill="none" class="ch-sup${it.lower_verified === false ? " ch-unverified" : ""}"/><line x1="${X(n - 1)}" y1="${Y(lo(n - 1))}" x2="${X(n)}" y2="${Y(lo(n))}" class="ch-sup ch-dash${it.lower_verified === false ? " ch-unverified" : ""}"/></g>`;
     it.hi.forEach((i) => s += `<circle cx="${X(i)}" cy="${Y(rows[i][2])}" r="3.5" class="ch-dot-r"/>`);
     it.lo.forEach((i) => s += `<circle cx="${X(i)}" cy="${Y(rows[i][3])}" r="3.5" class="ch-dot-s"/>`);
+    const L = chLevels(rows, it.px), okCh = it.channel_valid !== false && it.channel_width_valid !== false;
+    const inY = (v) => v != null && v <= ymax && v >= ymin;
+    [[L.res, "ch-hr"], [L.sup, "ch-hs"]].forEach(([lv, k]) => { if (lv && inY(lv.v)) s += `<line x1="${X(lv.i)}" x2="${W - M.r}" y1="${Y(lv.v)}" y2="${Y(lv.v)}" class="${k}"/>`; });
+    if (inY(it.px)) s += `<line x1="${M.l}" x2="${W - M.r}" y1="${Y(it.px)}" y2="${Y(it.px)}" class="ch-pxl"/>`;
+    // 오른쪽 가격표: 값이 그대로 보이게(겹치면 위아래로 벌림)
+    const tags = [[it.px, "t-px"], okCh && [it.up_now, "t-res"], okCh && [it.lo_now, "t-sup"], L.res && [L.res.v, "t-hr"], L.sup && [L.sup.v, "t-hs"]]
+      .filter((t) => t && inY(t[0])).map(([v, k]) => ({v, k, y: Y(v)})).sort((a, b) => a.y - b.y);
+    for (let i = 1; i < tags.length; i++) if (tags[i].y - tags[i - 1].y < 15) tags[i].y = tags[i - 1].y + 15;
+    for (let i = tags.length - 1; i >= 0; i--) { const lim = i === tags.length - 1 ? H - M.b + 6 : tags[i + 1].y - 15; if (tags[i].y > lim) tags[i].y = lim; }
+    s = s.replace(/<text x="([^"]+)" y="([^"]+)" class="ch-ax">[^<]*<\/text>/g, (m, x, y) => +x !== W - M.r + 5 ? m : tags.some((t) => Math.abs(t.y - (+y - 3)) < 12) ? "" : m);
+    tags.forEach((t) => s += `<g class="ch-tag ${t.k}"><rect x="${W - M.r + 2}" y="${t.y - 7}" width="${M.r - 3}" height="14" rx="3"/><text x="${W - M.r + 5}" y="${t.y + 4}">${chFmt(cc, t.v)}</text></g>`);
     return `<svg class="ch-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(it.name)} 일봉·하락 채널·5일선">${s}</svg>
-      <p class="ch-leg"><i class="lr"></i>상단선(고점 접촉) <i class="ls"></i>하단선(저점 접촉) <i class="lm"></i>5일선 · 점선 연장${it.live ? " · 진행 중" : ""}</p>`;
+      <p class="ch-leg"><i class="lr"></i>채널 상단 <i class="ls"></i>채널 하단 <i class="lh"></i>수평 저항·지지 <i class="lp"></i>현재가 <i class="lm"></i>5일선${it.live ? " · 진행 중" : ""}</p>${chNums(it, cc, L)}`;
   }
   function chDisplay(regular) {
     if (!regular.display) return regular;
