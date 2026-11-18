@@ -822,21 +822,13 @@
         return rank(a)-rank(b);
       }).slice(0,5);
       const active = rows.filter(x=>x.it.live), sessions = [...new Set((active.length ? active : rows).map(x=>x.it.session || (x.it.live ? "정규장" : "장 종료")))];
-      return `<section class="ch-now-country"><p><b>${CH_FLAG[rows[0].cc] || ""} ${esc(country)} · ${esc(sessions.join(" · "))}</b>${active.length ? "" : " · 마지막 시세"}</p><ul>${selected.map(({cc,it}) => `<li data-viewport-key="trend-now:${esc(it.code)}"><b>${esc(it.name)}</b> <span class="mn">${chFmt(cc,it.px)}</span> <b class="${it.chg > 0 ? "up" : it.chg < 0 ? "down" : "dim"}">${it.chg == null ? "확인 중" : (it.chg > 0 ? "+" : "")+Number(it.chg).toFixed(2)+"%"}</b> · 5일선 ${it.px > it.ma5 ? "위" : "아래"} · ${esc(it.state)}${it.stale ? " · 지연" : ""}${it.source_at ? ` <small>${hm(it.source_at)}</small>` : ""}</li>`).join("")}</ul></section>`;
+      return `<section class="ch-now-country"><p><b>${CH_FLAG[rows[0].cc] || ""} ${esc(country)} · ${esc(sessions.join(" · "))}</b>${active.length ? "" : " · 마지막 시세"}</p><ul>${selected.map(({cc,it}) => `<li data-viewport-key="trend-now:${esc(it.code)}"><b>${esc(it.name)}</b> · 5일선 ${it.px > it.ma5 ? "위" : "아래"} · ${esc(it.state)}${it.stale ? " · 지연" : ""}${it.source_at ? ` <small>${hm(it.source_at)}</small>` : ""}</li>`).join("")}</ul></section>`;
     }).join("");
   }
   function drawChan() {
     return window.trlViewport ? window.trlViewport.update(drawChanRaw) : drawChanRaw();
   }
   function drawChanRaw() {                                       // 11/17 운영자: 표 대신 채널 그래프를 항상 펼쳐서(1분마다 갱신)
-    const chNxt = (x) => {                                  // 🌙 넥장(NXT) 기준 위치 — 거래소 판정과 따로(11/18 운영자)
-      if (!x || !(x.px > 0)) return "";
-      const old = !x.at || Date.now() - x.at > 10 * 60000;
-      const won = (v) => Math.round(v).toLocaleString("ko-KR");
-      return `<div class="ch-nxt">🌙 <b>넥장 ${esc(x.session || "")}</b> <span class="mn">${won(x.px)}</span>${x.chg != null ? ` <b class="${x.chg >= 0 ? "up" : "down"}">${x.chg > 0 ? "+" : ""}${(+x.chg).toFixed(2)}%</b>` : ""}${x.vs_krx != null ? ` <small>오늘 거래소 종가 대비 ${x.vs_krx > 0 ? "+" : ""}${(+x.vs_krx).toFixed(2)}%</small>` : ""}
-        <span class="ch-st s-${CH_ST[String(x.state).replace("(넥장)", "(장중)")] || "in"}">${esc(x.state)}</span>
-        <small>넥장가 기준 5일선 <b class="mn">${won(x.ma5)}</b>${x.above_ma5 ? " 위" : " 아래"} · 상단선 <b class="mn">${won(x.up)}</b> 까지 ${x.gap_up > 0 ? "+" : ""}${(+x.gap_up).toFixed(1)}% · NXT ${x.at ? hm(x.at) : "-"} 체결${x.status === "CLOSE" ? " · 마감" : ""}${old ? " · <b>지연</b>" : ""} · 거래소 판정은 정규장 종가로</small></div>`;
-    };
     const box = q("#chan"), c = window.trlChan; if (!box) return;
     if (!c || !(c.groups || []).length) { box.hidden = true; return; }
     box.hidden = false;
@@ -845,7 +837,6 @@
     const sg = c.signals || [], rsg = c.resists || [];
     const sgBox = q("#chanSig");
     if (sgBox) { const all = sg.concat(rsg).sort((a, b) => b.ts - a.ts); sgBox.hidden = !all.length; sgBox.innerHTML = all.map((s) => `<p>⏱ ${hm(s.ts)} ${esc(s.text)}</p>`).join(""); }
-    const sigCodes = new Set(sg.map((s) => s.code)), resCodes = new Set(rsg.map((s) => s.code));
     const live = c.groups.some((g) => g.items.some((it) => it.display ? it.display.live : it.live));
     const rtOn = Object.values(CH_RT).some((k) => { const r = ((window.trlRt || {}).q || {})[k]; return r && Date.now() - r.at < 15000; });
     q("#chanStamp").textContent = `${hm(c.at)} 기준 · 1분마다${live ? " · 진행 중인 봉 있음" : ""}${rtOn ? " · ⚡ 일부 종목 실시간 체결(2초)" : ""}`;
@@ -858,14 +849,7 @@
         const it = chLive(chDisplay(regular));
         const mdl = many ? `<span class="ch-md m${Math.min(it.rank, 4)}">${it.rank <= 3 ? ["금", "은", "동"][it.rank - 1] : it.rank}</span>` : "";
         html += `<article class="ch-card" data-viewport-key="channel:${esc(it.code)}">
-          <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b><span class="mn">${chFmt(g.cc, it.px)}</span><b class="${it.chg > 0 ? "up" : it.chg < 0 ? "down" : "dim"}">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b>${sigCodes.has(it.code) ? '<span class="ch-sig">정규장 5일선 돌파</span>' : ""}${resCodes.has(it.code) ? '<span class="ch-sig ch-res">정규장 5일선 저항</span>' : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span></div>
-          ${it.upper_touch_count != null ? `<div class="ch-contacts"><span class="${it.upper_verified ? "ch-contact-ok" : "ch-contact-wait"}">상단 ${it.upper_touch_count}${it.upper_touch_count >= 3 ? "회" : "점"} ${it.upper_verified ? (it.upper_touch_count >= 3 ? "접촉 보강" : "기준선") : "재확인"}</span><span class="${it.lower_verified ? "ch-contact-ok" : "ch-contact-wait"}">${it.lower_reference_points ? "하단 4점 기준" : it.lower_path ? "하단 3점 연결" : `하단 ${it.lower_touch_count}${it.lower_touch_count >= 3 ? "회" : "점"} ${it.lower_verified ? (it.lower_touch_count >= 3 ? "접촉 보강" : "기준선") : "재확인"}`}</span><small>추가 접촉 오차 ${it.touch_tolerance_pct}% · ${it.touch_min_spacing}거래일 간격 · 최근 ${it.touch_lookback_bars || it.rows.length}봉</small></div>` : ""}
-          <p class="ch-leg"><b>${regular.display ? `${it.session === "정규장" ? "정규장" : "시간외 · " + esc(it.session)}` : (g.cc === "kr" || g.cc === "us") ? "통합 시세 확인 중" : "정규장"}</b> · ${esc(it.day)} ${it.source_at ? hm(it.source_at) : ""}${it.stale ? " · 지연" : it.live ? " · 갱신 중" : " · 마지막 시세"} · ${regular.display && it.session !== "정규장" ? "정규장 종가" : "정규장"} <b class="mn">${chFmt(g.cc, regular.display && it.session !== "정규장" ? it.base : regular.px)}</b> (${esc(regular.display && it.session !== "정규장" ? it.base_day : regular.day)})${regular.display ? ` · ${esc(it.source)}` : ""}</p>
-          <div class="ch-meta">${chGlyph(it.rows[it.rows.length - 1])}<span>${esc(it.candle.name)}${it.live ? ' <em class="ch-now">진행 중</em>' : ""}${it.rt_at ? ` <em class="ch-now">⚡ 실시간 ${hm(it.rt_at)}:${String(new Date(it.rt_at).getSeconds()).padStart(2, "0")}${it.rt_mk === "NXT" ? " · 넥장" : ""}</em>` : ""}</span>
-            <span>상단선 <b class="mn">${chFmt(g.cc, it.up_now)}</b></span><span>5일선 <b class="mn">${chFmt(g.cc, it.ma5)}</b></span>
-            <span>다음 거래일 상단까지 <b class="mn">${it.gap_next > 0 ? "+" : ""}${(+it.gap_next).toFixed(1)}%</b></span>
-            ${it.gap_low != null ? `<span>하단선(지지) <b class="mn">${chFmt(g.cc, it.lo_now)}</b> 까지 <b class="mn">${(+it.gap_low).toFixed(1)}%</b></span>` : ""}</div>
-          ${it.instrument_type === "index" ? `<p class="ch-leg">${esc(it.day)} · ${esc(it.quality_note || "제공 상태 확인 중")} · ${esc(it.source || "출처 미확인")}${it.source_at ? ` · 제공 ${hm(it.source_at)}` : ""} · 일봉 ${esc(it.daily_source || "미확인")}</p>` : ""}
+          <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b><span class="mn">${chFmt(g.cc, it.px)}</span><b class="${it.chg > 0 ? "up" : it.chg < 0 ? "down" : "dim"}" title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(g.cc, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b><span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span><small class="ch-session">${regular.display ? (it.session === "정규장" ? "정규장" : "시간외 · " + esc(it.session)) : (it.live ? "정규장" : "마감")}${it.stale ? " · 지연" : !it.live ? " · 마지막" : ""}${it.rt_at || it.source_at ? ` · ${hm(it.rt_at || it.source_at)}` : ""}</small></div>
           ${chChart(it, g.cc)}</article>`;
       });
       html += `</div></div>`;
