@@ -67,6 +67,12 @@ def score(groups: list[dict]) -> list[dict]:
     return sorted(groups, key=lambda g: -g["score"])
 
 
+def rising_groups(groups: list[dict]) -> list[dict]:
+    """주도 후보: 평균 상승·절반 이상 상승. 하락 섹터를 주도 순위에 섞지 않는다."""
+    return [g for g in groups if isinstance(g.get("chg"), (int, float)) and g["chg"] > 0
+            and g.get("n", 0) > 0 and g.get("up", 0) / g["n"] >= 0.5]
+
+
 def us_groups(stocks: list[dict]) -> list[dict]:
     """미국 종목 → 업종별(3종목 이상) 시가총액 가중 등락률·거래대금·상승 비율."""
     by: dict[str, list[dict]] = {}
@@ -124,8 +130,8 @@ def kr() -> dict:
         status = _get(f"{base}/industry/{ind[0]['no']}?page=1&pageSize=1").get("marketStatus", "") if ind else ""
     except Exception:  # noqa: BLE001
         pass
-    return {"industry": score([r for r in res if r["kind"] == "industry"])[:N_SHOW],
-            "theme": score([r for r in res if r["kind"] == "theme"])[:N_SHOW], "open": status == "OPEN"}
+    return {"industry": score(rising_groups([r for r in res if r["kind"] == "industry"]))[:N_SHOW],
+            "theme": score(rising_groups([r for r in res if r["kind"] == "theme"]))[:N_SHOW], "open": status == "OPEN"}
 
 
 def us() -> dict:
@@ -148,7 +154,7 @@ def us() -> dict:
         stocks.append({"sym": sym, "name": s.get("stockName"), "ind": (s.get("industryCodeType") or {}).get("industryGroupKor"),
                        "px": _n(s.get("closePriceRaw")), "chg": _chg(s), "val": _n(s.get("accumulatedTradingValueRaw")),
                        "mcap": _n(s.get("marketValueRaw")), "eng": s.get("stockNameEng") or ""})
-    return {"industry": score(us_groups(stocks))[:N_SHOW], "open": status == "OPEN",
+    return {"industry": score(rising_groups(us_groups(stocks)))[:N_SHOW], "open": status == "OPEN",
             "map": {s["sym"]: {"mcap": s["mcap"], "val": s["val"]} for s in stocks},
             "all": stocks}                                   # 시간대별 강세(tools/hourly.py)가 쓰는 전 종목 — news.json 에는 안 올림
 
@@ -179,6 +185,9 @@ def build() -> dict:
     for k in ("kr", "us"):
         if c.get(k):
             out[k] = {**c[k]["v"], "at": int(c[k]["t"] * 1000)}
+            for kind in ("industry", "theme"):
+                if kind in out[k]:
+                    out[k][kind] = rising_groups(out[k][kind])
     return out
 
 

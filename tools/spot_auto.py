@@ -6,11 +6,11 @@
   python tools/spot_auto.py --last     # 주말·휴장일에 직전 거래일 마감 기준으로 바로 교체
 
 - 후보: data/spot_pool.json 의 종목군(미국). 야후 5분봉으로 전일 종가 대비·개장 후 등락을 계산한다.
-- 점수 = |평균 등락| × (0.5 + 같은 방향 종목 비율) + 개장 후 |평균 등락| × 0.5 + 관련 속보 수(최근 12시간, 최대 10) × 0.15
-- 상위 3개를 켜고, 나머지 자동 종목군은 끈다. pin 이 있는 종목군(한국·일본 등)은 건드리지 않는다.
+- 상승 후보만: 평균 > 0, 절반 이상 상승. 점수 = 평균 등락 × (0.5 + 상승 비율) + max(개장 후 등락, 0) × 0.5 + 관련 속보 수(최대10) × 0.15
+- 상승 조건을 충족한 상위 최대 3개를 켜고, 나머지 자동 종목군은 끈다. pin 이 있는 종목군(한국·일본 등)은 건드리지 않는다.
 - 📈 연일 상승: 종목군 평균 일간 등락이 3일 이상 연속 플러스인 종목군 1개(연속 일수·5일 합계 순)를 더한다.
 - ⚡ 급등락 대형주: 미국 시가총액 상위 600종목(네이버, tools/leaders.us) 중 시총 300억 달러 이상·|등락| 5% 이상을
-  등락 폭 순으로 최대 3개(한 방향 최대 2개) 개별 종목 카드로 더한다. 관련 속보는 화면에서 카드에 자동으로 붙는다.
+  중 상승한 후보만 개별 종목 카드로 더한다. 관련 속보는 화면에서 카드에 자동으로 붙는다.
 - 선정 이유(reason)는 수치로만 자동 작성한다(해석·추천 없음).
 - 미국 휴장일(정규장 시세가 오늘 것이 아님)이면 바꾸지 않는다.
 """
@@ -139,7 +139,9 @@ def single_entry(s: dict, label: str, hl_ok: set[str]) -> dict:
 
 
 def score(st: dict, news: int) -> float:
-    return abs(st["avg"]) * (0.5 + st["same"]) + abs(st["op"]) * 0.5 + min(news, 10) * 0.15
+    if st["avg"] <= 0 or st["same"] < 0.5:
+        return 0.0
+    return st["avg"] * (0.5 + st["same"]) + max(st["op"], 0) * 0.5 + min(news, 10) * 0.15
 
 
 def reason(st: dict, news: int, open_kst: str, mins: int) -> str:
@@ -266,9 +268,13 @@ def main() -> int:
         today_ny = max(days, default=today_ny)
     items = [it for it in _news() if now.timestamp() * 1000 - it["ts"] < 12 * 3600_000]
     ranked = []
+    valid_groups = 0
     for gid, p in pool.items():
         st = stats(p["members"], q, today_ny)
         if not st:
+            continue
+        valid_groups += 1
+        if st["avg"] <= 0 or st["same"] < 0.5:
             continue
         rx = re.compile(p["kw"])
         n = sum(1 for it in items if rx.search(it["text"]))
@@ -276,7 +282,7 @@ def main() -> int:
     ranked.sort(key=lambda x: -x[0])
     for sc, gid, st, n in ranked:
         print(f"{sc:6.2f} {pool[gid]['name']:<14} 평균 {st['avg']:+.2f}% 개장후 {st['op']:+.2f}% {st['k']}/{st['n']} 속보 {n}")
-    if len(ranked) < PICK:
+    if not valid_groups:
         log(f"종목군 교체 건너뜀 — 오늘({today_ny}) 미국 정규장 시세가 충분하지 않음(휴장 가능, {len(ranked)}개)")
         return 2
     picks = [(gid, reason(st, n, f"{open_kst:%H:%M}", mins)) for _, gid, st, n in ranked[:PICK]]
@@ -288,7 +294,7 @@ def main() -> int:
             runs[gid] = (streak(ser), sum(ser[-5:]))
     picks = [(g, rs + (f" · 평균 {runs[g][0]}일 연속 상승" if runs.get(g, (0, 0))[0] >= 2 else "")) for g, rs in picks]
     kinds = {}
-    cand = sorted((v[0], v[1], g) for g, v in runs.items() if v[0] >= 3 and g not in {x for x, _ in picks})
+    cand = sorted((v[0], v[1], g) for g, v in runs.items() if v[0] >= 3 and g in {x[1] for x in ranked} and g not in {x for x, _ in picks})
     if cand:
         k, r5, g = cand[-1]
         picks.append((g, f"평균 {k}일 연속 상승 · 최근 5거래일 합계 {r5:+.2f}%(일봉 종가 기준)"))
@@ -300,7 +306,7 @@ def main() -> int:
     dd0 = datetime.strptime(today_ny, "%Y-%m-%d")
     past = dry or (last and today_ny != ny.strftime("%Y-%m-%d"))
     label = f"{dd0.month}/{dd0.day}({'월화수목금토일'[dd0.weekday()]}) 정규장" + ("" if past else f" 개장 후 {mins}분")
-    singles = [single_entry(x, label, _hl_names()) for x in big_movers(_us_all())]
+    singles = [single_entry(x, label, _hl_names()) for x in big_movers(_us_all()) if x["chg"] > 0]
     for e in singles:
         print("급등락:", e["name"], "—", e["reason"])
     if last and today_ny != ny.strftime("%Y-%m-%d"):                   # 지난 거래일 마감 기준으로 고르면 이유 앞머리를 바꾼다
