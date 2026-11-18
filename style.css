@@ -921,3 +921,26 @@ body{overflow-x:hidden}
 .fold-hide{display:none!important}
 .fold-clamp{max-height:var(--fold-h);overflow:hidden;-webkit-mask-image:linear-gradient(#000 calc(100% - 90px),transparent);mask-image:linear-gradient(#000 calc(100% - 90px),transparent)}
 .btn-fold{display:block;margin:12px auto 4px;padding:8px 18px;font-size:14px}
+
+/* 맨 위 시황 띠: 메뉴 막대 안에 넣어 PC·모바일 모두 스크롤해도 계속 보임(11/18) */
+.nav .ticker{position:static;border-top:1px solid #22324d}
+@media (max-width:760px){
+  .tk-label{padding:0 6px 0 10px;box-shadow:6px 0 10px #0b1422}
+  .tk-label .tk-lt{display:none}
+  .tk-label small{margin-left:3px}
+  .tk-i{padding:0 16px}
+}
+/* 모바일 첫 화면: 소개 문구 대신 시간 붙은 뉴스 헤드라인을 화면 폭 전체로(11/18) */
+.mn-list li{min-width:0;overflow-wrap:anywhere}
+@media (max-width:760px){
+  .hero{padding:14px 0 28px}
+  .hero .eyebrow,.hero h1,.hero .lead{display:none}
+  .hero-in{gap:18px}
+  .hero-live.mn{margin:0 -8px 16px;padding:12px 12px;border-radius:10px}
+  .mn-h small{display:none}
+  .mn-list .mn-pin{display:none}
+  .mn-list li.mn-nw{font-size:15px;line-height:1.45;display:grid;grid-template-columns:44px minmax(0,1fr);column-gap:6px;padding-top:9px}
+  .mn-list .mn-pin + .mn-nw:not(.mn-pin ~ .mn-nw ~ .mn-nw){border-top:0;padding-top:0}
+  .mn-list li.mn-nw > .mn-t{min-width:0;font-size:14px}
+  .mn-list li.mn-nw small{margin-left:4px}
+}

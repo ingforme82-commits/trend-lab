@@ -197,7 +197,7 @@
     const key = span + ":" + pick.map((n) => n.ts + (n.pivot ? "p" : "")).join(",");
     if (!pick.length || key === tickerKey) return;
     tickerKey = key;
-    const lab = `📡 주요 시황 <small>${span === 1 ? "최근 1시간" : "최근 3시간"} · ${pick.length}건 · 중복 없이</small>`;
+    const lab = `📡<span class="tk-lt"> 주요 시황</span> <small>${span === 1 ? "최근 1시간" : "최근 3시간"}<span class="tk-lt"> · ${pick.length}건 · 중복 없이</span></small>`;
     const tr = box.querySelector(".tk-track");
     if (!tr) {                                             // 처음: 바로 흘리기 시작
       box.innerHTML = `<span class="tk-label">${lab}</span><div class="tk-view"><div class="tk-track tk-flow"></div></div>`;
@@ -991,7 +991,14 @@
     const now = Date.now();
     const pool = news.filter((n) => n.text && now - n.ts < 6 * 3600e3 && !isStrat(n) && impScore(n) >= 55)
       .sort((a, b) => impScore(b) - impScore(a) || b.ts - a.ts);
-    return dedupe(pool, false).slice(0, 6).sort((a, b) => b.ts - a.ts);
+    const top = dedupe(pool, false).slice(0, 6);
+    // 중요 속보가 적은 시간대(11/18 운영자 "앞단은 뉴스 위주로"): 최근 3시간 최신 속보로 8건까지 채운다
+    if (top.length < 8) {
+      const seen = new Set(top.map((n) => n.ts));
+      const fill = dedupe(news.filter((n) => n.text && now - n.ts < 3 * 3600e3 && !isStrat(n) && !seen.has(n.ts)).sort((a, b) => b.ts - a.ts));
+      for (const n of fill) { if (top.length >= 8) break; if (!top.some((o) => simTxt(o._g || bigr(o.text), n._g) >= 0.45)) top.push(n); }
+    }
+    return top.sort((a, b) => b.ts - a.ts);
   }
   // 메인 뉴스 한 줄 요약: 앞머리 [속보]·❗·◈ 같은 꼬리표, 날짜·시각, 끝의 [작성자]·(종합) 제거 → 첫 문장 → 80자 안쪽
   function gist(t, max = 80) {
@@ -1017,11 +1024,11 @@
       const g = gist(n.text), full = n.text.replace(/…$/, "");
       const t = g !== full ? `<span class="mn-x" data-open="0" title="눌러서 전체 보기">${esc(g)}</span><span class="mn-full" hidden>${esc(full)}</span>` : esc(g);
       const v = n.verify === "official" ? " · 🏛 공식" : n.verify === "multi" ? " · ✔ 복수 출처" : n.verify === "unconfirmed" ? " · ⚠ 미확인" : "";
-      return `<li><span class="mn-t">${hm(n.ts)}</span> ${t}${n.series_n > 1 ? ` <small>· 같은 발언 외 ${n.series_n - 1}건</small>` : ""} <small>${esc(n.src || "")}${v}</small></li>`;
+      return `<li class="mn-nw"><span class="mn-t">${hm(n.ts)}</span> <span class="mn-b">${t}${n.series_n > 1 ? ` <small>· 같은 발언 외 ${n.series_n - 1}건</small>` : ""} <small>${esc(n.src || "")}${v}</small></span></li>`;
     });
     if (!pins.length && !live.length) { box.hidden = true; return; }
     box.hidden = false;
-    box.innerHTML = `<p class="mn-h"><span class="hl-dot"></span><b>📰 메인 뉴스</b> <small>최근 6시간 중요 속보 · 1분마다 갱신</small><a href="#news">속보 전체 →</a></p><ul class="mn-list">${pins.join("")}${live.join("")}</ul>`;
+    box.innerHTML = `<p class="mn-h"><span class="hl-dot"></span><b>📰 메인 뉴스</b> <small>중요 속보 + 최신 속보 · 1분마다 갱신</small><a href="#news">속보 전체 →</a></p><ul class="mn-list">${pins.join("")}${live.join("")}</ul>`;
   }
 
   /* ── 속보 목록 ── */
