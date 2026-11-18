@@ -116,4 +116,48 @@ class TranslationTests(unittest.TestCase):
         self.assertNotIn("translate(rss)\n",source)
 
 
+    def test_retry_after_is_honored_and_error_remains_observable(self):
+        error=urllib.error.HTTPError("https://provider.invalid",429,"limit",{"Retry-After":"1200"},None)
+        with tempfile.TemporaryDirectory() as folder:
+            p=Path(folder)/"c.json"
+            with patch.object(t,"google_batch",side_effect=error),patch.object(t,"memory_one",return_value=KO):
+                stats=t.run([{"text":TITLE,"lang":"en","ts":1}],path=p,now=1000)
+            self.assertEqual(stats["provider_backoff_until"]["google"],2200)
+            with patch.object(t,"google_batch",side_effect=AssertionError("paused")):
+                stats=t.run([{"text":TITLE,"lang":"en","ts":1}],path=p,now=1061)
+            self.assertEqual(stats["last_errors"]["google"]["code"],"HTTP_429")
+
+    def test_crosscheck_obeys_the_same_provider_backoff_without_network(self):
+        with tempfile.TemporaryDirectory() as folder:
+            p=Path(folder)/"c.json"
+            p.write_text(json.dumps({"policy":t.POLICY,"off":{"google":2000}}))
+            with patch.object(t,"_get",side_effect=AssertionError("network forbidden")):
+                with self.assertRaises(RuntimeError):
+                    t.google_search_one("한국어 기사 제목",path=p,now=1000)
+
+    def test_crosscheck_reserves_shared_budget_and_cache_is_reused(self):
+        with tempfile.TemporaryDirectory() as folder:
+            p=Path(folder)/"c.json"
+            p.write_text(json.dumps({"policy":t.POLICY,"budget":{"start":1000,"calls":7}}))
+            with patch.object(t,"_get",return_value=[[["Nvidia earnings improve the market"]]]):
+                first=t.google_search_one("엔비디아 실적",path=p,now=1010)
+            self.assertEqual(json.loads(p.read_text())["budget"]["calls"],8)
+            with patch.object(t,"_get",side_effect=AssertionError("cached or budget")):
+                self.assertEqual(t.google_search_one("엔비디아 실적",path=p,now=1011),first)
+                with self.assertRaises(RuntimeError):
+                    t.google_search_one("다른 기사 제목",path=p,now=1011)
+
+    def test_crosscheck_429_pauses_headline_translation_too(self):
+        error=urllib.error.HTTPError("https://provider.invalid",429,"limit",{},None)
+        with tempfile.TemporaryDirectory() as folder:
+            p=Path(folder)/"c.json"
+            with patch.object(t,"_get",side_effect=error):
+                with self.assertRaises(urllib.error.HTTPError):
+                    t.google_search_one("엔비디아 실적",path=p,now=1000)
+            with patch.object(t,"google_batch",side_effect=AssertionError("same global pause")),patch.object(t,"memory_one",return_value=KO):
+                item={"text":TITLE,"lang":"en","ts":1}
+                t.run([item],path=p,now=1010)
+            self.assertEqual(item["tr_provider"],"mymemory")
+
+
 if __name__=="__main__":unittest.main()
