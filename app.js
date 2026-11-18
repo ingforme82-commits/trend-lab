@@ -48,6 +48,7 @@ const TICKS = [
 let lastPx = {};
 
 async function loadTicks() {
+  const putHTML = globalThis.trlViewport?.html || ((el, html) => { el.innerHTML = html; });
   try {
     const r = await fetch("https://api.hyperliquid.xyz/info", {
       method: "POST", headers: { "Content-Type": "application/json" },
@@ -128,7 +129,7 @@ async function loadTicks() {
       const reg = rg ? `<p class="t-meta">정규장 ${sg(rg.chg)} ${rg.open ? "장중" : `마감 ${mdhm(rg.at)}`}</p>` : "";
       return `<div class="tick${flash}" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">${val}</p><p class="t-ch ${cls}">${ch > 0 ? "▲" : ch < 0 ? "▼" : ""} ${ch > 0 ? "+" : ""}${ch.toFixed(2)}% <small>24시간</small></p><p class="fine" style="margin:2px 0 0">기준 24시간 전 ${(t.u || "") + prev.toLocaleString("ko-KR", { minimumFractionDigits: t.d, maximumFractionDigits: t.d }) + (t.suf || "")}</p>${won}${reg}${meta}</div>`;
     }).join("");
-    $("#tickGrid").innerHTML = html;
+    putHTML($("#tickGrid"), html);
     setTimeout(() => document.querySelectorAll(".tick.flash").forEach((e) => e.classList.remove("flash")), 900);
     const k = KST();
     $("#tickStamp").textContent = `${k.getMonth() + 1}/${k.getDate()}(${DOW[k.getDay()]}) ${hhmm(k)}:${String(k.getSeconds()).padStart(2, "0")} KST 수신 · 하이퍼리퀴드 24시간 선물 실시간`;
@@ -143,6 +144,7 @@ const mdhm = (ms) => { const d = KSTof(ms); return `${d.getMonth() + 1}/${d.getD
 
 /* ───────── 2. 체크포인트 ───────── */
 async function loadChecks() {
+  const putHTML = globalThis.trlViewport?.html || ((el, html) => { el.innerHTML = html; });
   try {
     const list = await (await fetch(`data/checkpoints.json?t=${Date.now()}`)).json();
     const today = ymd(KST());
@@ -150,15 +152,17 @@ async function loadChecks() {
     const k = KST(), nowHM = String(k.getHours()).padStart(2, "0") + ":" + String(k.getMinutes()).padStart(2, "0");
     const hmOf = (t) => { const m = String(t || "").match(/(\d{1,2}):(\d{2})/); return m ? m[1].padStart(2, "0") + ":" + m[2] : ""; };
     const items = list.filter((c) => c.date > today || (c.date === today && (!hmOf(c.time) || hmOf(c.time) >= nowHM))).sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || ""))).slice(0, 8);
-    $("#checkList").innerHTML = items.length ? items.map((c) => {
+    const html = items.length ? items.map((c) => {
       const d = new Date(c.date + "T00:00:00");
       return `<li class="${c.date === today ? "today" : ""}"><span class="c-date">${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]})${c.time ? " " + esc(c.time) : ""}</span><p class="c-title">${esc(c.title)}</p>${c.note ? `<p class="c-note">${esc(c.note)}</p>` : ""}</li>`;
     }).join("") : `<li><p class="c-title">다음 일정은 곧 업데이트됩니다.</p></li>`;
+    putHTML($("#checkList"), html);
   } catch { /* 체크포인트 없으면 섹션만 비움 */ }
 }
 
 /* ───────── 2-0. 📅 미국 주요 실적 일정(data/earnings.json — tools/earnings_cal.py, Finnhub·야후 교차 확인, 11/18) ───────── */
 async function loadEarnings() {
+  const putHTML = globalThis.trlViewport?.html || ((el, html) => { el.innerHTML = html; });
   try {
     const read = (url, fallback) => fetch(url).then((r) => { if (!r.ok) throw new Error("calendar unavailable"); return r.json(); }).catch(() => fallback);
     const [j, checkpoints] = await Promise.all([
@@ -174,7 +178,7 @@ async function loadEarnings() {
     if (!items.length) return;
     const bn = (v) => v == null ? "" : v >= 1e9 ? `$${(v / 1e9).toFixed(1)}B` : `$${(v / 1e6).toFixed(0)}M`;
     const pct = (v) => v == null ? "" : ` <b class="${v >= 0 ? "eu" : "ed"}">${v > 0 ? "+" : ""}${v}%</b>`;
-    $("#earnList").innerHTML = items.map((x) => {
+    const html = items.map((x) => {
       if (x.event_type === "ipo") return `<li class="${x.date === today ? "today" : ""}"><span class="c-date">미국 ${esc(x.market_date || x.date)} · ${esc(x.timing || "정확한 한국 시각 미정")}</span><p class="c-title">${esc(x.title)} <small>${esc(x.sym || "")} · IPO</small></p><p class="c-note">${esc(x.note || "")}</p><p class="c-note">출처: ${esc(x.source || "확인 중")}</p></li>`;
       const d = new Date(x.date + "T00:00:00"), done = x.eps_act != null || x.rev_act != null;
       const est = x.eps_est != null ? `예상 EPS $${(+x.eps_est).toFixed(2)}${x.rev_est ? ` · 매출 ${bn(x.rev_est)}` : ""}` : "";
@@ -183,6 +187,7 @@ async function loadEarnings() {
       return `<li class="${(x.kst_date || x.date) === today ? "today" : ""}"><span class="c-date">${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]}) ${x.kst === "시각 미정" ? "미국 · 발표 시각 미정" : `미국 ${esc(x.hour)} · 한국 ${esc(x.kst)}`}</span>`
         + `<p class="c-title">${esc(x.name)} <small>${esc(x.sym)} · ${esc(x.sector)}</small></p><p class="c-note">${est}${act}</p>${warn}</li>`;
     }).join("");
+    putHTML($("#earnList"), html);
     $("#earnStamp").textContent = (j.updated ? `· 실적 ${j.updated} 기준` : "") + (ipos.length ? " · IPO는 회사·거래소 공식 일정" : "");
     $("#earnings").hidden = false;
   } catch { /* 개별 출처 실패는 다른 일정까지 숨기지 않는다 */ }
@@ -195,7 +200,7 @@ async function loadHeadline() {
   try { hlData = await (await fetch(`data/headline.json?t=${Date.now()}`)).json(); } catch { /* 없음 */ }
   renderHeadline();
 }
-function renderHeadline() {
+function renderHeadlineRaw() {
   try {
     const h = hlData || {};
     const today = ymd(KST());
@@ -203,7 +208,7 @@ function renderHeadline() {
     const tags = new Set(auto.map((x) => x.tag));
     const items = [...auto, ...(h.items || []).filter((x) => (!x.until || x.until >= today) && !tags.has(x.tag))];
     if (!items.length) return;
-    $("#hlList").innerHTML = items.map((x) => `<article class="hl-card${x.main ? " hl-main" : ""}">
+    $("#hlList").innerHTML = items.map((x) => `<article class="hl-card${x.main ? " hl-main" : ""}" data-viewport-key="headline:${esc(x.tag || x.title)}">
       <p class="hl-tag">${x.main ? '<span class="hl-badge">메인</span>' : ""}${esc(x.tag || "")}${x.when ? ` <small>${esc(x.when)}</small>` : ""}</p>
       <h3 class="hl-title">${esc(x.title)}</h3>
       <ul class="hl-pts">${(x.points || []).map((p) => `<li>${esc(p)}</li>`).join("")}</ul>
@@ -212,6 +217,9 @@ function renderHeadline() {
     $("#hlStamp").textContent = h.updated ? `${h.updated} 정리` : "";
     $("#headline").hidden = false;
   } catch { /* 주요 이슈 없으면 칸 숨김 */ }
+}
+function renderHeadline() {
+  return globalThis.trlViewport ? globalThis.trlViewport.update(renderHeadlineRaw) : renderHeadlineRaw();
 }
 window.renderHeadline = renderHeadline;
 
@@ -649,6 +657,7 @@ function liveBand() {
   return { icon, title, text: out.filter(Boolean).join(" · "), date: (k.getMonth() + 1) + "/" + k.getDate(), time };
 }
 async function loadBand() {
+  const putHTML = globalThis.trlViewport?.html || ((el, html) => { el.innerHTML = html; });
   if (window.__pinNotice) return;
   try {
     const live = liveBand();
@@ -657,7 +666,7 @@ async function loadBand() {
     if (live) {
       const node = $("#notice");
       if (!node) return;
-      node.innerHTML = bandHtml(live.icon + ' <b>' + live.date + ' ' + live.title + '</b> <small>' + live.time + '</small>', live.text, sigHtml);
+      putHTML(node, bandHtml(live.icon + ' <b>' + live.date + ' ' + live.title + '</b> <small>' + live.time + '</small>', live.text, sigHtml));
       node.hidden = false;
       bandFit();
       return;
@@ -669,7 +678,7 @@ async function loadBand() {
     if (!t) return;
     const parts = BAND[h.slot], d = h.day.slice(5).replace("-", "/").replace(/^0/, "");
     const slotLabel = h.headline ? hhmm(KST(new Date(h.at))) + " KST 기준" : "(" + h.slot + " 정리)";
-    $("#notice").innerHTML = bandHtml(parts[0] + ' <b>' + d + " " + parts[1] + '</b> <small>' + slotLabel + '</small>', t, sigHtml);
+    putHTML($("#notice"), bandHtml(parts[0] + ' <b>' + d + " " + parts[1] + '</b> <small>' + slotLabel + '</small>', t, sigHtml));
     $("#notice").hidden = false;
     bandFit();
   } catch { /* 띠 없이 */ }
@@ -751,6 +760,7 @@ function expireRt() {
   });
 }
 async function loadRt() {
+  const putHTML = globalThis.trlViewport?.html || ((el, html) => { el.innerHTML = html; });
   expireRt();
   const u = window.trlRtUrl;
   if (!u || document.hidden || rtBusy) return;
@@ -774,7 +784,7 @@ async function loadRt() {
       el.dataset.rt = String(r.px);
       el.dataset.rtAt = String(r.at);
       el.className = "tick" + flash;
-      el.innerHTML = `<p class="t-name">${RT_NAMES[k] || k}</p><p class="t-px">${nf(r.px)}</p><p class="t-ch ${c}">${r.chg > 0 ? "▲" : r.chg < 0 ? "▼" : ""} ${r.chg > 0 ? "+" : ""}${(+r.chg).toFixed(2)}% <small>${r.mk === "NXT" ? "넥스트레이드 체결" : "실시간 체결"}</small></p><p class="fine" style="margin:2px 0 0">기준 전일 종가 ${nf(r.ref)}${r.mk ? ` · ${r.mk === "NXT" ? "넥스트레이드(NXT)" : "통합(KRX+NXT)"}` : ""}</p>${k === "SKHY" ? skhyMeta(r.px) : ""}<p class="t-meta">KIS 웹소켓 · ${hhmm(KSTof(r.at))}:${String(KSTof(r.at).getSeconds()).padStart(2, "0")}</p>`;
+      putHTML(el, `<p class="t-name">${RT_NAMES[k] || k}</p><p class="t-px">${nf(r.px)}</p><p class="t-ch ${c}">${r.chg > 0 ? "▲" : r.chg < 0 ? "▼" : ""} ${r.chg > 0 ? "+" : ""}${(+r.chg).toFixed(2)}% <small>${r.mk === "NXT" ? "넥스트레이드 체결" : "실시간 체결"}</small></p><p class="fine" style="margin:2px 0 0">기준 전일 종가 ${nf(r.ref)}${r.mk ? ` · ${r.mk === "NXT" ? "넥스트레이드(NXT)" : "통합(KRX+NXT)"}` : ""}</p>${k === "SKHY" ? skhyMeta(r.px) : ""}<p class="t-meta">KIS 웹소켓 · ${hhmm(KSTof(r.at))}:${String(KSTof(r.at).getSeconds()).padStart(2, "0")}</p>`);
     });
   } catch { window.trlRtHealth = { checked: Date.now(), ok: false }; }
   finally { rtBusy = false; window.dispatchEvent(new Event('trl:quotes')); }
@@ -783,12 +793,14 @@ setInterval(loadRt, 2000);
 
 // 📊 출처 점수판(11/16 운영자) — news.json 'srcscore'. 점수 = 성공률 × 일치율 ÷ 응답 시간·신선도
 window.paintSrcScore = () => {
+  const putHTML = globalThis.trlViewport?.html || ((el, html) => { el.innerHTML = html; });
   const s = window.trlSrcScore, box = document.getElementById("srcScore");
   if (!box || !s || !s.length) return;
   const pct = (v) => Math.round(v * 100) + "%";
-  document.getElementById("srcScoreBody").innerHTML = s.map((g) => `<p class="tick-group">${g.name}</p><table class="src-t"><tr><th>순위</th><th>출처</th><th>점수</th><th>성공</th><th>일치</th><th>응답</th><th>신선도</th><th>횟수</th></tr>${
+  const html = s.map((g) => `<p class="tick-group">${g.name}</p><table class="src-t"><tr><th>순위</th><th>출처</th><th>점수</th><th>성공</th><th>일치</th><th>응답</th><th>신선도</th><th>횟수</th></tr>${
     g.rows.map((r, i) => `<tr${r.rest ? ' class="dim"' : ""}><td>${i + 1}</td><td>${r.src}${r.rest ? " (쉬는 중)" : ""}</td><td><b>${r.score.toFixed(2)}</b></td><td>${pct(r.ok)}</td><td>${pct(r.agree)}</td><td>${r.secs}초</td><td>${r.age}분</td><td>${r.n}</td></tr>`).join("")}</table>`).join("")
     + `<p class="fine">점수가 높은 출처를 먼저 씁니다. 3번 연속 실패하면 10분 쉬고 다시 시도합니다. 기록이 10번 넘어야 순서가 바뀝니다.</p>`;
+  putHTML(document.getElementById("srcScoreBody"), html);
   box.hidden = false;
 };
 window.paintSrcScore();                               // news.js 가 먼저 받아 둔 점수판이 있으면 바로 그림

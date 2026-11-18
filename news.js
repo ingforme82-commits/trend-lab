@@ -332,7 +332,7 @@
   }
 
   /* ── 🔥 화제 종목(종목군): 한 칸에서 번갈아 보이기 ── */
-  let spotIdx = 0, spotHold = false, spotTimer = null, memOpen = null;   // memOpen: "종목군id:심볼"
+  let spotIdx = 0, spotActive = null, memOpen = null;   // memOpen: "종목군id:심볼"
   // 하이퍼리퀴드에서 1분봉을 볼 수 있는 종목(그 외는 차트 버튼 대신 정규장 수치만)
   const HL_SYMS = new Set(["LITE", "CRWV", "NBIS", "IREN", "AAOI", "GLW", "INTC", "NVDA", "AMD", "MU", "TSM", "TSLA", "SPCX", "META", "MSFT", "GOOGL", "AMZN", "AAPL", "ORCL", "PLTR", "AVGO", "ARM", "MRVL", "QCOM", "LRCX", "AMAT", "ASML", "SMH", "SOXL", "COIN", "HOOD", "NFLX", "NET", "CRWD", "DELL", "IBM", "WDC", "SNDK", "GEV", "BE", "MAGS", "URNM", "XLE", "LLY", "RKLB", "MSTR", "CRCL", "BMNR", "RIVN", "HIMS", "MRNA", "CVX", "NOW", "SKHX", "SMSN"]);
   function spotCard(s) {
@@ -384,19 +384,18 @@
     const box = q("#spotBox"); if (!box) return;
     if (!spot.length) { box.hidden = true; return; }
     box.hidden = false;
+    if (spotActive) { const i = spot.findIndex((x) => (x.id || x.name) === spotActive); if (i >= 0) spotIdx = i; }
     spotIdx = ((spotIdx % spot.length) + spot.length) % spot.length;
+    spotActive = spot[spotIdx].id || spot[spotIdx].name;
     const nav = spot.length > 1 ? `<div class="spot-nav"><button class="spot-arrow" data-spot-step="-1" aria-label="이전">‹</button>${spot.map((x, i) =>
       `<button class="spot-dot${i === spotIdx ? " on" : ""}" data-spot-go="${i}" title="${esc(x.name)}">${esc(x.name)}</button>`).join("")}<button class="spot-arrow" data-spot-step="1" aria-label="다음">›</button></div>` : "";
-    box.innerHTML = `<p class="spot-h">🔥 오늘의 주요 종목군 <small>미국 개장 30분 뒤 자동 선정 · 1분마다 중복 합치기·관련 낮은 종목 빼기·순서 갱신 — 움직임 큰 종목군 · ⚡ 급등락 대형주 · 📈 연일 상승 종목군 · 추천 아님 · ${spot.length}개가 번갈아 보입니다</small></p>${nav}${spotCard(spot[spotIdx])}`;
-    if (!spotTimer && spot.length > 1) {
-      spotTimer = setInterval(() => { if (!spotHold && !memOpen) { spotIdx++; drawSpot(); } }, 8000);
-      box.addEventListener("mouseenter", () => { spotHold = true; });
-      box.addEventListener("mouseleave", () => { spotHold = false; });
-      box.addEventListener("touchstart", () => { spotHold = true; setTimeout(() => { spotHold = false; }, 15000); }, { passive: true });
+    box.innerHTML = `<p class="spot-h">🔥 오늘의 주요 종목군 <small>미국 개장 30분 뒤 자동 선정 · 1분마다 중복 합치기·관련 낮은 종목 빼기·순서 갱신 — 움직임 큰 종목군 · ⚡ 급등락 대형주 · 📈 연일 상승 종목군 · 추천 아님 · ${spot.length}개 · 버튼으로 종목군 선택</small></p>${nav}${spotCard(spot[spotIdx])}`;
+    if (!box.dataset.spotBound) {
+      box.dataset.spotBound = "1";
       box.addEventListener("click", (e) => {
         const st = e.target.closest("[data-spot-step]"), go = e.target.closest("[data-spot-go]");
-        if (st) { spotIdx += +st.dataset.spotStep; memOpen = null; drawSpot(); }
-        if (go) { spotIdx = +go.dataset.spotGo; memOpen = null; drawSpot(); }
+        if (st) { spotActive = null; spotIdx += +st.dataset.spotStep; memOpen = null; drawSpot(); }
+        if (go) { spotActive = null; spotIdx = +go.dataset.spotGo; memOpen = null; drawSpot(); }
         const mb = e.target.closest("[data-mem]");
         if (mb) { memOpen = memOpen === mb.dataset.mem ? null : mb.dataset.mem; drawSpot(); }
       });
@@ -809,7 +808,7 @@
       g.items.forEach((regular) => {
         const it = chLive(regular.display ? {...regular, ...regular.display} : regular);
         const mdl = many ? `<span class="ch-md m${Math.min(it.rank, 4)}">${it.rank <= 3 ? ["금", "은", "동"][it.rank - 1] : it.rank}</span>` : "";
-        html += `<article class="ch-card">
+        html += `<article class="ch-card" data-viewport-key="channel:${esc(it.code)}">
           <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b><span class="mn">${chFmt(g.cc, it.px)}</span><b class="${it.chg >= 0 ? "up" : "down"}">${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%</b>${sigCodes.has(it.code) ? '<span class="ch-sig">정규장 5일선 돌파</span>' : ""}${resCodes.has(it.code) ? '<span class="ch-sig ch-res">정규장 5일선 저항</span>' : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span></div>
           ${it.upper_touch_count != null ? `<div class="ch-contacts"><span class="${it.upper_verified ? "ch-contact-ok" : "ch-contact-wait"}">상단 ${it.upper_touch_count}${it.upper_touch_count >= 3 ? "회" : "점"} ${it.upper_verified ? (it.upper_touch_count >= 3 ? "접촉 보강" : "기준선") : "재확인"}</span><span class="${it.lower_verified ? "ch-contact-ok" : "ch-contact-wait"}">하단 ${it.lower_touch_count}${it.lower_touch_count >= 3 ? "회" : "점"} ${it.lower_verified ? (it.lower_touch_count >= 3 ? "접촉 보강" : "기준선") : "재확인"}</span><small>추가 접촉 오차 ${it.touch_tolerance_pct}% · ${it.touch_min_spacing}거래일 간격 · 최근 ${it.touch_lookback_bars || it.rows.length}봉</small></div>` : ""}
           ${regular.display ? `<p class="ch-leg"><b>${esc(it.scope)} · ${esc(it.session)} · ${esc(it.quality_note)}</b> · ${esc(it.source)} · ${esc(it.time_kind)} ${hm(it.source_at)}<br>${esc(it.history_note)} · 등락률은 전일 정규장 종가 대비 · 5일선·채널 위치는 참고값<br>정규장 차트 ${chFmt(g.cc, regular.px)} · ${esc(regular.state)} · 5일선 ${chFmt(g.cc, regular.ma5)} · 시간외 값으로 정규장 돌파를 확정하지 않음</p>` : `${it.session_note ? `<p class="ch-leg">${esc(it.session_note)}</p>` : ""}${chNxt(it.nxt)}`}
@@ -1137,7 +1136,7 @@
     });
   }
 
-  const redraw = () => { drawChan(); drawTgSum(); drawHeroLive(); drawWorld(); drawSpot(); drawWatch(); drawSectors(); drawS7(); drawFlows(); drawBrief(); if (full) { drawCharts(); drawMoves(); drawTrend(); drawList(); } };
+  const redraw = () => (window.trlViewport ? window.trlViewport.update : (fn) => fn())(() => { drawChan(); drawTgSum(); drawHeroLive(); drawWorld(); drawSpot(); drawWatch(); drawSectors(); drawS7(); drawFlows(); drawBrief(); if (full) { drawCharts(); drawMoves(); drawTrend(); drawList(); } });
   const setKw = (label, pat) => {
     try { kwFilter = { label, rx: new RegExp(pat, "i") }; } catch { kwFilter = null; }
     tag = "전체"; shown = 30; drawTrend(); drawList(); q("#news").scrollIntoView({ behavior: "smooth" });
@@ -1200,7 +1199,7 @@
         const now = await stamp();
         if (!now.replace(/\|/g, "")) return;
         if (first === null) { first = now; return; }
-        if (now !== first && !document.querySelector("input:focus, textarea:focus, select:focus")) location.reload();
+        if (now !== first) { first = now; window.trlViewport?.offerUpdate(); }
       } catch { /* 다음에 다시 */ }
     }, 5 * 60000);
     stamp().then((v) => { if (first === null && v.replace(/\|/g, "")) first = v; }).catch(() => {});
