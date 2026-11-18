@@ -160,14 +160,22 @@ async function loadChecks() {
 /* ───────── 2-0. 📅 미국 주요 실적 일정(data/earnings.json — tools/earnings_cal.py, Finnhub·야후 교차 확인, 11/18) ───────── */
 async function loadEarnings() {
   try {
-    const j = await (await fetch(`data/earnings.json?t=${Math.floor(Date.now() / 600000)}`)).json();
+    const read = (url, fallback) => fetch(url).then((r) => { if (!r.ok) throw new Error("calendar unavailable"); return r.json(); }).catch(() => fallback);
+    const [j, checkpoints] = await Promise.all([
+      read(`data/earnings.json?t=${Math.floor(Date.now() / 600000)}`, {}),
+      read(`data/checkpoints.json?t=${Math.floor(Date.now() / 600000)}`, [])
+    ]);
     const today = ymd(KST());
     const until = ymd(new Date(KST().getTime() + 21 * 864e5)), from = ymd(new Date(KST().getTime() - 2 * 864e5));
-    const items = (j.items || []).filter((x) => x.date >= from && x.date <= until).slice(0, 24);
+    const ipos = (Array.isArray(checkpoints) ? checkpoints : []).filter((x) => x.kind === "ipo" && x.date >= today && x.date <= until)
+      .map((x) => ({...x, event_type: "ipo", priority: x.priority || 0}));
+    const items = [...ipos, ...(j.items || []).filter((x) => x.date >= from && x.date <= until)]
+      .sort((a, b) => (b.priority || 0) - (a.priority || 0) || a.date.localeCompare(b.date)).slice(0, 24);
     if (!items.length) return;
     const bn = (v) => v == null ? "" : v >= 1e9 ? `$${(v / 1e9).toFixed(1)}B` : `$${(v / 1e6).toFixed(0)}M`;
     const pct = (v) => v == null ? "" : ` <b class="${v >= 0 ? "eu" : "ed"}">${v > 0 ? "+" : ""}${v}%</b>`;
     $("#earnList").innerHTML = items.map((x) => {
+      if (x.event_type === "ipo") return `<li class="${x.date === today ? "today" : ""}"><span class="c-date">미국 ${esc(x.market_date || x.date)} · ${esc(x.timing || "정확한 한국 시각 미정")}</span><p class="c-title">${esc(x.title)} <small>${esc(x.sym || "")} · IPO</small></p><p class="c-note">${esc(x.note || "")}</p><p class="c-note">출처: ${esc(x.source || "확인 중")}</p></li>`;
       const d = new Date(x.date + "T00:00:00"), done = x.eps_act != null || x.rev_act != null;
       const est = x.eps_est != null ? `예상 EPS $${(+x.eps_est).toFixed(2)}${x.rev_est ? ` · 매출 ${bn(x.rev_est)}` : ""}` : "";
       const act = done ? `<br>실제 EPS ${x.eps_act != null ? "$" + (+x.eps_act).toFixed(2) + pct(x.eps_sur) : "-"}${x.rev_act != null ? ` · 매출 ${bn(x.rev_act)}${pct(x.rev_sur)}` : ""}` : "";
@@ -175,9 +183,9 @@ async function loadEarnings() {
       return `<li class="${(x.kst_date || x.date) === today ? "today" : ""}"><span class="c-date">${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]}) ${x.kst === "시각 미정" ? "미국 · 발표 시각 미정" : `미국 ${esc(x.hour)} · 한국 ${esc(x.kst)}`}</span>`
         + `<p class="c-title">${esc(x.name)} <small>${esc(x.sym)} · ${esc(x.sector)}</small></p><p class="c-note">${est}${act}</p>${warn}</li>`;
     }).join("");
-    $("#earnStamp").textContent = j.updated ? `· ${j.updated} 기준` : "";
+    $("#earnStamp").textContent = (j.updated ? `· 실적 ${j.updated} 기준` : "") + (ipos.length ? " · IPO는 회사·거래소 공식 일정" : "");
     $("#earnings").hidden = false;
-  } catch { /* 실적 일정 없으면 칸 숨김 */ }
+  } catch { /* 개별 출처 실패는 다른 일정까지 숨기지 않는다 */ }
 }
 
 /* ───────── 2-1. 📌 주요 이슈(data/headline.json, 운영자가 올림 · 사실·수치만 · 외부 링크 없음) ───────── */
