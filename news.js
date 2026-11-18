@@ -906,8 +906,12 @@
   }
 
   /* ── 📋 시장 브리핑(실시간 + 매일 12시 기록) ── */
+  const BRIEF_HISTORY_FROM = "2026-11-14";
   async function loadBriefs() {
-    try { briefs = await (await fetch(`data/briefs.json?t=${Math.floor(Date.now() / 600000)}`)).json(); } catch { briefs = []; }
+    try {
+      const history = await (await fetch(`data/briefs.json?t=${Math.floor(Date.now() / 600000)}`)).json();
+      briefs = Array.isArray(history) ? history.filter(h => h && typeof h.day === "string" && h.day >= BRIEF_HISTORY_FROM) : [];
+    } catch { briefs = []; }
   }
   const sg = (v, u = "%") => `<b class="${cls(v)}">${v > 0 ? "+" : ""}${(+v).toFixed(2)}${u}</b>`;
   // 🌙 저녁 점검(20:05·22:15): 선물·유가를 한국장 마감(15:30)·넥장 마감(20:00)·1시간 전 대비로
@@ -982,7 +986,6 @@
   }
   function drawBrief() {
     const box = q("#briefNow"); if (!box) return;
-    const today = briefs.filter((h) => h.day !== kstDay(Date.now()) || true);
     box.innerHTML = brief ? briefHtml(brief, briefs.filter((h) => h.day !== kstDay(Date.now()))) : `<p class="empty">브리핑을 불러오는 중…</p>`;
     if (brief) setText("#briefStamp", `실시간 · ${hm(brief.at)} KST 기준`);
     const hb = q("#briefHist"); if (!hb) return;

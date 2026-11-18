@@ -1,0 +1,21 @@
+name: Brief history retention
+on:
+  pull_request:
+    paths:
+      - 'data/briefs.json'
+      - 'tools/brief.py'
+      - 'tools/brief_slot.py'
+      - '.github/workflows/brief-history.yml'
+permissions:
+  contents: read
+jobs:
+  history:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate retained records and existing brief checks
+        run: |
+          python3 -c "import json; from pathlib import Path; h=json.loads(Path('data/briefs.json').read_text()); assert all(r['day'] >= '2026-11-14' for r in h); assert any(r['day'] == '2026-11-14' for r in h); print('Retained history:',len(h))"
+          python3 -m unittest discover -s tests -p 'test_brief_slot.py' -v
+          python3 -m py_compile tools/brief.py tools/brief_slot.py
+          node --check news.js
