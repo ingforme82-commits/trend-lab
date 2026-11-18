@@ -27,7 +27,7 @@
   const cls = (v) => (v > 0.005 ? "c-up" : v < -0.005 ? "c-dn" : "c-fl");
   const pct = (v) => v == null ? "-" : `<b class="${cls(v)}">${v > 0 ? "+" : ""}${v.toFixed(2)}%</b>`;
 
-  let news = [], moves = [], series = {}, notes = [], candles = {}, candles1 = {}, sel = null, tag = "전체", shown = 15, health = null;
+  let news = [], moves = [], series = {}, notes = [], candles = {}, candles1 = {}, sel = null, tag = "전체", shown = 10, health = null;
   // 속보 필터: 중요도·시간·검증·정렬(분류는 tag 칩)
   const flt = { imp: "all", hrs: 0, ver: "all", sort: "new" };
   let tgsum = null, world = [], spot = [], trend = [], sectors = [], brief = null, briefs = [], kwFilter = null, momentum = null, watch = null, lev = null, flows = null, flowOpen = null;   // kwFilter: {label, rx}
@@ -1041,7 +1041,7 @@
       + sel("ver", "검증", [["all", "전체"], ["ok", "공식·복수 출처만"], ["noun", "미확인 제외"], ["un", "미확인만"]])
       + sel("sort", "정렬", [["new", "최신순"], ["imp", "중요도순"], ["mkt", "시장 반응순"]]);
     box.dataset.ready = "1";
-    box.addEventListener("change", (e) => { const f = e.target.dataset.f; if (!f) return; flt[f] = f === "hrs" ? +e.target.value : e.target.value; shown = 15; drawList(); });
+    box.addEventListener("change", (e) => { const f = e.target.dataset.f; if (!f) return; flt[f] = f === "hrs" ? +e.target.value : e.target.value; shown = 10; drawList(); });
   }
   function drawHealth(updated) {
     const el = q("#newsStamp"); if (!el) return;
@@ -1095,7 +1095,7 @@
   const open = (coin, ts) => window.trlChart && window.trlChart.open({ coin, sel: ts, news });
   const full = !!q("#newsList");
   if (full) {
-    q("#newsChips").addEventListener("click", (e) => { const b = e.target.closest(".chip"); if (!b) return; tag = b.dataset.t; shown = 15; drawList(); });
+    q("#newsChips").addEventListener("click", (e) => { const b = e.target.closest(".chip"); if (!b) return; tag = b.dataset.t; shown = 10; drawList(); });
     q("#newsList").addEventListener("click", (e) => {
       if (e.target.closest("a")) return;
       const li = e.target.closest(".nw"); if (!li) return;
@@ -1105,7 +1105,7 @@
       const coin = m ? COIN[m.asset] : n.tags.includes("중동·유가") ? "xyz:CL" : (n.tags.includes("한국") || n.tags.includes("반도체")) ? "xyz:KR200" : n.tags.includes("연준·금리") ? "srv:US10Y" : "xyz:XYZ100";
       open(coin, ts);
     });
-    q("#newsMore").addEventListener("click", () => { shown += 15; drawList(); });
+    q("#newsMore").addEventListener("click", () => { shown += 10; drawList(); });
     const openCard = (e) => { const c = e.target.closest(".nc[data-coin]"); if (c) open(c.dataset.coin, sel); };
     q("#newsCharts").addEventListener("click", openCard);
     q("#newsCharts").addEventListener("keydown", (e) => { if (e.key === "Enter") openCard(e); });
