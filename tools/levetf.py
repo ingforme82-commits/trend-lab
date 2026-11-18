@@ -18,10 +18,12 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CACHE = ROOT / "tools" / "levetf_cache.json"
-ETF = [("SOXL", "SOXL", "미국 반도체 3배", "^SOX", "필라델피아 반도체지수"), ("DRAM", "DRAM", "라운드힐 메모리 ETF(SK하이닉스·마이크론·삼성전자 중심)", None, ""),
+# 11/18 운영자: SOXL 바로 다음에 KORU, SOXS(반도체 3배 인버스)는 맨 마지막에 다시 추가
+ETF = [("SOXL", "SOXL", "미국 반도체 3배", "^SOX", "필라델피아 반도체지수"), ("KORU", "KORU", "한국 3배", "EWY", "EWY(MSCI 한국)"),
+       ("DRAM", "DRAM", "라운드힐 메모리 ETF(SK하이닉스·마이크론·삼성전자 중심)", None, ""),
        ("SKHY", "SKHY", "SK하이닉스 ADR(나스닥, 10주 = 원주 1주)", None, ""), ("MU", "MU", "마이크론(미국 메모리 대장)", None, ""),
-       ("KORU", "KORU", "한국 3배", "EWY", "EWY(MSCI 한국)")]
-LEV = {"SOXS": -3}                                         # 기초 등락 배수(기본 3). 11/16 운영자: 사이트 칸은 SOXS 대신 메모리 ETF DRAM(기초 비교 없음)
+       ("SOXS", "SOXS", "미국 반도체 3배 인버스", "^SOX", "필라델피아 반도체지수")]
+LEV = {"SOXS": -3}                                         # 기초 등락 배수(기본 3). SOXS는 -3배(11/18 맨 끝에 다시 추가)
 
 
 def extra_stats(past: list[dict], today: dict | None, vol_today: float | None, vols: list[float]) -> dict:
@@ -109,7 +111,7 @@ def build() -> dict:
     try:                                                     # SOXL 구성 대형주 상승·하락 상위(섹터 모멘텀과 같은 데이터)
         us = json.loads((ROOT / "tools" / "leadership_us.json").read_text(encoding="utf-8"))["rows"]
         rs = sorted(({"name": r["name"], "chg": r["chg"]} for r in us), key=lambda r: -r["chg"])
-        items[0]["members"] = {"up": rs[:3], "down": rs[-3:][::-1], "n": len(rs), "n_up": sum(1 for r in rs if r["chg"] > 0)}
+        next(r for r in items if r["sym"] == "SOXL")["members"] = {"up": rs[:3], "down": rs[-3:][::-1], "n": len(rs), "n_up": sum(1 for r in rs if r["chg"] > 0)}
     except Exception:  # noqa: BLE001
         pass
     v = {"at": int(now * 1000), "items": items}

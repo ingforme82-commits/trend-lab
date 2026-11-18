@@ -448,7 +448,9 @@
       <div class="lc-cs">${C.join("")}</div>${bar}${base || mem ? `<p class="lc-f">${base}${mem}</p>` : ""}</div>`;
   }
   function levHtml(L, compact) {
-    const its = (L && L.items) || [];
+    // 11/18 운영자: SOXL → KORU → (나머지) → SOXS 순. 서버 데이터 순서와 상관없이 화면에서 맞춘다
+    const ORD = ["SOXL", "KORU", "DRAM", "SKHY", "MU", "SOXS"], rk = (s) => { const i = ORD.indexOf(s); return i < 0 ? ORD.length - 1 : i; };
+    const its = ((L && L.items) || []).slice().sort((a, b) => rk(a.sym) - rk(b.sym));
     if (!its.length) return "";
     return `<div class="lvbox"><p class="mm-h">🔬 SOXL · KORU 한눈에 <small>${hm(L.at)} 한국 시간 조회</small></p><div class="lc-g">${its.map((x) => levCard(x, undefined, L.at)).join("")}</div>
       ${compact ? "" : `<p class="mm-f">NH 현재가 우선 · 시간외 등락률은 정규장 종가 대비 · 1분마다 자동 조회(지연 가능) · 조회 시각은 한국 시간 · 지표·막대는 정규장 기준 · 3배 ETF는 하루 단위로 3배 추종 · 매수·매도 권유 아님</p>`}</div>`;
