@@ -232,3 +232,10 @@
 - 운영자 추가: 오전 고정판단 대신 국가별 현재 추세 약5줄. chanNow는 차트와동일 chDisplay/chLive값에서 나라별 최대5종목(한국지수우선/미국NVDA·MU·SOXL·SKHY·TSM) 가격·등락·5일선위아래·채널상태·제공시각. 열린시장먼저, 마감국가는마지막시세명시. 모든18종목차트는 유지. 분당갱신/추가웹소켓체결반영, 자동주문추천없음.
 - 고정가격이남은 🇺🇸미국장장중점검(11/18 02:09)과 📐반도체채널해설(11/17) 수동카드 제거. 교육용판단기준·다른IPO/실적/뉴스카드는보존. drawChan전체 viewport트랜잭션으로 현재요약·차트동기갱신중읽는위치보존.
 - 회귀: 실제MU726.48/712.42/+1.97 재현, 이전시간외745.8혼입차단, 프리/애프터/정규기준, 양음보합부호·색상·요약동일성·웹소켓다른chg무시. 기존차트/세션/스크롤Actions 후병합, Oracle새게시별도확인.
+
+
+### 11/18 23:00 KST 실제 Oracle 재검증 완료
+- main eb88b9638adaa486992ee9d6262e9718c0facf6a의Pages배포success. 동일코드Chromium390/1280검사는두workflow모두최종success.
+- Oracle live b1c1e6d6cae2e0ecd303216491d1004517e5bdc6 (14:00:27UTC) runtime.source_revision=eb88b963 확인. MU display.line_method=fixed_two_anchor/lower_touch_count=2로복원,session_errs빈목록.
+- 해당스냅샷 MU726.2318/정규장기준712.4199829101562 → +1.94%. 최신가격고정표시금지. 통합/시간외display11개모두서버chg=(px/base-1)*100두자리·frontend chDisplay값일치. 기본18종목유지.
+- 국가별현재요약은동일chDisplay/chLive를사용하는렌더검사통과,오전고정시황/옛NVDA가격해설삭제확인. 물리휴대폰시각검사완료로표현하지않음.
