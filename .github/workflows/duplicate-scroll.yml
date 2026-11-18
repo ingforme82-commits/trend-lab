@@ -1,0 +1,41 @@
+name: Duplicate headline scroll regression
+on:
+  pull_request:
+    paths:
+      - 'viewport.js'
+      - 'news.js'
+      - 'app.js'
+      - 'tests/browser_scroll_check.py'
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - name: JavaScript regressions
+        run: |
+          node --check viewport.js
+          node --check app.js
+          node --check news.js
+          node tests/test_ipo_calendar.cjs
+          node tests/test_moves_display.cjs
+          node tests/test_index_chart_render.cjs
+      - name: Install browser in CI
+        run: |
+          python3 -m pip install playwright
+          python3 -m playwright install --with-deps chromium
+      - name: Prove the previous code reproduces the reading-position failure
+        run: |
+          git show ${{ github.event.pull_request.base.sha }}:viewport.js > /tmp/trl-previous-viewport.js
+          if TRL_VIEWPORT_TEST_OVERRIDE=/tmp/trl-previous-viewport.js python3 tests/browser_scroll_check.py > /tmp/trl-previous-scroll.log 2>&1; then
+            echo "Expected old code to fail; reproduction missing"
+            exit 1
+          fi
+          cat /tmp/trl-previous-scroll.log
+          python3 -c "from pathlib import Path; assert 'AssertionError' in Path('/tmp/trl-previous-scroll.log').read_text()"
+      - name: Verify fixed code on mobile and desktop
+        run: python3 tests/browser_scroll_check.py

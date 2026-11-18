@@ -751,13 +751,16 @@ async function loadEducation() {
 // news.json 'rt_url' 이 있을 때만. 받은 종목 칸은 '실시간 체결' 값으로 바꾸고 기준(전일 종가)을 숫자로 적는다.
 const RT_NAMES = { KOSPI: "코스피", KR200: "코스피200", KOSDAQ: "코스닥", SOXL: "SOXL (반도체 3배)", DRAM: "DRAM (메모리 ETF)", SKHY: "SKHY (SK하이닉스 ADR)", MU: "MU (마이크론)", NVDA: "NVDA", KORU: "KORU (한국 3배)", SMSN: "삼성전자", SKHX: "SK하이닉스", SKSQ: "SK스퀘어" };
 let rtBusy = false;
-function expireRt() {
+function expireRtRaw() {
   document.querySelectorAll('.tick[data-rt-at]').forEach(el => {
     if (Date.now() - Number(el.dataset.rtAt) > 15000) {
       const label = el.querySelector('.t-ch small');
       if (label) label.textContent = '수신 지연 · 마지막 값';
     }
   });
+}
+function expireRt() {
+  return globalThis.trlViewport ? globalThis.trlViewport.update(expireRtRaw) : expireRtRaw();
 }
 async function loadRt() {
   const putHTML = globalThis.trlViewport?.html || ((el, html) => { el.innerHTML = html; });

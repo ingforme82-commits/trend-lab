@@ -91,6 +91,7 @@
         const r = board && (board.rows || []).find((x) => x.sym === row.sym);
         if (!fresh && r && r.px > 0 && r.base > 0) row.ext = { ...r, source: r.src === "NH" ? "NH투자증권" : "야후", board: true };
       }
+      const commit = () => {
       news = j.items || []; moves = j.moves || []; series = j.series || {}; health = j.health || null;
       tgsum = j.tgsum || null; window.trlAuto = j.auto_issues || []; if (typeof window.renderHeadline === "function") window.renderHeadline(); world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
       window.trlSrcScore = j.srcscore || null; if (typeof window.paintSrcScore === "function") window.paintSrcScore();
@@ -99,6 +100,8 @@
       window.dispatchEvent(new Event('trl:news'));
       drawHealth(j.updated);
       drawTicker();
+      };
+      if(window.trlViewport)window.trlViewport.update(commit);else commit();
     } catch { setText("#newsStamp", "속보를 불러오지 못했습니다."); }
   }
   async function loadNotes() {

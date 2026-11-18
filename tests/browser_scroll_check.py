@@ -1,8 +1,9 @@
 """Chromium 실제 레이아웃 검사. 외부 시세·뉴스 호출 없음."""
 from pathlib import Path
+import os
 from playwright.sync_api import sync_playwright
 ROOT=Path(__file__).resolve().parents[1]
-CORE=(ROOT/"viewport.js").read_text(encoding="utf-8")
+CORE=Path(os.environ.get("TRL_VIEWPORT_TEST_OVERRIDE",str(ROOT/"viewport.js"))).read_text(encoding="utf-8")
 FOLD=(ROOT/"fold.js").read_text(encoding="utf-8")
 TINT=(ROOT/"tint.js").read_text(encoding="utf-8")
 CSS=(ROOT/"style.css").read_text(encoding="utf-8")
@@ -13,6 +14,7 @@ assert "spotTimer = setInterval" not in NEWS
 assert "location.reload()" not in NEWS
 assert "location.reload()" not in (ROOT/"pwa.js").read_text(encoding="utf-8")
 FIXTURE="""<!doctype html><html><head></head><body><nav class="nav">TRL</nav><div id="top"></div>
+<div id="ticker"><a class="tk-i" data-ts="1001">상단에도 같은 뉴스</a></div>
 <section id="chan"><div id="chanBoard"><div class="ch-country"></div></div></section>
 <section id="tgSum"><details><summary>뉴스 원문 3건</summary><p style="height:200px">펼친 내용</p></details></section>
 <section id="flowBox"><div class="fl-scroll"><div class="wide">가로 표</div></div></section>
@@ -43,6 +45,7 @@ with sync_playwright() as p:
         before=page.locator('[data-ts="1002"]').bounding_box()["y"]
         page.evaluate("""() => window.trlViewport.update(() => {
           document.querySelector('#top').style.height='650px';
+          document.querySelector('#newsList').innerHTML=Array.from({length:20},(_,i)=>'<li data-ts="'+(1000+i)+'">갱신된 읽는 뉴스 '+i+'</li>').join('');
           document.querySelector('#chanBoard').innerHTML='<div class="ch-country">'+Array.from({length:40},(_,i)=>'<article class="ch-card" data-viewport-key="channel:'+i+'">갱신 종목 '+i+'</article>').join('')+'</div>';
           document.querySelector('#tgSum').innerHTML='<details><summary>뉴스 원문 3건</summary><p style="height:200px">새 내용</p></details>';
           document.querySelector('#flowBox').innerHTML='<div class="fl-scroll"><div class="wide">새 가로 표</div></div>';
@@ -68,6 +71,23 @@ with sync_playwright() as p:
         page.evaluate("window.trlViewport.offerUpdate();window.trlViewport.offerUpdate();")
         assert page.locator("#trlUpdateButton").count()==1
         assert abs(page.locator('[data-ts="1002"]').bounding_box()["y"]-before)<2
+        # Replacing the clicked news must not leave navigation bound to a detached node.
+        page.evaluate("""() => window.trlViewport.go(document.querySelector('#newsList [data-ts="1002"]'),1500)""")
+        page.wait_for_timeout(80)
+        fixed=page.locator('#newsList [data-ts="1002"]').bounding_box()["y"]
+        page.evaluate("""() => window.trlViewport.update(() => {
+          document.querySelector('#newsList').innerHTML=Array.from({length:20},(_,i)=>'<li data-ts="'+(1000+i)+'">재교체 뉴스 '+i+'</li>').join('');
+          document.querySelector('#top').style.height='750px';
+        })""")
+        locked_samples=page.evaluate("""() => new Promise(resolve => {
+          const positions=[];let n=0;
+          function tick(){positions.push(document.querySelector('#newsList [data-ts="1002"]').getBoundingClientRect().top);if(++n<12)requestAnimationFrame(tick);else resolve(positions);}
+          tick();
+        })""")
+        assert max(abs(y-fixed) for y in locked_samples)<2,(width,fixed,locked_samples)
+        page.mouse.wheel(0,180)
+        page.wait_for_timeout(200)
+        assert abs(page.locator('#newsList [data-ts="1002"]').bounding_box()["y"]-fixed)>20
         print(f"viewport {width}: anchor, frames, details, horizontal table, idempotent folds, update notice PASS")
         page.close()
     browser.close()
