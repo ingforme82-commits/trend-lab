@@ -17,6 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 BRIEFS = ROOT / "data" / "briefs.json"
 KST = timezone(timedelta(hours=9))
+HISTORY_FROM = "2026-11-14"
 
 # 24시간 선물·CFD(하이퍼리퀴드): (심볼, 이름, 단위)
 FUT = [("xyz:KR200", "코스피200", ""), ("xyz:JP225", "니케이225", ""), ("xyz:SMSN", "삼성전자", "$"), ("xyz:SKHX", "SK하이닉스", "$"),
@@ -238,6 +239,7 @@ def save(brief: dict) -> bool:
         hist = json.loads(BRIEFS.read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001
         hist = []
+    hist = [h for h in hist if isinstance(h, dict) and isinstance(h.get("day"), str) and h["day"] >= HISTORY_FROM]
     noon = lambda h: h.get("day") == day and h.get("slot", "12:00") == "12:00"
     old = next((h for h in hist if noon(h)), None)
     if old and datetime.fromtimestamp(old["at"] / 1000, KST).hour >= 11:

@@ -27,6 +27,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "tools"))
+from brief import HISTORY_FROM
 BRIEFS = ROOT / "data" / "briefs.json"
 CHECKS = ROOT / "data" / "checkpoints.json"
 LOCK = ROOT / "tools" / "brief_slot.lock"
@@ -270,7 +271,7 @@ def main(slot: str | None = None, delayed: bool = False) -> int:
             print(json.dumps({k: rec[k] for k in ("day", "slot", "title")}, ensure_ascii=False), "검증 통과(--dry, 기록 안 함)")
             return 0
         hist = json.loads(BRIEFS.read_text(encoding="utf-8")) if BRIEFS.exists() else []
-        hist = [rec] + [h for h in hist if not (h.get("day") == day and h.get("slot") == label)]
+        hist = [rec] + [h for h in hist if isinstance(h, dict) and isinstance(h.get("day"), str) and h["day"] >= HISTORY_FROM and not (h.get("day") == day and h.get("slot") == label)]
         BRIEFS.write_text(json.dumps(hist[:120], ensure_ascii=False, indent=1), encoding="utf-8")
         git("add", "data/briefs.json")
         git("commit", "-q", "-m", f"정시 브리핑 {day} {label}")
