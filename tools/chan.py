@@ -71,7 +71,7 @@ def candle(o: float, h: float, l: float, c: float, prev: float) -> dict:
 def channel(rows: list[list], anchors: dict, contact_rules: dict | None = None,
             *, last_closed: bool = False) -> dict | None:
     """기존 하락 구간의 두 기준점으로 선을 고정하고 추가 접촉 횟수만 표시."""
-    from channel_fit import anchored_side, support_path
+    from channel_fit import anchored_side, support_path, parallel_support
     rules = contact_rules or {}
     tolerance = float(rules.get("tolerance_pct", 0.75))
     spacing = int(rules.get("min_spacing_bars", 3))
@@ -92,7 +92,9 @@ def channel(rows: list[list], anchors: dict, contact_rules: dict | None = None,
     kwargs = dict(tolerance_pct=tolerance, min_spacing=spacing)
     upper = anchored_side(high, dates, h1, anchors["hi2"][0], last, True, **kwargs)
     lower = anchored_side(low, dates, l1, anchors["lo2"][0], last, False, **kwargs)
-    if rules.get("lower_pivots"):
+    if rules.get("lower_parallel_dates") and upper:
+        lower = parallel_support(low, dates, rules["lower_parallel_dates"], last, upper["slope"], tolerance_pct=tolerance) or lower
+    elif rules.get("lower_pivots"):
         lower = support_path(low, dates, rules["lower_pivots"], last, tolerance_pct=tolerance) or lower
     if not upper or not lower:
         return None
@@ -118,7 +120,8 @@ def channel(rows: list[list], anchors: dict, contact_rules: dict | None = None,
             "upper_touch_count": len(upper["touches"]), "lower_touch_count": len(lower["touches"]),
             "upper_verified": upper["verified"], "lower_verified": lower["verified"],
             "upper_reinforced": len(upper["touches"]) >= 3, "lower_reinforced": len(lower["touches"]) >= 3,
-            "line_method": "three_pivot_support" if lower.get("path") else "fixed_two_anchor",
+            "line_method": "parallel_four_reference" if lower.get("reference_points") else "three_pivot_support" if lower.get("path") else "fixed_two_anchor",
+            **({"lower_reference_points": lower["reference_points"], "lower_reference_error_pct": lower["reference_error_pct"]} if lower.get("reference_points") else {}),
             **({"lower_path": lower["path"]} if lower.get("path") else {}),
             "channel_valid": verified, "channel_width_valid": width_valid,
             "touch_tolerance_pct": tolerance, "touch_min_spacing": spacing, "touch_required": required,

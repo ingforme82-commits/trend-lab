@@ -72,3 +72,28 @@ def support_path(values: list[float], dates: list[str], pivot_dates: list[str], 
             "touches": hits, "anchors": hits, "start": hits[0], "verified": active <= tolerance_pct + 1e-9,
             "max_overlap_pct": overlap, "active_overlap_pct": active,
             "path": [[i, values[i]] for i in hits]}
+
+
+def parallel_support(values: list[float], dates: list[str], reference_dates: list[str], last: int,
+                     slope: float, *, tolerance_pct: float = 0.75) -> dict | None:
+    """상단과 같은 기울기·네 실제 저가의 평균 절편. 기준점 오차를 별도로 검증."""
+    if len(reference_dates) != 4 or len(set(reference_dates)) != 4 or not math.isfinite(slope):
+        return None
+    try:
+        hits = [dates.index(day) for day in reference_dates]
+    except ValueError:
+        return None
+    if hits != sorted(hits) or hits[-1] > last or not all(math.isfinite(values[i]) and values[i] > 0 for i in hits):
+        return None
+    intercept = sum(values[i] - slope * i for i in hits) / 4
+    def line(i):
+        return slope * i + intercept
+    if any(line(i) <= 0 for i in range(hits[0],last+2)):
+        return None
+    error = max(abs(values[i] / line(i) - 1) * 100 for i in hits)
+    overlap = max([0.0] + [(1-values[i]/line(i))*100 for i in range(hits[0],last+1)])
+    active = max([0.0] + [(1-values[i]/line(i))*100 for i in range(hits[-1],last+1)])
+    return {"slope":slope,"intercept":intercept,"touches":hits,"anchors":hits,"start":hits[0],
+            "verified":max(error,active) <= tolerance_pct + 1e-9,
+            "max_overlap_pct":overlap,"active_overlap_pct":active,
+            "reference_points":[[i,values[i]] for i in hits],"reference_error_pct":error}

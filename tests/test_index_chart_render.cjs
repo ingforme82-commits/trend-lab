@@ -77,3 +77,12 @@ const support = elements.get("#chanBoard").innerHTML;
 assert.ok(support.includes('<polyline points='));
 assert.ok(support.includes("하단 3점 연결"));
 console.log("마이크론 3점 지지 경로·간결한 세션/정규장 가격 표시: PASS");
+
+delete regular.display.lower_path;
+regular.display.lower_reference_points = [[0,99.1],[6,98],[12,97],[20,96]];
+regular.display.lo = [0,6,12,20];
+regular.display.lower_touch_count = 4;
+context.render();
+assert.ok(elements.get("#chanBoard").innerHTML.includes("하단 4점 기준"));
+assert.ok(!elements.get("#chanBoard").innerHTML.includes("하단 3점 연결"));
+console.log("마이크론 4점 평행 지지선 표시: PASS");
