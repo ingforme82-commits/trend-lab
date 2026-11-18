@@ -31,6 +31,10 @@ jobs:
       - name: Prove the previous code reproduces the reading-position failure
         run: |
           git show ${{ github.event.pull_request.base.sha }}:viewport.js > /tmp/trl-previous-viewport.js
+          if python3 -c "from pathlib import Path; import sys; sys.exit(0 if 'key[2]' in Path('/tmp/trl-previous-viewport.js').read_text() else 1)"; then
+            echo "Base already contains scoped anchors; fixed browser cases run below."
+            exit 0
+          fi
           if TRL_VIEWPORT_TEST_OVERRIDE=/tmp/trl-previous-viewport.js python3 tests/browser_scroll_check.py > /tmp/trl-previous-scroll.log 2>&1; then
             echo "Expected old code to fail; reproduction missing"
             exit 1

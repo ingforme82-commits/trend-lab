@@ -155,5 +155,14 @@
   "tolerance_pct": 0.75,
   "min_spacing_bars": 3,
   "method": "fixed_two_anchor"
+ },
+ "display_overrides": {
+  "MU": {
+   "lower_pivots": [
+    "10/22",
+    "11/05",
+    "11/17"
+   ]
+  }
  }
 }

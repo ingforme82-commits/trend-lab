@@ -18,7 +18,7 @@ from zoneinfo import ZoneInfo
 KST = ZoneInfo("Asia/Seoul")
 NY = ZoneInfo("America/New_York")
 UA = {"User-Agent": "Mozilla/5.0"}
-MAX_AGE = {"kr": 180, "us": 600}
+MAX_AGE = {"kr": 180, "us": 180}
 
 
 def number(value):
@@ -101,6 +101,11 @@ def parse_us(result, now):
     day = data[-1][1].date()
     today = [r for r in data if r[1].date() == day]
     first, last = today[0], today[-1]
+    history = []
+    for trading_day in sorted({r[1].date() for r in data}):
+        group = [r for r in data if r[1].date() == trading_day]
+        history.append({"day": trading_day.isoformat(), "ohlc": [group[0][2][0], max(r[2][1] for r in group),
+                       min(r[2][2] for r in group), group[-1][2][3]]})
     values = [first[2][0], max(r[2][1] for r in today), min(r[2][2] for r in today), last[2][3]]
     periods = (result.get("meta") or {}).get("currentTradingPeriod") or {}
     active = None
@@ -120,7 +125,7 @@ def parse_us(result, now):
             "checked_at": int(now.timestamp() * 1000), "source": "Yahoo 확장세션 1분봉",
             "session": last_session, "provider_open": is_open, "time_kind": "1분봉 시작",
             "max_age_seconds": MAX_AGE["us"], "history_note": "과거는 정규장 일봉 · 오늘은 프리+정규+애프터",
-            "scope": "미국 확장세션", "country": "us", "active_session": active}
+            "scope": "미국 확장세션", "country": "us", "active_session": active, "history": history}
 
 
 def _request(url):
@@ -143,7 +148,7 @@ def collect(groups, now, cache_path: Path):
         if g["cc"] == "us":
             for code, _ in g["items"]:
                 symbol = urllib.request.quote(code, safe="")
-                tasks.append((code, f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=2d&interval=1m&includePrePost=true"))
+                tasks.append((code, f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=7d&interval=1m&includePrePost=true"))
     def one(task):
         key, url = task
         cached = cache.get(key) or {}
@@ -154,6 +159,7 @@ def collect(groups, now, cache_path: Path):
         except Exception as exc:  # no URLs/keys or server error body
             return key, None, type(exc).__name__, time.time()
     quotes, errors = {}, []
+    archive = cache.get("_history") or {}
     with ThreadPoolExecutor(max_workers=4) as pool:
         responses = list(pool.map(one, tasks))
     for key, raw, error, fetched_at in responses:
@@ -174,6 +180,16 @@ def collect(groups, now, cache_path: Path):
             cache[key] = {"t": fetched_at, "raw": raw}
         except (KeyError, TypeError, IndexError, ValueError):
             errors.append(f"{key} 확장세션 형식 확인")
+    for code, quote in quotes.items():
+        saved = archive.get(code) or {}
+        for entry in quote.get("history") or []:
+            if ohlc(entry.get("ohlc")) and entry["day"] <= quote["day"]:
+                saved[entry["day"]] = entry["ohlc"]
+        saved[quote["day"]] = quote["ohlc"]
+        saved = dict(sorted(saved.items())[-90:])
+        archive[code] = saved
+        quote["history"] = [{"day": day, "ohlc": value} for day, value in sorted(saved.items())]
+    cache["_history"] = archive
     try:
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         tmp = cache_path.with_suffix(".tmp")
@@ -200,6 +216,14 @@ def display(rows, quote, anchors, rules, *, now, channel, candle, state):
     if target < recent or target > local_day:
         return None
     merged = deepcopy(rows)
+    # 확보한 통합/확장 봉은 과거 날짜도 유지한다. 미수집 구간을 가짜 통합봉으로 만들지 않는다.
+    history = {entry["day"]: ohlc(entry.get("ohlc")) for entry in quote.get("history") or []
+               if isinstance(entry, dict) and isinstance(entry.get("day"), str)}
+    for row in merged:
+        year = local_day.year - (1 if row[0] > local_day.strftime("%m/%d") else 0)
+        day_key = f"{year}/{row[0]}".replace("/", "-")
+        if history.get(day_key) and day_key < quote["day"]:
+            row[1:5] = history[day_key]
     bar = [md] + values
     if merged[-1][0] == md:
         merged[-1] = bar
@@ -221,7 +245,7 @@ def display(rows, quote, anchors, rules, *, now, channel, candle, state):
     st = state(ch, px, True)  # never confirm a regular-close breakout from extended prices
     if quote["session"] != "정규장" or not live:
         st = st.replace("(장중)", "(세션 참고)")
-    return {**ch, "rows": merged, "day": md, "px": px, "chg": round((px / prev - 1) * 100, 2),
+    return {**ch, "rows": merged, "integrated_history_days": len([v for v in history.values() if v]), "day": md, "px": px, "chg": round((px / prev - 1) * 100, 2),
             "ma5": ch["ma5"], "above_ma5": px > ch["ma5"],
             "gap_low": round((ch["lo_now"] / px - 1) * 100, 2),
             "candle": candle(*values, prev), "state": "자료 확인 중" if stale else st,

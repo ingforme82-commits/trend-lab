@@ -170,3 +170,43 @@ class SessionTests(unittest.TestCase):
 
 if __name__=="__main__":
     unittest.main()
+
+
+class IntegratedHistoryTests(unittest.TestCase):
+    def test_us_history_includes_pre_and_after_for_each_day(self):
+        quote = s.parse_us(us_data(), datetime(2026,11,17,16,8,tzinfo=s.NY))
+        self.assertEqual(quote["history"],[
+            {"day":"2026-11-16","ohlc":[300,310,290,305]},
+            {"day":"2026-11-17","ohlc":[100,109,99,107]}])
+
+    def test_previous_integrated_candle_replaces_regular_candle_without_mutation(self):
+        regular = rows()
+        original = copy.deepcopy(regular)
+        q = s.parse_kr(kr_quote(),NOW)["005930"]
+        q["history"] = [{"day":"2026-11-16","ohlc":[150,170,130,160]}]
+        view = s.display(regular,q,A,{},now=NOW,channel=chan.channel,candle=chan.candle,state=chan.state)
+        self.assertEqual(view["rows"][-2],["11/16",150,170,130,160])
+        self.assertEqual(regular,original)
+        self.assertEqual(view["integrated_history_days"],1)
+
+    def test_archive_survives_a_day_rollover_and_uses_minute_us_requests(self):
+        with tempfile.TemporaryDirectory() as folder:
+            path = Path(folder)/"cache.json"
+            calls = []
+            def fetch(url):
+                calls.append(url)
+                return kr_quote() if "naver" in url else {"chart":{"result":[us_data()]}}
+            groups = [{"cc":"kr","items":[["005930","fixture"]]},
+                      {"cc":"us","items":[["MU","fixture"]]}]
+            with patch.object(s,"_request",side_effect=fetch):
+                result, errors = s.collect(groups,NOW,path)
+            self.assertFalse(errors)
+            self.assertTrue(any("interval=1m" in url and "includePrePost=true" in url and "range=7d" in url for url in calls))
+            saved = json.loads(path.read_text())
+            self.assertIn("2026-11-17",saved["_history"]["005930"])
+            # 다음 거래일 수집: 전날 통합 OHLC는 유지한다.
+            next_now = NOW + timedelta(days=1)
+            with patch.object(s.time,"time",return_value=10**10),patch.object(s,"_request",return_value=kr_quote(next_now)):
+                result, errors = s.collect(groups[:1],next_now,path)
+            self.assertFalse(errors)
+            self.assertEqual([h["day"] for h in result["005930"]["history"]],["2026-11-17","2026-11-18"])

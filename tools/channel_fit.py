@@ -49,3 +49,26 @@ def anchored_side(values: list[float], dates: list[str], start: int, second_star
             "start": start, "verified": active_overlap <= tolerance + 1e-9,
             "max_overlap_pct": overlap if math.isfinite(overlap) else None,
             "active_overlap_pct": active_overlap if math.isfinite(active_overlap) else None}
+
+
+def support_path(values: list[float], dates: list[str], pivot_dates: list[str], last: int,
+                 *, tolerance_pct: float = 0.75) -> dict | None:
+    """지정한 실제 저점 세 개를 잇는다. 직선 적합/가짜 접촉 없이 마지막 구간을 연장."""
+    if len(pivot_dates) != 3 or len(set(pivot_dates)) != 3:
+        return None
+    try:
+        hits = [dates.index(day) for day in pivot_dates]
+    except ValueError:
+        return None
+    if hits != sorted(hits) or hits[-1] > last or not all(math.isfinite(values[i]) and values[i] > 0 for i in hits):
+        return None
+    def line(i):
+        a, b = (hits[0], hits[1]) if i <= hits[1] else (hits[1], hits[2])
+        return values[a] + (values[b] - values[a]) * (i - a) / (b - a)
+    overlap = max([0.0] + [(1 - values[i] / line(i)) * 100 for i in range(hits[0], last + 1) if line(i) > 0])
+    active = max([0.0] + [(1 - values[i] / line(i)) * 100 for i in range(hits[-1], last + 1) if line(i) > 0])
+    slope = (values[hits[-1]] - values[hits[-2]]) / (hits[-1] - hits[-2])
+    return {"slope": slope, "intercept": values[hits[-1]] - slope * hits[-1],
+            "touches": hits, "anchors": hits, "start": hits[0], "verified": active <= tolerance_pct + 1e-9,
+            "max_overlap_pct": overlap, "active_overlap_pct": active,
+            "path": [[i, values[i]] for i in hits]}
