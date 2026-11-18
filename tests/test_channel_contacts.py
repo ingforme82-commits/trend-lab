@@ -128,5 +128,30 @@ class ThreePivotSupportTests(unittest.TestCase):
     def test_chart_override_does_not_change_normal_two_anchor_policy(self):
         config = json.loads((Path(__file__).resolve().parents[1] / "data/channels.json").read_text(encoding="utf-8"))
         self.assertEqual(config["contact_rules"]["method"],"fixed_two_anchor")
-        self.assertEqual(config["display_overrides"]["MU"]["lower_pivots"],["10/22","11/05","11/17"])
+        self.assertEqual(config["display_overrides"]["MU"]["lower_parallel_dates"],["10/02","10/12","10/22","11/06"])
         self.assertEqual(len(config["display_overrides"]),1)
+
+
+class ParallelSupportTests(unittest.TestCase):
+    def test_four_actual_lows_fit_a_parallel_straight_line(self):
+        from channel_fit import parallel_support
+        values = [100,99,96,94,92,91,88,87,84,83]
+        dates = [str(i) for i in range(len(values))]
+        fit = parallel_support(values, dates, ["0","3","6","9"], 9, -2, tolerance_pct=1)
+        self.assertEqual(fit["slope"],-2)
+        self.assertEqual(fit["touches"],[0,3,6,9])
+        self.assertEqual(fit["reference_points"],[[0,100],[3,94],[6,88],[9,83]])
+        self.assertNotIn("path",fit)
+        self.assertTrue(fit["verified"])
+        self.assertLess(fit["reference_error_pct"],1)
+
+    def test_widely_scattered_four_points_are_not_verified_contacts(self):
+        from channel_fit import parallel_support
+        fit = parallel_support([100,90,120,80],["a","b","c","d"],["a","b","c","d"],3,-2)
+        self.assertFalse(fit["verified"])
+        self.assertGreater(fit["reference_error_pct"],.75)
+
+    def test_unfinished_or_missing_fourth_reference_is_rejected(self):
+        from channel_fit import parallel_support
+        self.assertIsNone(parallel_support([100,98,96,94],["a","b","c","d"],["a","b","c","d"],2,-2))
+        self.assertIsNone(parallel_support([100,98,96,94],["a","b","c","d"],["a","b","c","x"],3,-2))

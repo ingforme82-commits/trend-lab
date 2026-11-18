@@ -158,10 +158,11 @@
  },
  "display_overrides": {
   "MU": {
-   "lower_pivots": [
+   "lower_parallel_dates": [
+    "10/02",
+    "10/12",
     "10/22",
-    "11/05",
-    "11/17"
+    "11/06"
    ]
   }
  }
