@@ -1,0 +1,31 @@
+name: Translation and move display regression
+on:
+  push:
+    branches: [codex/auto-translation-three-moves-20261118]
+  pull_request:
+    paths:
+      - 'tools/news_translate.py'
+      - 'tools/live_news.py'
+      - 'tests/test_news_translate.py'
+      - 'tests/test_moves_display.cjs'
+      - 'news.js'
+permissions:
+  contents: read
+jobs:
+  regression:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Translation, news relevance and move regressions (offline)
+        run: |
+          python3 -m unittest discover -s tests -p 'test_news_translate.py' -v
+          python3 -m unittest discover -s tests -p 'test_news_relevance.py' -v
+          python3 -m unittest discover -s tests -p 'test_junk.py' -v
+          python3 -m unittest discover -s tests -p 'test_moves_*.py' -v
+          python3 -m py_compile tools/live_news.py tools/news_translate.py
+      - name: JavaScript and chart regressions
+        run: |
+          node --check news.js
+          node tests/test_moves_display.cjs
+          node tests/test_index_chart_render.cjs

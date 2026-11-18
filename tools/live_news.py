@@ -440,11 +440,8 @@ def _claude_translate(titles: list[str]) -> dict[str, str]:
 
 
 def _google_translate(title: str) -> str:
-    import urllib.parse
-    u = "https://translate.googleapis.com/translate_a/single?" + urllib.parse.urlencode(
-        {"client": "gtx", "sl": "en", "tl": "ko", "dt": "t", "q": title})
-    r = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"}), timeout=10).read())
-    return "".join(x[0] for x in r[0] if x and x[0]).strip()
+    from news_translate import translate_one
+    return translate_one(title)
 
 
 # 무료 번역이 자주 틀리는 고유명사: (영문, 잘못된 번역들, 바른 표기)
@@ -463,45 +460,16 @@ def fix_terms(en: str, ko: str) -> str:
     return ko
 
 
+TRANSLATION_HEALTH: dict = {}
+
+
 def translate(items: list[dict]) -> None:
-    """영문 헤드라인을 한국어로 바꾼다(원문은 orig에 보관). 번역은 저장해 두고 다시 하지 않는다.
-    대기열은 피드 등록 순서가 아니라 최신 기사(ts) 우선으로 처리한다 — FT·CNBC·WSJ처럼 피드가 많은 매체가
-    캡 밖으로 밀려 계속 영문 그대로 남는 문제(11/17 확인) 수정."""
-    try:
-        cache = json.loads(TR_CACHE.read_text(encoding="utf-8"))
-    except Exception:  # noqa: BLE001
-        cache = {}
-    latest_ts: dict[str, int] = {}
-    for it in items:
-        if it.get("lang") == "en":
-            latest_ts[it["text"]] = max(latest_ts.get(it["text"], 0), it["ts"])
-    todo = sorted((t for t in latest_ts if t not in cache), key=lambda t: -latest_ts[t])
-    if todo:
-        got = {}
-        if cache.get("_claude_off_until", 0) < datetime.now(timezone.utc).timestamp():
-            got = _claude_translate(todo[:60])
-            if not got:                                   # 크레딧 없음 → 1시간 동안 Claude 시도 안 함
-                cache["_claude_off_until"] = datetime.now(timezone.utc).timestamp() + 3600
-        def _tr(t: str):
-            try:
-                return t, _google_translate(t)
-            except Exception:  # noqa: BLE001
-                return t, None
-        from concurrent.futures import ThreadPoolExecutor
-        with ThreadPoolExecutor(max_workers=12) as ex:  # 11/17: 80건 캡 제거 + 동시 처리량 상향
-            for t, k in ex.map(_tr, [t for t in todo if t not in got]):
-                if k:
-                    got[t] = k
-        cache.update({k: v for k, v in got.items() if v})
-        keep = set(latest_ts)
-        cache = {k: v for k, v in cache.items() if k in keep or k.startswith("_")}   # 오래된 번역 정리
-        TR_CACHE.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
-    for it in items:
-        if it.get("lang") == "en" and cache.get(it["text"]):
-            it["orig"], it["text"] = it["text"], fix_terms(it["text"], cache[it["text"]].rstrip(".。 "))
-            it["tr"] = "auto"                               # 자동 번역(원문은 orig)
-        elif it.get("lang") == "en":
-            it["tr"] = "fail"                               # 번역 실패 → 영문 원문 그대로
+    """RSS뿐 아니라 영문 텔레·증권사 제목도 원문 보존·예산 내 자동 재시도."""
+    from news_translate import run
+    import keystore
+    global TRANSLATION_HEALTH
+    TRANSLATION_HEALTH = run(items, path=keystore.state_dir() / "news_translation.json",
+                             legacy_path=TR_CACHE, terms=fix_terms)
 
 
 def mark_seen(items: list[dict]) -> None:
@@ -528,7 +496,6 @@ def bigrams(s: str) -> set[str]:
 
 def build() -> dict:
     rss = fetch_rss()
-    translate(rss)
     sector_items, sector_cards = [], []
     try:                                                  # 섹터 시세 감시(가격 변화를 뉴스처럼)
         sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -568,6 +535,7 @@ def build() -> dict:
         log(f"오늘 주도 섹터 건너뜀: {type(e).__name__}: {e}")
     tg_items = from_telegram()
     kis_items = fetch_kis()
+    translate(rss + tg_items + kis_items)
     mark_seen(rss + kis_items)
     from newsgroup import group
     allitems = group(tg_items + rss + kis_items + sector_items)          # 같은 사건은 하나로(최초 보도 기준, 후속 출처는 also)
@@ -598,10 +566,10 @@ def build() -> dict:
     now_ms = int(datetime.now(timezone.utc).timestamp() * 1000)
     tg_last = max((i["ts"] for i in tg_items if i["src"] in {CHANNELS[c] for c in FAST if c in CHANNELS}), default=0)
     tg_got = max((i.get("got") or 0 for i in tg_items), default=0)
-    en = [i for i in items if i.get("lang") == "en"]
+    en = [i for i in items if i.get("tr") in ("auto", "fail")]
     out = {"updated": now_ms, "items": items, "moves": [], "series": {}, "sectors": sector_cards, "leaders": leaders,
            "health": {"tg": {"last": tg_last, "got": tg_got, "refresh": REFRESH.get("ok"), "n": len(tg_items)},
-                      "rss": dict(RSS_HEALTH), "tr": {"auto": sum(1 for i in en if i.get("tr") == "auto"), "fail": sum(1 for i in en if i.get("tr") == "fail")},
+                      "rss": dict(RSS_HEALTH), "tr": {"auto": sum(1 for i in en if i.get("tr") == "auto"), "fail": sum(1 for i in en if i.get("tr") == "fail"), "details": dict(TRANSLATION_HEALTH)},
                       "groups": sum(1 for i in items if i.get("also"))}}
     try:                                                  # 변곡점 감지 + 직전 뉴스 연결(실패해도 속보는 그대로)
         sys.path.insert(0, str(Path(__file__).resolve().parent))
