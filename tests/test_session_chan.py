@@ -76,7 +76,7 @@ class SessionTests(unittest.TestCase):
         self.assertEqual(q["day"],"2026-11-17")
         self.assertEqual(q["session"],"애프터마켓")
         self.assertTrue(q["provider_open"])
-        self.assertEqual(q["time_kind"],"5분봉 시작")
+        self.assertEqual(q["time_kind"],"1분봉 시작")
 
     def test_us_previous_session_is_not_live_in_new_session(self):
         raw=us_data()

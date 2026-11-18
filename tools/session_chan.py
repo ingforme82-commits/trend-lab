@@ -1,7 +1,7 @@
 """확장 세션 표시용 캔들. 정규장 주문 판정·기록을 덮어쓰지 않는다.
 
 국내 오늘 OHLC는 네이버 integratedPriceInfo(KRX+NXT), 과거는 기존 일봉.
-미국 오늘 OHLC는 Yahoo includePrePost=true 5분봉(미국 동부 날짜·DST).
+미국 오늘 OHLC는 Yahoo includePrePost=true 1분봉(미국 동부 날짜·DST). 11/18 운영자 "미국 시간외·한국장 변화 1분마다" → 5분봉에서 1분봉으로.
 원천 제공 시각/봉 시작 시각과 조회 시각을 분리한다. 합성상품은 사용하지 않는다.
 """
 from __future__ import annotations
@@ -78,7 +78,7 @@ def parse_kr(data, now):
 
 
 def parse_us(result, now):
-    """검증된 동일 미국 거래일의 04~20시 5분봉을 시간순으로 합친다."""
+    """검증된 동일 미국 거래일의 04~20시 1분봉을 시간순으로 합친다."""
     ts = result.get("timestamp") or []
     quote = ((result.get("indicators") or {}).get("quote") or [{}])[0]
     data = []
@@ -117,8 +117,8 @@ def parse_us(result, now):
     # In a new session, an earlier-session last bar is not a live quote.
     is_open = active == last_session and day == now.astimezone(NY).date()
     return {"day": day.isoformat(), "ohlc": values, "source_at": int(last[0] * 1000),
-            "checked_at": int(now.timestamp() * 1000), "source": "Yahoo 확장세션 5분봉",
-            "session": last_session, "provider_open": is_open, "time_kind": "5분봉 시작",
+            "checked_at": int(now.timestamp() * 1000), "source": "Yahoo 확장세션 1분봉",
+            "session": last_session, "provider_open": is_open, "time_kind": "1분봉 시작",
             "max_age_seconds": MAX_AGE["us"], "history_note": "과거는 정규장 일봉 · 오늘은 프리+정규+애프터",
             "scope": "미국 확장세션", "country": "us", "active_session": active}
 
@@ -143,7 +143,7 @@ def collect(groups, now, cache_path: Path):
         if g["cc"] == "us":
             for code, _ in g["items"]:
                 symbol = urllib.request.quote(code, safe="")
-                tasks.append((code, f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=5d&interval=5m&includePrePost=true"))
+                tasks.append((code, f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?range=2d&interval=1m&includePrePost=true"))
     def one(task):
         key, url = task
         cached = cache.get(key) or {}
