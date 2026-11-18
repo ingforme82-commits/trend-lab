@@ -4,12 +4,19 @@
   let depth = 0, release = 0;
   const root = document.documentElement;
   const selectors = "[data-viewport-key],[data-ts],[data-start],section[id],[id]";
-  const keyOf = (el) => el.hasAttribute("data-viewport-key") ? ["data-viewport-key",el.getAttribute("data-viewport-key")]
-    : el.hasAttribute("data-ts") ? ["data-ts",el.getAttribute("data-ts")]
-    : el.hasAttribute("data-start") ? ["data-start",el.getAttribute("data-start")]
-    : el.id ? ["id",el.id] : null;
-  const locate = (key) => key?.[0] === "id" ? document.getElementById(key[1])
-    : key ? document.querySelector("["+key[0]+'="'+CSS.escape(key[1])+'"]') : null;
+  const keyOf = (el) => {
+    const scope = el.parentElement?.closest("[id]")?.id || null;
+    return el.hasAttribute("data-viewport-key") ? ["data-viewport-key", el.getAttribute("data-viewport-key"), scope]
+      : el.hasAttribute("data-ts") ? ["data-ts", el.getAttribute("data-ts"), scope]
+      : el.hasAttribute("data-start") ? ["data-start", el.getAttribute("data-start"), scope]
+      : el.id ? ["id", el.id] : null;
+  };
+  const locate = (key) => {
+    if (!key) return null;
+    if (key[0] === "id") return document.getElementById(key[1]);
+    const owner = key[2] ? document.getElementById(key[2]) : document;
+    return owner?.querySelector("["+key[0]+'="'+CSS.escape(key[1])+'"]') || null;
+  };
   function anchor() {
     const probe = Math.min(innerHeight / 3, Math.max(80, (document.querySelector(".nav")?.getBoundingClientRect().bottom || 0) + 24));
     const point = document.elementFromPoint(innerWidth / 2, probe);
@@ -51,20 +58,26 @@
   let lock=null, lockRaf=0;
   const navH=()=>Math.ceil(document.querySelector(".nav")?.getBoundingClientRect().bottom||0);
   const jump=(top)=>{try{window.scrollTo({left:scrollX,top:Math.max(0,top),behavior:"instant"});}catch{window.scrollTo(scrollX,Math.max(0,top));}};
+  function lockElement(){
+    if(!lock)return null;
+    if(!lock.el.isConnected)lock.el=locate(lock.key);
+    return lock.el?.isConnected ? lock.el : null;
+  }
   function hold(){
     if(!lock)return;
-    if(!lock.el.isConnected||performance.now()>lock.until){lock=null;return;}
-    const want=navH()+8, d=lock.el.getBoundingClientRect().top-want;
+    const el=lockElement();
+    if(!el||performance.now()>lock.until){unlock();return;}
+    const want=navH()+8, d=el.getBoundingClientRect().top-want;
     if(Math.abs(d)>1)jump(scrollY+d);
     lockRaf=requestAnimationFrame(hold);
   }
   function go(el,ms=2500){
     if(!el)return;
-    lock={el,until:performance.now()+ms};
+    lock={el,key:keyOf(el),until:performance.now()+ms};
     root.classList.add("trl-live-update");
     jump(scrollY+el.getBoundingClientRect().top-(navH()+8));
     cancelAnimationFrame(lockRaf);lockRaf=requestAnimationFrame(hold);
-    setTimeout(()=>{if(!lock)root.classList.remove("trl-live-update");},ms+50);
+    setTimeout(()=>{if(lock&&performance.now()>=lock.until)unlock();else if(!lock)root.classList.remove("trl-live-update");},ms+50);
   }
   const unlock=()=>{if(lock){lock=null;cancelAnimationFrame(lockRaf);root.classList.remove("trl-live-update");}};
   ["wheel","touchstart","keydown"].forEach((t)=>addEventListener(t,unlock,{passive:true}));
@@ -79,10 +92,16 @@
   });
   function update(fn) {
     if(depth) return fn();
-    if(lock&&lock.el.isConnected){             // 이동 고정 중: 그 항목 기준으로만 위치를 맞춘다
+    if(lockElement()){
+      const saved=state();
       depth++;root.classList.add("trl-live-update");
-      try{const r=fn();window.trlFold?.apply();const d=lock.el.getBoundingClientRect().top-(navH()+8);if(Math.abs(d)>1)jump(scrollY+d);return r;}
-      finally{depth--;}
+      try{
+        const r=fn();restoreState(saved);window.trlFold?.apply();
+        const el=lockElement();
+        if(el){const d=el.getBoundingClientRect().top-(navH()+8);if(Math.abs(d)>1)jump(scrollY+d);}
+        else unlock();
+        return r;
+      } finally{depth--;}
     }
     const mark=scrollY>80?anchor():null, beforeY=scrollY, beforeX=scrollX, saved=state();
     depth++;
