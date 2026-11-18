@@ -346,6 +346,7 @@ def build(now: datetime | None = None) -> dict:
     contact_policy = json.dumps(c.get("contact_rules") or {}, sort_keys=True)
     log = _load(LOG); prev = log.get("last", {}) if log.get("contact_policy") == contact_policy else {}; hist = log.get("events", [])
     signals = [s for s in log.get("signals", []) if now.timestamp() * 1000 - s["ts"] < 20 * 3600_000 and s.get("contact_policy") == contact_policy]   # 오늘(20시간 안) 시그널만
+    resists = [s for s in log.get("resists", []) if now.timestamp() * 1000 - s["ts"] < 20 * 3600_000 and s.get("contact_policy") == contact_policy]   # 5일선 저항(11/18), 주문용 signals 와 따로
     nxq = _nxt_quotes([code for g in c["groups"] if g["cc"] == "kr" for code, _ in g["items"]], now)
     for g in c["groups"]:
         items = []
@@ -409,6 +410,14 @@ def build(now: datetime | None = None) -> dict:
                 signals.append(sig)
                 events.append({"ts": sig["ts"], "code": code, "text": sig["text"]})
                 was = {**was, "ma5sig": stamp}
+            # 11/18 운영자 전략 '5일선 저항 시 매도·돌파 시 매수' — 저항 = 어제 5일선 아래, 오늘 고가가 5일선에 닿은 뒤 현재가가 5일선 0.3% 넘게 아래.
+            # 사실만 기록하고 주문용 signals 에는 넣지 않는다(자동 주문 경로와 분리). 하루 한 번
+            if live and ch["channel_valid"] and ma5_prev and pc <= ma5_prev and h >= ch["ma5"] and px < ch["ma5"] * 0.997 and was.get("ma5res") != stamp:
+                rs = {"ts": int(now.timestamp() * 1000), "day": stamp, "code": code, "name": name, "cc": g["cc"], "contact_policy": contact_policy, "kind": "resist",
+                      "text": f"📐 5일선 저항 — {name} 장중 고가 {_fmt(g['cc'], h)}로 5일선 {_fmt(g['cc'], ch['ma5'])} 터치 후 현재 {_fmt(g['cc'], px)} (5일선 대비 {((px / ch['ma5'] - 1) * 100):+.1f}%)"}
+                resists.append(rs)
+                events.append({"ts": rs["ts"], "code": code, "text": rs["text"]})
+                was = {**was, "ma5res": stamp}
             prev[key] = {**was, "state": st}
         if g["cc"] != "kr_index":
             items.sort(key=lambda x: -x["dd"])
@@ -419,10 +428,10 @@ def build(now: datetime | None = None) -> dict:
     if events:
         hist = (hist + events)[-60:]
     import hashlib
-    body = {"contact_policy": contact_policy, "rule": c["rule"], "stance": c.get("stance", ""), "groups": groups, "log": hist[-20:][::-1], "signals": signals[::-1], "session_errs": session_errors[:20]}
+    body = {"contact_policy": contact_policy, "rule": c["rule"], "stance": c.get("stance", ""), "groups": groups, "log": hist[-20:][::-1], "signals": signals[::-1], "resists": resists[::-1], "session_errs": session_errors[:20]}
     fp = hashlib.sha1(json.dumps(body, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     at = log.get("at") if log.get("fp") == fp and log.get("at") else int(now.timestamp() * 1000)   # 내용이 같으면 시각도 그대로(주말에 매분 올리지 않게)
-    _save(LOG, {"contact_policy": contact_policy, "last": prev, "events": hist, "fp": fp, "at": at, "signals": signals})
+    _save(LOG, {"contact_policy": contact_policy, "last": prev, "events": hist, "fp": fp, "at": at, "signals": signals, "resists": resists})
     return {"at": at, **body, "errs": ERRS[:20]}
 
 

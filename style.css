@@ -885,6 +885,7 @@ body{overflow-x:hidden}
 .ch-sigbox{background:#fff7e0;border:1px solid var(--gold);border-radius:10px;padding:8px 12px;margin:0 0 12px;font-size:14px}
 .ch-sigbox p{margin:2px 0}
 .ch-sig{background:var(--gold);color:var(--navy);font-size:12px;font-weight:800;padding:2px 8px;border-radius:999px}
+.ch-sig.ch-res{background:var(--down,#1559c0);color:#fff}
 .ch-stance{color:var(--gold-d)}
 
 /* 11/17 운영자: PC 맨 위 글자가 두 줄로 꺾이지 않게 · 시황 띠는 흐르지 않고 고정 */
