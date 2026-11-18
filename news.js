@@ -1008,10 +1008,6 @@
     const box = q("#briefNow"); if (!box) return;
     box.innerHTML = brief ? briefHtml(brief, briefs.filter((h) => h.day !== kstDay(Date.now()))) : `<p class="empty">브리핑을 불러오는 중…</p>`;
     if (brief) setText("#briefStamp", `실시간 · ${hm(brief.at)} KST 기준`);
-    const hb = q("#briefHist"); if (!hb) return;
-    hb.innerHTML = briefs.length ? briefs.slice(0, 21).map((h, i) => `<details class="bh"${i === 0 ? "" : ""}><summary><b>${h.day.slice(5).replace("-", "/")}</b> ${h.slot ? `<b class="bslot">${esc(h.slot)}</b>${h.title ? ` ${esc(h.title)}` : ""}` : `${hm(h.at)} 기록`}
-        <span>${(h.moves || [])[0] ? `${esc(h.moves[0].name)} ${h.moves[0].move > 0 ? "+" : ""}${h.moves[0].move}${h.moves[0].unit === "bp" ? "bp" : "%"}` : ""}${(h.trending || [])[0] ? ` · 화제 ${esc(h.trending[0].name)}` : ""}</span></summary>
-        <div class="brief">${briefHtml(h, briefs.slice(i + 1))}</div></details>`).join("") : `<p class="dim">첫 기록은 오늘 12시에 저장됩니다.</p>`;
   }
   const kstDay = (ms) => { const d = kst(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
 

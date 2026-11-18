@@ -498,11 +498,6 @@ body{overflow-x:hidden}
 .bts{display:flex;flex-wrap:wrap;gap:6px}
 .bt{background:#fff7f0;border:1px solid #f3b38f;border-radius:999px;padding:3px 10px;font-size:13px}
 .bt b{color:#c2410c}.bt em{font-style:normal;font-size:11px;background:#c2410c;color:#fff;border-radius:6px;padding:0 5px;margin-left:4px}
-.brief-hh{margin:22px 0 8px;font-size:17px}.brief-hh small{font-weight:400;color:var(--sub);font-size:12px;margin-left:6px}
-.bh{border:1px solid var(--line);border-radius:12px;margin-bottom:8px;background:#fff}
-.bh summary{cursor:pointer;padding:10px 14px;font-size:14px;display:flex;gap:10px;flex-wrap:wrap}
-.bh summary span{color:var(--sub)}
-.bh .brief{padding:0 12px 12px}
 
 
 /* 섹터 카드 접기/펼치기 */
@@ -604,8 +599,6 @@ body{overflow-x:hidden}
 .t-ch small{font-size:11px;font-weight:500;color:var(--sub);margin-left:2px}
 .t-meta{margin:2px 0 0;font-size:11.5px;color:var(--sub);line-height:1.45}
 .t-meta b{font-weight:600}
-
-.bslot{background:var(--navy,#0f1b2d);color:#fff;border-radius:6px;padding:0 6px;margin:0 4px;font-size:12px}
 
 /* 섹터 모멘텀 */
 .mm{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:0 0 12px}
