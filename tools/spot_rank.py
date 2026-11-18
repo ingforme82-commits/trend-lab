@@ -3,7 +3,7 @@
 1) 중복: 켜진 종목군의 구성 종목인 개별 카드(예: AMD ⊂ 미국 반도체, 코어위브·네비우스 ⊂ 네오클라우드)는 종목군 카드에 합친다.
 2) 오래된 개별 카드: 가장 최근 선정일(since)보다 이전에 뽑힌 ⚡ 개별 카드는 뺀다(11/10·11/12 카드가 남던 문제).
 3) 관련성: 개별 카드는 TRL 관심 종목군(spot_pool) 구성 종목이거나 최근 24시간 관련 속보 3건 이상일 때만(예: 누 홀딩스 제외).
-4) 순서: 지금 |등락| + 최근 12시간 관련 속보(최대 10건 × 0.3) + 📈 연일 상승 0.5 — 상위 MAX 개. pin(한국·일본)은 맨 뒤 고정.
+4) 상승 후보만: 음수/보합 그룹·개별 카드는 주도 영역에서 제외. 순서: 지금 상승률 + 최근 12시간 관련 속보(최대 10건 × 0.3) + 📈 연일 상승 0.5 — 상위 MAX 개. pin(한국·일본)은 맨 뒤 고정.
 5) 한국·일본 카드 설명은 교차 확인된 한국 시세와 니케이로 매분 다시 쓴다(11/2 설명이 남던 문제).
 수치·출처만 쓴다(추천 아님).
 """
@@ -84,6 +84,10 @@ def renew(spot: list[dict], items: list[dict], kr: dict | None = None, world: li
     pins = [s for s in spot if s.get("pin") or s.get("id") == "ASIA"]
     groups = [g for g in groups if g not in pins]
 
+    # 주도 영역은 상승 후보만. 하락 시세·뉴스 수집은 별도로 유지한다.
+    groups = [g for g in groups if isinstance(g.get("chg"), (int, float)) and g["chg"] > 0]
+    singles = [s for s in singles if isinstance(s.get("chg"), (int, float)) and s["chg"] > 0]
+
     # 2) 오래된 개별 카드
     latest = max((s.get("since") or "" for s in singles), default="")
     singles = [s for s in singles if (s.get("since") or "") >= latest]
@@ -104,7 +108,7 @@ def renew(spot: list[dict], items: list[dict], kr: dict | None = None, world: li
             g["reason"] = (g.get("reason") or "") + " · 포함: " + ", ".join(g.pop("inc"))
     # 4) 순서
     def score(s: dict) -> float:
-        return abs(s.get("chg") or 0) + min(_hits(s, items, 12, now_ms), 10) * 0.3 + (0.5 if (s.get("kind") or "").startswith("📈") else 0)
+        return max(s.get("chg") or 0, 0) + min(_hits(s, items, 12, now_ms), 10) * 0.3 + (0.5 if (s.get("kind") or "").startswith("📈") else 0)
     ranked = sorted(groups + singles, key=lambda s: -score(s))[:MAX]
     for s in ranked:
         s["n12"] = _hits(s, items, 12, now_ms)

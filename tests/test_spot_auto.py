@@ -34,7 +34,9 @@ class StatsTest(unittest.TestCase):
 
     def test_score_and_reason(self):
         st = {"avg": -3.0, "op": -1.0, "same": 1.0, "n": 5, "k": 5, "best": {"name": "x", "chg": -6.0}}
-        self.assertAlmostEqual(score(st, 20), 3 * 1.5 + 0.5 + 1.5)
+        self.assertEqual(score(st, 20), 0.0)
+        rising = {**st, "avg": 3.0, "op": 1.0}
+        self.assertAlmostEqual(score(rising, 20), 3 * 1.5 + 0.5 + 1.5)
         r = reason(st, 0, "22:30", 30)
         self.assertIn("5종목 중 5종목 하락", r)
         self.assertIn("최저 x -6.00%", r)

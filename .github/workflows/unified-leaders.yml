@@ -1,0 +1,25 @@
+name: Unified rising leaders
+on:
+  pull_request:
+    paths:
+      - 'news.js'
+      - 'tools/leaders.py'
+      - 'tools/spot_auto.py'
+      - 'tools/spot_rank.py'
+      - 'tests/test_unified_leaders.cjs'
+      - 'tests/test_leaders.py'
+      - 'tests/test_spot_auto.py'
+      - 'tests/test_spot_rank.py'
+permissions:
+  contents: read
+jobs:
+  leaders:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Selection and unified display checks
+        run: |
+          python3 -m unittest discover -s tests -p 'test_spot*.py' -v
+          python3 -m unittest discover -s tests -p 'test_leaders.py' -v
+          node --check news.js
+          node tests/test_unified_leaders.cjs

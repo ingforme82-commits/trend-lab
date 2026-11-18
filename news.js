@@ -383,27 +383,7 @@
     return `<div class="mem-bar"><span class="mem-l">구성 종목</span>${btns}</div>${detail}`;
   }
 
-  function drawSpot() {
-    const box = q("#spotBox"); if (!box) return;
-    if (!spot.length) { box.hidden = true; return; }
-    box.hidden = false;
-    if (spotActive) { const i = spot.findIndex((x) => (x.id || x.name) === spotActive); if (i >= 0) spotIdx = i; }
-    spotIdx = ((spotIdx % spot.length) + spot.length) % spot.length;
-    spotActive = spot[spotIdx].id || spot[spotIdx].name;
-    const nav = spot.length > 1 ? `<div class="spot-nav"><button class="spot-arrow" data-spot-step="-1" aria-label="이전">‹</button>${spot.map((x, i) =>
-      `<button class="spot-dot${i === spotIdx ? " on" : ""}" data-spot-go="${i}" title="${esc(x.name)}">${esc(x.name)}</button>`).join("")}<button class="spot-arrow" data-spot-step="1" aria-label="다음">›</button></div>` : "";
-    box.innerHTML = `<p class="spot-h">🔥 오늘의 주요 종목군 <small>미국 개장 30분 뒤 자동 선정 · 1분마다 중복 합치기·관련 낮은 종목 빼기·순서 갱신 — 움직임 큰 종목군 · ⚡ 급등락 대형주 · 📈 연일 상승 종목군 · 추천 아님 · ${spot.length}개 · 버튼으로 종목군 선택</small></p>${nav}${spotCard(spot[spotIdx])}`;
-    if (!box.dataset.spotBound) {
-      box.dataset.spotBound = "1";
-      box.addEventListener("click", (e) => {
-        const st = e.target.closest("[data-spot-step]"), go = e.target.closest("[data-spot-go]");
-        if (st) { spotActive = null; spotIdx += +st.dataset.spotStep; memOpen = null; drawSpot(); }
-        if (go) { spotActive = null; spotIdx = +go.dataset.spotGo; memOpen = null; drawSpot(); }
-        const mb = e.target.closest("[data-mem]");
-        if (mb) { memOpen = memOpen === mb.dataset.mem ? null : mb.dataset.mem; drawSpot(); }
-      });
-    }
-  }
+  function drawSpot() { /* 종목군은 주도 섹터에 통합한다. */ }
 
   /* ── 섹터: 처음엔 '섹터 이름 + 평균'만 한 줄로, 누르면 그 섹터 종목 등락이 펼쳐진다 ── */
   let openSector = null;
@@ -476,29 +456,59 @@
       <div class="fl-scroll"><table class="fl-t"><tr>${sth("hr", "name", "종목")}${sth("hr", "slot", "이번 시간", cur.gap ? "전일 종가부터" : `${cur.h}시부터`)}${sth("hr", "chg", "오늘")}${sth("hr", "val", "거래대금")}<th>업종</th></tr>${rows}</table></div>
       <p class="mm-f">${tab === "kr" ? "코스피·코스닥 전 종목 중 오늘 거래대금 30억 원 이상(ETF·우선주 제외)" : "나스닥·뉴욕거래소 시가총액 상위 600종목"} · 업종은 네이버 분류, 걸러진 종목 3개 이상인 업종만 평균 · 첫 시간대는 전일 종가부터라 시가 갭 포함 · 사실 집계이며 매수·매도 권유가 아닙니다</p></div>`;
   }
+  const risingLeader = (g) => Number.isFinite(g.chg) && g.chg > 0 && g.n > 0 && g.up / g.n >= .5;
+  function leaderGroups(blk, kind, market) {
+    const result = (blk[kind] || []).filter(risingLeader).map(g => ({...g, rows:(g.rows || []).map(r=>({...r})), relatedPatterns:[]}));
+    const symbols = g => new Set((g.rows || []).map(r=>r.sym || r.code).filter(Boolean));
+    for (const s of spot || []) {
+      if (s.pin || s.id === "ASIA" || s.market !== (market === "us" ? "미국" : "한국") || !Number.isFinite(s.chg) || s.chg <= 0) continue;
+      const rows = s.members?.length ? s.members : s.px > 0 ? [{sym:s.id,name:s.name,px:s.px,chg:s.chg}] : [];
+      if (!rows.length || rows.some(r=>!Number.isFinite(r.chg) || r.stale)) continue;
+      const candidate = {name:s.name, chg:s.chg, n:rows.length, up:rows.filter(r=>r.chg>0).length,
+        rows:rows.map(r=>({...r})), val:null, mcap:null, score:null, breadth:rows.filter(r=>r.chg>0).length/rows.length*100, kind:"종목군", relatedPatterns:s.kw ? [s.kw] : []};
+      if (!risingLeader(candidate)) continue;
+      const set = symbols(candidate);
+      const host = result.find(g=>{
+        const old = symbols(g), matches = [...set].filter(id=>old.has(id)).length;
+        return g.name === candidate.name || (Math.min(old.size,set.size)>0 && matches / Math.min(old.size,set.size) >= .5);
+      });
+      if (host) host.relatedPatterns.push(...candidate.relatedPatterns);
+      else result.push(candidate);
+    }
+    return result;
+  }
+  function leaderNews(group) {
+    const patterns = (group.relatedPatterns || []).slice();
+    const literal = text => Array.from(text, c => "\\^$.*+?()[]{}|".includes(c) ? "\\"+c : c).join("");
+    for (const r of group.rows || []) if ((r.name || "").length >= 2) patterns.push(literal(r.name));
+    if (group.name) patterns.push(literal(group.name));
+    let rx; try {rx=new RegExp(patterns.join("|"),"i");} catch {return "";}
+    const related = news.filter(n=>rx.test(n.text+" "+(n.orig || ""))).slice(0,3);
+    return related.length ? '<ul class="spot-news">'+related.map(n=>'<li><b>'+hm(n.ts)+'</b> '+esc(n.text)+'</li>').join("")+'</ul>' : "";
+  }
   function leadersHtml() {
-    if (!leaders || (!leaders.kr && !leaders.us)) return "";
+    if (!leaders && !spot.length) return "";
     const tabs = [["kr.industry", "🇰🇷 한국 업종"], ["kr.theme", "🇰🇷 한국 테마"], ["us.industry", "🇺🇸 미국 업종"]];
     if (mode() === "us") tabs.unshift(tabs.pop());
     const tab = ldTab || tabs[0][0];
-    const [mk, kd] = tab.split("."), blk = leaders[mk] || {}, isUs = mk === "us";
+    const [mk, kd] = tab.split("."), blk = (leaders || {})[mk] || {}, isUs = mk === "us";
     const money = (v) => isUs ? usd(v) : v ? eok(v) : "-";
-    const gs = sortRows(blk[kd] || [], "ld");
+    const gs = sortRows(leaderGroups(blk, kd, mk), "ld");
     const chips = gs.map((g) => `<button class="sc-chip ld-chip${ldOpen === g.name ? " on" : ""}" data-ld-open="${esc(g.name)}" aria-expanded="${ldOpen === g.name}">
-      ${esc(g.name)} ${sg2(g.chg)} <small>상승 ${g.up}/${g.n} · 대금 ${money(g.val)} · 점수 ${g.score}</small></button>`).join("");
+      ${esc(g.name)} ${sg2(g.chg)} <small>상승 ${g.up}/${g.n} · 대금 ${money(g.val)}${g.score == null ? " · 종목군" : ` · 점수 ${g.score}`}</small></button>`).join("");
     const g = gs.find((x) => x.name === ldOpen);
     const mem = g ? `<div class="sc-panel"><div class="fl-scroll"><table class="fl-t"><tr>${sth("ldm", "name", "종목")}${sth("ldm", "chg", "등락")}${sth("ldm", "val", "거래대금")}${sth("ldm", "mcap", "시가총액")}</tr>
       ${sortRows(g.rows || [], "ldm").map((r) => `<tr><td class="fl-n">${esc(r.name)}</td><td>${pct(r.chg)}</td><td>${money(r.val)}</td><td>${money(r.mcap)}</td></tr>`).join("")}</table></div>
-      <p class="mm-f">${esc(g.name)} 구성 ${g.n}종목 중 거래대금 상위 ${(g.rows || []).length}종목 · 머리글을 누르면 정렬</p></div>` : "";
-    return `<div class="ld"><p class="spot-h">🏁 오늘의 주도 섹터 <small>자동 · ${hm(blk.at || leaders.at)} 기준 · ${blk.open ? "장중 3분마다 갱신" : "장 마감 기준"} · 섹터를 누르면 종목이 보입니다</small></p>
+      <p class="mm-f">${esc(g.name)} · ${(g.rows || []).length}종목 · 머리글을 누르면 정렬</p>${leaderNews(g)}</div>` : "";
+    return `<div class="ld"><p class="spot-h">🏁 오늘의 주도 섹터·종목 <small>${hm(blk.at || leaders?.at || Date.now())} 기준 · ${blk.open ? "장중 3분마다 갱신" : "장 마감 기준"} · 섹터를 누르면 종목이 보입니다</small></p>
       <div class="fl-sort">${tabs.map(([k, l]) => `<button class="sc-chip${tab === k ? " on" : ""}" data-ld-tab="${k}">${l}</button>`).join("")}</div>
       ${sortChips("ld", [["score", "주도 점수순"], ["chg", "등락률순"], ["val", "거래대금순"], ["mcap", "시가총액순"], ["breadth", "상승 비율순"]])}
-      <div class="sc-bar">${chips || '<span class="dim">자료를 불러오는 중</span>'}</div>${mem}
-      <p class="mm-f">네이버 금융 ${isUs ? "해외(나스닥·뉴욕거래소 시가총액 상위 각 300종목, 업종별 시가총액 가중 등락률)" : kd === "theme" ? "국내 테마(등락률 상위 후보 16개 중)" : "국내 업종(등락률 상위 후보 12개 중)"} · 주도 점수 = 등락률 순위 50 + 거래대금 순위 30 + 상승 종목 비율 20(후보끼리 비교) · 순위일 뿐 매수·매도 권유가 아닙니다</p></div>`;
+      <div class="sc-bar">${chips || '<span class="dim">현재 기준을 충족하는 상승 주도 섹터가 없습니다.</span>'}</div>${mem}
+      <p class="mm-f">네이버 금융 ${isUs ? "해외(나스닥·뉴욕거래소 시가총액 상위 각 300종목, 업종별 시가총액 가중 등락률)" : kd === "theme" ? "국내 테마(등락률 상위 후보 16개 중)" : "국내 업종(등락률 상위 후보 12개 중)"} · 평균 상승·구성 종목 절반 이상 상승만 표시 · 겹치는 종목군은 합침 · 주도 점수 = 등락률 순위 50 + 거래대금 순위 30 + 상승 비율 20 · 순위일 뿐 매수·매도 권유가 아닙니다</p></div>`;
   }
   function drawSectors() {
     const box = q("#sectorBox"); if (!box) return;
-    if (!sectors.length && !leaders) { box.hidden = true; return; }
+    if (!sectors.length && !leaders && !spot.length) { box.hidden = true; return; }
     box.hidden = false;
     const won = (r) => r.cur === "KRW";
     const chips = sectors.map((c) => {

@@ -49,3 +49,12 @@ class LeadersTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class RisingGroupsTest(unittest.TestCase):
+    def test_positive_average_and_at_least_half_rising(self):
+        rows = [{"name":"급락","chg":-7,"n":4,"up":0},
+                {"name":"한종목편중","chg":2,"n":10,"up":2},
+                {"name":"확산","chg":1,"n":4,"up":3},
+                {"name":"보합","chg":0,"n":4,"up":2}]
+        self.assertEqual([g["name"] for g in leaders.rising_groups(rows)],["확산"])
