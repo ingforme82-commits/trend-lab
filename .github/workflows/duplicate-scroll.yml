@@ -36,6 +36,6 @@ jobs:
             exit 1
           fi
           cat /tmp/trl-previous-scroll.log
-          rg 'AssertionError' /tmp/trl-previous-scroll.log
+          python3 -c "from pathlib import Path; assert 'AssertionError' in Path('/tmp/trl-previous-scroll.log').read_text()"
       - name: Verify fixed code on mobile and desktop
         run: python3 tests/browser_scroll_check.py
