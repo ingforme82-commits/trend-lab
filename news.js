@@ -846,21 +846,6 @@
     const sig = Object.values(CH_RT).map((k) => q[k] ? `${k}:${q[k].px}` : "").join("|");
     if (sig !== chanRtSig) { chanRtSig = sig; drawChan(); }
   });
-  function chNow(c) {
-    const countries = new Map(), priority = ["KOSPI","KOSDAQ","005930","000660","402340","NVDA","MU","SOXL","SKHY","TSM"];
-    for (const g of c.groups || []) for (const regular of g.items || []) {
-      if (!countries.has(g.country)) countries.set(g.country, []);
-      countries.get(g.country).push({cc:g.cc, it:chLive(chDisplay(regular))});
-    }
-    return [...countries].sort((a,b)=>Number(b[1].some(x=>x.it.live))-Number(a[1].some(x=>x.it.live))).map(([country, rows]) => {
-      const selected = rows.slice().sort((a,b) => {
-        const rank = x => priority.includes(x.it.code) ? priority.indexOf(x.it.code) : 100;
-        return rank(a)-rank(b);
-      }).slice(0,5);
-      const active = rows.filter(x=>x.it.live), sessions = [...new Set((active.length ? active : rows).map(x=>x.it.session || (x.it.live ? "정규장" : "장 종료")))];
-      return `<section class="ch-now-country"><p><b>${CH_FLAG[rows[0].cc] || ""} ${esc(country)} · ${esc(sessions.join(" · "))}</b>${active.length ? "" : " · 마지막 시세"}</p><ul>${selected.map(({cc,it}) => `<li data-viewport-key="trend-now:${esc(it.code)}"><b>${esc(it.name)}</b> · 5일선 ${it.px > it.ma5 ? "위" : "아래"} · ${esc(it.state)}${it.stale ? " · 지연" : ""}${it.source_at ? ` <small>${hm(it.source_at)}</small>` : ""}</li>`).join("")}</ul></section>`;
-    }).join("");
-  }
   function drawChan() {
     return window.trlViewport ? window.trlViewport.update(drawChanRaw) : drawChanRaw();
   }
@@ -869,7 +854,6 @@
     if (!c || !(c.groups || []).length) { box.hidden = true; return; }
     box.hidden = false;
     q("#chanRule").textContent = "현재 세션 · 가격·5일선·채널 위치";
-    const nowBox = q("#chanNow"); if (nowBox) nowBox.innerHTML = chNow(c);
     const sg = c.signals || [], rsg = c.resists || [];
     const sgBox = q("#chanSig");
     if (sgBox) { const all = sg.concat(rsg).sort((a, b) => b.ts - a.ts); sgBox.hidden = !all.length; sgBox.innerHTML = all.map((s) => `<p>⏱ ${hm(s.ts)} ${esc(s.text)}</p>`).join(""); }
