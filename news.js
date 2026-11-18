@@ -726,7 +726,14 @@
   }
   function chChart(it, cc) {
     const rows = it.rows, n = rows.length, N = n + 1, W = 640, H = 230, M = {l: 6, r: 74, t: 10, b: 20};
-    const up = (i) => it.up_now + it.su * (i - (n - 1)), lo = (i) => it.lo_now + it.sl * (i - (n - 1));
+    const up = (i) => it.up_now + it.su * (i - (n - 1)), lo = (i) => {
+      const path = it.lower_path;
+      if (path?.length === 3 && i <= path[1][0]) {
+        const [[a, av], [b, bv]] = path;
+        return av + (bv - av) * (i - a) / (b - a);
+      }
+      return it.lo_now + it.sl * (i - (n - 1));
+    };
     let ymax = Math.max(...rows.map((r) => r[2])), ymin = Math.min(...rows.map((r) => r[3]));
     ymin = Math.max(Math.min(ymin, lo(n)), ymin * 0.85);
     const pad = (ymax - ymin) * 0.05; ymax += pad; ymin -= pad;
@@ -739,18 +746,22 @@
     s += `<text x="${X(n - 1)}" y="${H - 5}" class="ch-ax" text-anchor="middle">${rows[n - 1][0]}</text><g clip-path="url(#${cid})">`;
     const upperStart = it.upper_start ?? it.hi[0], lowerStart = it.lower_start ?? it.lo[0];
     const a0 = Math.max(upperStart, lowerStart);
-    if (it.channel_valid !== false) s += `<polygon class="ch-band" points="${X(a0)},${Y(up(a0))} ${X(n)},${Y(up(n))} ${X(n)},${Y(lo(n))} ${X(a0)},${Y(lo(a0))}"/>`;
+    if (it.channel_valid !== false) {
+      const bottom = [a0, ...(it.lower_path || []).map(p => p[0]).filter(i => i > a0 && i < n), n].reverse();
+      s += `<polygon class="ch-band" points="${X(a0)},${Y(up(a0))} ${X(n)},${Y(up(n))} ${bottom.map(i => `${X(i)},${Y(lo(i))}`).join(" ")}"/>`;
+    }
     const cw = Math.max(2, st * 0.6);
     rows.forEach((r, i) => { const [, o, h, l, c] = r, col = c >= o ? "var(--up)" : "var(--down)";
       s += `<line x1="${X(i)}" x2="${X(i)}" y1="${Y(h)}" y2="${Y(l)}" stroke="${col}"/><rect x="${X(i) - cw / 2}" y="${Y(Math.max(o, c))}" width="${cw}" height="${Math.max(1, Math.abs(Y(o) - Y(c)))}" fill="${col}" rx="1"${i === n - 1 && it.live ? ' class="ch-live"' : ""}/>`; });
     const ma = rows.map((_, i) => i >= 4 ? rows.slice(i - 4, i + 1).reduce((a, r) => a + r[4], 0) / 5 : null);
     s += `<polyline class="ch-ma" points="${ma.map((v, i) => v == null ? "" : `${X(i)},${Y(v)}`).join(" ").trim()}"/>`;
     s += `<line x1="${X(upperStart)}" y1="${Y(up(upperStart))}" x2="${X(n - 1)}" y2="${Y(up(n - 1))}" class="ch-res${it.upper_verified === false ? " ch-unverified" : ""}"/><line x1="${X(n - 1)}" y1="${Y(up(n - 1))}" x2="${X(n)}" y2="${Y(up(n))}" class="ch-res ch-dash${it.upper_verified === false ? " ch-unverified" : ""}"/>`;
-    s += `<line x1="${X(lowerStart)}" y1="${Y(lo(lowerStart))}" x2="${X(n - 1)}" y2="${Y(lo(n - 1))}" class="ch-sup${it.lower_verified === false ? " ch-unverified" : ""}"/><line x1="${X(n - 1)}" y1="${Y(lo(n - 1))}" x2="${X(n)}" y2="${Y(lo(n))}" class="ch-sup ch-dash${it.lower_verified === false ? " ch-unverified" : ""}"/></g>`;
+    const supportPoints = [lowerStart, ...(it.lower_path || []).map(p => p[0]).filter(i => i > lowerStart && i < n - 1), n - 1];
+    s += `<polyline points="${supportPoints.map(i => `${X(i)},${Y(lo(i))}`).join(" ")}" fill="none" class="ch-sup${it.lower_verified === false ? " ch-unverified" : ""}"/><line x1="${X(n - 1)}" y1="${Y(lo(n - 1))}" x2="${X(n)}" y2="${Y(lo(n))}" class="ch-sup ch-dash${it.lower_verified === false ? " ch-unverified" : ""}"/></g>`;
     it.hi.forEach((i) => s += `<circle cx="${X(i)}" cy="${Y(rows[i][2])}" r="3.5" class="ch-dot-r"/>`);
     it.lo.forEach((i) => s += `<circle cx="${X(i)}" cy="${Y(rows[i][3])}" r="3.5" class="ch-dot-s"/>`);
     return `<svg class="ch-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(it.name)} 일봉·하락 채널·5일선">${s}</svg>
-      <p class="ch-leg"><i class="lr"></i>상단선(고점 접촉) <i class="ls"></i>하단선(저점 접촉) <i class="lm"></i>5일선${it.reference_only ? "(통합가 참고)" : ""} · 점선 = 연장·미검증 참고선${it.live ? " · 마지막 봉은 진행 중" : ""}</p>`;
+      <p class="ch-leg"><i class="lr"></i>상단선(고점 접촉) <i class="ls"></i>하단선(저점 접촉) <i class="lm"></i>5일선 · 점선 연장${it.live ? " · 진행 중" : ""}</p>`;
   }
   // ⚡ 실시간 체결(KIS 웹소켓 rt.json, 2초) 덮어쓰기 — 11/18 운영자 "실시간 숫자들 api 연동해서 추세추종 차트 수정"
   // 진행 중인 마지막 봉만 현재가로 바꾸고(고가·저가 갱신) 5일선·상태·거리를 다시 계산한다. 15초 넘은 값은 쓰지 않는다.
@@ -774,7 +785,7 @@
     const pc = n > 1 ? rows[n - 2][4] : null;
     const o = {...it, rows, px: q.px, chg: q.chg != null ? q.chg : pc ? Math.round((q.px / pc - 1) * 10000) / 100 : it.chg, ma5,
       gap_next: (it.up_next / q.px - 1) * 100, gap_low: (it.lo_now / q.px - 1) * 100, rt_at: q.at, rt_mk: q.mk};
-    if (!it.display) o.state = chState(o, q.px);
+    o.state = chState(o, q.px);
     return o;
   }
   let chanRtSig = "";
@@ -813,8 +824,8 @@
         const mdl = many ? `<span class="ch-md m${Math.min(it.rank, 4)}">${it.rank <= 3 ? ["금", "은", "동"][it.rank - 1] : it.rank}</span>` : "";
         html += `<article class="ch-card" data-viewport-key="channel:${esc(it.code)}">
           <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b><span class="mn">${chFmt(g.cc, it.px)}</span><b class="${it.chg >= 0 ? "up" : "down"}">${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%</b>${sigCodes.has(it.code) ? '<span class="ch-sig">정규장 5일선 돌파</span>' : ""}${resCodes.has(it.code) ? '<span class="ch-sig ch-res">정규장 5일선 저항</span>' : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span></div>
-          ${it.upper_touch_count != null ? `<div class="ch-contacts"><span class="${it.upper_verified ? "ch-contact-ok" : "ch-contact-wait"}">상단 ${it.upper_touch_count}${it.upper_touch_count >= 3 ? "회" : "점"} ${it.upper_verified ? (it.upper_touch_count >= 3 ? "접촉 보강" : "기준선") : "재확인"}</span><span class="${it.lower_verified ? "ch-contact-ok" : "ch-contact-wait"}">하단 ${it.lower_touch_count}${it.lower_touch_count >= 3 ? "회" : "점"} ${it.lower_verified ? (it.lower_touch_count >= 3 ? "접촉 보강" : "기준선") : "재확인"}</span><small>추가 접촉 오차 ${it.touch_tolerance_pct}% · ${it.touch_min_spacing}거래일 간격 · 최근 ${it.touch_lookback_bars || it.rows.length}봉</small></div>` : ""}
-          ${regular.display ? `<p class="ch-leg"><b>${esc(it.scope)} · ${esc(it.session)} · ${esc(it.quality_note)}</b> · ${esc(it.source)} · ${esc(it.time_kind)} ${hm(it.source_at)}<br>${esc(it.history_note)} · 등락률은 전일 정규장 종가 대비 · 5일선·채널 위치는 참고값<br>정규장 차트 ${chFmt(g.cc, regular.px)} · ${esc(regular.state)} · 5일선 ${chFmt(g.cc, regular.ma5)} · 시간외 값으로 정규장 돌파를 확정하지 않음</p>` : `${it.session_note ? `<p class="ch-leg">${esc(it.session_note)}</p>` : ""}${chNxt(it.nxt)}`}
+          ${it.upper_touch_count != null ? `<div class="ch-contacts"><span class="${it.upper_verified ? "ch-contact-ok" : "ch-contact-wait"}">상단 ${it.upper_touch_count}${it.upper_touch_count >= 3 ? "회" : "점"} ${it.upper_verified ? (it.upper_touch_count >= 3 ? "접촉 보강" : "기준선") : "재확인"}</span><span class="${it.lower_verified ? "ch-contact-ok" : "ch-contact-wait"}">${it.lower_path ? "하단 3점 연결" : `하단 ${it.lower_touch_count}${it.lower_touch_count >= 3 ? "회" : "점"} ${it.lower_verified ? (it.lower_touch_count >= 3 ? "접촉 보강" : "기준선") : "재확인"}`}</span><small>추가 접촉 오차 ${it.touch_tolerance_pct}% · ${it.touch_min_spacing}거래일 간격 · 최근 ${it.touch_lookback_bars || it.rows.length}봉</small></div>` : ""}
+          <p class="ch-leg"><b>${regular.display ? `${it.session === "정규장" ? "정규장" : "시간외 · " + esc(it.session)}` : (g.cc === "kr" || g.cc === "us") ? "통합 시세 확인 중" : "정규장"}</b> · ${esc(it.day)} ${it.source_at ? hm(it.source_at) : ""}${it.stale ? " · 지연" : it.live ? " · 갱신 중" : " · 마지막 시세"} · 정규장 <b class="mn">${chFmt(g.cc, regular.px)}</b> (${esc(regular.day)})${regular.display ? ` · ${esc(it.source)}` : ""}</p>
           <div class="ch-meta">${chGlyph(it.rows[it.rows.length - 1])}<span>${esc(it.candle.name)}${it.live ? ' <em class="ch-now">진행 중</em>' : ""}${it.rt_at ? ` <em class="ch-now">⚡ 실시간 ${hm(it.rt_at)}:${String(new Date(it.rt_at).getSeconds()).padStart(2, "0")}${it.rt_mk === "NXT" ? " · 넥장" : ""}</em>` : ""}</span>
             <span>상단선 <b class="mn">${chFmt(g.cc, it.up_now)}</b></span><span>5일선 <b class="mn">${chFmt(g.cc, it.ma5)}</b></span>
             <span>다음 거래일 상단까지 <b class="mn">${it.gap_next > 0 ? "+" : ""}${(+it.gap_next).toFixed(1)}%</b></span>

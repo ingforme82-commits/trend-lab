@@ -107,3 +107,26 @@ class ContactTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class ThreePivotSupportTests(unittest.TestCase):
+    def test_three_actual_points_and_last_segment_extension(self):
+        from channel_fit import support_path
+        dates = ["10/22","10/23","10/26","11/05","11/06","11/16","11/17","11/18"]
+        lows = [849.25,860,900,650,676,716,666.88,720]
+        line = support_path(lows, dates, ["10/22","11/05","11/17"], 6)
+        self.assertEqual(line["touches"], [0,3,6])
+        self.assertEqual(line["path"], [[0,849.25],[3,650],[6,666.88]])
+        self.assertAlmostEqual(line["slope"], (666.88-650)/3)
+        self.assertTrue(line["verified"])
+
+    def test_missing_or_unfinished_third_point_is_not_invented(self):
+        from channel_fit import support_path
+        self.assertIsNone(support_path([100,90,95],["a","b","c"],["a","b","d"],2))
+        self.assertIsNone(support_path([100,90,95],["a","b","c"],["a","b","c"],1))
+
+    def test_chart_override_does_not_change_normal_two_anchor_policy(self):
+        config = json.loads((Path(__file__).resolve().parents[1] / "data/channels.json").read_text(encoding="utf-8"))
+        self.assertEqual(config["contact_rules"]["method"],"fixed_two_anchor")
+        self.assertEqual(config["display_overrides"]["MU"]["lower_pivots"],["10/22","11/05","11/17"])
+        self.assertEqual(len(config["display_overrides"]),1)

@@ -6,6 +6,9 @@ on:
     paths:
       - 'tools/chan.py'
       - 'tools/session_chan.py'
+      - 'tools/channel_fit.py'
+      - 'data/channels.json'
+      - 'tests/test_channel_contacts.py'
       - 'tests/test_session_chan.py'
       - 'tests/test_index_chart_render.cjs'
       - 'news.js'
@@ -28,3 +31,4 @@ jobs:
           node --check news.js
           node --check sw.js
           node tests/test_index_chart_render.cjs
+          node tests/test_chan_rt.cjs

@@ -61,10 +61,19 @@ context.window.trlChan.groups = [{cc: "us", country: "미국", sector: "합성 �
 context.render();
 const extended = elements.get("#chanBoard").innerHTML;
 assert.ok(extended.includes("$175.00"));
-assert.ok(extended.includes("정규장 차트 $150.00"));
-assert.ok(extended.includes("애프터마켓") && extended.includes("5분봉 시작"));
-assert.ok(extended.includes("5일선(통합가 참고)"));
+assert.ok(extended.includes("정규장 <b class=\"mn\">$150.00"));
+assert.ok(extended.includes("시간외 · 애프터마켓"));
+assert.ok(!extended.includes("과거 정규장") && !extended.includes("참고값") && !extended.includes("시간외 값으로"));
 assert.ok(!extended.includes("NaN") && !extended.includes("Infinity"));
 assert.equal(regular.px, 150);
 assert.equal(regular.state, "채널 안");
 console.log("확장세션 표시 가격·원천시각·정규장 판정 분리: PASS");
+
+regular.display.lower_path = [[0,99.1],[8,98],[20,99]];
+regular.display.lo = [0,8,20];
+regular.display.lower_touch_count = 3;
+context.render();
+const support = elements.get("#chanBoard").innerHTML;
+assert.ok(support.includes('<polyline points='));
+assert.ok(support.includes("하단 3점 연결"));
+console.log("마이크론 3점 지지 경로·간결한 세션/정규장 가격 표시: PASS");
