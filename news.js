@@ -763,6 +763,22 @@
     return `<svg class="ch-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(it.name)} 일봉·하락 채널·5일선">${s}</svg>
       <p class="ch-leg"><i class="lr"></i>상단선(고점 접촉) <i class="ls"></i>하단선(저점 접촉) <i class="lm"></i>5일선 · 점선 연장${it.live ? " · 진행 중" : ""}</p>`;
   }
+  function chDisplay(regular) {
+    if (!regular.display) return regular;
+    const it = {...regular, ...regular.display};
+    const rows = regular.rows || [];
+    const same = it.day === regular.day, pre = String(it.session).includes("프리");
+    const baseRow = rows[same && (pre || it.session === "정규장") ? rows.length - 2 : rows.length - 1];
+    // 옛 게시본이 전일 시간외 종가로 계산했어도 브라우저에서 정규장 기준으로 바로잡는다.
+    const base = it.change_basis && Number.isFinite(it.base) && it.base > 0 ? it.base : baseRow?.[4];
+    if (Number.isFinite(base) && base > 0) {
+      it.base = base; it.base_day = it.change_basis ? it.base_day : baseRow[0];
+      it.change = it.px - base;
+      it.chg = Math.round((it.px / base - 1) * 10000) / 100 || 0;
+      it.change_basis = it.session === "정규장" ? "전일 정규장 종가" : "정규장 종가";
+    } else { it.base = null; it.chg = null; it.change = null; }
+    return it;
+  }
   // ⚡ 실시간 체결(KIS 웹소켓 rt.json, 2초) 덮어쓰기 — 11/18 운영자 "실시간 숫자들 api 연동해서 추세추종 차트 수정"
   // 진행 중인 마지막 봉만 현재가로 바꾸고(고가·저가 갱신) 5일선·상태·거리를 다시 계산한다. 15초 넘은 값은 쓰지 않는다.
   const CH_RT = {KOSPI: "KOSPI", KOSDAQ: "KOSDAQ", "005930": "SMSN", "000660": "SKHX", "402340": "SKSQ", SOXL: "SOXL", KORU: "KORU", SKHY: "SKHY", NVDA: "NVDA"};
@@ -783,7 +799,7 @@
     last[2] = Math.max(last[2], q.px); last[3] = Math.min(last[3], q.px); last[4] = q.px;
     const closes = rows.map((r) => r[4]), ma5 = closes.slice(-5).reduce((a, b) => a + b, 0) / Math.min(5, n);
     const pc = n > 1 ? rows[n - 2][4] : null;
-    const o = {...it, rows, px: q.px, chg: q.chg != null ? q.chg : pc ? Math.round((q.px / pc - 1) * 10000) / 100 : it.chg, ma5,
+    const o = {...it, rows, px: q.px, chg: it.base > 0 ? Math.round((q.px / it.base - 1) * 10000) / 100 || 0 : pc ? Math.round((q.px / pc - 1) * 10000) / 100 || 0 : it.chg, ma5,
       gap_next: (it.up_next / q.px - 1) * 100, gap_low: (it.lo_now / q.px - 1) * 100, rt_at: q.at, rt_mk: q.mk};
     o.state = chState(o, q.px);
     return o;
@@ -794,7 +810,25 @@
     const sig = Object.values(CH_RT).map((k) => q[k] ? `${k}:${q[k].px}` : "").join("|");
     if (sig !== chanRtSig) { chanRtSig = sig; drawChan(); }
   });
-  function drawChan() {                                       // 11/17 운영자: 표 대신 채널 그래프를 항상 펼쳐서(1분마다 갱신)
+  function chNow(c) {
+    const countries = new Map(), priority = ["KOSPI","KOSDAQ","005930","000660","402340","NVDA","MU","SOXL","SKHY","TSM"];
+    for (const g of c.groups || []) for (const regular of g.items || []) {
+      if (!countries.has(g.country)) countries.set(g.country, []);
+      countries.get(g.country).push({cc:g.cc, it:chLive(chDisplay(regular))});
+    }
+    return [...countries].sort((a,b)=>Number(b[1].some(x=>x.it.live))-Number(a[1].some(x=>x.it.live))).map(([country, rows]) => {
+      const selected = rows.slice().sort((a,b) => {
+        const rank = x => priority.includes(x.it.code) ? priority.indexOf(x.it.code) : 100;
+        return rank(a)-rank(b);
+      }).slice(0,5);
+      const active = rows.filter(x=>x.it.live), sessions = [...new Set((active.length ? active : rows).map(x=>x.it.session || (x.it.live ? "정규장" : "장 종료")))];
+      return `<section class="ch-now-country"><p><b>${CH_FLAG[rows[0].cc] || ""} ${esc(country)} · ${esc(sessions.join(" · "))}</b>${active.length ? "" : " · 마지막 시세"}</p><ul>${selected.map(({cc,it}) => `<li data-viewport-key="trend-now:${esc(it.code)}"><b>${esc(it.name)}</b> <span class="mn">${chFmt(cc,it.px)}</span> <b class="${it.chg > 0 ? "up" : it.chg < 0 ? "down" : "dim"}">${it.chg == null ? "확인 중" : (it.chg > 0 ? "+" : "")+Number(it.chg).toFixed(2)+"%"}</b> · 5일선 ${it.px > it.ma5 ? "위" : "아래"} · ${esc(it.state)}${it.stale ? " · 지연" : ""}${it.source_at ? ` <small>${hm(it.source_at)}</small>` : ""}</li>`).join("")}</ul></section>`;
+    }).join("");
+  }
+  function drawChan() {
+    return window.trlViewport ? window.trlViewport.update(drawChanRaw) : drawChanRaw();
+  }
+  function drawChanRaw() {                                       // 11/17 운영자: 표 대신 채널 그래프를 항상 펼쳐서(1분마다 갱신)
     const chNxt = (x) => {                                  // 🌙 넥장(NXT) 기준 위치 — 거래소 판정과 따로(11/18 운영자)
       if (!x || !(x.px > 0)) return "";
       const old = !x.at || Date.now() - x.at > 10 * 60000;
@@ -806,7 +840,8 @@
     const box = q("#chan"), c = window.trlChan; if (!box) return;
     if (!c || !(c.groups || []).length) { box.hidden = true; return; }
     box.hidden = false;
-    q("#chanRule").innerHTML = `${esc(c.rule || "")}${c.stance ? `<br><b class="ch-stance">${esc(c.stance)}</b>` : ""}`;
+    q("#chanRule").textContent = "현재 세션 · 가격·5일선·채널 위치";
+    const nowBox = q("#chanNow"); if (nowBox) nowBox.innerHTML = chNow(c);
     const sg = c.signals || [], rsg = c.resists || [];
     const sgBox = q("#chanSig");
     if (sgBox) { const all = sg.concat(rsg).sort((a, b) => b.ts - a.ts); sgBox.hidden = !all.length; sgBox.innerHTML = all.map((s) => `<p>⏱ ${hm(s.ts)} ${esc(s.text)}</p>`).join(""); }
@@ -820,12 +855,12 @@
       const many = g.items.length > 1 && g.cc !== "kr_index";
       html += `<div class="ch-sec"><p class="ch-sh">${esc(g.sector)}${many ? "<small>10월 말 고점 대비 덜 빠진 순</small>" : ""}</p><div class="ch-grid2">`;
       g.items.forEach((regular) => {
-        const it = chLive(regular.display ? {...regular, ...regular.display} : regular);
+        const it = chLive(chDisplay(regular));
         const mdl = many ? `<span class="ch-md m${Math.min(it.rank, 4)}">${it.rank <= 3 ? ["금", "은", "동"][it.rank - 1] : it.rank}</span>` : "";
         html += `<article class="ch-card" data-viewport-key="channel:${esc(it.code)}">
-          <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b><span class="mn">${chFmt(g.cc, it.px)}</span><b class="${it.chg >= 0 ? "up" : "down"}">${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%</b>${sigCodes.has(it.code) ? '<span class="ch-sig">정규장 5일선 돌파</span>' : ""}${resCodes.has(it.code) ? '<span class="ch-sig ch-res">정규장 5일선 저항</span>' : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span></div>
+          <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b><span class="mn">${chFmt(g.cc, it.px)}</span><b class="${it.chg > 0 ? "up" : it.chg < 0 ? "down" : "dim"}">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b>${sigCodes.has(it.code) ? '<span class="ch-sig">정규장 5일선 돌파</span>' : ""}${resCodes.has(it.code) ? '<span class="ch-sig ch-res">정규장 5일선 저항</span>' : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span></div>
           ${it.upper_touch_count != null ? `<div class="ch-contacts"><span class="${it.upper_verified ? "ch-contact-ok" : "ch-contact-wait"}">상단 ${it.upper_touch_count}${it.upper_touch_count >= 3 ? "회" : "점"} ${it.upper_verified ? (it.upper_touch_count >= 3 ? "접촉 보강" : "기준선") : "재확인"}</span><span class="${it.lower_verified ? "ch-contact-ok" : "ch-contact-wait"}">${it.lower_reference_points ? "하단 4점 기준" : it.lower_path ? "하단 3점 연결" : `하단 ${it.lower_touch_count}${it.lower_touch_count >= 3 ? "회" : "점"} ${it.lower_verified ? (it.lower_touch_count >= 3 ? "접촉 보강" : "기준선") : "재확인"}`}</span><small>추가 접촉 오차 ${it.touch_tolerance_pct}% · ${it.touch_min_spacing}거래일 간격 · 최근 ${it.touch_lookback_bars || it.rows.length}봉</small></div>` : ""}
-          <p class="ch-leg"><b>${regular.display ? `${it.session === "정규장" ? "정규장" : "시간외 · " + esc(it.session)}` : (g.cc === "kr" || g.cc === "us") ? "통합 시세 확인 중" : "정규장"}</b> · ${esc(it.day)} ${it.source_at ? hm(it.source_at) : ""}${it.stale ? " · 지연" : it.live ? " · 갱신 중" : " · 마지막 시세"} · 정규장 <b class="mn">${chFmt(g.cc, regular.px)}</b> (${esc(regular.day)})${regular.display ? ` · ${esc(it.source)}` : ""}</p>
+          <p class="ch-leg"><b>${regular.display ? `${it.session === "정규장" ? "정규장" : "시간외 · " + esc(it.session)}` : (g.cc === "kr" || g.cc === "us") ? "통합 시세 확인 중" : "정규장"}</b> · ${esc(it.day)} ${it.source_at ? hm(it.source_at) : ""}${it.stale ? " · 지연" : it.live ? " · 갱신 중" : " · 마지막 시세"} · ${regular.display && it.session !== "정규장" ? "정규장 종가" : "정규장"} <b class="mn">${chFmt(g.cc, regular.display && it.session !== "정규장" ? it.base : regular.px)}</b> (${esc(regular.display && it.session !== "정규장" ? it.base_day : regular.day)})${regular.display ? ` · ${esc(it.source)}` : ""}</p>
           <div class="ch-meta">${chGlyph(it.rows[it.rows.length - 1])}<span>${esc(it.candle.name)}${it.live ? ' <em class="ch-now">진행 중</em>' : ""}${it.rt_at ? ` <em class="ch-now">⚡ 실시간 ${hm(it.rt_at)}:${String(new Date(it.rt_at).getSeconds()).padStart(2, "0")}${it.rt_mk === "NXT" ? " · 넥장" : ""}</em>` : ""}</span>
             <span>상단선 <b class="mn">${chFmt(g.cc, it.up_now)}</b></span><span>5일선 <b class="mn">${chFmt(g.cc, it.ma5)}</b></span>
             <span>다음 거래일 상단까지 <b class="mn">${it.gap_next > 0 ? "+" : ""}${(+it.gap_next).toFixed(1)}%</b></span>

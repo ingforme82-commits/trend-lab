@@ -210,3 +210,46 @@ class IntegratedHistoryTests(unittest.TestCase):
                 result, errors = s.collect(groups[:1],next_now,path)
             self.assertFalse(errors)
             self.assertEqual([h["day"] for h in result["005930"]["history"]],["2026-11-17","2026-11-18"])
+
+
+class RegularCloseChangeTests(unittest.TestCase):
+    def test_pre_change_uses_regular_close_not_integrated_previous_close(self):
+        regular = rows()
+        q = s.parse_kr(kr_quote(),NOW)["005930"]
+        q["history"] = [{"day":"2026-11-16","ohlc":[150,170,130,160]}]
+        view = s.display(regular,q,A,{},now=NOW,channel=chan.channel,candle=chan.candle,state=chan.state)
+        self.assertEqual(view["base"],150)
+        self.assertEqual(view["base_day"],"11/16")
+        self.assertEqual(view["chg"],16.67)
+        self.assertEqual(view["change"],25)
+        self.assertEqual(view["rows"][-2][4],160)
+
+    def test_after_change_uses_same_day_regular_close(self):
+        regular = rows()+[["11/17",150,160,140,150]]
+        q = s.parse_kr(kr_quote(),NOW)["005930"]; q["session"]="NXT 애프터"
+        view = s.display(regular,q,A,{},now=NOW,channel=chan.channel,candle=chan.candle,state=chan.state)
+        self.assertEqual(view["base"],150)
+        self.assertEqual(view["base_day"],"11/17")
+        self.assertEqual(view["chg"],16.67)
+
+    def test_micron_observed_positive_case_is_not_negative_after_history_merge(self):
+        regular = rows()+[["11/17",726.22,726.75,666.88,712.42]]
+        q = {"day":"2026-11-18","ohlc":[734.04,741.64,720.65,726.48],"country":"us",
+             "source_at":int(datetime(2026,11,18,8,40,tzinfo=s.NY).timestamp()*1000),
+             "checked_at":int(datetime(2026,11,18,8,40,tzinfo=s.NY).timestamp()*1000),
+             "source":"fixture","session":"프리마켓","provider_open":True,"time_kind":"1분봉 시작",
+             "max_age_seconds":180,"scope":"미국 확장세션","history_note":"",
+             "history":[{"day":"2026-11-17","ohlc":[725.9866,754,666.88,745.8]}]}
+        now=datetime(2026,11,18,8,40,tzinfo=s.NY)
+        view=s.display(regular,q,A,{},now=now,channel=chan.channel,candle=chan.candle,state=chan.state)
+        self.assertEqual(view["base"],712.42)
+        self.assertEqual(view["chg"],1.97)
+        self.assertEqual(view["change"],14.06)
+
+    def test_regular_session_keeps_previous_regular_close_basis(self):
+        regular = rows()+[["11/17",150,160,140,152]]
+        q = s.parse_kr(kr_quote(),NOW)["005930"]; q["session"]="정규장"
+        view = s.display(regular,q,A,{},now=NOW,channel=chan.channel,candle=chan.candle,state=chan.state)
+        self.assertEqual(view["base_day"],"11/16")
+        self.assertEqual(view["base"],150)
+        self.assertEqual(view["change_basis"],"전일 정규장 종가")

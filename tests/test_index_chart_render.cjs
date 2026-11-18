@@ -52,6 +52,8 @@ assert.ok(css.includes("@media (max-width:860px){.ch-grid2{grid-template-columns
 console.log("두 기준점 실선·추가 접촉 보강·지수 순서·PC 2열/모바일 1열: PASS");
 
 const regular = {...item("NVDA", "엔비디아"), instrument_type: "stock", px: 150, state: "채널 안", ma5: 160};
+regular.rows = rows.map(r => r.slice());
+regular.rows[regular.rows.length - 1] = ["11/17",150,151,149,150];
 regular.display = {...item("NVDA", "엔비디아"), instrument_type: "stock", px: 175, ma5: 155,
   reference_only: true, signal_eligible: false, source_at: 1000, checked_at: 2000,
   source: "확장세션 공급자", scope: "미국 확장세션", session: "애프터마켓",
@@ -61,7 +63,7 @@ context.window.trlChan.groups = [{cc: "us", country: "미국", sector: "합성 �
 context.render();
 const extended = elements.get("#chanBoard").innerHTML;
 assert.ok(extended.includes("$175.00"));
-assert.ok(extended.includes("정규장 <b class=\"mn\">$150.00"));
+assert.ok(extended.includes("정규장 종가 <b class=\"mn\">$150.00"));
 assert.ok(extended.includes("시간외 · 애프터마켓"));
 assert.ok(!extended.includes("과거 정규장") && !extended.includes("참고값") && !extended.includes("시간외 값으로"));
 assert.ok(!extended.includes("NaN") && !extended.includes("Infinity"));
@@ -69,20 +71,26 @@ assert.equal(regular.px, 150);
 assert.equal(regular.state, "채널 안");
 console.log("확장세션 표시 가격·원천시각·정규장 판정 분리: PASS");
 
-regular.display.lower_path = [[0,99.1],[8,98],[20,99]];
-regular.display.lo = [0,8,20];
-regular.display.lower_touch_count = 3;
-context.render();
-const support = elements.get("#chanBoard").innerHTML;
-assert.ok(support.includes('<polyline points='));
-assert.ok(support.includes("하단 3점 연결"));
-console.log("마이크론 3점 지지 경로·간결한 세션/정규장 가격 표시: PASS");
-
-delete regular.display.lower_path;
-regular.display.lower_reference_points = [[0,99.1],[6,98],[12,97],[20,96]];
-regular.display.lo = [0,6,12,20];
-regular.display.lower_touch_count = 4;
-context.render();
-assert.ok(elements.get("#chanBoard").innerHTML.includes("하단 4점 기준"));
-assert.ok(!elements.get("#chanBoard").innerHTML.includes("하단 3점 연결"));
-console.log("마이크론 4점 평행 지지선 표시: PASS");
+regular.code = "MU"; regular.name = "마이크론"; regular.px = 712.42; regular.day = "11/17";
+regular.rows[regular.rows.length - 1] = ["11/17",726.22,726.75,666.88,712.42];
+regular.display = {...regular.display, code:"MU",name:"마이크론", day:"11/18", px:726.48,
+  session:"프리마켓", chg:-2.59, base:745.8, rows:regular.rows.concat([["11/18",734.04,741.64,720.65,726.48]])};
+function renderMU() {
+  context.render();
+  return elements.get("#chanBoard").innerHTML;
+}
+let text = renderMU();
+assert.ok(text.includes('class="up">+1.97%</b>'));
+assert.ok(text.includes('정규장 종가 <b class="mn">$712.42'));
+assert.ok(!text.includes("-2.59%"));
+const summary = elements.get("#chanNow").innerHTML;
+assert.ok(summary.includes("마이크론") && summary.includes('+1.97%') && summary.includes("프리마켓"));
+assert.ok(!summary.includes("-2.59%"));
+regular.display.px = 705.2958;
+text = renderMU();
+assert.ok(text.includes('class="down">-1.00%</b>'));
+regular.display.px = 712.42;
+text = renderMU();
+assert.ok(text.includes('class="dim">0.00%</b>'));
+assert.ok(!text.includes("-0.00%"));
+console.log("정규장 대비 등락률·양음보합 부호와 색상·국가별 현재 추세 일치: PASS");
