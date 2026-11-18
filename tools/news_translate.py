@@ -4,6 +4,8 @@ Google 공개 번역은 비공식 경로이므로 실패 가능. MyMemory는 익
 """
 from __future__ import annotations
 import html
+import email.utils
+import threading
 import json
 import re
 import time
@@ -19,6 +21,21 @@ MAX_CALLS = 8
 MAX_SECONDS = 20
 MEMORY_CHARS = 4800
 UA = {"User-Agent": "Mozilla/5.0"}
+_SEARCH_LOCK = threading.Lock()
+
+
+def pause_until(exc, now):
+    delay = 600 if isinstance(exc, urllib.error.HTTPError) and exc.code in (403, 429) else 60
+    value = exc.headers.get("Retry-After") if isinstance(exc, urllib.error.HTTPError) and exc.headers else None
+    if value:
+        try:
+            delay = max(delay, float(value))
+        except ValueError:
+            try:
+                delay = max(delay, email.utils.parsedate_to_datetime(value).timestamp() - now)
+            except (ValueError, TypeError, OverflowError):
+                pass
+    return now + delay
 
 
 def needs_translation(item):
@@ -115,6 +132,7 @@ def run(items, *, path: Path, legacy_path=None, terms=lambda en,ko:ko, now=None)
     if memory.get("day")!=day: memory={"day":day,"chars":0}
     off=cache.get("off") or {}
     errors={}
+    last_errors=cache.get("last_errors") or {}
     attempted=set()
     stats={"policy":POLICY,"providers":{},"attempted_titles":0,"translated":0,"pending":0,"errors":errors}
 
@@ -125,7 +143,8 @@ def run(items, *, path: Path, legacy_path=None, terms=lambda en,ko:ko, now=None)
         code="HTTP_"+str(exc.code) if isinstance(exc,urllib.error.HTTPError) else type(exc).__name__
         errors[provider+":"+code]=errors.get(provider+":"+code,0)+1
         # Global source backoff; do not evade a rate limit via alternate domains.
-        off[provider]=now+(600 if code in ("HTTP_429","HTTP_403") else 60)
+        off[provider]=pause_until(exc,now)
+        last_errors[provider]={"code":code,"at":now}
 
     originals={}
     for item in items:
@@ -188,10 +207,51 @@ def run(items, *, path: Path, legacy_path=None, terms=lambda en,ko:ko, now=None)
     entries={k:v for k,v in entries.items() if now-v.get("at",now)<7*86400}
     entries=dict(sorted(entries.items(),key=lambda kv:kv[1].get("at",0),reverse=True)[:5000])
     retry={k:v for k,v in retry.items() if k in originals}
+    stats["last_errors"]=dict(last_errors)
     stats["provider_backoff_until"]={k:v for k,v in off.items() if v>now}
     stats["fallback_chars_today"]=memory.get("chars",0)
-    _save(path,{"policy":POLICY,"entries":entries,"retry":retry,"budget":budget,"memory":memory,"off":off})
+    _save(path,{"policy":POLICY,"entries":entries,"retry":retry,"budget":budget,"memory":memory,"off":off,"last_errors":last_errors,"search_entries":cache.get("search_entries") or {}})
     return stats
+
+
+
+def google_search_one(text, *, path=None, now=None):
+    """외신 검색용 ko→en도 같은 Google 호출 예산·백오프 사용. 429 우회 금지."""
+    if path is None:
+        import keystore
+        path=keystore.state_dir()/"news_translation.json"
+    now=time.time() if now is None else now
+    with _SEARCH_LOCK:
+        cache=_load(path)
+        search=cache.get("search_entries") or {}
+        entry=search.get(text) or {}
+        if entry.get("text") and 0<=now-entry.get("at",0)<7*86400:
+            return entry["text"]
+        budget=cache.get("budget") or {}
+        if not 0<=now-budget.get("start",0)<60:
+            budget={"start":now,"calls":0}
+        off=cache.get("off") or {}
+        if off.get("google",0)>now or budget.get("calls",0)>=MAX_CALLS:
+            raise RuntimeError("translation provider paused")
+        budget["calls"]=budget.get("calls",0)+1
+        cache["budget"]=budget
+        _save(path,cache) # reserve before the network call, including failures
+        try:
+            raw=_get(GOOGLE+"?"+urllib.parse.urlencode({"client":"gtx","sl":"ko","tl":"en","dt":"t","q":text}))
+            output="".join(p[0] for p in raw[0] if p and isinstance(p[0],str)).strip()
+            if output==text or len(re.findall(r"[A-Za-z]",output))<8:
+                raise ValueError("no valid English search translation")
+            search[text]={"text":output,"at":now}
+            cache["search_entries"]=dict(sorted(search.items(),key=lambda kv:kv[1].get("at",0),reverse=True)[:500])
+            _save(path,cache)
+            return output
+        except Exception as exc:
+            off["google"]=pause_until(exc,now)
+            cache["off"]=off
+            code="HTTP_"+str(exc.code) if isinstance(exc,urllib.error.HTTPError) else type(exc).__name__
+            cache.setdefault("last_errors",{})["google"]={"code":code,"at":now}
+            _save(path,cache)
+            raise
 
 
 def translate_one(text):

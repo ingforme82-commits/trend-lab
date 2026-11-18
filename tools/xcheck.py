@@ -126,9 +126,15 @@ def judge(ko: str, en_ko: str, cands: list[dict], ts: int) -> dict | None:
 
 # ── 수집 ──
 def _gtx(text: str, sl: str, tl: str) -> str:
-    u = "https://translate.googleapis.com/translate_a/single?" + urllib.parse.urlencode({"client": "gtx", "sl": sl, "tl": tl, "dt": "t", "q": text})
-    r = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=10).read())
-    return "".join(x[0] for x in r[0] if x and x[0]).strip()
+    from news_translate import google_search_one, translate_one
+    if sl == "ko" and tl == "en":
+        return google_search_one(text)
+    if tl == "ko":
+        value = translate_one(text)
+        if value:
+            return value
+    raise ValueError("translation unavailable")
+
 
 
 def gnews(q: str) -> list[dict]:
