@@ -955,3 +955,11 @@ body{overflow-x:hidden}
 html.trl-live-update,html.trl-live-update body{overflow-anchor:none!important;scroll-behavior:auto!important}
 #trlUpdateButton{position:fixed;right:16px;bottom:16px;z-index:1000;max-width:calc(100vw - 32px)}
 .t-px,.t-ch,.mn{font-variant-numeric:tabular-nums}
+
+/* 국가별 현재 추세: 각 5개 종목, 차트와 동일 입력 사용 */
+.ch-now-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:12px;margin:0 0 20px}
+.ch-now-country{border:1px solid var(--line,#ddd);border-radius:10px;padding:12px;min-width:0}
+.ch-now-country p{margin:0 0 8px;font-size:.88rem}
+.ch-now-country ul{list-style:none;margin:0;padding:0;font-size:.78rem;line-height:1.7}
+.ch-now-country li{padding:4px 0;border-top:1px solid var(--line,#ddd);overflow-wrap:anywhere}
+.ch-now-country small{opacity:.65;white-space:nowrap}

@@ -239,7 +239,12 @@ def display(rows, quote, anchors, rules, *, now, channel, candle, state):
     stale = bool(quote["provider_open"] and not fresh)
     phase_mismatch = quote.get("active_session") and quote["active_session"] != quote["session"]
     stale = stale or bool(phase_mismatch)
-    px, prev = values[3], merged[-2][4]
+    # 등락률 기준은 통합 과거봉이 아니라 원본 정규장 종가다.
+    same_day = rows[-1][0] == md
+    pre = "프리" in quote["session"]
+    regular_session = quote["session"] == "정규장"
+    base_row = rows[-2] if same_day and (pre or regular_session) else rows[-1]
+    px, prev = values[3], base_row[4]
     if not number(prev):
         return None
     st = state(ch, px, True)  # never confirm a regular-close breakout from extended prices
@@ -247,6 +252,8 @@ def display(rows, quote, anchors, rules, *, now, channel, candle, state):
         st = st.replace("(장중)", "(세션 참고)")
     return {**ch, "rows": merged, "integrated_history_days": len([v for v in history.values() if v]), "day": md, "px": px, "chg": round((px / prev - 1) * 100, 2),
             "ma5": ch["ma5"], "above_ma5": px > ch["ma5"],
+            "base": prev, "base_day": base_row[0], "change": round(px - prev, 4),
+            "change_basis": "전일 정규장 종가" if regular_session else "정규장 종가",
             "gap_low": round((ch["lo_now"] / px - 1) * 100, 2),
             "candle": candle(*values, prev), "state": "자료 확인 중" if stale else st,
             "live": live, "stale": stale, "session": quote["session"], "source": quote["source"],

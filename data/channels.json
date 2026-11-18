@@ -155,15 +155,5 @@
   "tolerance_pct": 0.75,
   "min_spacing_bars": 3,
   "method": "fixed_two_anchor"
- },
- "display_overrides": {
-  "MU": {
-   "lower_parallel_dates": [
-    "10/02",
-    "10/12",
-    "10/22",
-    "11/06"
-   ]
-  }
  }
 }

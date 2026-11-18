@@ -10,7 +10,7 @@
 - 캔들: 장대양봉·장대음봉·망치형(아래꼬리)·윗꼬리·도지·양봉·음봉 — 오늘(진행 중) 봉 기준
 - 넥장(NXT, 11/18 운영자 "추세판단 업데이트"): 한국 종목은 08:00~09:00 프리·15:30 이후 애프터 체결가로 '넥장 기준' 위치를 따로 계산한다
         (it['nxt']). 거래소(KRX) 일봉·상태·5일선 시그널은 그대로 두고 섞지 않는다. 출처 = 네이버 NXT 실시간(체결 시각 오늘인 것만).
-- 통합/시간외 차트: session_chan.py가 화면용 display를 만든다. 국내 오늘 KRX+NXT 통합 OHLC, 미국 프리+정규+애프터 1분봉을 날짜별 통합, 수집 이력도 날짜별 보존. 정규장 상태·주문용 signals는 보존한다.
+- 통합/시간외 차트: session_chan.py가 화면용 display를 만든다. 국내 오늘 KRX+NXT 통합 OHLC, 미국 프리+정규+애프터 1분봉을 날짜별 통합하고 확보 이력을 유지. 정규장 상태·주문용 signals는 보존한다.
 - 기록: 상태·눈에 띄는 캔들이 바뀌면 state_dir/chan_log.json 에 쌓고 최근 것을 사이트 '기록'에 보여 준다
 사실과 숫자만 계산한다. 매수·매도 권유가 아니다. 키·토큰은 출력하지 않는다.
 """
@@ -71,7 +71,7 @@ def candle(o: float, h: float, l: float, c: float, prev: float) -> dict:
 def channel(rows: list[list], anchors: dict, contact_rules: dict | None = None,
             *, last_closed: bool = False) -> dict | None:
     """기존 하락 구간의 두 기준점으로 선을 고정하고 추가 접촉 횟수만 표시."""
-    from channel_fit import anchored_side, support_path, parallel_support
+    from channel_fit import anchored_side
     rules = contact_rules or {}
     tolerance = float(rules.get("tolerance_pct", 0.75))
     spacing = int(rules.get("min_spacing_bars", 3))
@@ -92,19 +92,10 @@ def channel(rows: list[list], anchors: dict, contact_rules: dict | None = None,
     kwargs = dict(tolerance_pct=tolerance, min_spacing=spacing)
     upper = anchored_side(high, dates, h1, anchors["hi2"][0], last, True, **kwargs)
     lower = anchored_side(low, dates, l1, anchors["lo2"][0], last, False, **kwargs)
-    if rules.get("lower_parallel_dates") and upper:
-        lower = parallel_support(low, dates, rules["lower_parallel_dates"], last, upper["slope"], tolerance_pct=tolerance) or lower
-    elif rules.get("lower_pivots"):
-        lower = support_path(low, dates, rules["lower_pivots"], last, tolerance_pct=tolerance) or lower
     if not upper or not lower:
         return None
     up = lambda i: upper["slope"] * i + upper["intercept"]
-    def lo(i):
-        path = lower.get("path")
-        if path and i <= path[1][0]:
-            (a, av), (b, bv) = path[:2]
-            return av + (bv - av) * (i - a) / (b - a)
-        return lower["slope"] * i + lower["intercept"]
+    lo = lambda i: lower["slope"] * i + lower["intercept"]
     n = len(rows) - 1
     px = rows[n][4]
     width_valid = all(up(i) > lo(i) > 0 for i in range(max(upper["start"], lower["start"]), n + 2))
@@ -120,9 +111,7 @@ def channel(rows: list[list], anchors: dict, contact_rules: dict | None = None,
             "upper_touch_count": len(upper["touches"]), "lower_touch_count": len(lower["touches"]),
             "upper_verified": upper["verified"], "lower_verified": lower["verified"],
             "upper_reinforced": len(upper["touches"]) >= 3, "lower_reinforced": len(lower["touches"]) >= 3,
-            "line_method": "parallel_four_reference" if lower.get("reference_points") else "three_pivot_support" if lower.get("path") else "fixed_two_anchor",
-            **({"lower_reference_points": lower["reference_points"], "lower_reference_error_pct": lower["reference_error_pct"]} if lower.get("reference_points") else {}),
-            **({"lower_path": lower["path"]} if lower.get("path") else {}),
+            "line_method": "fixed_two_anchor",
             "channel_valid": verified, "channel_width_valid": width_valid,
             "touch_tolerance_pct": tolerance, "touch_min_spacing": spacing, "touch_required": required,
             "touch_lookback_bars": len(rows),
@@ -393,8 +382,7 @@ def build(now: datetime | None = None) -> dict:
                 sq = session_quotes.get(code)
                 if sq:
                     try:
-                        display_rules = {**(c.get("contact_rules") or {}), **(c.get("display_overrides", {}).get(code) or {})}
-                        view = display_session(rows, sq, c["anchors"], display_rules, now=now,
+                        view = display_session(rows, sq, c["anchors"], c.get("contact_rules"), now=now,
                                                channel=channel, candle=candle, state=state)
                         if view:
                             it["display"] = view

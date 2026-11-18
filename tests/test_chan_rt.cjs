@@ -26,3 +26,8 @@ assert.equal(ctx.live(it), it);
 ctx.window.trlRt = {q: {SMSN: {px: 110, chg: 10, at: Date.now()}}};
 assert.equal(ctx.live({...it, live: false}).px, 100);
 console.log("chan rt ok");
+
+ctx.window.trlRt = {q: {SMSN: {px:110,chg:-8,at:Date.now()}}};
+const baseChecked = ctx.live({...it,base:100,change_basis:"정규장 종가"});
+assert.equal(baseChecked.chg,10);
+console.log("웹소켓 공급자 등락률 대신 같은 정규장 기준 재계산: PASS");
