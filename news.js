@@ -589,6 +589,10 @@
       const evT = (c) => new Date(`${c.date}T${c.time}:00+09:00`).getTime();
       const cs = (checks || []).filter((c) => c.time && evT(c) >= Date.now() - 30 * 60000 && evT(c) <= Date.now() + 12 * 3600e3).sort((a, b) => evT(a) - evT(b));
       if (cs.length) L.push(`🗓️ 앞으로 12시간 일정: ${cs.slice(0, 4).map((c) => `<b>${c.date !== today ? `${+c.date.slice(5, 7)}/${+c.date.slice(8)} ` : ""}${esc(c.time)}</b> ${esc(c.title)}`).join(" · ")}`);
+      const ipoDates = (checks || []).filter((c) => c.kind === "ipo" && c.date >= today && c.date <= kstDay(Date.now() + 2 * 86400e3))
+        .sort((a, b) => (b.priority || 0) - (a.priority || 0) || a.date.localeCompare(b.date));
+      if (ipoDates.length) L.push(`🗓️ 주요 IPO: ${ipoDates.slice(0, 3).map((c) => `<b>미국 ${esc(c.market_date || c.date)}</b> ${esc(c.title)} <small class="dim">· ${esc(c.timing || "정확한 한국 시각 미정")}</small>`).join(" · ")}`);
+
     } else {
       const r = (k, n) => reg[k] ? `${n} ${sg2(reg[k].chg)}` : "";
       const us_ = [r("SP500", "S&P500"), r("XYZ100", "나스닥100"), r("SOXL", "SOXL"), r("KORU", "KORU"), r("EWY", "EWY")].filter(Boolean);
