@@ -146,7 +146,10 @@ async function loadChecks() {
   try {
     const list = await (await fetch(`data/checkpoints.json?t=${Date.now()}`)).json();
     const today = ymd(KST());
-    const items = list.filter((c) => c.date >= today).sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || ""))).slice(0, 8);
+    // 오늘 일정 중 시각이 지난 것은 내린다(11/18 운영자 "시간 지난 건 지나고 최신화로") — 시각 없는 오늘 일정은 하루 동안 둔다
+    const k = KST(), nowHM = String(k.getHours()).padStart(2, "0") + ":" + String(k.getMinutes()).padStart(2, "0");
+    const hmOf = (t) => { const m = String(t || "").match(/(\d{1,2}):(\d{2})/); return m ? m[1].padStart(2, "0") + ":" + m[2] : ""; };
+    const items = list.filter((c) => c.date > today || (c.date === today && (!hmOf(c.time) || hmOf(c.time) >= nowHM))).sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || ""))).slice(0, 8);
     $("#checkList").innerHTML = items.length ? items.map((c) => {
       const d = new Date(c.date + "T00:00:00");
       return `<li class="${c.date === today ? "today" : ""}"><span class="c-date">${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]})${c.time ? " " + esc(c.time) : ""}</span><p class="c-title">${esc(c.title)}</p>${c.note ? `<p class="c-note">${esc(c.note)}</p>` : ""}</li>`;
@@ -782,5 +785,6 @@ window.paintSrcScore = () => {
 };
 window.paintSrcScore();                               // news.js 가 먼저 받아 둔 점수판이 있으면 바로 그림
 
-loadHeadline(); loadTicks(); loadChecks(); loadEarnings(); loadStudies(); loadEducation();   // 블로그 분석 글 피드는 2026-10-28 운영자 결정으로 뺌
+loadHeadline(); loadTicks(); loadChecks(); loadEarnings(); loadStudies(); loadEducation();
+setInterval(loadChecks, 60000);   // 체크포인트: 시각이 지나면 1분 안에 내림   // 블로그 분석 글 피드는 2026-10-28 운영자 결정으로 뺌
 setInterval(loadTicks, 30000);

@@ -944,3 +944,9 @@ body{overflow-x:hidden}
   .mn-list li.mn-nw > .mn-t{min-width:0;font-size:14px}
   .mn-list li.mn-nw small{margin-left:4px}
 }
+
+/* 등락 색을 이름까지(tint.js, 11/18): 상승=빨강, 하락=파랑 */
+.tn-up{color:var(--up)}.tn-dn{color:var(--down)}
+.tn-v{font-weight:700}
+.ticker .tn-up,.hero .tn-up,.sec-dark .tn-up,.cm-tip .tn-up,.sc-chip.on .tn-up{color:#ff8a92}
+.ticker .tn-dn,.hero .tn-dn,.sec-dark .tn-dn,.cm-tip .tn-dn,.sc-chip.on .tn-dn{color:#8fb6ff}
