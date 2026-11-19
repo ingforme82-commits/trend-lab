@@ -881,8 +881,10 @@
     const cl = rows.map((r) => r[4]), ma5p = cl.slice(-6, -1).reduce((a, b) => a + b, 0) / 5, pc = cl[n - 2], h = rows[n - 1][2];
     // 11/20 운영자(마이크론): 채널 상단을 넘었다가 밀린 것과 5일선에 막힌 것을 구분
     if (it.up_now > 0 && it.channel_width_valid !== false) {
-      if (h >= it.up_now * 1.01 && it.px < it.up_now) return {tone: "dn", label: "채널 상단 돌파 실패"};
-      if (h >= it.up_now && it.px < it.up_now * 0.997) return {tone: "dn", label: "채널 상단 저항"};
+      // 11/20 운영자(엔비디아): 5일선과 채널 상단이 0.5% 안으로 겹치면 5일선 저항으로 부른다(채널 상단과 겹침 표시)
+      const ma5h = it.ma5 + (h - it.px) / 5, near = Math.abs(ma5h / it.up_now - 1) <= 0.005;   // 고가 때의 5일선(오늘 값이 고가였을 때)
+      if (h >= it.up_now * 1.01 && it.px < it.up_now) return {tone: "dn", label: near ? "5일선 돌파 실패(채널 상단과 겹침)" : "채널 상단 돌파 실패"};
+      if (h >= it.up_now && it.px < it.up_now * 0.997) return {tone: "dn", label: near ? "5일선 저항(채널 상단과 겹침)" : "채널 상단 저항"};
     }
     if (pc <= ma5p && h >= it.ma5 && it.px < it.ma5 * 0.997) return {tone: "dn", label: "5일선 저항"};   // chan.py 저항 규칙과 같음
     if (pc > ma5p && it.px < it.ma5) return {tone: "dn", label: "하락 시그널 · 5일선 이탈"};
