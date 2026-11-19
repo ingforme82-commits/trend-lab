@@ -851,6 +851,12 @@ body{overflow-x:hidden}
 .ch-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
 @media (max-width:860px){.ch-grid2{grid-template-columns:1fr}}
 .ch-card{background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:12px 12px 8px;min-width:0}
+/* 11/19 운영자: 돌파 = 빨강 카드, 저항·하락 = 파랑 카드(글 대신 색·표시로) */
+.ch-card.t-up{border:2px solid var(--up);border-left-width:6px;background:linear-gradient(rgba(214,52,63,.05),transparent 70%)}
+.ch-card.t-dn{border:2px solid var(--down);border-left-width:6px;background:linear-gradient(rgba(37,99,201,.05),transparent 70%)}
+.ch-top .ch-sg{font-size:13px;padding:3px 10px}
+.ch-chart .ch-mk text{font-size:15px;font-weight:900}
+.ch-chart .ch-mk.up text{fill:var(--up)} .ch-chart .ch-mk.dn text{fill:var(--down)}
 .ch-top{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;font-size:14px}
 .ch-top .ch-nm{font-size:15px}
 .ch-nxt{display:flex;flex-wrap:wrap;align-items:center;gap:4px 8px;margin:6px 0 2px;padding:6px 8px;border:1px dashed var(--line,#3a4a6a);border-radius:8px;font-size:13px}
