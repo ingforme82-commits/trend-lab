@@ -31,9 +31,11 @@
       <a href="index.html#archive">스터디 아카이브</a>
       <a href="index.html#curriculum">커리큘럼</a>
     </nav>
+    <select id="trlLanguage" aria-label="언어 선택"></select>
     <a class="btn btn-kakao btn-sm" href="https://invite.kakao.com/tc/p7OX5rMjd0" target="_blank" rel="noopener">오픈채팅</a>
   </div>
 </header>
+<p id="trlLanguageNote" class="wrap fine" hidden></p>
 <div class="ticker" id="ticker" hidden></div>
 
 <main class="sec">
@@ -169,5 +171,6 @@ let tx = null;
 $("#lb").addEventListener("touchstart", (e) => { tx = e.touches[0].clientX; }, { passive: true });
 $("#lb").addEventListener("touchend", (e) => { if (tx === null) return; const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 50) openLb(cur + (dx < 0 ? 1 : -1)); tx = null; });
 </script>
+<script src="localize.js?v=1" defer></script>
 </body>
 </html>
