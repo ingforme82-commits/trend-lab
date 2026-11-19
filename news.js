@@ -807,7 +807,7 @@
     const cw = Math.max(2, st * 0.6);
     rows.forEach((r, i) => { const [, o, h, l, c] = r, col = c >= o ? "var(--up)" : "var(--down)";
       s += `<line x1="${X(i)}" x2="${X(i)}" y1="${Y(h)}" y2="${Y(l)}" stroke="${col}"/><rect x="${X(i) - cw / 2}" y="${Y(Math.max(o, c))}" width="${cw}" height="${Math.max(1, Math.abs(Y(o) - Y(c)))}" fill="${col}" rx="1"${i === n - 1 && it.live ? ' class="ch-live"' : ""}/>`; });
-    const ma = rows.map((_, i) => i >= 4 ? rows.slice(i - 4, i + 1).reduce((a, r) => a + r[4], 0) / 5 : null);
+    const cl5 = chCl(it), ma = rows.map((_, i) => i >= 4 ? cl5.slice(i - 4, i + 1).reduce((a, b) => a + b, 0) / 5 : null);   // 5일선 = 정규장 종가 기준
     s += `<polyline class="ch-ma" points="${ma.map((v, i) => v == null ? "" : `${X(i)},${Y(v)}`).join(" ").trim()}"/>`;
     s += `<line x1="${X(upperStart)}" y1="${Y(up(upperStart))}" x2="${X(n - 1)}" y2="${Y(up(n - 1))}" class="ch-res${it.upper_verified === false ? " ch-unverified" : ""}"/><line x1="${X(n - 1)}" y1="${Y(up(n - 1))}" x2="${X(n)}" y2="${Y(up(n))}" class="ch-res ch-dash${it.upper_verified === false ? " ch-unverified" : ""}"/>`;
     const supportPoints = [lowerStart, ...(it.lower_path || []).map(p => p[0]).filter(i => i > lowerStart && i < n - 1), n - 1];
@@ -852,6 +852,11 @@
   // ⚡ 실시간 체결(KIS 웹소켓 rt.json, 2초) 덮어쓰기 — 11/18 운영자 "실시간 숫자들 api 연동해서 추세추종 차트 수정"
   // 진행 중인 마지막 봉만 현재가로 바꾸고(고가·저가 갱신) 5일선·상태·거리를 다시 계산한다. 15초 넘은 값은 쓰지 않는다.
   const CH_RT = {KOSPI: "KOSPI", KOSDAQ: "KOSDAQ", "005930": "SMSN", "000660": "SKHX", "402340": "SKSQ", SOXL: "SOXL", KORU: "KORU", SKHY: "SKHY", NVDA: "NVDA"};
+  // 11/20 운영자: 5일선은 NH·KRX와 같은 정규장 종가로 — 시간외 차트(display)는 지난 날 종가를 정규장 종가(reg_closes)로 바꿔 계산, 오늘은 현재가
+  function chCl(it) {
+    const m = new Map((it.reg_closes || []).map((x) => [x[0], x[1]])), rows = it.rows || [];
+    return rows.map((r, i) => (i === rows.length - 1 ? r[4] : (m.get(r[0]) ?? r[4])));
+  }
   function chState(it, px) {                                  // tools/chan.py state() 와 같은 규칙
     if (it.channel_width_valid === false) return "채널선 교차·재확인";
     if (it.channel_valid === false) return "접촉 검증 대기";
@@ -878,7 +883,7 @@
     if (!q || !(q.px > 0) || !Number.isFinite(q.at) || Date.now() - q.at > 15000 || !it.live || !(it.rows || []).length) return it;
     const rows = it.rows.map((r) => r.slice()), n = rows.length, last = rows[n - 1];
     last[2] = Math.max(last[2], q.px); last[3] = Math.min(last[3], q.px); last[4] = q.px;
-    const closes = rows.map((r) => r[4]), ma5 = closes.slice(-5).reduce((a, b) => a + b, 0) / Math.min(5, n);
+    const closes = chCl({...it, rows}), ma5 = closes.slice(-5).reduce((a, b) => a + b, 0) / Math.min(5, n);
     const pc = n > 1 ? rows[n - 2][4] : null;
     const o = {...it, rows, px: q.px, chg: it.base > 0 ? Math.round((q.px / it.base - 1) * 10000) / 100 || 0 : pc ? Math.round((q.px / pc - 1) * 10000) / 100 || 0 : it.chg, ma5,
       gap_next: (it.up_next / q.px - 1) * 100, gap_low: (it.lo_now / q.px - 1) * 100, rt_at: q.at, rt_mk: q.mk};
@@ -893,7 +898,7 @@
     if (it.state === "돌파 시도(장중)") return {tone: "up", label: "돌파 시그널"};
     if (it.state === "하단 이탈") return {tone: "dn", label: "하락 시그널 · 채널 하단 이탈"};
     if (it.channel_valid === false || !(it.ma5 > 0)) return null;
-    const cl = rows.map((r) => r[4]), ma5p = cl.slice(-6, -1).reduce((a, b) => a + b, 0) / 5, pc = cl[n - 2], h = rows[n - 1][2];
+    const cl = chCl(it), ma5p = cl.slice(-6, -1).reduce((a, b) => a + b, 0) / 5, pc = cl[n - 2], h = rows[n - 1][2];
     // 11/20 운영자(마이크론): 채널 상단을 넘었다가 밀린 것과 5일선에 막힌 것을 구분
     if (it.up_now > 0 && it.channel_width_valid !== false) {
       // 11/20 운영자(엔비디아): 5일선과 채널 상단이 0.5% 안으로 겹치면 5일선 저항으로 부른다(채널 상단과 겹침 표시)

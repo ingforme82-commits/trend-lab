@@ -261,6 +261,12 @@ def display(rows, quote, anchors, rules, *, now, channel, candle, state):
     ch = channel(merged, anchors, rules)
     if not ch:
         return None
+    # 11/20 운영자: 매수·매도 기준이 5일선이라 5일선은 NH·KRX와 같은 '정규장 종가' 4개 + 오늘 현재가로 계산한다.
+    # (확장세션 봉의 종가 = 애프터마켓 마지막 가격이라 SOXL 5일선이 51.20 → 52.34 로 틀어졌음)
+    prior = [r[4] for r in rows if r[0] != md and number(r[4])][-4:]
+    if len(prior) == 4:
+        ch["ma5"] = (sum(prior) + values[3]) / 5
+    reg_closes = [[r[0], r[4]] for r in rows if r[0] != md][-60:]
     age = (now.timestamp() * 1000 - quote["source_at"]) / 1000
     fresh = -120 <= age <= quote["max_age_seconds"]
     live = quote["provider_open"] and fresh
@@ -278,7 +284,7 @@ def display(rows, quote, anchors, rules, *, now, channel, candle, state):
     st = state(ch, px, True)  # never confirm a regular-close breakout from extended prices
     if quote["session"] != "정규장" or not live:
         st = st.replace("(장중)", "(세션 참고)")
-    return {**ch, "rows": merged, "integrated_history_days": len([v for v in history.values() if v]), "day": md, "px": px, "chg": round((px / prev - 1) * 100, 2),
+    return {**ch, "rows": merged, "reg_closes": reg_closes, "ma5_basis": "정규장 종가 4일 + 현재가", "integrated_history_days": len([v for v in history.values() if v]), "day": md, "px": px, "chg": round((px / prev - 1) * 100, 2),
             "ma5": ch["ma5"], "above_ma5": px > ch["ma5"],
             "base": prev, "base_day": base_row[0], "change": round(px - prev, 4),
             "change_basis": "전일 정규장 종가" if regular_session else "정규장 종가",
