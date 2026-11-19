@@ -31,7 +31,11 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script src="pwa.js" defer></script>
 <style>
-.trl-language { max-width: 8rem; min-height: 2.25rem; padding: .3rem .4rem; border: 1px solid #60738a; border-radius: .4rem; background: #14263b; color: #fff; font: inherit; font-size: .875rem; }
+.nav .nav-in { height: auto; min-height: 60px; flex-wrap: wrap; gap: .55rem 1rem; padding-block: .45rem; }
+.nav .nav-links { order: 3; flex: 1 0 100%; flex-wrap: wrap; justify-content: flex-start; white-space: normal; overflow: visible; gap: .25rem .75rem; }
+.nav .nav-links a { display: inline-flex; align-items: center; min-height: 2rem; }
+html { scroll-padding-top: var(--trl-header-height, 110px); }
+.trl-language { flex: none; max-width: 8rem; min-height: 2.25rem; padding: .3rem .4rem; border: 1px solid #60738a; border-radius: .4rem; background: #14263b; color: #fff; font: inherit; font-size: .875rem; }
 .trl-language:focus-visible { outline: 2px solid #f6c773; outline-offset: 2px; }
 .trl-language-note { margin: .55rem 0 0; font-size: .925rem; line-height: 1.5; }
 .trl-language-note[hidden] { display: none; }
@@ -657,25 +661,31 @@
   const messages = {
   "en": [
     "Language",
-    "Live news, market commentary and quiz questions may appear in their original language."
+    "Live news, market commentary and some quiz result details may appear in their original language."
   ],
   "ja": [
     "言語",
-    "速報・市況コメント・診断の質問は原文で表示される場合があります。"
+    "速報・市況コメント・診断結果の一部は原文で表示される場合があります。"
   ],
   "zh-hans": [
     "语言",
-    "实时快讯、市场评论和测试题目可能以原文显示。"
+    "实时快讯、市场评论和部分测试结果可能以原文显示。"
   ],
   "fr": [
     "Langue",
-    "Les dépêches, les commentaires de marché et les questions du test peuvent s’afficher dans leur langue d’origine."
+    "Les dépêches, les commentaires de marché et certains détails du résultat du test peuvent s’afficher dans leur langue d’origine."
   ]
 };
   const url = new URL(window.location.href);
   const requested = (url.searchParams.get("lang") || "ko").toLowerCase();
   const language = Object.hasOwn(translations, requested) ? requested : "ko";
   menu.value = language;
+  const header = document.querySelector("header.nav");
+  if (header && typeof ResizeObserver === "function") {
+    new ResizeObserver(() => {
+      document.documentElement.style.setProperty("--trl-header-height", `${header.offsetHeight + 8}px`);
+    }).observe(header);
+  }
   menu.addEventListener("change", () => {
     if (menu.value === "ko") url.searchParams.delete("lang");
     else url.searchParams.set("lang", menu.value);
@@ -696,6 +706,403 @@
   document.title = copy[document.title] || document.title;
   note.textContent = messages[language][1];
   note.hidden = false;
+  const quizCopy = {
+  "en": [
+    [
+      "How long do you usually hold a stock?",
+      "Within a day",
+      "A few days to weeks",
+      "A few months",
+      "A year or more"
+    ],
+    [
+      "Which stocks catch your eye first?",
+      "Stocks climbing to new highs",
+      "Stocks that look cheap after a drop",
+      "Stocks moving on today’s news or themes",
+      "Companies with strong earnings and businesses"
+    ],
+    [
+      "What do you check first?",
+      "Charts and moving averages",
+      "Financial statements and valuation",
+      "News, Telegram and community views",
+      "Order book and investor flows"
+    ],
+    [
+      "What do you do when a stock surges?",
+      "Enter if it meets my breakout and volume rules",
+      "Wait for a pullback",
+      "Buy for fear of missing out",
+      "Usually ignore it"
+    ],
+    [
+      "What do you do when a holding falls 10%?",
+      "Exit under my preset rules",
+      "Buy more to lower my average cost",
+      "Wait for recovery",
+      "Decide case by case"
+    ],
+    [
+      "What do you do when a holding rises 15%?",
+      "Hold until the trend breaks",
+      "Sell while I have a gain",
+      "Wait for my original target",
+      "Sell half and hold the rest"
+    ],
+    [
+      "How often do you trade?",
+      "A few times a month or less",
+      "A few times a week",
+      "One to three times a day",
+      "Four or more times a day"
+    ],
+    [
+      "What if the index falls below its five-day average?",
+      "Reduce exposure and watch for recovery",
+      "See an opportunity to buy at lower prices",
+      "Look for a short rebound",
+      "Usually make no change"
+    ],
+    [
+      "What loss would be hard to tolerate?",
+      "Even 5% makes me uneasy",
+      "I can tolerate 10–20%",
+      "I can tolerate up to 30%",
+      "Losses rarely concern me"
+    ],
+    [
+      "How much of your assets are in stocks?",
+      "Some spare cash",
+      "About half",
+      "Most of my assets",
+      "I also use margin or loans"
+    ],
+    [
+      "Do you keep and review a trading journal?",
+      "I record and review every trade",
+      "Only after a large gain or loss",
+      "I don’t keep records",
+      "I occasionally check profit and loss in my brokerage app"
+    ]
+  ],
+  "ja": [
+    [
+      "普段、銘柄をどれくらい保有しますか？",
+      "その日のうちに売買する",
+      "数日から数週間",
+      "数か月程度",
+      "1年以上"
+    ],
+    [
+      "最初に注目するのはどの銘柄ですか？",
+      "高値を更新して上昇する銘柄",
+      "大きく下落して割安に見える銘柄",
+      "その日のニュースやテーマで動く銘柄",
+      "業績と事業が良好な企業"
+    ],
+    [
+      "判断するとき、最初に何を見ますか？",
+      "チャートと移動平均線",
+      "財務諸表とバリュエーション",
+      "ニュースやSNSの意見",
+      "板情報と外国人・機関投資家の需給"
+    ],
+    [
+      "急騰する銘柄を見たらどうしますか？",
+      "ブレイクや出来高が条件を満たせば買う",
+      "押し目を待つ",
+      "乗り遅れないように買う",
+      "特に気にしない"
+    ],
+    [
+      "保有銘柄が10%下落したらどうしますか？",
+      "事前に決めた基準で手仕舞う",
+      "平均取得単価を下げるために買い増す",
+      "回復を待つ",
+      "その都度判断する"
+    ],
+    [
+      "保有銘柄が15%上昇したらどうしますか？",
+      "トレンドが崩れるまで保有する",
+      "利益が出ているうちに売る",
+      "当初の目標価格まで待つ",
+      "半分売って残りは保有する"
+    ],
+    [
+      "どのくらいの頻度で取引しますか？",
+      "月に数回以下",
+      "週に数回",
+      "1日1〜3回",
+      "1日4回以上"
+    ],
+    [
+      "指数が5日移動平均線を下回ったらどうしますか？",
+      "保有比率を下げて回復を確認する",
+      "割安に買う機会と考える",
+      "短期反発を狙う",
+      "特に変えない"
+    ],
+    [
+      "どの程度の損失に耐えにくいですか？",
+      "5%の損失でも不安",
+      "10〜20%の損失まで耐えられる",
+      "30%の損失まで耐えられる",
+      "損失はあまり気にしない"
+    ],
+    [
+      "株式への投資額は全資産のどの程度ですか？",
+      "余裕資金の一部",
+      "資産の約半分",
+      "資産の大部分",
+      "信用取引や借入も利用する"
+    ],
+    [
+      "取引記録をつけて振り返りますか？",
+      "毎回記録して振り返る",
+      "大きな損益が出たときだけ見る",
+      "記録しない",
+      "証券アプリの損益を時々見る"
+    ]
+  ],
+  "zh-hans": [
+    [
+      "你通常持有一只股票多久？",
+      "当天买卖",
+      "几天到几周",
+      "几个月左右",
+      "一年或更久"
+    ],
+    [
+      "哪类股票最先吸引你？",
+      "创新高并强势上涨的股票",
+      "大跌后看起来便宜的股票",
+      "受当天新闻或题材带动的股票",
+      "业绩和业务表现良好的公司"
+    ],
+    [
+      "判断时最先看什么？",
+      "图表和均线",
+      "财报和估值",
+      "新闻、Telegram和社区观点",
+      "盘口和外资、机构资金流向"
+    ],
+    [
+      "看到股票急涨时，你会怎么做？",
+      "符合突破和成交量标准时进场",
+      "等回调",
+      "担心错过就先买入",
+      "通常不关注"
+    ],
+    [
+      "持仓下跌10%时，你通常怎么做？",
+      "按预设规则卖出",
+      "加仓以降低平均成本",
+      "等待回升",
+      "根据当时情况决定"
+    ],
+    [
+      "持仓上涨15%时，你通常怎么做？",
+      "持有到趋势反转",
+      "有利润就卖出",
+      "等最初设定的目标价",
+      "卖出一半，保留其余仓位"
+    ],
+    [
+      "你平均多久交易一次？",
+      "每月不超过几次",
+      "每周几次",
+      "每天1至3次",
+      "每天4次或以上"
+    ],
+    [
+      "指数跌破5日均线时，你会怎么做？",
+      "降低仓位，观察是否企稳回升",
+      "视为低价买入的机会",
+      "寻找短线反弹",
+      "通常不调整"
+    ],
+    [
+      "亏损到什么程度会让你难以承受？",
+      "亏损5%就感到不安",
+      "可以承受10%至20%的亏损",
+      "可以承受最高30%的亏损",
+      "不太在意亏损"
+    ],
+    [
+      "股票投资占你总资产的多少？",
+      "部分闲置资金",
+      "大约一半",
+      "大部分资产",
+      "还使用融资或借款"
+    ],
+    [
+      "你会记录并复盘交易吗？",
+      "每次都记录和复盘",
+      "只在出现大额盈亏时查看",
+      "不做记录",
+      "偶尔在券商应用中查看盈亏"
+    ]
+  ],
+  "fr": [
+    [
+      "Combien de temps gardez-vous généralement une action ?",
+      "Une journée au plus",
+      "De quelques jours à quelques semaines",
+      "Quelques mois",
+      "Un an ou plus"
+    ],
+    [
+      "Quelles valeurs attirent d’abord votre attention ?",
+      "Celles qui atteignent de nouveaux sommets",
+      "Celles qui semblent bon marché après une chute",
+      "Celles qui réagissent à l’actualité ou à un thème",
+      "Les entreprises aux résultats et à l’activité solides"
+    ],
+    [
+      "Que regardez-vous en premier ?",
+      "Les graphiques et les moyennes mobiles",
+      "Les comptes et les valorisations",
+      "L’actualité, Telegram et les avis en ligne",
+      "Le carnet d’ordres et les flux d’investisseurs"
+    ],
+    [
+      "Que faites-vous lorsqu’une action s’envole ?",
+      "J’entre si mes critères de cassure et de volume sont remplis",
+      "J’attends un repli",
+      "J’achète de peur de manquer l’occasion",
+      "Je passe généralement mon chemin"
+    ],
+    [
+      "Que faites-vous quand une position perd 10 % ?",
+      "Je sors selon mes règles",
+      "Je renforce pour réduire mon prix de revient",
+      "J’attends une remontée",
+      "Je décide au cas par cas"
+    ],
+    [
+      "Que faites-vous quand une position gagne 15 % ?",
+      "Je garde la position tant que la tendance tient",
+      "Je prends immédiatement mes gains",
+      "J’attends mon objectif initial",
+      "Je vends la moitié et conserve le reste"
+    ],
+    [
+      "À quelle fréquence intervenez-vous en bourse ?",
+      "Quelques fois par mois au maximum",
+      "Quelques fois par semaine",
+      "Une à trois fois par jour",
+      "Quatre fois par jour ou plus"
+    ],
+    [
+      "Que faites-vous si l’indice passe sous sa moyenne à cinq jours ?",
+      "Je réduis mon exposition et j’attends le redressement",
+      "J’y vois une occasion d’acheter moins cher",
+      "Je cherche un rebond de courte durée",
+      "Je ne change généralement rien"
+    ],
+    [
+      "Quelle perte serait difficile à supporter ?",
+      "Une perte de 5 % m’inquiète déjà",
+      "Je peux supporter une perte de 10 à 20 %",
+      "Je peux supporter jusqu’à 30 % de perte",
+      "Les pertes me préoccupent peu"
+    ],
+    [
+      "Quelle part de votre patrimoine est investie en actions ?",
+      "Une partie de mon épargne disponible",
+      "Environ la moitié",
+      "La majeure partie",
+      "J’utilise aussi le crédit ou la marge"
+    ],
+    [
+      "Tenez-vous et relisez-vous un journal de trading ?",
+      "Je note et relis chaque opération",
+      "Seulement après un gain ou une perte importante",
+      "Je ne tiens pas de journal",
+      "Je regarde parfois les gains et pertes dans mon application"
+    ]
+  ]
+}[language];
+  const quizLabels = {
+  "en": [
+    "Question",
+    "Share on KakaoTalk",
+    "Copy and open chat",
+    "Copy result",
+    "Retake quiz",
+    "My investing style",
+    "Style breakdown",
+    "Strengths and cautions",
+    "Strength",
+    "Caution",
+    "Questions to consider",
+    "Habits you already practice"
+  ],
+  "ja": [
+    "質問",
+    "カカオトークで共有",
+    "コピーしてチャットを開く",
+    "結果をコピー",
+    "もう一度診断",
+    "私の投資スタイル",
+    "スタイルの内訳",
+    "長所と注意点",
+    "長所",
+    "注意点",
+    "振り返りの質問",
+    "すでに身についている習慣"
+  ],
+  "zh-hans": [
+    "问题",
+    "分享到KakaoTalk",
+    "复制并打开聊天室",
+    "复制结果",
+    "重新测试",
+    "我的投资风格",
+    "风格构成",
+    "优势与注意事项",
+    "优势",
+    "注意事项",
+    "自我检查问题",
+    "已经养成的好习惯"
+  ],
+  "fr": [
+    "Question",
+    "Partager sur KakaoTalk",
+    "Copier et ouvrir le salon",
+    "Copier le résultat",
+    "Refaire le test",
+    "Mon profil d’investissement",
+    "Répartition des profils",
+    "Atouts et points de vigilance",
+    "Atout",
+    "Point de vigilance",
+    "Questions à se poser",
+    "Bonnes habitudes déjà acquises"
+  ]
+}[language];
+  const count = document.getElementById("qCount");
+  const question = document.getElementById("qText");
+  const choices = document.getElementById("qOpts");
+  new MutationObserver(() => {
+    const match = /^질문 (\d+) \/ (\d+)$/.exec(count.textContent);
+    if (!match) return;
+    const row = quizCopy[Number(match[1]) - 1];
+    const buttons = choices.querySelectorAll("button[data-i]");
+    if (!row || buttons.length !== row.length - 1) return;
+    count.textContent = `${quizLabels[0]} ${match[1]} / ${match[2]}`;
+    question.textContent = row[0];
+    for (const button of buttons) button.textContent = row[Number(button.dataset.i) + 1];
+  }).observe(count, { childList: true });
+  const resultLabels = ["💬 카톡으로 결과 공유","📋 복사하고 오픈채팅 열기","결과만 복사","다시 하기","나의 투자 스타일","스타일 구성","이 스타일의 강점과 주의점","강점","주의점","스스로 점검해 볼 질문","이미 갖고 있는 좋은 습관"];
+  const result = document.getElementById("result");
+  new MutationObserver(() => {
+    for (const element of result.querySelectorAll("button, .r-label, .r-h, .r-box > b")) {
+      const key = resultLabels.indexOf(element.textContent.trim());
+      if (key >= 0) element.textContent = quizLabels[key + 1];
+    }
+  }).observe(result, { childList: true });
 })();
 </script>
 <script src="count.js?v=20261116-visitors"></script>
