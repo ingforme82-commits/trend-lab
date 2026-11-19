@@ -30,6 +30,12 @@
 <meta name="apple-mobile-web-app-title" content="TRL">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <script src="pwa.js" defer></script>
+<style>
+.trl-language { max-width: 8rem; min-height: 2.25rem; padding: .3rem .4rem; border: 1px solid #60738a; border-radius: .4rem; background: #14263b; color: #fff; font: inherit; font-size: .875rem; }
+.trl-language:focus-visible { outline: 2px solid #f6c773; outline-offset: 2px; }
+.trl-language-note { margin: .55rem 0 0; font-size: .925rem; line-height: 1.5; }
+.trl-language-note[hidden] { display: none; }
+</style>
 </head>
 <body>
 
@@ -47,6 +53,13 @@
       <a href="#archive">아카이브</a>
       <a href="#curriculum">커리큘럼</a>
     </nav>
+    <select id="trlLanguage" class="trl-language" aria-label="언어 선택">
+      <option value="ko" lang="ko">한국어</option>
+      <option value="en" lang="en">English</option>
+      <option value="ja" lang="ja">日本語</option>
+      <option value="zh-hans" lang="zh-Hans">简体中文</option>
+      <option value="fr" lang="fr">Français</option>
+    </select>
     <button class="btn btn-gold btn-sm" id="installBtn" type="button" hidden>📲 앱 설치</button>
     <button class="btn btn-ghost btn-sm" id="pushBtn" type="button" hidden>🔔 알림 받기</button>
     <a class="btn btn-kakao btn-sm" href="https://invite.kakao.com/tc/p7OX5rMjd0" target="_blank" rel="noopener">오픈채팅</a>
@@ -63,6 +76,7 @@
       <p class="eyebrow">TRL 트렌드 리서치 랩 · 조영근 추세추종 리서치</p>
       <h1>숫자로 확인하는<br><span class="gold">추세추종</span></h1>
       <p class="lead">선물·금리·유가·환율·해외 프록시를 매일 정리합니다.<br>의견보다 사실과 수치, 예측보다 흐름 확인.</p>
+      <p class="trl-language-note" id="trlLanguageNote" hidden></p>
       <div class="hero-live mn" id="heroLive" hidden></div>
       <div class="hero-btns">
         <a class="btn btn-gold" href="#quiz">나의 투자 스타일 테스트</a>
@@ -270,6 +284,420 @@
   </div>
 </footer>
 
+<script>
+(() => {
+  const menu = document.getElementById("trlLanguage");
+  const note = document.getElementById("trlLanguageNote");
+  const translations = {
+  "en": {
+    "TRL 트렌드 리서치 랩 | 주식 시황·뉴스·추세 분석": "Trend Research Lab | Markets, news and trend analysis",
+    "추세 판단": "Trend signals",
+    "주요 이슈": "Key developments",
+    "시세": "Quotes",
+    "브리핑": "Briefings",
+    "속보": "Breaking news",
+    "성향 테스트": "Style quiz",
+    "그룹 스터디": "Group study",
+    "아카이브": "Archive",
+    "커리큘럼": "Curriculum",
+    "📲 앱 설치": "Install app",
+    "🔔 알림 받기": "Enable alerts",
+    "오픈채팅": "Open chat",
+    "TRL 트렌드 리서치 랩 · 조영근 추세추종 리서치": "Trend Research Lab · Jo Young-geun’s trend research",
+    "숫자로 확인하는": "Track market trends",
+    "추세추종": "with data",
+    "선물·금리·유가·환율·해외 프록시를 매일 정리합니다.": "Daily coverage of futures, rates, oil, currencies and global proxies.",
+    "의견보다 사실과 수치, 예측보다 흐름 확인.": "Facts and figures first. Follow the market as it moves.",
+    "나의 투자 스타일 테스트": "Find your investing style",
+    "다음 그룹 스터디": "Next group study",
+    "불러오는 중…": "Loading…",
+    "📐 추세 판단": "Trend signals",
+    "채널 = 직전 고점 2개를 이은 상단선과 직전 저점 2개를 이은 하단선 · 돌파 확인 = 종가가 상단선 +1% 위이면서 5일선 위 · 수평 저항·지지 = 현재가 바로 위·아래의 스윙 고점·저점(좌우 3봉 기준) · 그래프는 1분마다 갱신(진행 중인 봉 포함) · 사실과 숫자를 정리한 자료이며 매수·매도 권유가 아닙니다.": "Trend channels connect the last two swing highs and lows. A breakout requires a close more than 1% above the channel and above the five-day average. Nearby swings use three bars on each side. Charts update every minute, including the current bar. For information only.",
+    "📌 주요 이슈 자세히": "Key developments",
+    "공시·보도에 나온 사실과 수치만 정리했습니다. 투자 권유가 아닙니다.": "Facts and figures from disclosures and reporting. For information only.",
+    "실시간 시세": "Live quotes",
+    "칸마다 기준(전일 종가·24시간 전 등)을 숫자로 적습니다. 실시간 체결은 2초, 나머지는 30초마다 갱신.": "Each card shows its comparison basis. Trades refresh every two seconds and other quotes every 30 seconds.",
+    "📊 출처 점수판": "Data source scores",
+    "— 어디 값을 먼저 쓰는지(성공률·일치율·응답 시간·신선도로 자동 조정)": "Sources are ranked by success rate, agreement, response time and freshness.",
+    "해외 지수": "Global indices",
+    "정규장 시세(5분 갱신) · 대만은 24시간 ETF": "Regular-session quotes refresh every five minutes. Taiwan uses a 24-hour ETF quote.",
+    "📋 시장 브리핑": "Market briefings",
+    "1분마다 갱신 · 평일 07:20 · 12:00 · 14:00 · 20:05 · 22:15 기록": "Updates every minute. Weekday snapshots at 07:20, 12:00, 14:00, 20:05 and 22:15 KST.",
+    "실시간 속보 · 지수 반응": "Breaking news and index moves",
+    "1분마다 갱신 · 속보를 누르면 1분봉 차트가 열립니다.": "Updates every minute. Select a headline to open its one-minute chart.",
+    "📍 시장을 움직인 순간": "Market-moving moments",
+    "급변·주요 가격대 통과와 유가 누적 등락(WTI 1·3시간 ±1%, 브렌트 1시간 ±1.5%·3시간 ±2.5%)을 확인합니다. 관련 뉴스는 시작 전 15분부터 급변 구간은 최대 30분, 누적 구간은 끝까지 연결합니다. 빨간 점(🔴)은 이 뉴스에만 붙습니다. 시각이 겹친다는 뜻이며 인과관계를 단정하지 않습니다. 💡 해석은 운영자가 직접 쓴 내용입니다.": "Tracks sharp moves, key price levels and cumulative oil changes. WTI thresholds are ±1% over one or three hours. Brent thresholds are ±1.5% over one hour and ±2.5% over three hours. Red dots flag related headlines. Timing alone cannot establish causation. The operator writes the commentary.",
+    "전체 속보": "All breaking news",
+    "지수 반응은 보도 5분 전 가격 대비 변화로, 시간상 전후 관계일 뿐 인과관계를 뜻하지 않습니다.": "Index moves use the price five minutes before publication as a baseline. The comparison shows timing only.",
+    "더 보기": "Show more",
+    "매매 권유가 아닙니다.": "For information only.",
+    "이번 주 체크포인트": "This week’s checkpoints",
+    "시황 글에서 반복해서 확인하는 일정입니다.": "Events regularly tracked in our market coverage.",
+    "미국 주요 실적·IPO 일정": "Major U.S. earnings and IPO dates",
+    "실적은 Finnhub·야후 교차 확인 · 주요 IPO는 회사·거래소 공식 일정 · 확정 시각과 미정 구분": "Earnings dates are checked against Finnhub and Yahoo. IPO dates follow company and exchange announcements. Unconfirmed times are marked.",
+    "자가 점검 · 약 2분": "Self-assessment · Around two minutes",
+    "11개 질문에 답하면": "Answer 11 questions to see your",
+    "투자 스타일": "investing style",
+    "위험 감수 수준": "risk tolerance",
+    ", 그리고": "and",
+    "조심하면 좋은 매매 습관": "habits to watch",
+    "을 보여 드립니다.": ".",
+    "답변은 이 브라우저 안에서만 계산되고 어디에도 저장·전송되지 않습니다.": "Your browser calculates the result without saving or sending your answers.",
+    "종목이나 상품을 추천하지 않는 교육용 자기 점검입니다.": "This educational assessment makes no securities or product recommendations.",
+    "테스트 시작": "Start quiz",
+    "← 이전 질문": "Previous question",
+    "우리가 보는 것": "What we track",
+    "매일 같은 기준으로, 같은 순서로 확인합니다.": "We check the same measures in the same order every day.",
+    "추세를 따른다": "Follow the trend",
+    "바닥과 꼭지를 맞히기보다, 이미 시작된 흐름 안에 있는지를 확인합니다.": "Check whether an established trend is still in place.",
+    "5일선과 Envelope": "Five-day average and Envelope",
+    "반등이 진짜인지는 5일선 회복과 유지로, 과열과 이탈은 이동평균 위아래 띠로 봅니다.": "Watch for a recovery above the five-day average and use its surrounding bands to track extremes and breaks.",
+    "밤사이 프록시": "Overnight proxies",
+    "야간선물·EWY·코스피200 무기한 선물·유가·금리로 다음 날 한국장을 미리 점검합니다.": "Track overnight futures, EWY, KOSPI 200 perpetual futures, oil and rates ahead of the next Korean session.",
+    "사실과 수치만": "Facts and figures",
+    "매수·매도 권유 없이 숫자와 일정, 출처를 남깁니다. 판단은 각자의 규칙으로.": "We record figures, dates and sources for you to assess using your own rules.",
+    "오프라인 그룹 스터디 · 서울 양재": "In-person group study · Yangjae, Seoul",
+    "다가오는 그룹 스터디": "Upcoming group study",
+    "강의만 듣고 끝나는 모임이 아니라, 각자 차트와 매매 기록을 가져와 발표하고 서로 피드백하는 그룹 스터디입니다. 매달 두 번 — 차트로 배우는 정기 스터디, 책으로 생각을 넓히는 독서 토론.": "Participants present charts and trading records and exchange feedback. Each month includes a chart study and a book discussion.",
+    "그룹 스터디는 이렇게 진행합니다": "How group study works",
+    "처음 오시는 분은 아래 '나의 투자 스타일 테스트'를 먼저 해 보고, 결과를 오픈채팅방에 올려 주세요. 스터디에서 서로의 스타일과 습관을 함께 점검합니다.": "If you’re new, take the investing style quiz and share your result in the open chat. The group reviews styles and habits together.",
+    "내 스타일·조심할 습관 확인 후 결과 공유": "Review your style and habits, then share your result",
+    "미니 특강": "Short lesson",
+    "지난 주제 복습 → 이번 달 주제": "Review the last topic and introduce this month’s topic",
+    "케이스 발표": "Case presentations",
+    "각자 차트·매매 기록을 같은 양식으로 발표": "Present charts and trade records in a shared format",
+    "피드백·복기": "Feedback and review",
+    "질의응답, 다음 달까지 실천할 규칙 한 가지": "Questions and one rule to practice before next month",
+    "🧭 투자 스타일 테스트 하러 가기": "Take the investing style quiz",
+    "스터디 아카이브": "Study archive",
+    "2026년 5월부터 이어온 그룹 스터디의 기록입니다. 카드를 누르면 그날의 사진과 내용을 볼 수 있습니다.": "Browse group study sessions since May 2026. Select a card for photos and notes.",
+    "교육용 멘트 게시판": "Educational notes",
+    "매매 원칙을 돌아보는 글": "Reflections on trading principles",
+    "투자 과정과 계좌 관리를 돕는 교육 문구를 기록합니다.": "Notes on investing practice and account management.",
+    "교육용 멘트를 불러오는 중…": "Loading educational notes…",
+    "연간 커리큘럼": "Annual curriculum",
+    "독서 토론 선정 도서 10권": "Ten books for discussion",
+    "조영근 추세추종 리서치 랩 | Trend Research Lab": "Trend Research Lab · Jo Young-geun",
+    "본 사이트와 그룹 스터디는 교육 목적이며, 특정 종목을 추천하지 않고 수익을 보장하지 않습니다. 게시된 내용은 투자 참고용이며 투자 판단의 최종 책임은 본인에게 있습니다.": "This site and group study are educational. We make no securities recommendations or guarantees of returns. You are responsible for your investment decisions."
+  },
+  "ja": {
+    "TRL 트렌드 리서치 랩 | 주식 시황·뉴스·추세 분석": "Trend Research Lab | 市況・ニュース・トレンド分析",
+    "추세 판단": "トレンド判定",
+    "주요 이슈": "主要トピック",
+    "시세": "相場",
+    "브리핑": "市況まとめ",
+    "속보": "速報",
+    "성향 테스트": "投資スタイル診断",
+    "그룹 스터디": "勉強会",
+    "아카이브": "アーカイブ",
+    "커리큘럼": "カリキュラム",
+    "📲 앱 설치": "アプリをインストール",
+    "🔔 알림 받기": "通知を受け取る",
+    "오픈채팅": "オープンチャット",
+    "TRL 트렌드 리서치 랩 · 조영근 추세추종 리서치": "Trend Research Lab · チョ・ヨングンのトレンド研究",
+    "숫자로 확인하는": "データで読み解く",
+    "추세추종": "トレンドフォロー",
+    "선물·금리·유가·환율·해외 프록시를 매일 정리합니다.": "先物、金利、原油、為替、海外市場の参考指標を毎日まとめます。",
+    "의견보다 사실과 수치, 예측보다 흐름 확인.": "事実と数値から、市場の流れを確認します。",
+    "나의 투자 스타일 테스트": "投資スタイルを診断する",
+    "다음 그룹 스터디": "次回の勉強会",
+    "불러오는 중…": "読み込み中…",
+    "📐 추세 판단": "トレンド判定",
+    "채널 = 직전 고점 2개를 이은 상단선과 직전 저점 2개를 이은 하단선 · 돌파 확인 = 종가가 상단선 +1% 위이면서 5일선 위 · 수평 저항·지지 = 현재가 바로 위·아래의 스윙 고점·저점(좌우 3봉 기준) · 그래프는 1분마다 갱신(진행 중인 봉 포함) · 사실과 숫자를 정리한 자료이며 매수·매도 권유가 아닙니다.": "直近の高値と安値をそれぞれ2点結んでチャネルを描きます。終値が上限を1%以上上回り、5日移動平均線も上回ればブレイクと判断します。支持・抵抗は左右3本の足で確認し、チャートは1分ごとに更新します。",
+    "📌 주요 이슈 자세히": "主要トピックの詳細",
+    "공시·보도에 나온 사실과 수치만 정리했습니다. 투자 권유가 아닙니다.": "開示資料や報道に基づく事実と数値です。投資勧誘は行いません。",
+    "실시간 시세": "リアルタイム相場",
+    "칸마다 기준(전일 종가·24시간 전 등)을 숫자로 적습니다. 실시간 체결은 2초, 나머지는 30초마다 갱신.": "各欄に比較基準を表示します。約定は2秒ごと、その他は30秒ごとに更新します。",
+    "📊 출처 점수판": "データソースの評価",
+    "— 어디 값을 먼저 쓰는지(성공률·일치율·응답 시간·신선도로 자동 조정)": "取得成功率、一致率、応答時間、鮮度で優先順位を調整します。",
+    "해외 지수": "海外株価指数",
+    "정규장 시세(5분 갱신) · 대만은 24시간 ETF": "通常取引の相場は5分ごとに更新。台湾は24時間取引のETFを参照します。",
+    "📋 시장 브리핑": "市況まとめ",
+    "1분마다 갱신 · 평일 07:20 · 12:00 · 14:00 · 20:05 · 22:15 기록": "1分ごとに更新。平日の記録は韓国時間7:20、12:00、14:00、20:05、22:15です。",
+    "실시간 속보 · 지수 반응": "速報と指数の動き",
+    "1분마다 갱신 · 속보를 누르면 1분봉 차트가 열립니다.": "1分ごとに更新。速報を選ぶと1分足チャートが開きます。",
+    "📍 시장을 움직인 순간": "市場が動いた瞬間",
+    "급변·주요 가격대 통과와 유가 누적 등락(WTI 1·3시간 ±1%, 브렌트 1시간 ±1.5%·3시간 ±2.5%)을 확인합니다. 관련 뉴스는 시작 전 15분부터 급변 구간은 최대 30분, 누적 구간은 끝까지 연결합니다. 빨간 점(🔴)은 이 뉴스에만 붙습니다. 시각이 겹친다는 뜻이며 인과관계를 단정하지 않습니다. 💡 해석은 운영자가 직접 쓴 내용입니다.": "急変や節目の通過、原油の累積変動を確認します。基準はWTIが1・3時間で±1%、ブレントが1時間で±1.5%、3時間で±2.5%です。赤い点は関連ニュースを示します。時刻の一致だけでは因果関係は判断できません。解説は運営者が執筆しています。",
+    "전체 속보": "すべての速報",
+    "지수 반응은 보도 5분 전 가격 대비 변화로, 시간상 전후 관계일 뿐 인과관계를 뜻하지 않습니다.": "報道5分前の価格との差を表示します。示すのは時間上の前後関係です。",
+    "더 보기": "もっと見る",
+    "매매 권유가 아닙니다.": "情報提供を目的としています。",
+    "이번 주 체크포인트": "今週の注目日程",
+    "시황 글에서 반복해서 확인하는 일정입니다.": "市況で継続して確認する日程です。",
+    "미국 주요 실적·IPO 일정": "米国主要企業の決算・IPO日程",
+    "실적은 Finnhub·야후 교차 확인 · 주요 IPO는 회사·거래소 공식 일정 · 확정 시각과 미정 구분": "決算はFinnhubとYahooで照合し、IPOは企業・取引所の公式日程を確認します。",
+    "자가 점검 · 약 2분": "自己診断 · 約2分",
+    "11개 질문에 답하면": "11問に答えると",
+    "투자 스타일": "投資スタイル",
+    "위험 감수 수준": "リスク許容度",
+    ", 그리고": "と",
+    "조심하면 좋은 매매 습관": "見直したい取引習慣",
+    "을 보여 드립니다.": "が分かります。",
+    "답변은 이 브라우저 안에서만 계산되고 어디에도 저장·전송되지 않습니다.": "結果はブラウザー内で計算し、回答の保存や送信は行いません。",
+    "종목이나 상품을 추천하지 않는 교육용 자기 점검입니다.": "銘柄・商品を推奨しない教育用の自己診断です。",
+    "테스트 시작": "診断を始める",
+    "← 이전 질문": "前の質問",
+    "우리가 보는 것": "確認する指標",
+    "매일 같은 기준으로, 같은 순서로 확인합니다.": "毎日、同じ基準と順序で確認します。",
+    "추세를 따른다": "トレンドを追う",
+    "바닥과 꼭지를 맞히기보다, 이미 시작된 흐름 안에 있는지를 확인합니다.": "すでに始まった流れが続いているかを確認します。",
+    "5일선과 Envelope": "5日移動平均線とエンベロープ",
+    "반등이 진짜인지는 5일선 회복과 유지로, 과열과 이탈은 이동평균 위아래 띠로 봅니다.": "5日線を回復して維持できるか、上下のバンドで過熱や離脱を確認します。",
+    "밤사이 프록시": "夜間の参考指標",
+    "야간선물·EWY·코스피200 무기한 선물·유가·금리로 다음 날 한국장을 미리 점검합니다.": "夜間先物、EWY、KOSPI 200無期限先物、原油、金利で翌日の韓国市場を確認します。",
+    "사실과 수치만": "事実と数値",
+    "매수·매도 권유 없이 숫자와 일정, 출처를 남깁니다. 판단은 각자의 규칙으로.": "数値、日程、出典を記録し、各自のルールで判断します。",
+    "오프라인 그룹 스터디 · 서울 양재": "対面勉強会 · ソウル良才",
+    "다가오는 그룹 스터디": "今後の勉強会",
+    "강의만 듣고 끝나는 모임이 아니라, 각자 차트와 매매 기록을 가져와 발표하고 서로 피드백하는 그룹 스터디입니다. 매달 두 번 — 차트로 배우는 정기 스터디, 책으로 생각을 넓히는 독서 토론.": "参加者がチャートや取引記録を発表し、意見を交換します。毎月、チャート勉強会と読書会を開催します。",
+    "그룹 스터디는 이렇게 진행합니다": "勉強会の流れ",
+    "처음 오시는 분은 아래 '나의 투자 스타일 테스트'를 먼저 해 보고, 결과를 오픈채팅방에 올려 주세요. 스터디에서 서로의 스타일과 습관을 함께 점검합니다.": "初参加の方は診断を受け、結果をオープンチャットに共有してください。",
+    "내 스타일·조심할 습관 확인 후 결과 공유": "スタイルと習慣を確認して結果を共有",
+    "미니 특강": "ミニ講義",
+    "지난 주제 복습 → 이번 달 주제": "前回の復習と今月のテーマ",
+    "케이스 발표": "事例発表",
+    "각자 차트·매매 기록을 같은 양식으로 발표": "チャートと取引記録を共通形式で発表",
+    "피드백·복기": "フィードバックと振り返り",
+    "질의응답, 다음 달까지 실천할 규칙 한 가지": "質疑応答と翌月までに実践するルール",
+    "🧭 투자 스타일 테스트 하러 가기": "投資スタイル診断へ",
+    "스터디 아카이브": "勉強会アーカイブ",
+    "2026년 5월부터 이어온 그룹 스터디의 기록입니다. 카드를 누르면 그날의 사진과 내용을 볼 수 있습니다.": "2026年5月からの記録です。カードから写真と内容を確認できます。",
+    "교육용 멘트 게시판": "学習ノート",
+    "매매 원칙을 돌아보는 글": "取引の原則を振り返る",
+    "투자 과정과 계좌 관리를 돕는 교육 문구를 기록합니다.": "投資の進め方や口座管理に役立つメモを掲載します。",
+    "교육용 멘트를 불러오는 중…": "学習ノートを読み込み中…",
+    "연간 커리큘럼": "年間カリキュラム",
+    "독서 토론 선정 도서 10권": "読書会の選定図書10冊",
+    "조영근 추세추종 리서치 랩 | Trend Research Lab": "Trend Research Lab · チョ・ヨングン",
+    "본 사이트와 그룹 스터디는 교육 목적이며, 특정 종목을 추천하지 않고 수익을 보장하지 않습니다. 게시된 내용은 투자 참고용이며 투자 판단의 최종 책임은 본인에게 있습니다.": "本サイトと勉強会は教育目的です。特定の銘柄の推奨や利益の保証は行いません。投資判断はご自身の責任で行ってください。"
+  },
+  "zh-hans": {
+    "TRL 트렌드 리서치 랩 | 주식 시황·뉴스·추세 분석": "Trend Research Lab | 市场行情、新闻与趋势分析",
+    "추세 판단": "趋势判断",
+    "주요 이슈": "重点动态",
+    "시세": "行情",
+    "브리핑": "简报",
+    "속보": "快讯",
+    "성향 테스트": "投资风格测试",
+    "그룹 스터디": "学习小组",
+    "아카이브": "往期记录",
+    "커리큘럼": "课程",
+    "📲 앱 설치": "安装应用",
+    "🔔 알림 받기": "开启通知",
+    "오픈채팅": "开放聊天室",
+    "TRL 트렌드 리서치 랩 · 조영근 추세추종 리서치": "Trend Research Lab · 赵永根趋势研究",
+    "숫자로 확인하는": "用数据看懂",
+    "추세추종": "趋势跟踪",
+    "선물·금리·유가·환율·해외 프록시를 매일 정리합니다.": "每日整理期货、利率、油价、汇率和海外参考指标。",
+    "의견보다 사실과 수치, 예측보다 흐름 확인.": "从事实和数据出发，观察市场走势。",
+    "나의 투자 스타일 테스트": "测测你的投资风格",
+    "다음 그룹 스터디": "下次小组学习",
+    "불러오는 중…": "正在加载…",
+    "📐 추세 판단": "趋势判断",
+    "채널 = 직전 고점 2개를 이은 상단선과 직전 저점 2개를 이은 하단선 · 돌파 확인 = 종가가 상단선 +1% 위이면서 5일선 위 · 수평 저항·지지 = 현재가 바로 위·아래의 스윙 고점·저점(좌우 3봉 기준) · 그래프는 1분마다 갱신(진행 중인 봉 포함) · 사실과 숫자를 정리한 자료이며 매수·매도 권유가 아닙니다.": "用最近两个高点和两个低点画出趋势通道。收盘价超过上轨1%并站上5日均线，即确认突破。支撑和阻力取两侧各三根K线形成的波段高低点。图表每分钟更新。",
+    "📌 주요 이슈 자세히": "重点动态详情",
+    "공시·보도에 나온 사실과 수치만 정리했습니다. 투자 권유가 아닙니다.": "根据公开披露和报道整理事实与数据，仅供参考。",
+    "실시간 시세": "实时行情",
+    "칸마다 기준(전일 종가·24시간 전 등)을 숫자로 적습니다. 실시간 체결은 2초, 나머지는 30초마다 갱신.": "各栏标明比较基准。成交每两秒更新，其他报价每30秒更新。",
+    "📊 출처 점수판": "数据源评分",
+    "— 어디 값을 먼저 쓰는지(성공률·일치율·응답 시간·신선도로 자동 조정)": "根据成功率、一致性、响应时间和数据时效排序。",
+    "해외 지수": "海外股指",
+    "정규장 시세(5분 갱신) · 대만은 24시간 ETF": "常规交易时段行情每5分钟更新，台湾市场参考24小时ETF行情。",
+    "📋 시장 브리핑": "市场简报",
+    "1분마다 갱신 · 평일 07:20 · 12:00 · 14:00 · 20:05 · 22:15 기록": "每分钟更新。工作日记录时间为韩国时间07:20、12:00、14:00、20:05和22:15。",
+    "실시간 속보 · 지수 반응": "实时快讯与股指反应",
+    "1분마다 갱신 · 속보를 누르면 1분봉 차트가 열립니다.": "每分钟更新。点击快讯可打开1分钟K线图。",
+    "📍 시장을 움직인 순간": "市场波动时刻",
+    "급변·주요 가격대 통과와 유가 누적 등락(WTI 1·3시간 ±1%, 브렌트 1시간 ±1.5%·3시간 ±2.5%)을 확인합니다. 관련 뉴스는 시작 전 15분부터 급변 구간은 최대 30분, 누적 구간은 끝까지 연결합니다. 빨간 점(🔴)은 이 뉴스에만 붙습니다. 시각이 겹친다는 뜻이며 인과관계를 단정하지 않습니다. 💡 해석은 운영자가 직접 쓴 내용입니다.": "跟踪急涨急跌、关键价位突破及油价累计变化。WTI标准为1小时或3小时±1%，布伦特标准为1小时±1.5%或3小时±2.5%。红点标记相关消息，时间重合本身不足以证明因果关系。解读由运营者撰写。",
+    "전체 속보": "全部快讯",
+    "지수 반응은 보도 5분 전 가격 대비 변화로, 시간상 전후 관계일 뿐 인과관계를 뜻하지 않습니다.": "指数变化以报道前5分钟的价格为基准，仅表示时间上的先后关系。",
+    "더 보기": "查看更多",
+    "매매 권유가 아닙니다.": "仅供参考。",
+    "이번 주 체크포인트": "本周关注",
+    "시황 글에서 반복해서 확인하는 일정입니다.": "市场简报持续跟踪的日程。",
+    "미국 주요 실적·IPO 일정": "美国重点财报与IPO日程",
+    "실적은 Finnhub·야후 교차 확인 · 주요 IPO는 회사·거래소 공식 일정 · 확정 시각과 미정 구분": "财报日期由Finnhub和Yahoo交叉核对，IPO以公司和交易所公告为准，未确认时间会标明。",
+    "자가 점검 · 약 2분": "自我评估 · 约2分钟",
+    "11개 질문에 답하면": "回答11道问题，了解你的",
+    "투자 스타일": "投资风格",
+    "위험 감수 수준": "风险承受能力",
+    ", 그리고": "和",
+    "조심하면 좋은 매매 습관": "值得留意的交易习惯",
+    "을 보여 드립니다.": "。",
+    "답변은 이 브라우저 안에서만 계산되고 어디에도 저장·전송되지 않습니다.": "结果在浏览器内计算，答案不会保存或发送。",
+    "종목이나 상품을 추천하지 않는 교육용 자기 점검입니다.": "这是教育用途的自我评估，不推荐个股或产品。",
+    "테스트 시작": "开始测试",
+    "← 이전 질문": "上一题",
+    "우리가 보는 것": "我们关注什么",
+    "매일 같은 기준으로, 같은 순서로 확인합니다.": "每天按相同标准和顺序检查。",
+    "추세를 따른다": "跟踪趋势",
+    "바닥과 꼭지를 맞히기보다, 이미 시작된 흐름 안에 있는지를 확인합니다.": "观察已经形成的走势是否延续。",
+    "5일선과 Envelope": "5日均线与均线通道",
+    "반등이 진짜인지는 5일선 회복과 유지로, 과열과 이탈은 이동평균 위아래 띠로 봅니다.": "观察价格能否收复并守住5日均线，用上下轨判断过热和脱离。",
+    "밤사이 프록시": "隔夜参考指标",
+    "야간선물·EWY·코스피200 무기한 선물·유가·금리로 다음 날 한국장을 미리 점검합니다.": "结合夜盘期货、EWY、KOSPI 200永续期货、油价和利率观察下一交易日的韩国市场。",
+    "사실과 수치만": "事实与数据",
+    "매수·매도 권유 없이 숫자와 일정, 출처를 남깁니다. 판단은 각자의 규칙으로.": "记录数据、日程和来源，由读者根据自己的规则判断。",
+    "오프라인 그룹 스터디 · 서울 양재": "线下学习小组 · 首尔良才",
+    "다가오는 그룹 스터디": "即将举行的小组学习",
+    "강의만 듣고 끝나는 모임이 아니라, 각자 차트와 매매 기록을 가져와 발표하고 서로 피드백하는 그룹 스터디입니다. 매달 두 번 — 차트로 배우는 정기 스터디, 책으로 생각을 넓히는 독서 토론.": "参与者展示图表和交易记录并交流反馈。每月安排一次图表研习和一次读书讨论。",
+    "그룹 스터디는 이렇게 진행합니다": "小组学习流程",
+    "처음 오시는 분은 아래 '나의 투자 스타일 테스트'를 먼저 해 보고, 결과를 오픈채팅방에 올려 주세요. 스터디에서 서로의 스타일과 습관을 함께 점검합니다.": "首次参加者请先完成投资风格测试，并在开放聊天室分享结果。",
+    "내 스타일·조심할 습관 확인 후 결과 공유": "查看风格和习惯并分享结果",
+    "미니 특강": "短讲",
+    "지난 주제 복습 → 이번 달 주제": "回顾上期主题，介绍本月主题",
+    "케이스 발표": "案例分享",
+    "각자 차트·매매 기록을 같은 양식으로 발표": "使用统一格式展示图表和交易记录",
+    "피드백·복기": "反馈与复盘",
+    "질의응답, 다음 달까지 실천할 규칙 한 가지": "问答并确定下月前要实践的一条规则",
+    "🧭 투자 스타일 테스트 하러 가기": "参加投资风格测试",
+    "스터디 아카이브": "学习小组档案",
+    "2026년 5월부터 이어온 그룹 스터디의 기록입니다. 카드를 누르면 그날의 사진과 내용을 볼 수 있습니다.": "收录自2026年5月以来的活动。点击卡片可查看照片和内容。",
+    "교육용 멘트 게시판": "学习笔记",
+    "매매 원칙을 돌아보는 글": "回顾交易原则",
+    "투자 과정과 계좌 관리를 돕는 교육 문구를 기록합니다.": "记录有助于投资实践和账户管理的笔记。",
+    "교육용 멘트를 불러오는 중…": "正在加载学习笔记…",
+    "연간 커리큘럼": "年度课程",
+    "독서 토론 선정 도서 10권": "读书讨论精选10本书",
+    "조영근 추세추종 리서치 랩 | Trend Research Lab": "Trend Research Lab · 赵永根",
+    "본 사이트와 그룹 스터디는 교육 목적이며, 특정 종목을 추천하지 않고 수익을 보장하지 않습니다. 게시된 내용은 투자 참고용이며 투자 판단의 최종 책임은 본인에게 있습니다.": "本站及学习小组用于教育。不推荐特定证券，也不保证收益。投资决定由您自行负责。"
+  },
+  "fr": {
+    "TRL 트렌드 리서치 랩 | 주식 시황·뉴스·추세 분석": "Trend Research Lab | Marchés, actualité et tendances",
+    "추세 판단": "Signaux de tendance",
+    "주요 이슈": "Faits marquants",
+    "시세": "Cotations",
+    "브리핑": "Synthèses",
+    "속보": "Actualité",
+    "성향 테스트": "Profil d’investissement",
+    "그룹 스터디": "Groupe d’étude",
+    "아카이브": "Archives",
+    "커리큘럼": "Programme",
+    "📲 앱 설치": "Installer l’application",
+    "🔔 알림 받기": "Activer les alertes",
+    "오픈채팅": "Salon de discussion",
+    "TRL 트렌드 리서치 랩 · 조영근 추세추종 리서치": "Trend Research Lab · Études de tendance de Jo Young-geun",
+    "숫자로 확인하는": "Lire les marchés",
+    "추세추종": "à travers les données",
+    "선물·금리·유가·환율·해외 프록시를 매일 정리합니다.": "Suivi quotidien des contrats à terme, des taux, du pétrole, des devises et des indicateurs mondiaux.",
+    "의견보다 사실과 수치, 예측보다 흐름 확인.": "Les faits et les chiffres aident à suivre les tendances du marché.",
+    "나의 투자 스타일 테스트": "Découvrir mon profil d’investissement",
+    "다음 그룹 스터디": "Prochaine séance du groupe",
+    "불러오는 중…": "Chargement…",
+    "📐 추세 판단": "Signaux de tendance",
+    "채널 = 직전 고점 2개를 이은 상단선과 직전 저점 2개를 이은 하단선 · 돌파 확인 = 종가가 상단선 +1% 위이면서 5일선 위 · 수평 저항·지지 = 현재가 바로 위·아래의 스윙 고점·저점(좌우 3봉 기준) · 그래프는 1분마다 갱신(진행 중인 봉 포함) · 사실과 숫자를 정리한 자료이며 매수·매도 권유가 아닙니다.": "Le canal relie les deux derniers sommets et creux. Une cassure est confirmée si la clôture dépasse de 1 % la borne haute et reste au-dessus de la moyenne mobile à cinq jours. Les niveaux horizontaux utilisent trois bougies de chaque côté. Les graphiques sont actualisés chaque minute.",
+    "📌 주요 이슈 자세히": "Faits marquants en détail",
+    "공시·보도에 나온 사실과 수치만 정리했습니다. 투자 권유가 아닙니다.": "Faits et chiffres issus des publications officielles et de la presse. À titre informatif.",
+    "실시간 시세": "Cotations en temps réel",
+    "칸마다 기준(전일 종가·24시간 전 등)을 숫자로 적습니다. 실시간 체결은 2초, 나머지는 30초마다 갱신.": "Chaque encadré indique sa base de comparaison. Les transactions sont actualisées toutes les deux secondes et les autres cotations toutes les 30 secondes.",
+    "📊 출처 점수판": "Évaluation des sources",
+    "— 어디 값을 먼저 쓰는지(성공률·일치율·응답 시간·신선도로 자동 조정)": "Le classement tient compte du taux de réussite, de la concordance, du temps de réponse et de la fraîcheur des données.",
+    "해외 지수": "Indices internationaux",
+    "정규장 시세(5분 갱신) · 대만은 24시간 ETF": "Cotations de séance toutes les cinq minutes. Taïwan est suivi via un ETF coté sur 24 heures.",
+    "📋 시장 브리핑": "Synthèses de marché",
+    "1분마다 갱신 · 평일 07:20 · 12:00 · 14:00 · 20:05 · 22:15 기록": "Actualisation chaque minute. Relevés en semaine à 7 h 20, 12 h, 14 h, 20 h 05 et 22 h 15 (heure coréenne).",
+    "실시간 속보 · 지수 반응": "Dernières nouvelles et réactions des indices",
+    "1분마다 갱신 · 속보를 누르면 1분봉 차트가 열립니다.": "Actualisation chaque minute. Sélectionnez un titre pour ouvrir le graphique à une minute.",
+    "📍 시장을 움직인 순간": "Mouvements marquants du marché",
+    "급변·주요 가격대 통과와 유가 누적 등락(WTI 1·3시간 ±1%, 브렌트 1시간 ±1.5%·3시간 ±2.5%)을 확인합니다. 관련 뉴스는 시작 전 15분부터 급변 구간은 최대 30분, 누적 구간은 끝까지 연결합니다. 빨간 점(🔴)은 이 뉴스에만 붙습니다. 시각이 겹친다는 뜻이며 인과관계를 단정하지 않습니다. 💡 해석은 운영자가 직접 쓴 내용입니다.": "Suivi des variations brusques, des seuils de prix et des mouvements cumulés du pétrole. Seuils pour le WTI de ±1 % sur une ou trois heures, pour le Brent de ±1,5 % sur une heure et ±2,5 % sur trois heures. Un point rouge signale une nouvelle associée. La proximité dans le temps ne suffit pas à établir un lien de causalité. Les commentaires sont rédigés par le responsable du site.",
+    "전체 속보": "Toutes les nouvelles",
+    "지수 반응은 보도 5분 전 가격 대비 변화로, 시간상 전후 관계일 뿐 인과관계를 뜻하지 않습니다.": "La variation est calculée par rapport au cours cinq minutes avant la publication. Elle indique seulement l’ordre des événements.",
+    "더 보기": "Afficher plus",
+    "매매 권유가 아닙니다.": "À titre informatif.",
+    "이번 주 체크포인트": "Repères de la semaine",
+    "시황 글에서 반복해서 확인하는 일정입니다.": "Événements suivis régulièrement dans nos synthèses.",
+    "미국 주요 실적·IPO 일정": "Principaux résultats et introductions en bourse aux États-Unis",
+    "실적은 Finnhub·야후 교차 확인 · 주요 IPO는 회사·거래소 공식 일정 · 확정 시각과 미정 구분": "Les dates de résultats sont vérifiées auprès de Finnhub et Yahoo. Les introductions suivent les annonces des sociétés et des bourses. Les horaires non confirmés sont signalés.",
+    "자가 점검 · 약 2분": "Autoévaluation · Environ deux minutes",
+    "11개 질문에 답하면": "Onze questions pour découvrir votre",
+    "투자 스타일": "profil d’investissement",
+    "위험 감수 수준": "tolérance au risque",
+    ", 그리고": "et les",
+    "조심하면 좋은 매매 습관": "habitudes à surveiller",
+    "을 보여 드립니다.": ".",
+    "답변은 이 브라우저 안에서만 계산되고 어디에도 저장·전송되지 않습니다.": "Le calcul se fait dans votre navigateur, sans enregistrement ni envoi de vos réponses.",
+    "종목이나 상품을 추천하지 않는 교육용 자기 점검입니다.": "Cette autoévaluation pédagogique ne recommande aucun titre ni produit.",
+    "테스트 시작": "Commencer le test",
+    "← 이전 질문": "Question précédente",
+    "우리가 보는 것": "Ce que nous suivons",
+    "매일 같은 기준으로, 같은 순서로 확인합니다.": "Nous examinons les mêmes critères dans le même ordre chaque jour.",
+    "추세를 따른다": "Suivre la tendance",
+    "바닥과 꼭지를 맞히기보다, 이미 시작된 흐름 안에 있는지를 확인합니다.": "Vérifiez si la tendance en cours se poursuit.",
+    "5일선과 Envelope": "Moyenne mobile à cinq jours et enveloppe",
+    "반등이 진짜인지는 5일선 회복과 유지로, 과열과 이탈은 이동평균 위아래 띠로 봅니다.": "Surveillez le retour au-dessus de la moyenne et utilisez ses bandes pour repérer les excès ou les ruptures.",
+    "밤사이 프록시": "Indicateurs de la nuit",
+    "야간선물·EWY·코스피200 무기한 선물·유가·금리로 다음 날 한국장을 미리 점검합니다.": "Les contrats à terme, l’EWY, les contrats perpétuels sur le KOSPI 200, le pétrole et les taux éclairent la prochaine séance coréenne.",
+    "사실과 수치만": "Faits et chiffres",
+    "매수·매도 권유 없이 숫자와 일정, 출처를 남깁니다. 판단은 각자의 규칙으로.": "Nous indiquons les chiffres, les dates et les sources. Chacun applique ses propres règles de décision.",
+    "오프라인 그룹 스터디 · 서울 양재": "Groupe en présentiel · Yangjae, Séoul",
+    "다가오는 그룹 스터디": "Prochaine séance du groupe",
+    "강의만 듣고 끝나는 모임이 아니라, 각자 차트와 매매 기록을 가져와 발표하고 서로 피드백하는 그룹 스터디입니다. 매달 두 번 — 차트로 배우는 정기 스터디, 책으로 생각을 넓히는 독서 토론.": "Les participants présentent leurs graphiques et leurs opérations et échangent leurs observations. Chaque mois comprend une étude de graphiques et une discussion autour d’un livre.",
+    "그룹 스터디는 이렇게 진행합니다": "Déroulement des séances",
+    "처음 오시는 분은 아래 '나의 투자 스타일 테스트'를 먼저 해 보고, 결과를 오픈채팅방에 올려 주세요. 스터디에서 서로의 스타일과 습관을 함께 점검합니다.": "Pour une première participation, faites le test et partagez votre résultat dans le salon de discussion.",
+    "내 스타일·조심할 습관 확인 후 결과 공유": "Identifiez votre profil et vos habitudes, puis partagez le résultat",
+    "미니 특강": "Mini-cours",
+    "지난 주제 복습 → 이번 달 주제": "Retour sur le thème précédent et introduction au sujet du mois",
+    "케이스 발표": "Présentation de cas",
+    "각자 차트·매매 기록을 같은 양식으로 발표": "Présentez les graphiques et les opérations dans un format commun",
+    "피드백·복기": "Retours et bilan",
+    "질의응답, 다음 달까지 실천할 규칙 한 가지": "Questions et choix d’une règle à mettre en pratique d’ici au mois suivant",
+    "🧭 투자 스타일 테스트 하러 가기": "Faire le test de profil",
+    "스터디 아카이브": "Archives du groupe d’étude",
+    "2026년 5월부터 이어온 그룹 스터디의 기록입니다. 카드를 누르면 그날의 사진과 내용을 볼 수 있습니다.": "Retrouvez les séances depuis mai 2026. Sélectionnez une fiche pour consulter les photos et le compte rendu.",
+    "교육용 멘트 게시판": "Notes pédagogiques",
+    "매매 원칙을 돌아보는 글": "Réflexions sur les principes de trading",
+    "투자 과정과 계좌 관리를 돕는 교육 문구를 기록합니다.": "Notes sur la pratique de l’investissement et la gestion de compte.",
+    "교육용 멘트를 불러오는 중…": "Chargement des notes pédagogiques…",
+    "연간 커리큘럼": "Programme annuel",
+    "독서 토론 선정 도서 10권": "Dix livres pour les discussions",
+    "조영근 추세추종 리서치 랩 | Trend Research Lab": "Trend Research Lab · Jo Young-geun",
+    "본 사이트와 그룹 스터디는 교육 목적이며, 특정 종목을 추천하지 않고 수익을 보장하지 않습니다. 게시된 내용은 투자 참고용이며 투자 판단의 최종 책임은 본인에게 있습니다.": "Le site et le groupe d’étude ont une vocation pédagogique. Aucun titre n’est recommandé et aucun rendement n’est garanti. Vous restez responsable de vos décisions d’investissement."
+  }
+};
+  const messages = {
+  "en": [
+    "Language",
+    "Live news, market commentary and quiz questions may appear in their original language."
+  ],
+  "ja": [
+    "言語",
+    "速報・市況コメント・診断の質問は原文で表示される場合があります。"
+  ],
+  "zh-hans": [
+    "语言",
+    "实时快讯、市场评论和测试题目可能以原文显示。"
+  ],
+  "fr": [
+    "Langue",
+    "Les dépêches, les commentaires de marché et les questions du test peuvent s’afficher dans leur langue d’origine."
+  ]
+};
+  const url = new URL(window.location.href);
+  const requested = (url.searchParams.get("lang") || "ko").toLowerCase();
+  const language = Object.hasOwn(translations, requested) ? requested : "ko";
+  menu.value = language;
+  menu.addEventListener("change", () => {
+    if (menu.value === "ko") url.searchParams.delete("lang");
+    else url.searchParams.set("lang", menu.value);
+    url.hash = window.location.hash;
+    window.location.assign(url);
+  });
+  if (language === "ko") return;
+
+  document.documentElement.lang = language === "zh-hans" ? "zh-Hans" : language;
+  menu.setAttribute("aria-label", messages[language][0]);
+  const copy = translations[language];
+  const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  for (let node = walker.nextNode(); node; node = walker.nextNode()) {
+    if (node.parentElement.closest("script, style, select")) continue;
+    const original = node.data.trim();
+    if (Object.hasOwn(copy, original)) node.data = node.data.replace(original, copy[original]);
+  }
+  document.title = copy[document.title] || document.title;
+  note.textContent = messages[language][1];
+  note.hidden = false;
+})();
+</script>
 <script src="count.js?v=20261116-visitors"></script>
 <script src="presence.js?v=20261116-visitors"></script>
 <script src="flow-core.js?v=20261116-flow"></script>
