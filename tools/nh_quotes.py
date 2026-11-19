@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.parse
 import urllib.request
 from pathlib import Path
@@ -21,9 +22,19 @@ NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
 STATUS = Path.home() / ".cache" / "trl-nh-quotes-status.json"
 
 
-def write_status(ok, error=None):
+def write_status(ok, stage, error=None):
     STATUS.parent.mkdir(parents=True, exist_ok=True)
-    STATUS.write_text(json.dumps({"checked_at": int(time.time() * 1000), "ok": ok, "error": error}), encoding="utf-8")
+    entry = json.dumps({
+        "checked_at": int(time.time() * 1000), "ok": ok, "stage": stage, "error": error,
+    })
+    temp = STATUS.with_suffix(".tmp")
+    temp.write_text(entry, encoding="utf-8")
+    temp.replace(STATUS)
+    history = STATUS.with_name("trl-nh-quotes-history.jsonl")
+    if history.exists() and history.stat().st_size >= 1024 * 1024:
+        history.replace(history.with_suffix(".previous.jsonl"))
+    with history.open("a", encoding="utf-8") as log:
+        log.write(entry + "\n")
 
 
 def request(path, payload, token=None):
@@ -105,6 +116,18 @@ def publish(data):
     gh(["--method", "PUT", endpoint], payload)
 
 
+def current_quote(sym, token):
+    try:
+        return request("/gbstock/quote/v1/current", {"Input_0": {"iem_cd": sym}}, token)
+    except urllib.error.HTTPError as error:
+        if error.code in (400, 401):
+            try:
+                return json.load(error)
+            except (ValueError, UnicodeError):
+                pass
+        raise
+
+
 def main():
     parser = argparse.ArgumentParser()
     # 키 파일 위치: 환경변수 → 바탕화면 NH.txt → ~/.nhplug/.env (11/8 바탕화면 파일이 없어 멈췄던 문제)
@@ -114,27 +137,36 @@ def main():
     parser.add_argument("--publish", action="store_true")
     parser.add_argument("--quiet", action="store_true")
     args = parser.parse_args()
-    token = access_token(args.credentials)
-    rows = []
-    for sym in ("KORU", "SOXL"):
-        response = request("/gbstock/quote/v1/current", {"Input_0": {"iem_cd": sym}}, token)
-        if response.get("rsp_cd") != "00000":
-            raise ValueError("NH quote rejected")
-        rows.append({"sym": sym, **normalize(response["Output_0"], int(time.time() * 1000))})
-    data = {"updated": int(time.time() * 1000), "source": "NH투자증권", "items": rows}
-    if args.publish:
-        publish(data)
-    write_status(True)
+    stage = "token"
+    try:
+        token = access_token(args.credentials)
+        refreshed = False
+        rows = []
+        for sym in ("KORU", "SOXL"):
+            stage = "quote"
+            response = current_quote(sym, token)
+            if response.get("rsp_cd") == "IGW40043" and not refreshed:
+                stage = "token_refresh"
+                token = access_token(args.credentials, force=True)
+                refreshed = True
+                stage = "quote"
+                response = current_quote(sym, token)
+            if response.get("rsp_cd") != "00000":
+                raise ValueError("NH quote rejected")
+            rows.append({"sym": sym, **normalize(response["Output_0"], int(time.time() * 1000))})
+        data = {"updated": int(time.time() * 1000), "source": "NH투자증권", "items": rows}
+        if args.publish:
+            stage = "publish"
+            publish(data)
+    except Exception as error:
+        write_status(False, stage, type(error).__name__)
+        if not args.quiet and sys.stdout is not None:
+            print("NH quote update failed:", stage, type(error).__name__)
+        return 1
+    write_status(True, "published" if args.publish else "queried")
     if not args.quiet and sys.stdout is not None:
         print(json.dumps(data, ensure_ascii=True))
 
 
 if __name__ == "__main__":
-    try:
-        main()
-    except Exception as error:
-        # 공급자 응답·키·토큰·요청 URL은 로그에 쓰지 않는다.
-        write_status(False, type(error).__name__)
-        if "--quiet" not in sys.argv and sys.stdout is not None:
-            print("NH quote update failed:", type(error).__name__)
-        raise SystemExit(1) from None
+    raise SystemExit(main())
