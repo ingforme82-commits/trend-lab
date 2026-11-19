@@ -73,6 +73,21 @@
   {
    "cc": "us",
    "country": "미국",
+   "sector": "AI 대장",
+   "items": [
+    [
+     "NVDA",
+     "엔비디아"
+    ],
+    [
+     "ANT",
+     "앤트로픽"
+    ]
+   ]
+  },
+  {
+   "cc": "us",
+   "country": "미국",
    "sector": "지수 선물",
    "items": [
     [
@@ -107,12 +122,8 @@
   {
    "cc": "us",
    "country": "미국",
-   "sector": "AI 반도체 · 레버리지",
+   "sector": "반도체 · 레버리지",
    "items": [
-    [
-     "NVDA",
-     "엔비디아"
-    ],
     [
      "SOXL",
      "SOXL 반도체 3배"
@@ -170,5 +181,12 @@
   "tolerance_pct": 0.75,
   "min_spacing_bars": 3,
   "method": "fixed_two_anchor"
+ },
+ "ipo": {
+  "ANT": {
+   "ipo_px": 83.0,
+   "listed": "2026-11-19",
+   "note": "11/19 나스닥 상장, 공모가 83달러"
+  }
  }
 }

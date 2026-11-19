@@ -393,9 +393,20 @@ def build(now: datetime | None = None) -> dict:
                      if now.timestamp() * 1000 - s["ts"] < 20 * 3600_000 and s.get("contact_policy") == contact_policy]
     resists = [s for s in log.get("resists", []) if now.timestamp() * 1000 - s["ts"] < 20 * 3600_000 and s.get("contact_policy") == contact_policy]   # 5일선 저항(11/18), 주문용 signals 와 따로
     nxq = _nxt_quotes([code for g in c["groups"] if g["cc"] == "kr" for code, _ in g["items"]], now)
+    ipo_cfg = c.get("ipo") or {}
     for g in c["groups"]:
         items = []
         for code, name in g["items"]:
+            if code in ipo_cfg:                                 # 11/20 운영자: 상장 초기 종목(ANT)은 채널 대신 공모가·시가·고점 기준 카드
+                try:
+                    it = ipo_item(code, name, ipo_cfg[code], now)
+                    if it:
+                        items.append(it)
+                    else:
+                        ERRS.append(f"{code} 상장 초기 시세 없음")
+                except Exception as x:  # noqa: BLE001
+                    ERRS.append(f"{code} 상장 초기 시세 {type(x).__name__}")
+                continue
             try:
                 rows, live = bars(g["cc"], code, now)
             except Exception as x:  # noqa: BLE001
@@ -472,13 +483,15 @@ def build(now: datetime | None = None) -> dict:
             prev[key] = {**was, "state": st}
         if g["cc"] != "kr_index":
             items.sort(key=lambda x: -x["dd"])
+        chan_items = [x for x in items if not x.get("ipo")]
         for i, it in enumerate(items):
             it["rank"] = i + 1
-            it["res_gap"] = round(res_gap(it, it["px"]), 2)
+            if not it.get("ipo"):
+                it["res_gap"] = round(res_gap(it, it["px"]), 2)
         if items:
             grp = {"cc": g["cc"], "country": g["country"], "sector": g["sector"], "items": items}
-            if len(items) > 1 and g["cc"] != "kr_index":
-                grp["sector_view"] = sector_view(items)
+            if len(chan_items) > 1 and g["cc"] != "kr_index":
+                grp["sector_view"] = sector_view(chan_items)
             groups.append(grp)
     if events:
         hist = (hist + events)[-60:]
@@ -488,6 +501,35 @@ def build(now: datetime | None = None) -> dict:
     at = log.get("at") if log.get("fp") == fp and log.get("at") else int(now.timestamp() * 1000)   # 내용이 같으면 시각도 그대로(주말에 매분 올리지 않게)
     _save(LOG, {"contact_policy": contact_policy, "last": prev, "events": hist, "fp": fp, "at": at, "signals": signals, "watch_signals": watch_signals, "resists": resists})
     return {"at": at, **body, "errs": ERRS[:20]}
+
+
+def ipo_item(code: str, name: str, cfg: dict, now: datetime) -> dict | None:
+    """상장 초기 종목 카드(채널을 그릴 일봉이 모자람). 기준선 = 공모가·첫날 시가·상장 뒤 고점/저점, 5분봉(정규장).
+    해석 없이 위치만: 현재가가 공모가·시가 위/아래인지."""
+    u = f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.request.quote(code)}?range=5d&interval=5m"
+    r = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"}), timeout=10).read())["chart"]["result"][0]
+    m, q = r["meta"], r["indicators"]["quote"][0]
+    bars5 = []
+    for t, o, h, l, cl in zip(r.get("timestamp") or [], q["open"], q["high"], q["low"], q["close"]):
+        if None not in (o, h, l, cl) and h > 0:
+            bars5.append([int(t) * 1000, round(o, 4), round(h, 4), round(l, 4), round(cl, 4)])
+    px = m.get("regularMarketPrice")
+    if not px or not bars5:
+        return None
+    ipo_px = float(cfg["ipo_px"])
+    first = next((b for b in bars5 if b[1] != ipo_px or b[2] != ipo_px), bars5[0])   # 상장 전 자리표시 봉(공모가 고정) 건너뜀
+    live_bars = [b for b in bars5 if b[0] >= first[0]]
+    hi = max(b[2] for b in live_bars); lo = min(b[3] for b in live_bars)
+    prev = m.get("chartPreviousClose") or ipo_px
+    open1 = first[1]
+    pos = "공모가 위" if px > ipo_px else "공모가 아래"
+    pos += " · 첫 시가 위" if px > open1 else " · 첫 시가 아래"
+    age = now.timestamp() - (m.get("regularMarketTime") or 0)
+    return {"code": code, "name": name, "ipo": True, "px": px, "chg": round((px / prev - 1) * 100, 2), "chg_basis": "전일 종가(상장일은 공모가)",
+            "ipo_px": ipo_px, "open1": open1, "hi": hi, "lo": lo, "vs_ipo": round((px / ipo_px - 1) * 100, 2),
+            "vs_open1": round((px / open1 - 1) * 100, 2), "from_hi": round((px / hi - 1) * 100, 2), "dd": round((px / hi - 1) * 100, 2),
+            "listed": cfg.get("listed"), "note": cfg.get("note", ""), "state": pos, "live": age < 600, "bars": live_bars[-160:],
+            "source": "Yahoo 5분봉 · 현재가", "source_at": int((m.get("regularMarketTime") or 0) * 1000)}
 
 
 def sector_view(items: list[dict]) -> dict:

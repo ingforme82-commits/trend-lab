@@ -765,6 +765,26 @@
     return {res: pick(ph, 2, true), sup: pick(pl, 3, false), top: Math.max(...rows.slice(from).map((r) => r[2]))};
   }
   const CH_HIDE = new Set(["YM=F"]);
+  // 11/20 운영자 "이제 대장이 ANT와 엔비디아": 상장 초기 종목 카드 — 일봉이 모자라 채널 대신 공모가·첫 시가·상장 뒤 고점과의 거리, 5분봉 선
+  function chIpoCard(it, cc) {
+    const k = it.chg > 0.005 ? "up" : it.chg < -0.005 ? "down" : "dim";
+    const p = (v) => `${v > 0 ? "+" : ""}${(+v).toFixed(1)}%`;
+    const b = it.bars || [], W = 640, H = 170, M = {l: 6, r: 74, t: 10, b: 16};
+    let svg = "";
+    if (b.length > 1) {
+      const lv = [it.ipo_px, it.open1, it.hi, it.lo, ...b.map((x) => x[4])];
+      let y1 = Math.max(...lv), y0 = Math.min(...lv); const pad = (y1 - y0) * 0.06 || 1; y1 += pad; y0 -= pad;
+      const X = (i) => M.l + (W - M.l - M.r) * i / (b.length - 1), Y = (v) => M.t + (y1 - v) / (y1 - y0) * (H - M.t - M.b);
+      const line = (v, cls, lab) => `<line x1="${M.l}" x2="${W - M.r}" y1="${Y(v)}" y2="${Y(v)}" class="${cls}"/><text x="${W - M.r + 4}" y="${Y(v) + 4}" class="ch-ax">${lab} ${chFmt(cc, v)}</text>`;
+      svg = `<svg class="ch-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(it.name)} 상장 뒤 5분봉">
+        ${line(it.ipo_px, "ch-ipo-l", "공모")}${line(it.open1, "ch-hs", "시가")}${line(it.hi, "ch-hr", "고점")}
+        <polyline fill="none" class="ch-ipo-p" points="${b.map((x, i) => `${X(i)},${Y(x[4])}`).join(" ")}"/></svg>`;
+    }
+    return `<article class="ch-card ch-ipo" data-viewport-key="channel:${esc(it.code)}">
+      <div class="ch-top"><b class="ch-nm">${esc(it.name)} <small>${esc(it.code)} · 상장 ${esc(it.listed || "")}</small></b><b class="mn ${k}">${chFmt(cc, it.px)}</b><b class="${k}">${p(it.chg)}</b><span class="ch-st s-in">${esc(it.state)}</span><small class="ch-session">${it.live ? "정규장" : "마지막"}${it.source_at ? " · " + hm(it.source_at) : ""}</small></div>
+      <p class="ch-lv"><span>공모가 <b>${chFmt(cc, it.ipo_px)}</b> <small>${p(it.vs_ipo)}</small></span><span>첫 시가 <b>${chFmt(cc, it.open1)}</b> <small>${p(it.vs_open1)}</small></span><span>상장 뒤 고점 <b>${chFmt(cc, it.hi)}</b> <small>${p(it.from_hi)}</small></span><span>저점 <b>${chFmt(cc, it.lo)}</b></span></p>
+      ${svg}<p class="ch-leg">상장 초기라 일봉이 모자라 채널·5일선 대신 공모가·첫 시가·고점을 기준선으로 표시 · 5분봉 종가 선</p></article>`;
+  }
   // 11/20 운영자 "지지·저항·추세선·5일선 명확히": 카드에 현재가 바로 위 저항·바로 아래 지지, 오늘 고가가 닿고 밀린 선·저가가 받친 선
   function chLvLine(it, cc) {
     const rows = it.rows || [], n = rows.length, px = it.px;
@@ -967,9 +987,10 @@
       const rankable = ({it}) => Number.isFinite(it.chg) && !it.stale;
       const strength = (item) => rankable(item) ? item.it.chg : -Infinity;
       if (many) items.sort((a, b) => strength(b) - strength(a));
-      html += `<div class="ch-sec"><p class="ch-sh">${esc(g.sector)}${many ? "<small>현재 세션 등락률 높은 순</small>" : ""}${many ? chSector(items.map(({it}) => it)) : ""}</p><div class="ch-grid2">`;
+      html += `<div class="ch-sec"><p class="ch-sh">${esc(g.sector)}${many ? "<small>현재 세션 등락률 높은 순</small>" : ""}${many && items.filter(({it}) => !it.ipo).length > 1 ? chSector(items.map(({it}) => it).filter((x) => !x.ipo)) : ""}</p><div class="ch-grid2">`;
       items.forEach((item, index) => {
         const {regular, it} = item;
+        if (it.ipo) { html += chIpoCard(it, g.cc); return; }      // 11/20 운영자: 상장 초기(ANT) — 공모가·시가·고점 기준
         liveItems.push({g, it});
         const sgNow = chSigNow(it);
         const rank = index + 1;
