@@ -51,6 +51,7 @@
     }
     try { return keep(await (await fetch(`${NEWS_URL}?t=${Math.floor(now / 60000)}`)).json()); } catch (e) { if (newest) return newest; throw e; }
   }
+  let nhSnapshot = null;
   let fastBusy = false, auxAt = 0, fastTag = '';
   async function directNews() {
     const url = window.trlRtUrl;
@@ -71,19 +72,19 @@
       const j = preloaded || await fetchNews();
       if (!preloaded && !window.trlNewsHealth?.direct) window.trlNewsHealth = {direct:false, checked:Date.now()};
       if (Date.now() - auxAt >= 55000) {
-      auxAt = Date.now();
-      try {
-        const response = await fetch(`https://raw.githubusercontent.com/ingforme82-commits/trend-lab/quotes/nh-quotes.json?t=${Math.floor(Date.now() / 60000)}`, { signal: AbortSignal.timeout(8000), cache: "no-store" });
-        if (response.ok) {
-          const snapshot = await response.json();
-          for (const row of (j.lev && j.lev.items) || []) {
-            const quote = (snapshot.items || []).find((item) => item.sym === row.sym);
-            if (quote && Number.isFinite(quote.px) && Number.isFinite(quote.base) && quote.px > 0 && quote.base > 0) {
-              row.ext = { ...quote, stale: quote.stale || Date.now() - quote.checked_at > 3 * 60000 || quote.checked_at > Date.now() + 60000 };
-            }
-          }
-        }
-      } catch { /* NH 갱신 실패 시 수집된 자료를 유지하되 조회 시각을 표시 */ }
+        auxAt = Date.now();
+        try {
+          const url = `https://raw.githubusercontent.com/ingforme82-commits/trend-lab/quotes/nh-quotes.json?t=${Math.floor(Date.now() / 60000)}`;
+          const response = await fetch(url, { signal: AbortSignal.timeout(8000), cache: "no-store" });
+          if (response.ok) nhSnapshot = await response.json();
+        } catch { /* 최근 발행본을 유지하고 마지막 성공 시각을 표시 */ }
+      }
+      for (const row of (j.lev && j.lev.items) || []) {
+        const quote = nhSnapshot?.items?.find((item) => item.sym === row.sym);
+        if (!quote || !Number.isFinite(quote.px) || !Number.isFinite(quote.base) || quote.px <= 0 || quote.base <= 0) continue;
+        const age = Date.now() - quote.checked_at;
+        if (quote.sess === "reg") row.nhRegular = quote;
+        else row.ext = { ...quote, stale: quote.stale || !Number.isFinite(age) || age > 3 * 60000 || age < -60000 };
       }
       const board = (j.brief && j.brief.ext) || j.ext;              // 시간외 시세판(NH 우선, 실패 시 야후) — 1분마다
       for (const row of (j.lev && j.lev.items) || []) {
@@ -119,6 +120,11 @@
     if (!s || !s.until || Date.now() > Date.parse(s.until)) return "";
     const items = (s.items || []).filter((x) => Number.isFinite(x.px) && x.px > 0 && Number.isFinite(x.base) && x.base > 0 && Number.isFinite(Date.parse(x.at)));
     if (!items.length) return "";
+    const published = nhSnapshot?.updated;
+    const age = Date.now() - published;
+    const nhStatus = Number.isFinite(age) && age >= -60000
+      ? ` · NH 발행 ${hm(published)}${age > 3 * 60000 ? " (3분 이상 미갱신)" : ""}`
+      : " · NH 발행 확인 중";
     return `<div class="lvbox"><p class="mm-h">☀️ ${esc(s.session)} · NH HTS 확인 <small>수동 캡처 · 실시간 자동 갱신 아님</small></p><div class="lc-g">${items.map((x) => {
       const delta = x.px - x.base, chg = delta / x.base * 100, sign = delta > 0 ? "+" : delta < 0 ? "-" : "";
       return `<div class="lc"><p class="lc-h"><b>${esc(x.sym)}</b> <small>${esc(s.session)}</small></p><p class="lc-p"><b class="lc-px">$${x.px.toFixed(2)}</b> <b class="${cls(chg)}">${sign}${Math.abs(chg).toFixed(2)}%</b></p><p class="lc-f">정규장 종가 $${x.base.toFixed(2)} 대비 <b class="${cls(chg)}">${sign}$${Math.abs(delta).toFixed(2)}</b></p><p class="lc-f">${md2(Date.parse(x.at))} ${hm(Date.parse(x.at))} KST 화면 확인</p></div>`;
@@ -409,6 +415,15 @@
     const active = e && e.live && !e.stale && (e.board ? Date.now() - e.checked_at < 5 * 60000 : e.source === "NH투자증권" ? Date.now() - e.checked_at < 3 * 60000 : Date.now() - e.at < 15 * 60000 && e.at >= x.at);
     const price = active ? e.px : x.px, change = active ? e.chg : x.chg;
     const queried = e && (e.checked_at || checkedAt);
+    const nhRegular = x.nhRegular;
+    const sourceTime = (quote) => {
+      const time = String(quote?.source_time || "");
+      const date = String(quote?.source_date || "");
+      return /^\d{8}$/.test(date) && /^\d{6}$/.test(time)
+        ? `${date.slice(4,6)}/${date.slice(6)} ${time.slice(0,2)}:${time.slice(2,4)}:${time.slice(4)} (증권사 원천)`
+        : "원천 시각 확인 불가";
+    };
+    const regularLine = nhRegular ? `<p class="lc-f">NH 정규장 ${$(nhRegular.px)} · ${sourceTime(nhRegular)}</p>` : "";
     const queryLabel = queried ? `${new Date(queried).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })} 한국 시간 조회` : "조회 시각 확인 불가";
     const label = active ? `${e.sess === "day" ? "주간거래" : e.sess === "pre" ? "프리마켓" : "애프터마켓"} · ${queryLabel}` : `${+x.day.slice(5, 7)}/${+x.day.slice(8, 10)} ${x.open ? "장중" : "마감"}`;
     const chip = (ok, t) => `<span class="lc-c ${ok ? "on" : "off"}">${ok ? "▲" : "▼"} ${t}</span>`;
@@ -422,11 +437,11 @@
       bar = `<div class="lc-r"><small>20일 저가 ${$$(x.lo20)}</small><span class="lc-b"><i style="left:${pos.toFixed(0)}%"></i></span><small>고가 ${$$(x.hi20)}</small></div>`;
     }
     const SN = { pre: "프리마켓", post: "애프터마켓", day: "주간거래" };
-    const ext = e ? `<p class="lc-f">${active ? `${SN[e.sess] || "시간외"} · 정규장 종가 ${$$(e.base)} 대비 ${pc(e.chg)}${e.stale ? ` · 마지막 체결 ${hm(e.at)}` : ""}` : `${SN[e.sess] || "시간외"} 마지막 체결 ${$$(e.px)} ${pc(e.chg)} · ${e.at ? md2(e.at) + " " + hm(e.at) : ""}`} <small>· ${esc(e.source || "야후")} · ${queryLabel}</small></p>` : `<p class="lc-f">${x.open ? "정규장 거래 중 — 위 가격이 실시간" : "시간외 거래 없는 시간(정규장 종가 표시)"}</p>`;
+    const ext = e ? `<p class="lc-f">${active ? `${SN[e.sess] || "시간외"} · 정규장 종가 ${$$(e.base)} 대비 ${pc(e.chg)}${e.stale ? ` · 마지막 체결 ${hm(e.at)}` : ""}` : `${SN[e.sess] || "시간외"} 마지막 체결 ${$$(e.px)} ${pc(e.chg)} · ${e.at ? md2(e.at) + " " + hm(e.at) : ""}`} <small>· ${esc(e.source || "야후")} · ${queryLabel}${e.source_time ? ` · ${sourceTime(e)}` : ""}</small></p>` : `<p class="lc-f">${x.open ? "정규장 거래 중 — 위 가격이 실시간" : "시간외 거래 없는 시간(정규장 종가 표시)"}</p>`;
     const base = x.base_chg != null ? `기초 ${esc(String(x.base).replace(/\(.*\)/, ""))} <b class="${cls(x.base_chg)}">${pc(x.base_chg)}</b>` : "";
     const mem = x.members ? ` · 구성 대형주 ${x.members.n_up}/${x.members.n} 상승` : "";
     return `<div class="lc"><p class="lc-h"><b>${esc(x.sym)}</b> <small class="dim">${esc(x.name)}</small></p>
-      <p class="lc-p"><b class="lc-px">${$$(price)}</b> <b class="${cls(change)}">${pc(change)}</b> <small class="dim">${label}</small></p>${ext}
+      <p class="lc-p"><b class="lc-px">${$$(price)}</b> <b class="${cls(change)}">${pc(change)}</b> <small class="dim">${label}</small></p>${regularLine}${ext}
       <div class="lc-cs">${C.join("")}</div>${bar}${base || mem ? `<p class="lc-f">${base}${mem}</p>` : ""}</div>`;
   }
   function levHtml(L, compact) {
@@ -434,7 +449,7 @@
     const ORD = ["SOXL", "KORU", "DRAM", "SKHY", "MU", "SOXS"], rk = (s) => { const i = ORD.indexOf(s); return i < 0 ? ORD.length - 1 : i; };
     const its = ((L && L.items) || []).slice().sort((a, b) => rk(a.sym) - rk(b.sym));
     if (!its.length) return "";
-    return `<div class="lvbox"><p class="mm-h">🔬 SOXL · KORU 한눈에 <small>${hm(L.at)} 한국 시간 조회</small></p><div class="lc-g">${its.map((x) => levCard(x, undefined, L.at)).join("")}</div>
+    return `<div class="lvbox"><p class="mm-h">🔬 SOXL · KORU 한눈에 <small>${hm(L.at)} 한국 시간 조회${nhStatus}</small></p><div class="lc-g">${its.map((x) => levCard(x, undefined, L.at)).join("")}</div>
       ${compact ? "" : `<p class="mm-f">NH 현재가 우선 · 시간외 등락률은 정규장 종가 대비 · 1분마다 자동 조회(지연 가능) · 조회 시각은 한국 시간 · 지표·막대는 정규장 기준 · 3배 ETF는 하루 단위로 3배 추종 · 매수·매도 권유 아님</p>`}</div>`;
   }
   /* ── ⏱ 시간대별 강세: 매시(KST) '이번 시간 상승률' 상위 종목·업종 — 한국·미국 구분 ── */
