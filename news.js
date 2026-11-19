@@ -830,8 +830,7 @@
     return "채널 안";
   }
   // 11/19 운영자 "대장만 갈 수 없다": 섹터 돌파는 가장 약한 종목(채널 상단+1%·전고점 중 높은 쪽까지 가장 먼 종목)까지 돌파해야 인정
-  function chSector(g) {
-    const its = g.items.map((r) => chLive(chDisplay(r)));
+  function chSector(its) {
     const need = (it) => (Math.max(it.up_now * 1.01, it.res_h || 0) / it.px - 1) * 100;
     const lag = its.reduce((a, b) => need(b) > need(a) ? b : a);
     const ok = its.filter((it) => it.state === "돌파 확인" || String(it.state).startsWith("돌파 시도")).length;
@@ -875,10 +874,15 @@
     c.groups.forEach((g) => {
       if (g.country !== lastC) { if (lastC) html += `</div>`; html += `<div class="ch-country"><p class="ch-ch">${CH_FLAG[g.cc] || ""} ${esc(g.country)}</p>`; lastC = g.country; }
       const many = g.items.length > 1 && g.cc !== "kr_index";
-      html += `<div class="ch-sec"><p class="ch-sh">${esc(g.sector)}${many ? "<small>10월 말 고점 대비 덜 빠진 순</small>" : ""}${many ? chSector(g) : ""}</p><div class="ch-grid2">`;
-      g.items.forEach((regular) => {
-        const it = chLive(chDisplay(regular));
-        const mdl = many ? `<span class="ch-md m${Math.min(it.rank, 4)}">${it.rank <= 3 ? ["금", "은", "동"][it.rank - 1] : it.rank}</span>` : "";
+      const items = g.items.map((regular) => ({regular, it: chLive(chDisplay(regular))}));
+      const rankable = ({it}) => Number.isFinite(it.chg) && !it.stale;
+      const strength = (item) => rankable(item) ? item.it.chg : -Infinity;
+      if (many) items.sort((a, b) => strength(b) - strength(a));
+      html += `<div class="ch-sec"><p class="ch-sh">${esc(g.sector)}${many ? "<small>현재 세션 등락률 높은 순</small>" : ""}${many ? chSector(items.map(({it}) => it)) : ""}</p><div class="ch-grid2">`;
+      items.forEach((item, index) => {
+        const {regular, it} = item;
+        const rank = index + 1;
+        const mdl = many && rankable(item) ? `<span class="ch-md m${Math.min(rank, 4)}">${["금", "은", "동"][index] || rank}</span>` : "";
         html += `<article class="ch-card" data-viewport-key="channel:${esc(it.code)}">
           <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b>${(() => { const k = it.chg == null || !isFinite(it.chg) ? "dim" : it.chg > 0.005 ? "up" : it.chg < -0.005 ? "down" : "dim";   // 11/19 운영자: 현재가도 전일 종가 대비 색·굵게(상승 빨강·하락 파랑·보합 회색)
             return `<b class="mn ${k}">${chFmt(g.cc, it.px)}</b><b class="${k}"`; })()} title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(g.cc, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b><span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span><small class="ch-session">${regular.display ? (it.session === "정규장" ? "정규장" : "시간외 · " + esc(it.session)) : (it.live ? "정규장" : "마감")}${it.stale ? " · 지연" : !it.live ? " · 마지막" : ""}${it.rt_at || it.source_at ? ` · ${hm(it.rt_at || it.source_at)}` : ""}</small></div>
