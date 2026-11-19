@@ -684,12 +684,23 @@ function liveBand() {
   const time = hhmm(KST(new Date(at))) + " 기준";
   return { icon, title, text: out.filter(Boolean).join(" · "), date: (k.getMonth() + 1) + "/" + k.getDate(), time };
 }
+// 11/20 운영자(TSMC): 띠에는 '지금도 유효한' 5일선 돌파만 — 그 종목 장이 열려 있고 현재가가 아직 5일선(정규장 종가 기준) 위일 때.
+// 장중 잠깐 넘었다가 다시 밀렸거나 장이 끝난 시그널은 띠에서 내린다(추세 판단 기록에는 남음).
+function bandSignal() {
+  const c = window.trlChan || {}, by = {};
+  (c.groups || []).forEach((g) => (g.items || []).forEach((it) => { by[it.code] = {...it, ...(it.display || {})}; }));
+  return (c.signals || []).find((s) => {
+    const it = by[s.code];
+    if (!it || !it.live || it.stale || !(it.ma5 > 0) || !(it.px > 0)) return false;
+    return it.px > it.ma5 && Date.now() - s.ts < 8 * 3600e3;
+  });
+}
 async function loadBand() {
   const putHTML = globalThis.trlViewport?.html || ((el, html) => { el.innerHTML = html; });
   if (window.__pinNotice) return;
   try {
     const live = liveBand();
-    const sig = ((window.trlChan || {}).signals || [])[0];          // 📐 5일선 돌파 시그널이 있으면 띠 맨 앞(11/17)
+    const sig = bandSignal();                                        // 📐 5일선 돌파 시그널이 있으면 띠 맨 앞(11/17)
     const sigHtml = sig ? '<a href="#chan" class="bi band-sig">' + esc(sig.text) + '</a>' : '';
     if (live) {
       const node = $("#notice");
