@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from chan import candle, channel, nxt_view, nxt_window, state  # noqa: E402
+from chan import candle, channel, levels, nxt_view, nxt_window, sector_view, state  # noqa: E402
 from datetime import datetime, timedelta, timezone  # noqa: E402
 
 A = {"hi1": ["10/26", "10/31"], "hi2": ["11/09", "11/13"], "lo1": ["10/19", "10/24"], "lo2": ["11/03", "11/12"]}
@@ -36,6 +36,24 @@ class T(unittest.TestCase):
         self.assertEqual(state(ch, 105, True), "돌파 시도(장중)")
         self.assertEqual(state(ch, 100.5, False), "상단 근접")     # +1% 안은 돌파 아님
         self.assertEqual(state(ch, 79, False), "하단 이탈")
+
+    def test_breakout_needs_prior_high(self):                    # 운영자 11/19: 채널 상단 +1%와 수평 저항(전고점)을 같이
+        ch = {"up_now": 100, "lo_now": 80, "ma5": 100, "gap_next": -1, "res_h": 110}
+        self.assertEqual(state(ch, 105, False), "채널 돌파·전고점 아래")
+        self.assertEqual(state(ch, 111, False), "돌파 확인")
+        self.assertEqual(state({**ch, "gap_next": -6}, 94, False), "채널 안")   # 채널선만 가깝고 전고점 +17% → 근접 아님
+
+    def test_levels_swing_high(self):
+        r = [["d%d" % i, 10, h, h - 5, h - 2] for i, h in enumerate([20, 21, 22, 30, 22, 21, 20, 19, 25, 18, 17, 16, 15, 14])]
+        lv = levels(r, 15)
+        self.assertEqual((lv["res_h"], lv["res_day"]), (25, "d8"))     # 현재가 바로 위 스윙 고점(좌우 3봉)
+
+    def test_sector_needs_weakest(self):                         # 운영자 11/19: 대장만 갈 수 없다
+        a = {"name": "대장", "code": "A", "px": 120, "up_now": 100, "res_h": 110, "state": "돌파 확인"}
+        b = {"name": "약체", "code": "B", "px": 90, "up_now": 100, "res_h": 105, "state": "채널 안"}
+        v = sector_view([a, b])
+        self.assertEqual((v["state"], v["broke"], v["laggard"]), ("섹터 돌파 아님", 1, "약체"))
+        self.assertEqual(sector_view([a, {**b, "px": 111, "state": "돌파 확인"}])["state"], "섹터 돌파 확인")
 
     def test_nxt_window(self):
         kst = timezone(timedelta(hours=9))

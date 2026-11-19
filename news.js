@@ -726,7 +726,7 @@
   }
   /* ── 📐 추세 판단(운영자 11/17): 하락 채널 상단 돌파(+1%·5일선 위)가 진짜 반등 · 실시간 캔들 · 기록 ── */
   let chanOpen = null;
-  const CH_ST = {"돌파 확인": "ok", "돌파 시도(장중)": "try", "채널 위·5일선 아래": "warn", "상단 근접": "near", "채널 안": "in", "하단 이탈": "bad"};
+  const CH_ST = {"돌파 확인": "ok", "돌파 시도(장중)": "try", "채널 위·5일선 아래": "warn", "채널 돌파·전고점 아래": "warn", "상단 근접": "near", "채널 안": "in", "하단 이탈": "bad"};
   const CH_FLAG = {kr: "🇰🇷", kr_index: "🇰🇷", us: "🇺🇸", jp: "🇯🇵"};
   const chFmt = (cc, v) => v == null ? "-" : cc === "kr_index" ? (+v).toLocaleString("ko-KR", {minimumFractionDigits: 2, maximumFractionDigits: 2}) + "pt" : cc === "us" ? "$" + (+v).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2})
     : Math.round(v).toLocaleString("ko-KR") + (cc === "jp" ? "엔" : "원");
@@ -821,12 +821,23 @@
   function chState(it, px) {                                  // tools/chan.py state() 와 같은 규칙
     if (it.channel_width_valid === false) return "채널선 교차·재확인";
     if (it.channel_valid === false) return "접촉 검증 대기";
-    const above = px > it.up_now * 1.01;
-    if (above && px > it.ma5) return "돌파 시도(장중)";
+    const above = px > it.up_now * 1.01, overRes = !it.res_h || px > it.res_h;   // 11/19 운영자: 채널 상단·수평 저항(전고점) 둘 다
+    if (above && px > it.ma5 && overRes) return "돌파 시도(장중)";
+    if (above && px > it.ma5) return "채널 돌파·전고점 아래";
     if (above) return "채널 위·5일선 아래";
     if (px < it.lo_now) return "하단 이탈";
-    if (it.gap_next <= 3) return "상단 근접";
+    if (Math.max(it.gap_next, it.res_h ? (it.res_h / px - 1) * 100 : -Infinity) <= 3) return "상단 근접";
     return "채널 안";
+  }
+  // 11/19 운영자 "대장만 갈 수 없다": 섹터 돌파는 가장 약한 종목(채널 상단+1%·전고점 중 높은 쪽까지 가장 먼 종목)까지 돌파해야 인정
+  function chSector(g) {
+    const its = g.items.map((r) => chLive(chDisplay(r)));
+    const need = (it) => (Math.max(it.up_now * 1.01, it.res_h || 0) / it.px - 1) * 100;
+    const lag = its.reduce((a, b) => need(b) > need(a) ? b : a);
+    const ok = its.filter((it) => it.state === "돌파 확인" || String(it.state).startsWith("돌파 시도")).length;
+    const all = ok === its.length, conf = its.every((it) => it.state === "돌파 확인");
+    const txt = all ? (conf ? "섹터 돌파 확인" : "섹터 돌파 시도(장중)") : `섹터 돌파 아님 · 돌파 ${ok}/${its.length} · 가장 약한 ${esc(lag.name)} 저항까지 ${need(lag) > 0 ? "+" : ""}${need(lag).toFixed(1)}%`;
+    return ` <span class="ch-st s-${all ? (conf ? "ok" : "try") : "in"}" title="섹터는 가장 약한 종목까지 채널 상단(+1%)과 전고점을 넘어야 돌파로 본다">${txt}</span>`;
   }
   function chLive(it) {
     const k = CH_RT[it.code], q = k && ((window.trlRt || {}).q || {})[k];
@@ -864,7 +875,7 @@
     c.groups.forEach((g) => {
       if (g.country !== lastC) { if (lastC) html += `</div>`; html += `<div class="ch-country"><p class="ch-ch">${CH_FLAG[g.cc] || ""} ${esc(g.country)}</p>`; lastC = g.country; }
       const many = g.items.length > 1 && g.cc !== "kr_index";
-      html += `<div class="ch-sec"><p class="ch-sh">${esc(g.sector)}${many ? "<small>10월 말 고점 대비 덜 빠진 순</small>" : ""}</p><div class="ch-grid2">`;
+      html += `<div class="ch-sec"><p class="ch-sh">${esc(g.sector)}${many ? "<small>10월 말 고점 대비 덜 빠진 순</small>" : ""}${many ? chSector(g) : ""}</p><div class="ch-grid2">`;
       g.items.forEach((regular) => {
         const it = chLive(chDisplay(regular));
         const mdl = many ? `<span class="ch-md m${Math.min(it.rank, 4)}">${it.rank <= 3 ? ["금", "은", "동"][it.rank - 1] : it.rank}</span>` : "";

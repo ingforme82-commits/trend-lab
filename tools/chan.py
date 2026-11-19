@@ -68,6 +68,28 @@ def candle(o: float, h: float, l: float, c: float, prev: float) -> dict:
             "vs_open": round((c / o - 1) * 100, 2)}
 
 
+def levels(rows: list[list], px: float, k: int = 3) -> dict:
+    """수평 저항·지지(news.js chLevels 와 같은 규칙, 운영자 11/19): 최근 80봉에서 좌우 3봉보다 높은 고점(스윙 고점) 중
+    현재가 바로 위 = 수평 저항(전고점), 좌우 3봉보다 낮은 저점 중 현재가 바로 아래 = 수평 지지. 마지막 2봉은 스윙 후보에서 뺀다."""
+    n = len(rows); start = max(0, n - 80); res = sup = None
+    for i in range(start + k, n - 2):
+        win = [j for j in range(i - k, min(n - 1, i + k) + 1) if j != i]
+        if all(rows[j][2] <= rows[i][2] for j in win) and rows[i][2] > px and (res is None or rows[i][2] < res[1]):
+            res = (i, rows[i][2])
+        if all(rows[j][3] >= rows[i][3] for j in win) and rows[i][3] < px and (sup is None or rows[i][3] > sup[1]):
+            sup = (i, rows[i][3])
+    return {"res_h": res[1] if res else None, "res_day": rows[res[0]][0] if res else None,
+            "sup_h": sup[1] if sup else None, "sup_day": rows[sup[0]][0] if sup else None}
+
+
+def res_gap(ch: dict, px: float) -> float:
+    """다음 거래일 채널 상단과 수평 저항(전고점) 중 더 높은 쪽까지 거리(%). 운영자 11/19: 상단은 채널 저항·전고점을 같이 본다."""
+    g = ch["gap_next"]
+    if ch.get("res_h"):
+        g = max(g, (ch["res_h"] / px - 1) * 100)
+    return g
+
+
 def channel(rows: list[list], anchors: dict, contact_rules: dict | None = None,
             *, last_closed: bool = False) -> dict | None:
     """기존 하락 구간의 두 기준점으로 선을 고정하고 추가 접촉 횟수만 표시."""
@@ -115,7 +137,8 @@ def channel(rows: list[list], anchors: dict, contact_rules: dict | None = None,
             "channel_valid": verified, "channel_width_valid": width_valid,
             "touch_tolerance_pct": tolerance, "touch_min_spacing": spacing, "touch_required": required,
             "touch_lookback_bars": len(rows),
-            "upper_overlap_pct": upper["max_overlap_pct"], "lower_overlap_pct": lower["max_overlap_pct"]}
+            "upper_overlap_pct": upper["max_overlap_pct"], "lower_overlap_pct": lower["max_overlap_pct"],
+            **levels(rows, px)}
 
 
 def state(ch: dict, px: float, live: bool) -> str:
@@ -124,13 +147,16 @@ def state(ch: dict, px: float, live: bool) -> str:
     if ch.get("channel_valid") is False:
         return "접촉 검증 대기"
     above = px > ch["up_now"] * 1.01
-    if above and px > ch["ma5"]:
+    over_res = not ch.get("res_h") or px > ch["res_h"]      # 운영자 11/19: 채널 상단 +1%와 수평 저항(전고점)을 둘 다 넘어야 돌파
+    if above and px > ch["ma5"] and over_res:
         return "돌파 시도(장중)" if live else "돌파 확인"
+    if above and px > ch["ma5"]:
+        return "채널 돌파·전고점 아래"
     if above:
         return "채널 위·5일선 아래"
     if px < ch["lo_now"]:
         return "하단 이탈"
-    if ch["gap_next"] <= 3:
+    if res_gap(ch, px) <= 3:
         return "상단 근접"
     return "채널 안"
 
@@ -367,7 +393,7 @@ def build(now: datetime | None = None) -> dict:
             if g["cc"] == "kr_index" and INDEX_META.get(code, {}).get("stale"):
                 st = "자료 확인 중"
             was0 = (prev.get(code) or {}).get("state")       # 11/17: 3% 경계에서 오락가락(채널 안↔상단 근접) 막기 — 나갈 때는 3.5%
-            if was0 == "상단 근접" and st == "채널 안" and ch["gap_next"] <= 3.5:
+            if was0 == "상단 근접" and st == "채널 안" and res_gap(ch, px) <= 3.5:
                 st = "상단 근접"
             it = {"code": code, "name": name, "day": rows[-1][0], "live": live, "px": px, "chg": round((px / pc - 1) * 100, 2),
                   "candle": cd, "state": st, "rows": [[r[0]] + [round(x, 2) for x in r[1:5]] for r in rows],
@@ -423,8 +449,12 @@ def build(now: datetime | None = None) -> dict:
             items.sort(key=lambda x: -x["dd"])
         for i, it in enumerate(items):
             it["rank"] = i + 1
+            it["res_gap"] = round(res_gap(it, it["px"]), 2)
         if items:
-            groups.append({"cc": g["cc"], "country": g["country"], "sector": g["sector"], "items": items})
+            grp = {"cc": g["cc"], "country": g["country"], "sector": g["sector"], "items": items}
+            if len(items) > 1 and g["cc"] != "kr_index":
+                grp["sector_view"] = sector_view(items)
+            groups.append(grp)
     if events:
         hist = (hist + events)[-60:]
     import hashlib
@@ -433,6 +463,22 @@ def build(now: datetime | None = None) -> dict:
     at = log.get("at") if log.get("fp") == fp and log.get("at") else int(now.timestamp() * 1000)   # 내용이 같으면 시각도 그대로(주말에 매분 올리지 않게)
     _save(LOG, {"contact_policy": contact_policy, "last": prev, "events": hist, "fp": fp, "at": at, "signals": signals, "resists": resists})
     return {"at": at, **body, "errs": ERRS[:20]}
+
+
+def sector_view(items: list[dict]) -> dict:
+    """운영자 11/19: 대장만 갈 수 없다 — 섹터 돌파는 가장 약한 종목까지 돌파해야 인정.
+    가장 약한 종목 = 채널 상단(+1%)·수평 저항 중 높은 쪽까지 거리가 가장 먼 종목."""
+    def need(it):                                          # 돌파까지 남은 거리(%)
+        lines = [it["up_now"] * 1.01] + ([it["res_h"]] if it.get("res_h") else [])
+        return (max(lines) / it["px"] - 1) * 100
+    lag = max(items, key=need)
+    ok = sum(1 for it in items if it["state"] in ("돌파 확인", "돌파 시도(장중)"))
+    if ok == len(items):
+        st = "섹터 돌파 확인" if all(it["state"] == "돌파 확인" for it in items) else "섹터 돌파 시도(장중)"
+    else:
+        st = "섹터 돌파 아님"
+    return {"state": st, "broke": ok, "total": len(items), "laggard": lag["name"], "laggard_code": lag["code"],
+            "laggard_need": round(need(lag), 2)}
 
 
 def _fmt(cc: str, v: float) -> str:
