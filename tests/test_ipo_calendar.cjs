@@ -6,9 +6,11 @@ assert.ok(start>0&&end>start);
 const cps=JSON.parse(fs.readFileSync("data/checkpoints.json","utf8"));
 assert.equal(cps.filter(x=>x.kind==="ipo"&&x.sym==="ANT").length,2);
 const h=JSON.parse(fs.readFileSync("data/headline.json","utf8"));
-assert.equal(h.items[0].tag,"🤖 앤트로픽 IPO");
-assert.equal(h.items[0].main,true);
-assert.ok(h.items[0].points.some(p=>p.includes("확정 가격이 아니")));
+const ant=h.items.find(x=>x.tag==="🤖 앤트로픽 IPO");
+assert.ok(ant);
+assert.equal(ant.main,true);
+assert.ok(ant.points.some(p=>p.includes("83달러")&&p.includes("확정"))); // 11/18 공모가 확정 반영
+assert.ok(ant.points.some(p=>p.includes("선물 계약")&&p.includes("시초가와 다를 수"))); // 상장 전 선물 ≠ 주식
 async function check(fail){
  const els=new Map();const q=k=>{if(!els.has(k))els.set(k,{});return els.get(k);};
  const context={console,Promise,Date,DOW:["일","월","화","수","목","금","토"],
