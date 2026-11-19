@@ -141,6 +141,12 @@ def channel(rows: list[list], anchors: dict, contact_rules: dict | None = None,
             **levels(rows, px)}
 
 
+def breakout_watch(ch: dict, px: float) -> bool:
+    """현재 채널 상단에서 3% 이내이고 5일선을 넘어선 종목."""
+    return (ch.get("channel_valid") is not False and ch.get("channel_width_valid") is not False
+            and px > ch["ma5"] and abs(ch["up_now"] / px - 1) <= 0.03)
+
+
 def state(ch: dict, px: float, live: bool) -> str:
     if ch.get("channel_width_valid") is False:
         return "채널선 교차·재확인"
@@ -156,6 +162,8 @@ def state(ch: dict, px: float, live: bool) -> str:
         return "채널 위·5일선 아래"
     if px < ch["lo_now"]:
         return "하단 이탈"
+    if breakout_watch(ch, px):
+        return "돌파 관찰·상단 근접"
     if res_gap(ch, px) <= 3:
         return "상단 근접"
     return "채널 안"
@@ -372,6 +380,8 @@ def build(now: datetime | None = None) -> dict:
     contact_policy = json.dumps(c.get("contact_rules") or {}, sort_keys=True)
     log = _load(LOG); prev = log.get("last", {}) if log.get("contact_policy") == contact_policy else {}; hist = log.get("events", [])
     signals = [s for s in log.get("signals", []) if now.timestamp() * 1000 - s["ts"] < 20 * 3600_000 and s.get("contact_policy") == contact_policy]   # 오늘(20시간 안) 시그널만
+    watch_signals = [s for s in log.get("watch_signals", [])
+                     if now.timestamp() * 1000 - s["ts"] < 20 * 3600_000 and s.get("contact_policy") == contact_policy]
     resists = [s for s in log.get("resists", []) if now.timestamp() * 1000 - s["ts"] < 20 * 3600_000 and s.get("contact_policy") == contact_policy]   # 5일선 저항(11/18), 주문용 signals 와 따로
     nxq = _nxt_quotes([code for g in c["groups"] if g["cc"] == "kr" for code, _ in g["items"]], now)
     for g in c["groups"]:
@@ -436,6 +446,12 @@ def build(now: datetime | None = None) -> dict:
                 signals.append(sig)
                 events.append({"ts": sig["ts"], "code": code, "text": sig["text"]})
                 was = {**was, "ma5sig": stamp}
+            if live and not it.get("stale") and breakout_watch(it, px) and was.get("watch_day") != stamp:
+                gap = (it["up_now"] / px - 1) * 100
+                watch_signals.append({"ts": int(now.timestamp() * 1000), "day": stamp, "code": code,
+                                      "name": name, "cc": g["cc"], "contact_policy": contact_policy,
+                                      "text": f"📐 돌파 관찰 — {name} 5일선 위 · 채널 상단까지 {gap:+.1f}% · 종가·지지 확인 필요"})
+                was = {**was, "watch_day": stamp}
             # 11/18 운영자 전략 '5일선 저항 시 매도·돌파 시 매수' — 저항 = 어제 5일선 아래, 오늘 고가가 5일선에 닿은 뒤 현재가가 5일선 0.3% 넘게 아래.
             # 사실만 기록하고 주문용 signals 에는 넣지 않는다(자동 주문 경로와 분리). 하루 한 번
             if live and ch["channel_valid"] and ma5_prev and pc <= ma5_prev and h >= ch["ma5"] and px < ch["ma5"] * 0.997 and was.get("ma5res") != stamp:
@@ -458,10 +474,10 @@ def build(now: datetime | None = None) -> dict:
     if events:
         hist = (hist + events)[-60:]
     import hashlib
-    body = {"contact_policy": contact_policy, "rule": c["rule"], "stance": c.get("stance", ""), "groups": groups, "log": hist[-20:][::-1], "signals": signals[::-1], "resists": resists[::-1], "session_errs": session_errors[:20]}
+    body = {"contact_policy": contact_policy, "rule": c["rule"], "stance": c.get("stance", ""), "groups": groups, "log": hist[-20:][::-1], "signals": signals[::-1], "watch_signals": watch_signals[::-1], "resists": resists[::-1], "session_errs": session_errors[:20]}
     fp = hashlib.sha1(json.dumps(body, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     at = log.get("at") if log.get("fp") == fp and log.get("at") else int(now.timestamp() * 1000)   # 내용이 같으면 시각도 그대로(주말에 매분 올리지 않게)
-    _save(LOG, {"contact_policy": contact_policy, "last": prev, "events": hist, "fp": fp, "at": at, "signals": signals, "resists": resists})
+    _save(LOG, {"contact_policy": contact_policy, "last": prev, "events": hist, "fp": fp, "at": at, "signals": signals, "watch_signals": watch_signals, "resists": resists})
     return {"at": at, **body, "errs": ERRS[:20]}
 
 

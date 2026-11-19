@@ -726,7 +726,7 @@
   }
   /* ── 📐 추세 판단(운영자 11/17): 하락 채널 상단 돌파(+1%·5일선 위)가 진짜 반등 · 실시간 캔들 · 기록 ── */
   let chanOpen = null;
-  const CH_ST = {"돌파 확인": "ok", "돌파 시도(장중)": "try", "채널 위·5일선 아래": "warn", "채널 돌파·전고점 아래": "warn", "상단 근접": "near", "채널 안": "in", "하단 이탈": "bad"};
+  const CH_ST = {"돌파 확인": "ok", "돌파 시도(장중)": "try", "돌파 관찰·상단 근접": "near", "채널 위·5일선 아래": "warn", "채널 돌파·전고점 아래": "warn", "상단 근접": "near", "채널 안": "in", "하단 이탈": "bad"};
   const CH_FLAG = {kr: "🇰🇷", kr_index: "🇰🇷", us: "🇺🇸", jp: "🇯🇵"};
   const chFmt = (cc, v) => v == null ? "-" : cc === "kr_index" ? (+v).toLocaleString("ko-KR", {minimumFractionDigits: 2, maximumFractionDigits: 2}) + "pt" : cc === "us" ? "$" + (+v).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2})
     : Math.round(v).toLocaleString("ko-KR") + (cc === "jp" ? "엔" : "원");
@@ -826,17 +826,18 @@
     if (above && px > it.ma5) return "채널 돌파·전고점 아래";
     if (above) return "채널 위·5일선 아래";
     if (px < it.lo_now) return "하단 이탈";
+    if (px > it.ma5 && Math.abs(it.up_now / px - 1) <= 0.03) return "돌파 관찰·상단 근접";
     if (Math.max(it.gap_next, it.res_h ? (it.res_h / px - 1) * 100 : -Infinity) <= 3) return "상단 근접";
     return "채널 안";
   }
   // 11/19 운영자 "대장만 갈 수 없다": 섹터 돌파는 가장 약한 종목(채널 상단+1%·전고점 중 높은 쪽까지 가장 먼 종목)까지 돌파해야 인정
   function chSector(its) {
-    const need = (it) => (Math.max(it.up_now * 1.01, it.res_h || 0) / it.px - 1) * 100;
+    const need = (it) => (Math.max(it.up_now * 1.01, it.ma5, it.res_h || 0) / it.px - 1) * 100;
     const lag = its.reduce((a, b) => need(b) > need(a) ? b : a);
-    const ok = its.filter((it) => it.state === "돌파 확인" || String(it.state).startsWith("돌파 시도")).length;
+    const ok = its.filter((it) => !it.stale && (it.state === "돌파 확인" || it.state === "돌파 시도(장중)")).length;
     const all = ok === its.length, conf = its.every((it) => it.state === "돌파 확인");
-    const txt = all ? (conf ? "섹터 돌파 확인" : "섹터 돌파 시도(장중)") : `섹터 돌파 아님 · 돌파 ${ok}/${its.length} · 가장 약한 ${esc(lag.name)} 저항까지 ${need(lag) > 0 ? "+" : ""}${need(lag).toFixed(1)}%`;
-    return ` <span class="ch-st s-${all ? (conf ? "ok" : "try") : "in"}" title="섹터는 가장 약한 종목까지 채널 상단(+1%)과 전고점을 넘어야 돌파로 본다">${txt}</span>`;
+    const txt = all ? (conf ? "섹터 돌파 확인" : "섹터 돌파 시도(장중)") : `섹터 동반 돌파 대기 · 조건 충족 ${ok}/${its.length} · ${esc(lag.name)} ${need(lag) > 0 ? `목표까지 +${need(lag).toFixed(1)}%` : "시세·조건 확인"}`;
+    return ` <span class="ch-st s-${all ? (conf ? "ok" : "try") : "in"}" title="섹터 돌파 조건: 구성 종목 모두 채널 상단(+1%)·5일선·확인된 전고점 위">${txt}</span>`;
   }
   function chLive(it) {
     const k = CH_RT[it.code], q = k && ((window.trlRt || {}).q || {})[k];
@@ -863,8 +864,8 @@
     const box = q("#chan"), c = window.trlChan; if (!box) return;
     if (!c || !(c.groups || []).length) { box.hidden = true; return; }
     box.hidden = false;
-    q("#chanRule").textContent = "현재 세션 · 가격·5일선·채널 위치";
-    const sg = c.signals || [], rsg = c.resists || [];
+    q("#chanRule").textContent = "돌파 관찰: 5일선 위·채널 상단 3% 이내 · 종가와 이후 지지 확인";
+    const sg = c.watch_signals || [], rsg = c.resists || [];
     const sgBox = q("#chanSig");
     if (sgBox) { const all = sg.concat(rsg).sort((a, b) => b.ts - a.ts); sgBox.hidden = !all.length; sgBox.innerHTML = all.map((s) => `<p>⏱ ${hm(s.ts)} ${esc(s.text)}</p>`).join(""); }
     const live = c.groups.some((g) => g.items.some((it) => it.display ? it.display.live : it.live));
