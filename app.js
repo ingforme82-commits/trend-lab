@@ -213,13 +213,27 @@ function hlLive(x) {
   return `<div class="hl-live"><p class="hl-live-h">⚡ 실시간 관련 속보 <small>1분마다 · 정리 이후 새 소식은 확인 전일 수 있음</small></p><ul>${rows.map((n) =>
     `<li><time>${t(n.ts)}</time> <span class="hl-live-src">${esc(n.src)}${(n.nsrc || 1) > 1 ? ` 외 ${n.nsrc - 1}곳` : " · 1곳"}</span> ${esc(n.text)}</li>`).join("")}</ul></div>`;
 }
+// 11/20 운영자: 주요 이슈도 추세 판단과 같은 시간대 순서 — 08~16시 한국 먼저, 16~20시 한국·미국, 20~08시 미국 먼저.
+// 카드 시장은 mkt(us·kr·g) 값이 있으면 그것, 없으면 태그·제목으로 추정. 같은 시장 안에서는 메인 카드 먼저, 그다음 원래 순서.
+const HL_US = /🇺🇸|🌙|미국|뉴욕|나스닥|S&P|다우|앤트로픽|\bANT\b|엔비디아|SOXL|FOMC|연준/;
+const HL_KR = /🇰🇷|한국|코스피|코스닥|국내|조선|외국인·기관/;
+function hlMkt(x) {
+  if (x.mkt) return x.mkt;
+  const t = `${x.tag || ""} ${x.title || ""}`;
+  return HL_US.test(x.tag || "") ? "us" : HL_KR.test(x.tag || "") ? "kr" : HL_US.test(t) && !HL_KR.test(t) ? "us" : HL_KR.test(t) && !HL_US.test(t) ? "kr" : "g";
+}
+function hlOrder(items) {
+  const hr = KST().getHours();
+  const slot = hr >= 8 && hr < 16 ? ["kr", "g", "us"] : hr >= 16 && hr < 20 ? ["kr", "us", "g"] : ["us", "g", "kr"];
+  return items.map((x, i) => ({x, i, r: slot.indexOf(hlMkt(x))})).sort((a, b) => a.r - b.r || (b.x.main ? 1 : 0) - (a.x.main ? 1 : 0) || a.i - b.i).map((o) => o.x);
+}
 function renderHeadlineRaw() {
   try {
     const h = hlData || {};
     const today = ymd(KST());
     const auto = (window.trlAuto || []).filter((x) => !x.until || x.until >= today);
     const tags = new Set(auto.map((x) => x.tag));
-    const items = [...auto, ...(h.items || []).filter((x) => (!x.until || x.until >= today) && !tags.has(x.tag))];
+    const items = hlOrder([...auto, ...(h.items || []).filter((x) => (!x.until || x.until >= today) && !tags.has(x.tag))]);
     if (!items.length) return;
     $("#hlList").innerHTML = items.map((x) => `<article class="hl-card${x.main ? " hl-main" : ""}" data-viewport-key="headline:${esc(x.tag || x.title)}">
       <p class="hl-tag">${x.main ? '<span class="hl-badge">메인</span>' : ""}${esc(x.tag || "")}${x.when ? ` <small>${esc(x.when)}</small>` : ""}</p>
