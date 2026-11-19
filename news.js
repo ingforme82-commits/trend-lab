@@ -798,9 +798,9 @@
     s = s.replace(/<text x="([^"]+)" y="([^"]+)" class="ch-ax">[^<]*<\/text>/g, (m, x, y) => +x !== W - M.r + 5 ? m : tags.some((t) => Math.abs(t.y - (+y - 3)) < 12) ? "" : m);
     tags.forEach((t) => s += `<g class="ch-tag ${t.k}"><rect x="${W - M.r + 2}" y="${t.y - 7}" width="${M.r - 3}" height="14" rx="3"/><text x="${W - M.r + 5}" y="${t.y + 4}">${chFmt(cc, t.v)}</text></g>`);
     if (sg && n) {                                            // 11/19 운영자: 오늘 봉에 돌파(빨강 ▲)·저항/하락(파랑 ▼) 표시
-      const lr = rows[n - 1], x = X(n - 1), up = sg.tone === "up";
+      const lr = rows[n - 1], x = X(n - 1), up = sg.tone !== "dn";
       const y = up ? Math.min(H - M.b - 2, Y(lr[3]) + 14) : Math.max(M.t + 12, Y(lr[2]) - 6);
-      s += `<g class="ch-mk ${sg.tone}"><text x="${x}" y="${y}" text-anchor="middle">${up ? "▲" : "▼"}</text></g>`;
+      s += `<g class="ch-mk ${sg.tone}"><text x="${x}" y="${y}" text-anchor="middle">${({up: "▲", dn: "▼", wk: "△"})[sg.tone]}</text></g>`;
     }
     return `<svg class="ch-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(it.name)} 일봉·하락 채널·5일선">${s}</svg>
       <p class="ch-leg"><i class="lr"></i>채널 상단 <i class="ls"></i>채널 하단 <i class="lh"></i>수평 저항·지지 <i class="lp"></i>현재가 <i class="lm"></i>5일선${it.live ? " · 진행 중" : ""}</p>`;
@@ -868,7 +868,7 @@
     const cl = rows.map((r) => r[4]), ma5p = cl.slice(-6, -1).reduce((a, b) => a + b, 0) / 5, pc = cl[n - 2], h = rows[n - 1][2];
     if (pc <= ma5p && h >= it.ma5 && it.px < it.ma5 * 0.997) return {tone: "dn", label: "5일선 저항"};   // chan.py 저항 규칙과 같음
     if (pc > ma5p && it.px < it.ma5) return {tone: "dn", label: "하락 시그널 · 5일선 이탈"};
-    if (pc <= ma5p && it.px > it.ma5) return {tone: "up", label: "5일선 돌파 시그널"};
+    if (pc <= ma5p && it.px > it.ma5) return {tone: "wk", label: "5일선 위로(돌파 전)"};   // 11/19 운영자: 빨강은 진짜 돌파(채널 상단+1%·5일선·전고점)만
     return null;
   }
   const chEvTone = (s) => s.kind === "resist" || /저항|이탈|하락/.test(s.text || "") ? "dn" : "up";
@@ -936,7 +936,7 @@
         const mdl = many && rankable(item) ? `<span class="ch-md m${Math.min(rank, 4)}">${["금", "은", "동"][index] || rank}</span>` : "";
         html += `<article class="ch-card${sgNow ? " t-" + sgNow.tone : ""}" data-viewport-key="channel:${esc(it.code)}">
           <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b>${(() => { const k = it.chg == null || !isFinite(it.chg) ? "dim" : it.chg > 0.005 ? "up" : it.chg < -0.005 ? "down" : "dim";   // 11/19 운영자: 현재가도 전일 종가 대비 색·굵게(상승 빨강·하락 파랑·보합 회색)
-            return `<b class="mn ${k}">${chFmt(g.cc, it.px)}</b><b class="${k}"`; })()} title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(g.cc, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b>${sgNow ? `<span class="ch-sg ${sgNow.tone}">${sgNow.tone === "up" ? "▲" : "▼"} ${esc(sgNow.label)}</span>` : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span><small class="ch-session">${regular.display ? (it.session === "정규장" ? "정규장" : "시간외 · " + esc(it.session)) : (it.live ? "정규장" : "마감")}${it.stale ? " · 지연" : !it.live ? " · 마지막" : ""}${it.rt_at || it.source_at ? ` · ${hm(it.rt_at || it.source_at)}` : ""}</small></div>
+            return `<b class="mn ${k}">${chFmt(g.cc, it.px)}</b><b class="${k}"`; })()} title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(g.cc, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b>${sgNow ? `<span class="ch-sg ${sgNow.tone}">${({up: "▲", dn: "▼", wk: "△"})[sgNow.tone]} ${esc(sgNow.label)}</span>` : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span><small class="ch-session">${regular.display ? (it.session === "정규장" ? "정규장" : "시간외 · " + esc(it.session)) : (it.live ? "정규장" : "마감")}${it.stale ? " · 지연" : !it.live ? " · 마지막" : ""}${it.rt_at || it.source_at ? ` · ${hm(it.rt_at || it.source_at)}` : ""}</small></div>
           ${chChart(it, g.cc, sgNow)}</article>`;
       });
       html += `</div></div>`;

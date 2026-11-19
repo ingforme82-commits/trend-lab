@@ -902,6 +902,8 @@ body{overflow-x:hidden}
 .ch-sgc li .up{color:var(--up)} .ch-sgc li .down{color:var(--down)}
 .ch-sg{display:inline-block;font-size:12px;font-weight:800;padding:2px 8px;border-radius:999px;color:#fff}
 .ch-sg.up{background:var(--up)} .ch-sg.dn{background:var(--down)}
+.ch-sg.wk{background:transparent;color:var(--sub);border:1px solid var(--line);font-weight:700}
+.ch-chart .ch-mk.wk text{fill:var(--sub);font-size:12px}
 .ch-evl{flex-basis:100%;margin:2px 0 0;padding:3px 8px;border-left:3px solid;border-radius:4px;font-size:13px;line-height:1.5}
 .ch-evl time{font-variant-numeric:tabular-nums;font-weight:700;margin-right:2px}
 .ch-evl.up{border-color:var(--up);background:rgba(214,52,63,.06)} .ch-evl.up time{color:var(--up)}
