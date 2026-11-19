@@ -151,6 +151,9 @@ def apply_cme_live(quotes, errors, live=None):
         if not q:
             if code in ("NQ=F", "ES=F"):
                 errors.append(f"{code} NH 실시간 없음 — 야후(약 10분 지연)")
+                # '자료 확인 중'으로 판단을 숨기지 않고, 지연을 밝힌 채 판단한다(11/20 운영자: 선물도 추세 판단이 보여야 함)
+                quote["max_age_seconds"] = max(quote.get("max_age_seconds") or 0, 900)
+                quote["source"] = "Yahoo 1분봉(CME 약 10분 지연)"
             continue
         quote["ohlc"] = [o, max(h, q["px"]), min(l, q["px"]), q["px"]]
         quote["source_at"] = q["at"]
