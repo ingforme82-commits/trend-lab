@@ -851,6 +851,42 @@
     o.state = chState(o, q.px);
     return o;
   }
+  // 11/19 운영자: 시그널도 실시간 값으로 다시 판단 — 돌파 쪽은 빨강(up), 저항·하락 쪽은 파랑(dn)
+  function chSigNow(it) {
+    const rows = it.rows || [], n = rows.length;
+    if (it.stale || n < 6 || !(it.px > 0)) return null;
+    if (it.state === "돌파 확인") return {tone: "up", label: "돌파 확정"};
+    if (it.state === "돌파 시도(장중)") return {tone: "up", label: "돌파 시그널"};
+    if (it.state === "하단 이탈") return {tone: "dn", label: "하락 시그널 · 채널 하단 이탈"};
+    if (it.channel_valid === false || !(it.ma5 > 0)) return null;
+    const cl = rows.map((r) => r[4]), ma5p = cl.slice(-6, -1).reduce((a, b) => a + b, 0) / 5, pc = cl[n - 2], h = rows[n - 1][2];
+    if (pc <= ma5p && h >= it.ma5 && it.px < it.ma5 * 0.997) return {tone: "dn", label: "5일선 저항"};   // chan.py 저항 규칙과 같음
+    if (pc > ma5p && it.px < it.ma5) return {tone: "dn", label: "하락 시그널 · 5일선 이탈"};
+    if (pc <= ma5p && it.px > it.ma5) return {tone: "up", label: "5일선 돌파 시그널"};
+    return null;
+  }
+  const chEvTone = (s) => s.kind === "resist" || /저항|이탈|하락/.test(s.text || "") ? "dn" : "up";
+  const chEvLabel = (s) => ((s.text || "").replace(/^📐\s*/, "").split(" — ")[0] || "시그널");
+  function chSigBox(c, live) {                                // 국가 → 종목별: 지금 시그널 + 오늘 기록
+    const evs = {};
+    (c.signals || []).concat(c.watch_signals || [], c.resists || []).forEach((s) => { (evs[s.code] = evs[s.code] || []).push(s); });
+    const seen = new Set(), by = [];
+    live.forEach(({g, it}) => {
+      if (seen.has(it.code)) return; seen.add(it.code);
+      const now = chSigNow(it), ev = (evs[it.code] || []).sort((a, b) => b.ts - a.ts);
+      if (!now && !ev.length) return;
+      let ctry = by.find((x) => x.country === g.country);
+      if (!ctry) by.push(ctry = {country: g.country, cc: g.cc, rows: []});
+      ctry.rows.push({g, it, now, ev});
+    });
+    if (!by.length) return "";
+    const pxCls = (v) => v == null || !isFinite(v) ? "dim" : v > 0.005 ? "up" : v < -0.005 ? "down" : "dim";
+    return `<p class="ch-sg-h">⚡ 돌파·저항 시그널 <small><i class="ch-dot up"></i>돌파 시그널·확정 <i class="ch-dot dn"></i>저항·하락 시그널 · 실시간 값으로 다시 판단</small></p>` +
+      by.map((x) => `<div class="ch-sgc"><p class="ch-sgc-h">${CH_FLAG[x.cc] || ""} ${esc(x.country)}</p><ul>${x.rows.map(({g, it, now, ev}) =>
+        `<li><b class="ch-nm">${esc(it.name)}</b> <b class="mn ${pxCls(it.chg)}">${chFmt(g.cc, it.px)}</b> <small class="${pxCls(it.chg)}">${it.chg == null ? "" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</small>
+          ${now ? `<span class="ch-sg ${now.tone}">${esc(now.label)}${it.live ? "" : " · 마지막"}</span>` : ""}
+          ${ev.map((s) => `<span class="ch-ev ${chEvTone(s)}" title="${esc(s.text)}">${hm(s.ts)} ${esc(chEvLabel(s))}</span>`).join("")}</li>`).join("")}</ul></div>`).join("");
+  }
   let chanRtSig = "";
   if (typeof window.addEventListener === "function") window.addEventListener("trl:quotes", () => {   // 실시간 값이 바뀌었을 때만 다시 그림
     const c = window.trlChan, q = (window.trlRt || {}).q || {}; if (!c) return;
@@ -865,9 +901,7 @@
     if (!c || !(c.groups || []).length) { box.hidden = true; return; }
     box.hidden = false;
     q("#chanRule").textContent = "돌파 관찰: 5일선 위·채널 상단 3% 이내 · 종가와 이후 지지 확인";
-    const sg = c.watch_signals || [], rsg = c.resists || [];
-    const sgBox = q("#chanSig");
-    if (sgBox) { const all = sg.concat(rsg).sort((a, b) => b.ts - a.ts); sgBox.hidden = !all.length; sgBox.innerHTML = all.map((s) => `<p>⏱ ${hm(s.ts)} ${esc(s.text)}</p>`).join(""); }
+    const sgBox = q("#chanSig"), liveItems = [];
     const live = c.groups.some((g) => g.items.some((it) => it.display ? it.display.live : it.live));
     const rtOn = Object.values(CH_RT).some((k) => { const r = ((window.trlRt || {}).q || {})[k]; return r && Date.now() - r.at < 15000; });
     q("#chanStamp").textContent = `${hm(c.at)} 기준 · 1분마다${live ? " · 진행 중인 봉 있음" : ""}${rtOn ? " · ⚡ 일부 종목 실시간 체결(2초)" : ""}`;
@@ -882,17 +916,20 @@
       html += `<div class="ch-sec"><p class="ch-sh">${esc(g.sector)}${many ? "<small>현재 세션 등락률 높은 순</small>" : ""}${many ? chSector(items.map(({it}) => it)) : ""}</p><div class="ch-grid2">`;
       items.forEach((item, index) => {
         const {regular, it} = item;
+        liveItems.push({g, it});
+        const sgNow = chSigNow(it);
         const rank = index + 1;
         const mdl = many && rankable(item) ? `<span class="ch-md m${Math.min(rank, 4)}">${["금", "은", "동"][index] || rank}</span>` : "";
         html += `<article class="ch-card" data-viewport-key="channel:${esc(it.code)}">
           <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b>${(() => { const k = it.chg == null || !isFinite(it.chg) ? "dim" : it.chg > 0.005 ? "up" : it.chg < -0.005 ? "down" : "dim";   // 11/19 운영자: 현재가도 전일 종가 대비 색·굵게(상승 빨강·하락 파랑·보합 회색)
-            return `<b class="mn ${k}">${chFmt(g.cc, it.px)}</b><b class="${k}"`; })()} title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(g.cc, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b><span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span><small class="ch-session">${regular.display ? (it.session === "정규장" ? "정규장" : "시간외 · " + esc(it.session)) : (it.live ? "정규장" : "마감")}${it.stale ? " · 지연" : !it.live ? " · 마지막" : ""}${it.rt_at || it.source_at ? ` · ${hm(it.rt_at || it.source_at)}` : ""}</small></div>
+            return `<b class="mn ${k}">${chFmt(g.cc, it.px)}</b><b class="${k}"`; })()} title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(g.cc, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b>${sgNow ? `<span class="ch-sg ${sgNow.tone}">${esc(sgNow.label)}</span>` : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span><small class="ch-session">${regular.display ? (it.session === "정규장" ? "정규장" : "시간외 · " + esc(it.session)) : (it.live ? "정규장" : "마감")}${it.stale ? " · 지연" : !it.live ? " · 마지막" : ""}${it.rt_at || it.source_at ? ` · ${hm(it.rt_at || it.source_at)}` : ""}</small></div>
           ${chChart(it, g.cc)}</article>`;
       });
       html += `</div></div>`;
     });
     if (lastC) html += `</div>`;
     q("#chanBoard").innerHTML = html;
+    if (sgBox) { const sh = chSigBox(c, liveItems); sgBox.hidden = !sh; sgBox.innerHTML = sh; }
     // 11/17 운영자: 추세 기록 칸은 내림 — 그래프만 실시간으로
   }
   function drawS7() {
