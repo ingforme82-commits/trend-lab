@@ -450,6 +450,18 @@ GLOSSARY = [("Anthropic", ("인류학적", "인류학", "인류의", "인류"), 
             ("Fed", ("먹이를 주었다", "먹인"), "연준"), ("Brent", ("브렌트",), "브렌트")]
 
 
+# 11/19 운영자 "번역 안 되는 헤드라인": 번역 뒤에도 영문으로 남는 회사·인물 이름을 한글 표기로(티커·약어는 그대로)
+KO_NAMES = [("Palo Alto Networks", "팔로알토 네트웍스"), ("Palo Alto", "팔로알토"), ("Jensen Huang", "젠슨 황"), ("Colette Kress", "콜레트 크레스"),
+            ("Deutsche Telekom", "도이치텔레콤"), ("Mistral AI", "미스트랄 AI"), ("SK Hynix", "SK하이닉스"), ("Goldman Sachs", "골드만삭스"),
+            ("Morgan Stanley", "모건스탠리"), ("JPMorgan", "JP모건"), ("Bank of America", "뱅크오브아메리카"), ("Blue Owl", "블루아울"),
+            ("Johnson Matthey", "존슨매티"), ("Nvidia", "엔비디아"), ("NVIDIA", "엔비디아"), ("Anthropic", "앤트로픽"), ("OpenAI", "오픈AI"),
+            ("Microsoft", "마이크로소프트"), ("Alphabet", "알파벳"), ("Google", "구글"), ("Amazon", "아마존"), ("Tesla", "테슬라"),
+            ("Broadcom", "브로드컴"), ("Micron", "마이크론"), ("Sandisk", "샌디스크"), ("SanDisk", "샌디스크"), ("Intel", "인텔"),
+            ("Samsung", "삼성"), ("Oracle", "오라클"), ("Netflix", "넷플릭스"), ("CrowdStrike", "크라우드스트라이크"), ("Okta", "옥타"),
+            ("Rubrik", "루브릭"), ("Barclays", "바클레이스"), ("Citigroup", "씨티그룹"), ("Walmart", "월마트"), ("Boeing", "보잉"),
+            ("Trump", "트럼프"), ("Powell", "파월"), ("Kioxia", "키옥시아"), ("Murata", "무라타")]
+
+
 def fix_terms(en: str, ko: str) -> str:
     for word, wrongs, right in GLOSSARY:
         if re.search(r"\b" + word + r"\b", en) and right not in ko:
@@ -457,6 +469,9 @@ def fix_terms(en: str, ko: str) -> str:
                 if w in ko:
                     ko = ko.replace(w, right, 1)
                     break
+    for word, right in KO_NAMES:
+        if word != right:
+            ko = re.sub(r"(?<![A-Za-z])" + re.escape(word) + r"(?![A-Za-z])", right, ko)
     return ko
 
 

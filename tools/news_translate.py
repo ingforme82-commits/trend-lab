@@ -44,6 +44,8 @@ def needs_translation(item):
     hangul = len(re.findall(r"[가-힣]", text))
     if item.get("lang") == "en":
         return latin >= 8 and (not hangul or latin > hangul * 2)
+    if hangul >= 4:                                      # 11/19: 한글 제목에 영문 이름이 섞인 것(예: 'TomorrowX Summit 발언')은 번역 대상 아님
+        return False
     return latin >= 20 and len(re.findall(r"[A-Za-z]{2,}", text)) >= 4 and latin > hangul * 3
 
 
@@ -67,16 +69,29 @@ def _get(url):
     return json.loads(body)
 
 
+class BatchShapeError(ValueError):
+    """묶음 번역에서 기사 표식이 깨짐 — 서비스 문제가 아니므로 쉬지 않고 한 건씩 다시 번역한다."""
+
+
+def google_one(title):
+    url = GOOGLE + "?" + urllib.parse.urlencode({"client":"gtx","sl":"auto","tl":"ko","dt":"t","q":title.replace("\n"," ")})
+    raw = _get(url)
+    output = "".join(part[0] for part in raw[0] if part and isinstance(part[0],str)).strip()
+    return {title: html.unescape(output)} if valid_translation(title, output) else {}
+
+
 def google_batch(titles):
     # Identifiers must survive translation exactly; otherwise reject the batch,
     # never attach one article's translation to another article.
+    if len(titles) == 1:
+        return google_one(titles[0])
     text = "\n".join(f"__TRL_{i}__ "+t.replace("\n"," ") for i,t in enumerate(titles))
     url = GOOGLE + "?" + urllib.parse.urlencode({"client":"gtx","sl":"auto","tl":"ko","dt":"t","q":text})
     raw = _get(url)
     output = "".join(part[0] for part in raw[0] if part and isinstance(part[0],str))
     matches = list(re.finditer(r"__TRL_(\d+)__",output))
     if [int(m.group(1)) for m in matches] != list(range(len(titles))):
-        raise ValueError("translation batch identifiers changed")
+        raise BatchShapeError("translation batch identifiers changed")
     result={}
     for i, match in enumerate(matches):
         end=matches[i+1].start() if i+1<len(matches) else len(output)
@@ -157,9 +172,10 @@ def run(items, *, path: Path, legacy_path=None, terms=lambda en,ko:ko, now=None)
           if not valid_translation(text,(entries.get(text) or {}).get("text")) and retry.get(text,0)<=now]
     # At most six titles per request and a bounded encoded URL.
     pending=list(todo)
+    single=set()                                         # 묶음 표식이 깨진 제목은 한 건씩
     while pending and available() and off.get("google",0)<=now:
-        batch=[]
-        while pending and len(batch)<6 and sum(len(t.encode("utf-8")) for t in batch)<1000:
+        batch=[pending.pop(0)]
+        while batch[0] not in single and pending and pending[0] not in single and len(batch)<6 and sum(len(t.encode("utf-8")) for t in batch)<1000:
             batch.append(pending.pop(0))
         budget["calls"]=budget.get("calls",0)+1
         attempted.update(batch)
@@ -168,7 +184,11 @@ def run(items, *, path: Path, legacy_path=None, terms=lambda en,ko:ko, now=None)
             got=google_batch(batch)
             for text,value in got.items():
                 entries[text]={"text":value,"provider":"google","at":now}
-            if not got: error("google",ValueError())
+            if not got and len(batch)>1: error("google",ValueError())
+            elif not got: errors["google:empty"]=errors.get("google:empty",0)+1   # 한 건만 빈 결과 — 다른 기사까지 멈추지 않음
+        except BatchShapeError:
+            errors["google:batch_shape"]=errors.get("google:batch_shape",0)+1
+            single.update(batch); pending[0:0]=batch
         except Exception as exc:
             error("google",exc)
     # A small fallback queue within the anonymous provider's documented daily cap.

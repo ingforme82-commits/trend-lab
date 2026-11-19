@@ -30,6 +30,20 @@ class TranslationTests(unittest.TestCase):
             with patch.object(t,"_get",return_value=[[[out]]]):
                 with self.assertRaises(ValueError):t.google_batch(["First headline for stock market","Second headline for stock market"])
 
+    def test_korean_headline_with_english_names_is_not_translated(self):
+        self.assertFalse(t.needs_translation({"text":"마이크론 CEO·CTO - TomorrowX Summit 발언"}))
+
+    def test_broken_batch_retries_each_title_without_pausing_provider(self):
+        titles=["First headline for stock market today","Second headline for stock market today"]
+        items=[{"text":x,"lang":"en","ts":i} for i,x in enumerate(titles)]
+        def fake(batch):
+            if len(batch)>1: raise t.BatchShapeError("ids")
+            return {batch[0]:"번역 "+batch[0][:5]}
+        with tempfile.TemporaryDirectory() as folder,patch.object(t,"google_batch",side_effect=fake),patch.object(t,"memory_one",side_effect=AssertionError("fallback")):
+            stats=t.run(items,path=Path(folder)/"c.json",now=1000)
+        self.assertEqual([i["tr"] for i in items],["auto","auto"])
+        self.assertNotIn("google",stats["provider_backoff_until"])
+
     def test_english_echo_and_quota_messages_are_not_success(self):
         self.assertFalse(t.valid_translation(TITLE,TITLE))
         self.assertFalse(t.valid_translation(TITLE,"MYMEMORY WARNING 한도 초과"))
