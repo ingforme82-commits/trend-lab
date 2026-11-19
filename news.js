@@ -866,7 +866,9 @@
     return null;
   }
   const chEvTone = (s) => s.kind === "resist" || /저항|이탈|하락/.test(s.text || "") ? "dn" : "up";
-  const chEvLabel = (s) => ((s.text || "").replace(/^📐\s*/, "").split(" — ")[0] || "시그널");
+  // 11/19 운영자: 시각과 멘트 전체를 종목 아래에 그대로(조사만 바로잡음: '6,710엔로' → '6,710엔으로')
+  const CH_JOSA = {"가": "이", "는": "은", "를": "을", "로": "으로"};
+  const chEvText = (t) => String(t || "").replace(/(\d)(원|엔)(가|는|를|로)(?=[\s,·(])/g, (m, d, u, j) => d + u + CH_JOSA[j]);
   function chSigBox(c, live) {                                // 국가 → 종목별: 지금 시그널 + 오늘 기록
     const evs = {};
     (c.signals || []).concat(c.watch_signals || [], c.resists || []).forEach((s) => { (evs[s.code] = evs[s.code] || []).push(s); });
@@ -885,7 +887,7 @@
       by.map((x) => `<div class="ch-sgc"><p class="ch-sgc-h">${CH_FLAG[x.cc] || ""} ${esc(x.country)}</p><ul>${x.rows.map(({g, it, now, ev}) =>
         `<li><b class="ch-nm">${esc(it.name)}</b> <b class="mn ${pxCls(it.chg)}">${chFmt(g.cc, it.px)}</b> <small class="${pxCls(it.chg)}">${it.chg == null ? "" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</small>
           ${now ? `<span class="ch-sg ${now.tone}">${esc(now.label)}${it.live ? "" : " · 마지막"}</span>` : ""}
-          ${ev.map((s) => `<span class="ch-ev ${chEvTone(s)}" title="${esc(s.text)}">${hm(s.ts)} ${esc(chEvLabel(s))}</span>`).join("")}</li>`).join("")}</ul></div>`).join("");
+          ${ev.map((s) => `<p class="ch-evl ${chEvTone(s)}"><time>⏱ ${hm(s.ts)}</time> ${esc(chEvText(s.text))}</p>`).join("")}</li>`).join("")}</ul></div>`).join("");
   }
   let chanRtSig = "";
   if (typeof window.addEventListener === "function") window.addEventListener("trl:quotes", () => {   // 실시간 값이 바뀌었을 때만 다시 그림

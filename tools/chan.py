@@ -442,7 +442,7 @@ def build(now: datetime | None = None) -> dict:
             it["above_ma5"] = px > ch["ma5"]
             if live and ch["channel_valid"] and ma5_prev and pc <= ma5_prev and px > ch["ma5"] and was.get("ma5sig") != stamp:
                 sig = {"ts": int(now.timestamp() * 1000), "day": stamp, "code": code, "name": name, "cc": g["cc"], "contact_policy": contact_policy,
-                       "text": f"📐 5일선 돌파 시그널 — {name} {_fmt(g['cc'], px)}가 5일선 {_fmt(g['cc'], ch['ma5'])} 위로 (어제 {_fmt(g['cc'], pc)}는 5일선 아래) · 채널 상단선 {_fmt(g['cc'], ch['up_now'])}까지 {((ch['up_now'] / px - 1) * 100):+.1f}%"}
+                       "text": _josa(f"📐 5일선 돌파 시그널 — {name} {_fmt(g['cc'], px)}가 5일선 {_fmt(g['cc'], ch['ma5'])} 위로 (어제 {_fmt(g['cc'], pc)}는 5일선 아래) · 채널 상단선 {_fmt(g['cc'], ch['up_now'])}까지 {((ch['up_now'] / px - 1) * 100):+.1f}%")}
                 signals.append(sig)
                 events.append({"ts": sig["ts"], "code": code, "text": sig["text"]})
                 was = {**was, "ma5sig": stamp}
@@ -456,7 +456,7 @@ def build(now: datetime | None = None) -> dict:
             # 사실만 기록하고 주문용 signals 에는 넣지 않는다(자동 주문 경로와 분리). 하루 한 번
             if live and ch["channel_valid"] and ma5_prev and pc <= ma5_prev and h >= ch["ma5"] and px < ch["ma5"] * 0.997 and was.get("ma5res") != stamp:
                 rs = {"ts": int(now.timestamp() * 1000), "day": stamp, "code": code, "name": name, "cc": g["cc"], "contact_policy": contact_policy, "kind": "resist",
-                      "text": f"📐 5일선 저항 — {name} 장중 고가 {_fmt(g['cc'], h)}로 5일선 {_fmt(g['cc'], ch['ma5'])} 터치 후 현재 {_fmt(g['cc'], px)} (5일선 대비 {((px / ch['ma5'] - 1) * 100):+.1f}%)"}
+                      "text": f"📐 5일선 저항 — {name} 장중 고가 {_ro(_fmt(g['cc'], h))} 5일선 {_fmt(g['cc'], ch['ma5'])} 터치 후 현재 {_fmt(g['cc'], px)} (5일선 대비 {((px / ch['ma5'] - 1) * 100):+.1f}%)"}
                 resists.append(rs)
                 events.append({"ts": rs["ts"], "code": code, "text": rs["text"]})
                 was = {**was, "ma5res": stamp}
@@ -501,6 +501,17 @@ def _fmt(cc: str, v: float) -> str:
     if cc == "kr_index":
         return f"{v:,.2f}pt"
     return f"${v:,.2f}" if cc == "us" else (f"{v:,.0f}엔" if cc == "jp" else f"{v:,.0f}원")
+
+
+def _ro(s: str) -> str:
+    """조사 '(으)로': 원·엔은 받침이 있어 '으로'(11/19 '6,710엔로' 오타)."""
+    return s + ("으로" if s.endswith(("원", "엔")) else "로")
+
+
+def _josa(t: str) -> str:
+    """'712,000원가'·'716,000원는' → '원이'·'원은'(받침 있는 원·엔 뒤 조사)."""
+    import re as _re
+    return _re.sub(r"(\d)(원|엔)(가|는|를|로)(?=[\s,·(])", lambda m: m.group(1) + m.group(2) + {"가": "이", "는": "은", "를": "을", "로": "으로"}[m.group(3)], t)
 
 
 if __name__ == "__main__":

@@ -889,6 +889,10 @@ body{overflow-x:hidden}
 .ch-sgc li .up{color:var(--up)} .ch-sgc li .down{color:var(--down)}
 .ch-sg{display:inline-block;font-size:12px;font-weight:800;padding:2px 8px;border-radius:999px;color:#fff}
 .ch-sg.up{background:var(--up)} .ch-sg.dn{background:var(--down)}
+.ch-evl{flex-basis:100%;margin:2px 0 0;padding:3px 8px;border-left:3px solid;border-radius:4px;font-size:13px;line-height:1.5}
+.ch-evl time{font-variant-numeric:tabular-nums;font-weight:700;margin-right:2px}
+.ch-evl.up{border-color:var(--up);background:rgba(214,52,63,.06)} .ch-evl.up time{color:var(--up)}
+.ch-evl.dn{border-color:var(--down);background:rgba(37,99,201,.06)} .ch-evl.dn time{color:var(--down)}
 .ch-ev{display:inline-block;font-size:12px;padding:1px 7px;border-radius:6px;border:1px solid;font-variant-numeric:tabular-nums}
 .ch-ev.up{color:var(--up);border-color:var(--up);background:rgba(214,52,63,.07)}
 .ch-ev.dn{color:var(--down);border-color:var(--down);background:rgba(37,99,201,.07)}
