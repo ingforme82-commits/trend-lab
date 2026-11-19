@@ -19,7 +19,7 @@ from datetime import datetime, timedelta, timezone
 
 NS = "trendlab-ing82"
 KST = timezone(timedelta(hours=9))
-SITE = "https://ingforme82-commits.github.io/trend-lab/"
+SITE = "https://trlab.net/"
 START = "2026-10-27"          # 집계 시작일
 
 

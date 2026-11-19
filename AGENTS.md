@@ -14,7 +14,7 @@
 - TRL 변경은 최신 GitHub pull 후 검증·커밋·push까지 진행하고 요청 시 사이트를 연다.
 
 조영근 추세추종 리서치 랩의 공개 랜딩 페이지입니다. GitHub Pages로 배포됩니다.
-- 사이트: https://ingforme82-commits.github.io/trend-lab/
+- 사이트: https://trlab.net/
 - 저장소: https://github.com/ingforme82-commits/trend-lab (공개)
 - `main`에 push하면 1~2분 뒤 사이트에 반영됩니다. 빌드 과정이 없는 정적 사이트(HTML·CSS·JS + JSON)입니다.
 

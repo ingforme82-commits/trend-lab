@@ -22,8 +22,8 @@ from pathlib import Path
 HOME = Path.home() / ".tg_notify"
 KEY = HOME / "vapid_private.pem"
 SUBS = HOME / "push_subs.json"
-SITE = "https://ingforme82-commits.github.io/trend-lab/"
-CLAIM = {"sub": "https://ingforme82-commits.github.io/trend-lab/"}   # 연락처 칸(이메일 대신 사이트 주소)
+SITE = "https://trlab.net/"
+CLAIM = {"sub": "https://trlab.net/"}   # 연락처 칸(이메일 대신 사이트 주소)
 
 
 def _subs() -> list[dict]:

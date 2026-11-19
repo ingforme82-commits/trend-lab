@@ -1,5 +1,5 @@
 """sitemap.xml 만들기(검색 노출용, 서치 콘솔에 등록). publish.py 가 글을 올릴 때마다 함께 실행한다.
-하위 경로(github.io/trend-lab/)라 robots.txt 는 검색엔진이 읽지 않으므로 만들지 않는다.
+11/19부터 trlab.net(루트 도메인) — robots.txt 는 저장소 루트에 고정 파일로 둔다(Sitemap 위치 안내).
 
   python tools/make_sitemap.py
 """
@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-BASE = "https://ingforme82-commits.github.io/trend-lab/"
+BASE = "https://trlab.net/"
 
 
 def main() -> None:

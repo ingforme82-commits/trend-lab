@@ -1,6 +1,6 @@
 # Trend Research Lab
 
-조영근 추세추종 리서치 랩의 공개 사이트입니다. 👉 https://ingforme82-commits.github.io/trend-lab/
+조영근 추세추종 리서치 랩의 공개 사이트입니다. 👉 https://trlab.net/
 
 - 실시간 시세 · 텔레그램 속보와 지수 반응
 - 나의 투자 스타일 테스트

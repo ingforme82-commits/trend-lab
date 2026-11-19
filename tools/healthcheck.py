@@ -289,7 +289,7 @@ def check_lev() -> None:
 # 11 배포 — 깃허브 페이지의 화면 코드가 최신 커밋과 같은지
 def check_deploy() -> None:
     import hashlib
-    base = "https://ingforme82-commits.github.io/trend-lab/"
+    base = "https://trlab.net/"
     old = []
     for f in ("news.js", "app.js", "index.html"):
         try:
