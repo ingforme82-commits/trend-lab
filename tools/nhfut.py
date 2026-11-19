@@ -169,6 +169,26 @@ def quotes() -> dict:
     return out
 
 
+YAHOO_CME = {"NQ=F": "NQ", "ES=F": "ES"}                     # 추세 판단 차트의 야후 기호 → NH 키
+
+
+def cme_live(code: str, ref: float | None = None, max_age: float = 120, max_gap_pct: float = 2.0) -> dict | None:
+    """11/20 운영자: 야후 CME 선물은 약 10분 늦다 → 나스닥100·S&P500 선물 현재가는 NH 실시간으로.
+    NH 값이 없거나 오래됐거나(2분), 야후 값과 2% 넘게 다르면(월물 교체 어긋남 등) None — 부르는 쪽은 야후 값을 그대로 쓴다."""
+    key = YAHOO_CME.get(code)
+    if not key:
+        return None
+    try:
+        q = quotes().get(key)
+    except Exception:  # noqa: BLE001
+        return None
+    if not q or not q.get("px") or time.time() * 1000 - q.get("at", 0) > max_age * 1000:
+        return None
+    if ref and abs(q["px"] / ref - 1) * 100 > max_gap_pct:
+        return None
+    return {"px": float(q["px"]), "at": int(q["at"]), "code": q.get("code"), "src": "NH투자증권 CME 실시간"}
+
+
 def main() -> None:
     if sys.stdout:
         sys.stdout.reconfigure(encoding="utf-8")

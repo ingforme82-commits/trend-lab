@@ -253,3 +253,13 @@ class RegularCloseChangeTests(unittest.TestCase):
         self.assertEqual(view["base_day"],"11/16")
         self.assertEqual(view["base"],150)
         self.assertEqual(view["change_basis"],"전일 정규장 종가")
+
+    def test_cme_futures_use_nh_live_price(self):
+        q = {"NQ=F": {"ohlc": [27100, 27700, 27050, 27530], "source_at": 0, "source": "Yahoo"},
+             "ES=F": {"ohlc": [7300, 7400, 7290, 7373], "source_at": 0, "source": "Yahoo"}}
+        err = []
+        s.apply_cme_live(q, err, live=lambda c, ref=None: {"px": 27750.0, "at": 99, "src": "NH", "code": "NQZ26"} if c == "NQ=F" else None)
+        self.assertEqual(q["NQ=F"]["ohlc"], [27100, 27750.0, 27050, 27750.0])
+        self.assertEqual(q["NQ=F"]["source_at"], 99)
+        self.assertEqual(q["ES=F"]["source_at"], 0)   # NH 없으면 야후 그대로
+        self.assertTrue(any("ES=F" in e for e in err))

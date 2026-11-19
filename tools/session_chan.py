@@ -134,6 +134,30 @@ def _request(url):
         return json.loads(response.read(5_000_000))
 
 
+def apply_cme_live(quotes, errors, live=None):
+    """11/20: 야후 CME 선물(NQ=F·ES=F) 1분봉은 약 10분 늦어 '자료 확인 중'이 됐다 → NH 실시간 현재가로 오늘 봉 종가·고가·저가와 제공 시각을 바꾼다.
+    NH가 없으면 야후 값 그대로(지연 표시 유지)."""
+    if live is None:
+        try:
+            from nhfut import cme_live as live
+        except Exception:  # noqa: BLE001
+            return
+    for code, quote in quotes.items():
+        try:
+            o, h, l, c = quote["ohlc"]
+            q = live(code, ref=c)
+        except Exception:  # noqa: BLE001
+            q = None
+        if not q:
+            if code in ("NQ=F", "ES=F"):
+                errors.append(f"{code} NH 실시간 없음 — 야후(약 10분 지연)")
+            continue
+        quote["ohlc"] = [o, max(h, q["px"]), min(l, q["px"]), q["px"]]
+        quote["source_at"] = q["at"]
+        quote["source"] = f"{q['src']}({q.get('code') or ''}) · 봉은 Yahoo 1분봉"
+        quote["time_kind"] = "증권사 조회 시각"
+
+
 def collect(groups, now, cache_path: Path):
     """새 확장 경로가 실패해도 정규장 차트·주문 판정은 계속된다."""
     try:
@@ -180,6 +204,7 @@ def collect(groups, now, cache_path: Path):
             cache[key] = {"t": fetched_at, "raw": raw}
         except (KeyError, TypeError, IndexError, ValueError):
             errors.append(f"{key} 확장세션 형식 확인")
+    apply_cme_live(quotes, errors)
     for code, quote in quotes.items():
         saved = archive.get(code) or {}
         for entry in quote.get("history") or []:

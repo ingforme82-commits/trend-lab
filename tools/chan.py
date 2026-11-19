@@ -348,6 +348,15 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
             _save(LIVE, lc)
         except Exception:  # noqa: BLE001
             live = le.get("bars") or []
+    if cc == "us" and live:                                # 11/20: CME 선물은 야후가 약 10분 늦다 → NH 실시간 현재가로 오늘 봉 종가
+        try:
+            from nhfut import cme_live
+            q = cme_live(code, ref=live[-1][4])
+            if q:
+                d, o, h, l, _ = live[-1][:5]
+                live = live[:-1] + [[d, o, max(h, q["px"]), min(l, q["px"]), q["px"]]]
+        except Exception:  # noqa: BLE001
+            pass
     for b in live or []:                                   # 같은 날짜는 바꾸고, 새 날짜는 붙인다
         if rows and rows[-1][0] == b[0]:
             rows[-1] = b
