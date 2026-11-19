@@ -10,7 +10,7 @@ const ant=h.items.find(x=>x.tag==="🤖 앤트로픽 IPO");
 assert.ok(ant);
 assert.equal(ant.main,true);
 assert.ok(ant.points.some(p=>p.includes("83달러")&&p.includes("확정"))); // 11/18 공모가 확정 반영
-assert.ok(ant.points.some(p=>p.includes("선물 계약")&&p.includes("시초가와 다를 수"))); // 상장 전 선물 ≠ 주식
+assert.ok(ant.points.some(p=>p.includes("첫 체결")||(p.includes("선물 계약")&&p.includes("시초가와 다를 수")))); // 상장 전: 선물 ≠ 주식 / 11/19 상장 뒤: 실제 첫 체결가
 async function check(fail){
  const els=new Map();const q=k=>{if(!els.has(k))els.set(k,{});return els.get(k);};
  const context={console,Promise,Date,DOW:["일","월","화","수","목","금","토"],
