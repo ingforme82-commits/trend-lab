@@ -750,6 +750,19 @@
     return {res: pick(ph, 2, true), sup: pick(pl, 3, false), top: Math.max(...rows.slice(from).map((r) => r[2]))};
   }
   const CH_HIDE = new Set(["YM=F"]);
+  // 11/20 운영자 "지지·저항·추세선·5일선 명확히": 카드에 현재가 바로 위 저항·바로 아래 지지, 오늘 고가가 닿고 밀린 선·저가가 받친 선
+  function chLvLine(it, cc) {
+    const rows = it.rows || [], n = rows.length, px = it.px;
+    if (!n || !(px > 0)) return "";
+    const L = chLevels(rows, px), okCh = it.channel_valid !== false && it.channel_width_valid !== false;
+    const lv = [["5일선", it.ma5], okCh && ["채널 상단", it.up_now], okCh && ["채널 하단", it.lo_now], L.res && ["수평 저항", L.res.v], L.sup && ["수평 지지", L.sup.v]]
+      .filter((x) => x && x[1] > 0);
+    const [, , h, l] = rows[n - 1];
+    const up = lv.filter((x) => x[1] > px).sort((a, b) => a[1] - b[1])[0], dn = lv.filter((x) => x[1] <= px).sort((a, b) => b[1] - a[1])[0];
+    const pushed = lv.filter((x) => h >= x[1] && x[1] > px).map((x) => x[0]), held = lv.filter((x) => l <= x[1] && x[1] < px).map((x) => x[0]);
+    const g = (x) => `<b>${x[0]} ${chFmt(cc, x[1])}</b> <small>${(x[1] / px - 1) * 100 > 0 ? "+" : ""}${((x[1] / px - 1) * 100).toFixed(1)}%</small>`;
+    return `<p class="ch-lv"><span>⬆ 위 저항 ${up ? g(up) : "<b>없음(최근 고점 위)</b>"}</span><span>⬇ 아래 지지 ${dn ? g(dn) : "<b>없음</b>"}</span>${pushed.length ? `<span class="ch-lv-dn">오늘 고가가 닿고 밀린 선: ${pushed.join("·")}</span>` : ""}${held.length ? `<span class="ch-lv-up">오늘 저가를 받친 선: ${held.join("·")}</span>` : ""}</p>`;
+  }
   function chChart(it, cc, sg) {
     const rows = it.rows, n = rows.length, N = n + 1, W = 640, H = 230, M = {l: 6, r: 74, t: 10, b: 20};
     const up = (i) => it.up_now + it.su * (i - (n - 1)), lo = (i) => {
@@ -866,6 +879,11 @@
     if (it.state === "하단 이탈") return {tone: "dn", label: "하락 시그널 · 채널 하단 이탈"};
     if (it.channel_valid === false || !(it.ma5 > 0)) return null;
     const cl = rows.map((r) => r[4]), ma5p = cl.slice(-6, -1).reduce((a, b) => a + b, 0) / 5, pc = cl[n - 2], h = rows[n - 1][2];
+    // 11/20 운영자(마이크론): 채널 상단을 넘었다가 밀린 것과 5일선에 막힌 것을 구분
+    if (it.up_now > 0 && it.channel_width_valid !== false) {
+      if (h >= it.up_now * 1.01 && it.px < it.up_now) return {tone: "dn", label: "채널 상단 돌파 실패"};
+      if (h >= it.up_now && it.px < it.up_now * 0.997) return {tone: "dn", label: "채널 상단 저항"};
+    }
     if (pc <= ma5p && h >= it.ma5 && it.px < it.ma5 * 0.997) return {tone: "dn", label: "5일선 저항"};   // chan.py 저항 규칙과 같음
     if (pc > ma5p && it.px < it.ma5) return {tone: "dn", label: "하락 시그널 · 5일선 이탈"};
     if (pc <= ma5p && it.px > it.ma5) return {tone: "wk", label: "5일선 위로(돌파 전)"};   // 11/19 운영자: 빨강은 진짜 돌파(채널 상단+1%·5일선·전고점)만
@@ -937,7 +955,7 @@
         html += `<article class="ch-card${sgNow ? " t-" + sgNow.tone : ""}" data-viewport-key="channel:${esc(it.code)}">
           <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b>${(() => { const k = it.chg == null || !isFinite(it.chg) ? "dim" : it.chg > 0.005 ? "up" : it.chg < -0.005 ? "down" : "dim";   // 11/19 운영자: 현재가도 전일 종가 대비 색·굵게(상승 빨강·하락 파랑·보합 회색)
             return `<b class="mn ${k}">${chFmt(g.cc, it.px)}</b><b class="${k}"`; })()} title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(g.cc, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b>${sgNow ? `<span class="ch-sg ${sgNow.tone}">${({up: "▲", dn: "▼", wk: "△"})[sgNow.tone]} ${esc(sgNow.label)}</span>` : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span><small class="ch-session">${regular.display ? (it.session === "정규장" ? "정규장" : "시간외 · " + esc(it.session)) : (it.live ? "정규장" : "마감")}${/10분 지연/.test(it.source || "") ? " · 약 10분 지연" : ""}${it.stale ? " · 지연" : !it.live ? " · 마지막" : ""}${it.rt_at || it.source_at ? ` · ${hm(it.rt_at || it.source_at)}` : ""}</small></div>
-          ${chChart(it, g.cc, sgNow)}</article>`;
+          ${chLvLine(it, g.cc)}${chChart(it, g.cc, sgNow)}</article>`;
       });
       html += `</div></div>`;
     });

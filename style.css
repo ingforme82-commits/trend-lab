@@ -990,3 +990,8 @@ html.trl-live-update,html.trl-live-update body{overflow-anchor:none!important;sc
 .ch-chart .ch-tag text{font-size:11px;font-weight:700;fill:#fff;font-variant-numeric:tabular-nums}
 .ch-chart .t-px rect{fill:#0f1b2d}.ch-chart .t-res rect{fill:#b7791f}.ch-chart .t-sup rect{fill:#0f8a7e}.ch-chart .t-hr rect,.ch-chart .t-hs rect{fill:#24406e}
 .ch-leg i.lh{border-top:2px dashed #24406e}.ch-leg i.lp{border-top:2px dotted #c9963a}
+/* 11/20 운영자: 카드 위 지지·저항 한 줄 */
+.ch-lv{display:flex;flex-wrap:wrap;gap:2px 12px;margin:6px 0 2px;font-size:12.5px;color:var(--sub)}
+.ch-lv b{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums}
+.ch-lv small{font-variant-numeric:tabular-nums}
+.ch-lv-dn{color:var(--down);font-weight:700} .ch-lv-up{color:var(--up);font-weight:700}
