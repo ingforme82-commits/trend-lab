@@ -200,6 +200,19 @@ async function loadHeadline() {
   try { hlData = await (await fetch(`data/headline.json?t=${Date.now()}`)).json(); } catch { /* 없음 */ }
   renderHeadline();
 }
+// 11/19 운영자 "오늘 주요 이슈도 실시간 업데이트": 카드에 watch(정규식)가 있으면 사이트 속보(1분)에서 관련 소식 최신 5건을 카드 아래에 붙인다.
+// 정리 본문은 운영자 확인분 그대로 두고, 새 소식은 출처·시각과 함께 따로 — 한 곳 보도는 '1곳' 표시(교차 확인 원칙)
+function hlLive(x) {
+  if (!x.watch) return "";
+  let re; try { re = new RegExp(x.watch, "i"); } catch { return ""; }
+  const since = Date.now() - 12 * 3600e3, seen = new Set();
+  const rows = (window.trlNews || []).filter((n) => n.ts >= since && re.test(`${n.text || ""} ${n.orig || ""}`))
+    .sort((a, b) => b.ts - a.ts).filter((n) => { const k = String(n.text).replace(/[^0-9A-Za-z가-힣]/g, "").slice(0, 24); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 5);
+  if (!rows.length) return "";
+  const t = (ms) => { const d = KSTof(ms); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+  return `<div class="hl-live"><p class="hl-live-h">⚡ 실시간 관련 속보 <small>1분마다 · 정리 이후 새 소식은 확인 전일 수 있음</small></p><ul>${rows.map((n) =>
+    `<li><time>${t(n.ts)}</time> <span class="hl-live-src">${esc(n.src)}${(n.nsrc || 1) > 1 ? ` 외 ${n.nsrc - 1}곳` : " · 1곳"}</span> ${esc(n.text)}</li>`).join("")}</ul></div>`;
+}
 function renderHeadlineRaw() {
   try {
     const h = hlData || {};
@@ -212,6 +225,7 @@ function renderHeadlineRaw() {
       <p class="hl-tag">${x.main ? '<span class="hl-badge">메인</span>' : ""}${esc(x.tag || "")}${x.when ? ` <small>${esc(x.when)}</small>` : ""}</p>
       <h3 class="hl-title">${esc(x.title)}</h3>
       <ul class="hl-pts">${(x.points || []).map((p) => `<li>${esc(p)}</li>`).join("")}</ul>
+      ${hlLive(x)}
       ${x.source ? `<p class="hl-src">출처: ${esc(x.source)}</p>` : ""}
     </article>`).join("");
     $("#hlStamp").textContent = h.updated ? `${h.updated} 정리` : "";
@@ -809,5 +823,6 @@ window.paintSrcScore = () => {
 window.paintSrcScore();                               // news.js 가 먼저 받아 둔 점수판이 있으면 바로 그림
 
 loadHeadline(); loadTicks(); loadChecks(); loadEarnings(); loadStudies(); loadEducation();
+setInterval(loadHeadline, 60000);   // 11/19 운영자: 주요 이슈도 1분마다(새 카드·관련 속보)
 setInterval(loadChecks, 60000);   // 체크포인트: 시각이 지나면 1분 안에 내림   // 블로그 분석 글 피드는 2026-10-28 운영자 결정으로 뺌
 setInterval(loadTicks, 30000);

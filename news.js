@@ -908,7 +908,12 @@
     const rtOn = Object.values(CH_RT).some((k) => { const r = ((window.trlRt || {}).q || {})[k]; return r && Date.now() - r.at < 15000; });
     q("#chanStamp").textContent = `${hm(c.at)} 기준 · 1분마다${live ? " · 진행 중인 봉 있음" : ""}${rtOn ? " · ⚡ 일부 종목 실시간 체결(2초)" : ""}`;
     let html = "", lastC = null;
-    c.groups.forEach((g) => {
+    // 11/19 운영자: 한국장(08~18시)엔 한국이, 미국장(18~08시)엔 미국이 맨 위 — 같은 나라 안 순서는 그대로
+    const hrK = (new Date().getUTCHours() + 9) % 24, usFirst = hrK < 8 || hrK >= 18;
+    const cOrd = (cc) => (cc === "us" ? (usFirst ? 0 : 2) : cc === "jp" ? (usFirst ? 2 : 1) : (usFirst ? 1 : 0));
+    const groups = c.groups.map((g, i) => ({g, i})).sort((a, b) => cOrd(a.g.cc) - cOrd(b.g.cc) || a.i - b.i).map((x) => x.g);
+    q("#chanStamp").textContent += usFirst ? " · 미국장 시간: 미국 먼저" : " · 한국장 시간: 한국 먼저";
+    groups.forEach((g) => {
       if (g.country !== lastC) { if (lastC) html += `</div>`; html += `<div class="ch-country"><p class="ch-ch">${CH_FLAG[g.cc] || ""} ${esc(g.country)}</p>`; lastC = g.country; }
       const many = g.items.length > 1 && g.cc !== "kr_index";
       const items = g.items.map((regular) => ({regular, it: chLive(chDisplay(regular))}));
