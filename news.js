@@ -778,24 +778,35 @@
   const CH_HIDE = new Set(["YM=F"]);
   // 11/20 운영자 "이제 대장이 ANT와 엔비디아": 상장 초기 종목의 5분봉 종가 흐름
   function chIpoCard(it, cc) {
-    const bars = (it.bars || []).filter((row) => Number.isFinite(row[4]));
+    const bars = (it.bars || []).filter((row) => row.slice(0, 5).every(Number.isFinite));
+    const sessions = { pre: "프리마켓", reg: "정규장", post: "애프터마켓" };
     let graph = '<p class="fine">5분봉 시세 대기</p>';
-    if (bars.length > 1) {
-      const W = 640, H = 170, left = 8, right = 62, top = 12, bottom = 24;
-      const closes = bars.map((row) => row[4]);
-      const lo = Math.min(...closes), hi = Math.max(...closes);
+    if (bars.length) {
+      const W = 640, H = 180, left = 8, right = 62, top = 12, bottom = 24;
+      const lo = Math.min(...bars.map((row) => row[3]));
+      const hi = Math.max(...bars.map((row) => row[2]));
       const pad = (hi - lo) * 0.08 || 1;
-      const x = (i) => left + (W - left - right) * i / (bars.length - 1);
+      const step = (W - left - right) / bars.length;
+      const x = (i) => left + step * (i + 0.5);
       const y = (v) => top + (hi + pad - v) / (hi - lo + 2 * pad) * (H - top - bottom);
       const axis = [...new Set([lo, hi])].map((v) => `<line class="ch-grid" x1="${left}" x2="${W - right}" y1="${y(v)}" y2="${y(v)}"/><text class="ch-ax" x="${W - right + 4}" y="${y(v) + 4}">${chFmt(cc, v)}</text>`).join("");
       const label = (t) => `${kstDay(t).slice(5)} ${hm(t)}`;
-      graph = `<svg class="ch-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(it.name)} 5분봉 종가 흐름">
-        ${axis}<polyline fill="none" class="ch-ipo-p" points="${closes.map((v, i) => `${x(i)},${y(v)}`).join(" ")}"/>
-        <text class="ch-ax" x="${left}" y="${H - 5}">${label(bars[0][0])}</text>
+      const candles = bars.map(([, o, h, l, c, session, source], i) => {
+        const color = c >= o ? "var(--up)" : "var(--down)";
+        const shade = session === "pre" || session === "post"
+          ? `<rect x="${left + i * step}" y="${top}" width="${step}" height="${H - top - bottom}" fill="var(--gold)" opacity=".17"/>`
+          : "";
+        const width = Math.min(12, step * 0.65);
+        return `${shade}<g><title>${label(bars[i][0])} · ${sessions[session] || sessions.reg} · 종가 ${chFmt(cc, c)} · ${esc(source || "Yahoo Finance")}</title><line x1="${x(i)}" x2="${x(i)}" y1="${y(h)}" y2="${y(l)}" stroke="${color}"/><rect x="${x(i) - width / 2}" y="${y(Math.max(o, c))}" width="${width}" height="${Math.max(1, Math.abs(y(o) - y(c)))}" fill="${color}"/></g>`;
+      }).join("");
+      graph = `<svg class="ch-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(it.name)} 정규장·시간외 5분봉">
+        ${axis}${candles}<text class="ch-ax" x="${left}" y="${H - 5}">${label(bars[0][0])}</text>
         <text class="ch-ax" x="${W - right}" y="${H - 5}" text-anchor="end">${label(bars.at(-1)[0])}</text></svg>`;
     }
+    const last = bars.at(-1);
     return `<article class="ch-card ch-ipo" data-viewport-key="channel:${esc(it.code)}">
-      <div class="ch-top"><b class="ch-nm">${esc(it.name)} <small>${esc(it.code)}</small></b><small class="ch-session">5분봉 종가 · KST</small></div>${graph}</article>`;
+      <div class="ch-top"><b class="ch-nm">${esc(it.name)} <small>${esc(it.code)}</small></b><small class="ch-session">5분봉 · 한국시간 · 시간외는 음영</small></div>${graph}
+      ${last ? `<p class="fine">마지막 봉 · ${sessions[last[5]] || "정규장"} · ${kstDay(last[0]).slice(5)} ${hm(last[0])} · ${chFmt(cc, last[4])} · ${esc(last[6] || "Yahoo Finance")}</p>` : ""}</article>`;
   }
   // 11/20 운영자 "지지·저항·추세선·5일선 명확히": 카드에 현재가 바로 위 저항·바로 아래 지지, 오늘 고가가 닿고 밀린 선·저가가 받친 선
   function chLvLine(it, cc) {
