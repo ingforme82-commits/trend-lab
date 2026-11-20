@@ -804,8 +804,26 @@
         <text class="ch-ax" x="${W - right}" y="${H - 5}" text-anchor="end">${label(bars.at(-1)[0])}</text></svg>`;
     }
     const last = bars.at(-1);
+    let summary = "";
+    if (last) {
+      const session = last[5] || "reg";
+      const et = new Intl.DateTimeFormat("en-CA", {
+        timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit",
+      });
+      const day = et.format(last[0]);
+      const reference = bars.slice(0, -1).findLast((bar) => (bar[5] || "reg") === "reg"
+        && (session === "post" ? et.format(bar[0]) === day : et.format(bar[0]) !== day));
+      const ipoDay = new Date(bars[0][0]).toLocaleDateString("sv-SE", { timeZone: "America/New_York" });
+      const useIpo = session === "reg" && !reference && ipoDay === it.listed;
+      const base = reference?.[4] ?? (useIpo ? it.ipo_px : null);
+      const delta = base > 0 ? last[4] - base : null;
+      const signed = (value) => `${value > 0 ? "+" : value < 0 ? "−" : ""}${Math.abs(value).toFixed(2)}`;
+      const tick = delta == null ? "등락 기준가 확인 중"
+        : `<b class="${cls(delta)}">${signed(delta)}달러 (${signed(delta / base * 100)}%)</b> <small>${useIpo ? "공모가" : session === "post" ? "당일 정규장 마지막 5분봉 종가" : "직전 정규장 마지막 5분봉 종가"} ${chFmt(cc, base)} 대비</small>`;
+      summary = `<p class="ch-lv"><span>${sessions[session] || sessions.reg} <strong>${chFmt(cc, last[4])}</strong></span><span>${tick}</span></p>`;
+    }
     return `<article class="ch-card ch-ipo" data-viewport-key="channel:${esc(it.code)}">
-      <div class="ch-top"><b class="ch-nm">${esc(it.name)} <small>${esc(it.code)}</small></b><small class="ch-session">5분봉 · 한국시간 · 시간외는 음영</small></div>${graph}
+      <div class="ch-top"><b class="ch-nm">${esc(it.name)} <small>${esc(it.code)}</small></b><small class="ch-session">5분봉 · 한국시간 · 시간외는 음영</small></div>${summary}${graph}
       ${last ? `<p class="fine">마지막 봉 · ${sessions[last[5]] || "정규장"} · ${kstDay(last[0]).slice(5)} ${hm(last[0])} · ${chFmt(cc, last[4])} · ${esc(last[6] || "Yahoo Finance")}</p>` : ""}</article>`;
   }
   // 11/20 운영자 "지지·저항·추세선·5일선 명확히": 카드에 현재가 바로 위 저항·바로 아래 지지, 오늘 고가가 닿고 밀린 선·저가가 받친 선
