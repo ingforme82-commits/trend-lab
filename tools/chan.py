@@ -237,6 +237,29 @@ def _kis_now(code: str) -> list | None:
         return None
 
 
+def _krx_close(code: str, now: datetime) -> float | None:
+    """오늘 KRX 종가 = 네이버 15:30 분봉(종가 단일가). 11/20: 장 마감 뒤 네이버 현재가·일봉의 종가 자리에 넥장(NXT) 애프터 가격이
+    들어와(SK하이닉스 KRX 1,113,000 → 1,109,000) 등락률·상태가 틀어지던 문제. 하루 한 번만 받아 LIVE 캐시에 둔다."""
+    day = now.strftime("%Y-%m-%d")
+    lc = _load(LIVE)
+    k = f"krx_close:{code}"
+    if (lc.get(k) or {}).get("day") == day:
+        return lc[k]["px"]
+    try:
+        u = (f"https://api.stock.naver.com/chart/domestic/item/{code}/minute?startDateTime={now:%Y%m%d}1530"
+             f"&endDateTime={now:%Y%m%d}1530")
+        x = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=8).read())
+        b = next((r for r in x if str(r.get("localDateTime", "")).startswith(f"{now:%Y%m%d}1530")), None)
+        px = _n(b.get("currentPrice")) if b else 0
+    except Exception:  # noqa: BLE001
+        return None
+    if not px:
+        return None
+    lc[k] = {"day": day, "px": px}
+    _save(LIVE, lc)
+    return px
+
+
 def nxt_window(now: datetime) -> bool:
     """넥스트레이드 시간: 평일 08:00~09:00 프리마켓, 15:30 이후 애프터마켓(20:00 마감 뒤엔 마지막 체결을 '마감'으로)."""
     hm = now.hour * 100 + now.minute
@@ -362,6 +385,11 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
             rows[-1] = b
         elif not rows or b[0] > rows[-1][0] or (rows[-1][0][:2] == "12" and b[0][:2] == "01"):
             rows.append(b)
+    if cc == "kr" and rows and now.weekday() < 5 and now.hour * 100 + now.minute >= 1531 and rows[-1][0] == now.strftime("%m/%d"):
+        kc = _krx_close(code, now)                         # 장 마감 뒤 종가는 KRX 값만(넥장은 it['nxt']로 따로)
+        if kc:
+            d, o, h, l, _ = rows[-1][:5]
+            rows[-1] = [d, o, max(h, kc), min(l, kc), kc]
     in_session = bool(live) and live[-1][0] == rows[-1][0] and _open_now(cc, now)
     return rows[-NBARS:], in_session
 
