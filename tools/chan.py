@@ -650,23 +650,69 @@ def build(now: datetime | None = None) -> dict:
     return {"at": at, **body, "errs": ERRS[:20]}
 
 
+def ipo_broker_extended_bars(code: str, ny_tz: ZoneInfo) -> list[list]:
+    """한투 해외주식 조회 전용 TR에서 실제 체결이 있는 시간외 5분봉만 사용한다."""
+    import kis
+
+    result = kis.get(
+        "/uapi/overseas-price/v1/quotations/inquire-time-itemchartprice",
+        "HHDFS76950200",
+        {"AUTH": "", "EXCD": "NAS", "SYMB": code, "NMIN": "5", "PINC": "1",
+         "NEXT": "", "NREC": "120", "FILL": "", "KEYB": ""},
+    )
+    bars = []
+    for row in result.get("output2") or []:
+        try:
+            local = datetime.strptime(str(row["xymd"]) + str(row["xhms"]).zfill(6), "%Y%m%d%H%M%S").replace(tzinfo=ny_tz)
+            minute = local.hour * 60 + local.minute
+            if local.weekday() >= 5 or float(row["evol"]) <= 0:
+                continue
+            if 240 <= minute < 570:
+                session = "pre"
+            elif 960 <= minute < 1200:
+                session = "post"
+            else:
+                continue
+            o, h, l, c = (round(float(row[key]), 4) for key in ("open", "high", "low", "last"))
+            if 0 < l <= min(o, c) <= max(o, c) <= h < float("inf"):
+                timestamp = int(local.timestamp()) // 300 * 300_000
+                bars.append([timestamp, o, h, l, c, session, "한국투자증권"])
+        except (KeyError, TypeError, ValueError, OverflowError):
+            continue
+    return bars
+
+
 def ipo_item(code: str, name: str, cfg: dict, now: datetime) -> dict | None:
-    """상장 초기 종목 카드(채널을 그릴 일봉이 모자람). 기준선 = 공모가·첫날 시가·상장 뒤 고점/저점, 5분봉(정규장).
+    """상장 초기 종목 카드(채널을 그릴 일봉이 모자람). 기준선 = 공모가·첫날 시가·상장 뒤 고점/저점, 5분봉(프리마켓·정규장·애프터마켓).
     해석 없이 위치만: 현재가가 공모가·시가 위/아래인지."""
-    u = f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.request.quote(code)}?range=5d&interval=5m"
+    u = f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.request.quote(code)}?range=5d&interval=5m&includePrePost=true"
     r = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"}), timeout=10).read())["chart"]["result"][0]
     m, q = r["meta"], r["indicators"]["quote"][0]
+    ny_tz = ZoneInfo("America/New_York")
     bars5 = []
     for t, o, h, l, cl in zip(r.get("timestamp") or [], q["open"], q["high"], q["low"], q["close"]):
         if None not in (o, h, l, cl) and h > 0:
-            bars5.append([int(t) * 1000, round(o, 4), round(h, 4), round(l, 4), round(cl, 4)])
+            local = datetime.fromtimestamp(t, ny_tz)
+            minute = local.hour * 60 + local.minute
+            if local.weekday() >= 5 or not 240 <= minute < 1200:
+                continue
+            session = "pre" if minute < 570 else "reg" if minute < 960 else "post"
+            bars5.append([int(t) * 1000, round(o, 4), round(h, 4), round(l, 4), round(cl, 4), session])
     px = m.get("regularMarketPrice")
-    if not px or not bars5:
+    regular = [bar for bar in bars5 if bar[5] == "reg"]
+    if not px or not regular:
         return None
     ipo_px = float(cfg["ipo_px"])
-    first = next((b for b in bars5 if b[1] != ipo_px or b[2] != ipo_px), bars5[0])   # 상장 전 자리표시 봉(공모가 고정) 건너뜀
+    first = next((b for b in regular if b[1] != ipo_px or b[2] != ipo_px), regular[0])   # 상장 전 자리표시 봉(공모가 고정) 건너뜀
     live_bars = [b for b in bars5 if b[0] >= first[0]]
-    hi = max(b[2] for b in live_bars); lo = min(b[3] for b in live_bars)
+    regular = [bar for bar in regular if bar[0] >= first[0]]
+    by_time = {bar[0]: [*bar, "Yahoo Finance"] for bar in live_bars}
+    for bar in ipo_broker_extended_bars(code, ny_tz):
+        if bar[0] >= first[0]:
+            by_time[bar[0]] = bar
+    live_bars = [by_time[t] for t in sorted(by_time)]
+    hi = max(bar[2] for bar in regular)
+    lo = min(bar[3] for bar in regular)
     prev = m.get("chartPreviousClose") or ipo_px
     open1 = first[1]
     pos = "공모가 위" if px > ipo_px else "공모가 아래"
