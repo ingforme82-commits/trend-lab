@@ -419,7 +419,8 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
     today = now.strftime("%Y-%m-%d")
     dc = _load(DAILY)
     e = dc.get(code) or {}
-    if e.get("day") != today or not e.get("rows"):              # 일봉 원본은 하루 한 번
+    refresh_split = code == "SNDK" and e.get("schema") != "sndk-split-20261120"
+    if refresh_split or e.get("day") != today or not e.get("rows"):              # 일봉 원본은 하루 한 번
         rows = []
         try:
             rows = _kis_daily(code) if cc == "kr" else _yahoo(code, "6mo", "1d")
@@ -437,16 +438,20 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
                 ERRS.append(f"{code} 네이버 일봉 사용")
             except Exception as x:  # noqa: BLE001
                 ERRS.append(f"{code} 네이버 일봉 {type(x).__name__}")
+        if not rows and refresh_split:
+            return [], False
         if not rows:
             rows = e.get("rows") or []
         if rows:
             dc[code] = {"day": today, "rows": rows[-90:]}
+            if code == "SNDK":
+                dc[code]["schema"] = "sndk-split-20261120"
             _save(DAILY, dc)
         e = dc.get(code) or {}
     rows = [list(r) for r in e.get("rows") or []]
     lc = _load(LIVE); le = lc.get(code) or {}
     live = None
-    if time.time() - le.get("t", 0) < 55:
+    if time.time() - le.get("t", 0) < 55 and (code != "SNDK" or le.get("interval") == "1d"):
         live = le.get("bars")
     else:
         try:
@@ -454,12 +459,20 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
                 hm = now.hour * 100 + now.minute
                 live = [_kis_now(code)] if now.weekday() < 5 and hm >= 900 else []
                 live = [b for b in live if b]
+            elif code == "SNDK":
+                # 분할 조정된 일봉의 시가·고가·저가를 마지막 시간봉으로 덮지 않는다.
+                live = _yahoo(code, "5d", "1d")[-1:]
             else:
                 live = _yahoo(code, "5d", "60m")[-1:]            # 오늘(마지막 날)만 — 전날은 일봉 종가 그대로
             lc[code] = {"t": time.time(), "bars": live}
+            if code == "SNDK":
+                lc[code]["interval"] = "1d"
             _save(LIVE, lc)
         except Exception:  # noqa: BLE001
-            live = le.get("bars") or []
+            live = le.get("bars") or [] if code != "SNDK" or le.get("interval") == "1d" else []
+    if code == "SNDK" and rows and live and not 0.4 <= live[-1][4] / rows[-1][4] <= 2.5:
+        ERRS.append("SNDK 분할 가격 기준 불일치")
+        live = []
     if cc == "us" and live:                                # 11/20: CME 선물은 야후가 약 10분 늦다 → NH 실시간 현재가로 오늘 봉 종가
         try:
             from nhfut import cme_live
