@@ -571,5 +571,8 @@ if __name__ == "__main__":
     for g in r["groups"]:
         print(f"\n[{g['country']} · {g['sector']}]")
         for it in g["items"]:
+            if "day" not in it:                           # 상장 초기 카드(ANT 등)는 채널 값이 없다(11/20 KeyError)
+                print(f"  {it.get('name')} · {it.get('state', '')} {it.get('px', '')}")
+                continue
             print(f"  {it['rank']}. {it['name']} {it['day']} {it['px']:,.2f} ({it['chg']:+.2f}%) · {it['state']} · 상단 {it['up_now']:,.2f} 5일선 {it['ma5']:,.2f} · 다음 상단까지 {it['gap_next']:+.1f}% · 캔들 {it['candle']['name']}{' (진행 중)' if it['live'] else ''}")
     print("\n기록:", *[e["text"] for e in r["log"][:5]], sep="\n  ")

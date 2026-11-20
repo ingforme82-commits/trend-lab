@@ -323,12 +323,16 @@
       }
       ns.sort((a, b) => a.ts - b.ts);
       const inGrp = new Set(ms.map((x) => x.name));
-      const others = Object.entries(m.others || {}).filter(([k]) => !inGrp.has(k)).slice(0, 4).map(([k, v]) => `${esc(k)} <b class="${cls(v)}">${v > 0 ? "+" : ""}${v}${k.includes("금리") ? "bp" : "%"}</b>`).join(" · ");
+      // 11/20 운영자: 같은 구간 반응은 자산별 평소 기준 대비 크기 순(m.rx) — 금리·달러·유가 반응이 묻히지 않게. 1배 이상이면 '동반'
+      const rxList = m.rx ? m.rx.filter(([k]) => !inGrp.has(k)).slice(0, 4) : Object.entries(m.others || {}).filter(([k]) => !inGrp.has(k)).slice(0, 4);
+      const others = rxList.map(([k, v, r]) => `${esc(k)} <b class="${cls(v)}">${v > 0 ? "+" : ""}${v}${k.includes("금리") ? "bp" : "%"}</b>${r >= 1 ? " <small>동반</small>" : ""}`).join(" · ");
+      const a30 = m.after30 == null || m.kind === "level" ? "" : (() => { const v = m.after30, same = (v > 0) === (m.move > 0), big = Math.abs(v) >= Math.abs(m.move) * 0.5;
+        return ` · 이후 30분 <b class="${cls(v)}">${v > 0 ? "+" : ""}${v}${m.unit === "bp" ? "bp" : "%"}</b> <small>(${Math.abs(v) < Math.abs(m.move) * 0.15 ? "멈춤" : same ? (big ? "크게 이어짐" : "이어짐") : (big ? "크게 되돌림" : "되돌림")})</small>`; })();
       return `<article class="mv" data-asset="${m.asset}" data-start="${m.start}">
         <div class="mv-h"><span class="mv-a ${m.move > 0 ? "pos" : "neg"}">${m.kind === "level" ? `🎯 ${esc(m.name)} ${m.unit === "bp" ? (+m.level).toFixed(2) + "%" : (m.asset === "WTI" || m.asset === "BRENT" || m.asset === "GOLD" ? "$" : "") + (+m.level).toLocaleString("ko-KR")} ${m.move > 0 ? "위로" : "아래로"}` : `${m.kind === "cumulative" ? "⏱ 누적 " : ""}${esc(m.name)} ${m.move > 0 ? "▲" : "▼"} ${fmtMove(m)}`}</span>
           <span class="mv-t">${hm(m.start)}–${hm(m.end)}${m.session ? ` · ${esc(m.session)}` : ""}</span></div>
         <p class="mv-o">${px(m)}${co.length ? ` · <b>함께 움직임</b> ${co.map((x) => `${x.kind === "level" ? "🎯 " : x.kind === "cumulative" ? "⏱ 누적 " : ""}${esc(x.name)}${x.kind === "level" ? ` ${(+x.level).toLocaleString("ko-KR")} ${x.move > 0 ? "위로" : "아래로"}` : ` <b class="${cls(x.move)}">${fmtMove(x)}</b>`} <small>(${hm(x.start)}–${hm(x.end)}${x.session ? ", " + esc(x.session) : ""})</small>`).join(" · ")}` : ""}</p>
-        ${others ? `<p class="mv-o">같은 구간 ${others}</p>` : ""}
+        ${others || a30 ? `<p class="mv-o">${others ? `같은 구간 ${others}` : ""}${others ? a30 : a30.replace(/^ · /, "")}</p>` : ""}
         ${ns.length ? `<ul class="mv-n">${ns.slice(0, 4).map((n) => `<li><span class="mv-dot"></span><b>${hm(n.ts)}</b> ${n.lang === "en" ? "🌐 " : ""}${esc(n.text)} <small>${n.osrc ? `${esc(n.osrc)} · ${esc(n.src)} 경유` : esc(n.src)}${co.length ? ` · ${esc(n._a)} 쪽` : ""}${n.lag != null ? ` · <b class="mv-lag">${n.lag < 0 ? `움직임 ${-n.lag}분 전` : n.lag === 0 ? "움직임과 같은 분" : `가격이 먼저 움직이고 ${n.lag}분 뒤`}</b>` : ""}</small></li>`).join("")}</ul>`
           : `<p class="mv-none">시작 전 15분부터 확인한 구간에 연결할 관련 뉴스가 없습니다. 원인은 확인되지 않았습니다.</p>`}
         ${nt ? `<div class="mv-note"><b>💡 ${esc(nt.title)}</b><p>${esc(nt.text)}</p></div>` : ""}

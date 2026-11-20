@@ -607,6 +607,13 @@ def build() -> dict:
         out["dow"] = dow()
         out["us10y"] = us10y()
         out["ust"] = ust()
+        try:                                              # 10년물 24시간 기록(변곡점용, 야후는 미국장 시간만 있음)
+            from moves import record_us10y
+            t10 = (out["ust"] or {}).get("10Y") or out["us10y"] or {}
+            if not t10.get("stale"):
+                record_us10y(t10.get("px"), t10.get("at"))
+        except Exception as e:  # noqa: BLE001
+            log(f"10년물 기록 건너뜀: {type(e).__name__}: {e}")
         try:
             from official import build as official
             out["official"] = official()

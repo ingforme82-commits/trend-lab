@@ -1,7 +1,9 @@
 """변곡점(평소보다 크게 움직이기 시작한 구간) 감지 + 직전 뉴스 연결.
 
 - 1분봉 24시간: 하이퍼리퀴드(나스닥100·코스피200·WTI·브렌트·금), 야후(미 10년물 금리 ^TNX, 달러인덱스 DXY)
-- 한국 정규장 실제 지수: 키움 REST 업종 1분봉(코스피·코스닥, 2026-11-15). 키움 키·IP 없는 PC는 건너뜀.
+- 미 10년물: 야후 ^TNX는 미국 정규장 시간만 있어 아시아 시간 금리 변화를 놓쳤다(11/20) → live_news가 매분 받는 CNBC 10년물 값을
+  저장소 밖 us10y_1m.json 에 쌓아(record_us10y) 24시간을 채운다. 같은 분은 야후 값을 쓴다.
+- 한국 정규장 실제 지수: 키움 REST 업종 1분봉(코스피·코스닥, 2026-11-15). 키움 키·IP 없는 PC(Oracle 등)는 네이버 지수 1분봉으로(11/20).
   정규장 시간에는 코스피200 24시간 지수 대신 실제 코스피 변곡점을 쓴다(같은 움직임이 두 번 나오지 않게).
 - 5·10·30분 변화가 평소 변화폭(중앙값)의 4배와 자산별 최소 기준을 동시에 넘으면 급변으로 본다.
 - WTI는 60·180분 순변화 ±1%, 브렌트는 60분 1.5%·180분 2.5% 누적 움직임도 찾는다.
@@ -31,8 +33,9 @@ ASSETS = [
     ("WTI", "WTI", "hl", "xyz:CL", "pct", 1.00, ("중동·유가", "러·우")),
     ("BRENT", "브렌트", "hl", "xyz:BRENTOIL", "pct", 0.80, ("중동·유가", "러·우")),
     ("GOLD", "금", "hl", "xyz:GOLD", "pct", 0.45, ("연준·금리", "중동·유가")),
-    ("US10Y", "미 10년물 금리", "yf", "^TNX", "bp", 4.0, ("연준·금리",)),
-    ("DXY", "달러인덱스", "yf", "DX-Y.NYB", "pct", 0.20, ("연준·금리",)),
+    # 11/20 운영자 "금리·달러 영향 더 잘": 24시간 실측(10분 최대 DXY 0.098%·10년물 2.3bp)보다 기준이 커서 하루 0건이던 문제 → 분포 상위 1% 수준으로
+    ("US10Y", "미 10년물 금리", "yf", "^TNX", "bp", 2.5, ("연준·금리", "중동·유가")),
+    ("DXY", "달러인덱스", "yf", "DX-Y.NYB", "pct", 0.08, ("연준·금리", "환율", "중동·유가")),
 ]
 WIN = 10            # 분
 TREND_1H = {"WTI": 1.0, "BRENT": 1.0}   # 60분 변화가 이 % 이상이면 평소 폭과 상관없이 변곡점(운영자 기준: 유가는 1%만 변해도)
@@ -157,7 +160,8 @@ def fetch(asset) -> list[tuple[int, float]]:
     try:
         if src == "kw":
             from kiwoom import index_minutes             # 조회 전용, 실패하면 빈 목록
-            return index_minutes(sym, hours=24)
+            rows = index_minutes(sym, hours=24)
+            return rows or naver_index_minutes(code)     # 키움 IP 미등록 PC(Oracle)는 네이버로
         if src == "hl":
             d = _post({"type": "candleSnapshot", "req": {"coin": sym, "interval": "1m", "startTime": now - 24 * 3600_000, "endTime": now}})
             return [(int(c["t"]), float(c["c"])) for c in d]
@@ -165,9 +169,63 @@ def fetch(asset) -> list[tuple[int, float]]:
         j = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"}), timeout=15).read())
         r = j["chart"]["result"][0]
         rows = [(t * 1000, c) for t, c in zip(r["timestamp"], r["indicators"]["quote"][0]["close"]) if c]
+        if code == "US10Y":
+            rows = _merge_hist(rows, _load_us10y())
         return [x for x in rows if x[0] >= now - 24 * 3600_000]
     except Exception:  # noqa: BLE001
         return []
+
+
+def naver_index_minutes(code: str) -> list[tuple[int, float]]:
+    """네이버 업종 1분봉(KOSPI·KOSDAQ, 최근 이틀 → 24시간). 실패하면 빈 목록."""
+    from datetime import timedelta
+    from zoneinfo import ZoneInfo
+    kst = ZoneInfo("Asia/Seoul")
+    now = datetime.now(kst)
+    u = (f"https://api.stock.naver.com/chart/domestic/index/{code}/minute?startDateTime={(now - timedelta(days=4)):%Y%m%d}0800"
+         f"&endDateTime={now:%Y%m%d%H%M}")
+    try:
+        d = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers={"User-Agent": "Mozilla/5.0"}), timeout=10).read())
+        rows = [(int(datetime.strptime(x["localDateTime"], "%Y%m%d%H%M%S").replace(tzinfo=kst).timestamp() * 1000), float(x["currentPrice"]))
+                for x in d if x.get("currentPrice")]
+    except Exception:  # noqa: BLE001
+        return []
+    cut = int(now.timestamp() * 1000) - 24 * 3600_000
+    return sorted(x for x in rows if x[0] >= cut)
+
+
+def _hist_path():
+    import keystore
+    return keystore.state_dir() / "us10y_1m.json"
+
+
+def _load_us10y() -> list[tuple[int, float]]:
+    try:
+        return [tuple(x) for x in json.loads(_hist_path().read_text(encoding="utf-8"))]
+    except Exception:  # noqa: BLE001
+        return []
+
+
+def record_us10y(px: float | None, at: int | None) -> None:
+    """live_news가 매분 받은 10년물 금리(CNBC, 24시간 거래)를 분 단위로 쌓는다(26시간 보관). 실패해도 수집은 계속."""
+    if not px or not at:
+        return
+    try:
+        t = int(at) // 60_000 * 60_000
+        rows = {r[0]: r[1] for r in _load_us10y()}
+        rows[t] = float(px)
+        cut = t - 26 * 3600_000
+        p = _hist_path()
+        p.parent.mkdir(parents=True, exist_ok=True)
+        p.write_text(json.dumps(sorted([k, v] for k, v in rows.items() if k >= cut)), encoding="utf-8")
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _merge_hist(yahoo: list[tuple[int, float]], hist: list[tuple[int, float]]) -> list[tuple[int, float]]:
+    """같은 분은 야후 값, 야후가 없는 시간(아시아·유럽 시간)은 CNBC 기록으로 채운다."""
+    have = {t // 60_000 for t, _ in yahoo}
+    return sorted(yahoo + [(t, c) for t, c in hist if t // 60_000 not in have])
 
 
 def _chg(a: float, b: float, unit: str) -> float:
@@ -236,7 +294,9 @@ WTI_TREND_WINDOWS = ((60, 1.0), (180, 1.0))
 IDX_TREND_WINDOWS = {"NQ": ((60, 0.8), (180, 1.5)), "SP": ((60, 0.6), (180, 1.0)), "K200": ((60, 1.0), (180, 2.0)),
                      "KOSPI": ((60, 0.8), (180, 1.5)), "KOSDAQ": ((60, 1.0), (180, 1.8))}
 KW_CODES = {"KOSPI", "KOSDAQ"}
-IDX_MAX_GAP = {"K200": 10, "KOSPI": 11, "KOSDAQ": 11}   # 키움 지수는 15:20~15:30 동시호가 10분 빈칸               # 코스피200 24시간 선물은 밤에 체결이 드물어 1분봉 빈칸 허용(분)
+# 금리·달러 누적(11/20): 24시간 실측 60분 변화 상위 1% ≈ DXY 0.17%·10년물 3.5bp
+MACRO_TREND_WINDOWS = {"DXY": ((60, 0.15), (180, 0.25)), "US10Y": ((60, 3.5), (180, 5.0))}
+IDX_MAX_GAP = {"K200": 10, "KOSPI": 11, "KOSDAQ": 11, "US10Y": 5, "DXY": 5}   # 키움 지수는 15:20~15:30 동시호가 10분 빈칸               # 코스피200 24시간 선물은 밤에 체결이 드물어 1분봉 빈칸 허용(분)
 
 
 def merge_moves(events: list[dict]) -> list[dict]:
@@ -259,9 +319,10 @@ def merge_moves(events: list[dict]) -> list[dict]:
 def cumulative_moves(asset, rows: list[tuple[int, float]]) -> list[dict]:
     """유가·지수 1·3시간 누적 등락. 데이터 공백과 방향성 없는 왕복 등락은 제외한다."""
     code, name, _, _, unit, _, _ = asset
-    if code not in ("WTI", "BRENT") and code not in IDX_TREND_WINDOWS:
+    if code not in ("WTI", "BRENT") and code not in IDX_TREND_WINDOWS and code not in MACRO_TREND_WINDOWS:
         return []
-    wins = WTI_TREND_WINDOWS if code == "WTI" else OIL_TREND_WINDOWS if code == "BRENT" else IDX_TREND_WINDOWS[code]
+    wins = (WTI_TREND_WINDOWS if code == "WTI" else OIL_TREND_WINDOWS if code == "BRENT"
+            else MACRO_TREND_WINDOWS[code] if code in MACRO_TREND_WINDOWS else IDX_TREND_WINDOWS[code])
     gap = IDX_MAX_GAP.get(code, 2) * 60_000
     ts = [r[0] for r in rows]
     import bisect
@@ -284,7 +345,7 @@ def cumulative_moves(asset, rows: list[tuple[int, float]]) -> list[dict]:
             path = sum(abs(b[1] - a[1]) for a, b in zip(pts, pts[1:]))
             efficiency = abs(segment[-1][1] - segment[0][1]) / path if path else 0
             # WTI는 순변화 1% 자체를 신호로 삼는다(중간 흔들림으로 누락시키지 않음).
-            min_eff = 0.0 if code == "WTI" else 0.45 if code in IDX_TREND_WINDOWS else 0.6   # 지수는 흔들리며 오르는 경우가 많아 0.45
+            min_eff = 0.0 if code == "WTI" else 0.45 if code in IDX_TREND_WINDOWS or code in MACRO_TREND_WINDOWS else 0.6   # 지수는 흔들리며 오르는 경우가 많아 0.45
             if abs(change) + 1e-9 < threshold or efficiency < min_eff:
                 continue
             event = {"asset": code, "name": name, "unit": unit, "kind": "cumulative",
@@ -339,12 +400,29 @@ def analyze(items: list[dict]) -> tuple[list[dict], dict]:
         # 같은 구간 다른 자산의 변화(시장 전체가 움직였는지 보기)
         m["others"] = {x[1]: v for x in ASSETS if x[0] != m["asset"]
                        for v in [_move_between(data[x[0]], m["start"], m["end"], x[4])] if v is not None}
+        # 11/20 운영자 "WTI·10년물·달러·미국/한국 선물 영향 더 잘": 같은 구간 반응을 자산별 평소 기준(10분 최소 기준) 대비 크기로 정렬.
+        # 1 이상 = 그 자산도 평소 급변 수준으로 같이 움직임. 짧은 구간(10분 미만)은 10분으로 늘려 본다.
+        t1 = max(m["end"], m["start"] + 10 * 60_000)
+        rx = []
+        for x in ASSETS:
+            if x[0] == m["asset"]:
+                continue
+            v = _move_between(data[x[0]], m["start"], t1, x[4])
+            if v is not None and x[5]:
+                rx.append([x[1], v, round(abs(v) / x[5], 2)])
+        m["rx"] = sorted([r for r in rx if r[2] >= 0.5], key=lambda r: -r[2])[:5]
+        # 이후 30분: 같은 방향으로 이어졌는지(+), 되돌렸는지(-) — 변곡점 자산 기준, 아직 30분이 안 지났으면 없음
+        own = data[m["asset"]]
+        if own and own[-1][0] >= m["end"] + 30 * 60_000:
+            v = _move_between(own, m["end"], m["end"] + 30 * 60_000, m["unit"])
+            if v is not None:
+                m["after30"] = v
         cands = []
         after = ((m["end"] - m["start"]) / 60000 if m.get("kind") == "cumulative"
                  else max(AFTER, min(AFTER_MAX, (m["end"] - m["start"]) / 60000 + 3)))   # 움직이는 동안 나온 뉴스도
         for it in items:
             dt = (it["ts"] - m["start"]) / 60000
-            if it.get("kind") in ("시황 분석", "증권사 시황", "관전 포인트", "섹터 시세"):   # 긴 분석 글·가격에서 만든 자동 집계는 뺀다
+            if it.get("kind") in ("시황 분석", "증권사 시황", "관전 포인트", "섹터 시세", "주도 섹터", "추세 시그널"):   # 긴 분석 글·가격에서 만든 자동 집계(11/20: 주도 섹터·추세 시그널 추가)는 뺀다
                 continue
             rg = region(it)
             if m["asset"] in US_A and rg == "KR":
@@ -385,4 +463,8 @@ def analyze(items: list[dict]) -> tuple[list[dict], dict]:
     for code in ("NQ", "SP", "K200", "WTI", "BRENT", "GOLD", "US10Y", "DXY", "KOSPI", "KOSDAQ"):
         rows = data.get(code) or []
         series[code] = [[t, round(c, 4)] for t, c in rows if (t // 60000) % 5 == 0]
-    return moves[:40], series
+    # 11/20: 금·지수가 40칸을 채워 WTI·금리·달러 변곡점이 잘리던 문제 → 최신 40개 + 자산마다 최신 3개는 항상 남긴다
+    keep = moves[:40] + [m for a in ASSETS for m in [x for x in moves if x["asset"] == a[0]][:3]]
+    seen_id = set()
+    keep = [m for m in sorted(keep, key=lambda m: -m["start"]) if not (m["id"] in seen_id or seen_id.add(m["id"]))]
+    return keep, series

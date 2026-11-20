@@ -137,5 +137,37 @@
     button.addEventListener("click",()=>location.reload());
     document.body.append(button);
   }
-  window.trlViewport={update,html,offerUpdate,go,get updating(){return depth>0;}};
+  /* ── 상시 위치 고정(11/20 운영자 "화면이 정지가 안 되고 살짝씩 움직임") ──
+   * update() 밖에서 생기는 높이 변화(번역 치환·차트·이미지·2초 시세 글자 폭)도 읽던 항목을 제자리에 둔다.
+   * 사파리는 브라우저 스크롤 고정(overflow-anchor)이 없어 직접 맞춘다. 손으로 스크롤하는 중(0.25초)엔 건드리지 않는다. */
+  let pin=null, userAt=0, pinRaf=0, fixRaf=0;
+  function pinNow(){
+    pinRaf=0;
+    if(scrollY<=80){pin=null;return;}
+    const probe=Math.min(innerHeight/3,Math.max(80,navH()+24));
+    let el=document.elementFromPoint(innerWidth/2,probe);
+    if(!el||el===document.body||el===root||el.closest(".nav")){const a=anchor();pin=a&&{el:locate(a.key),key:a.key,top:a.top};return;}
+    const keyed=el.closest(selectors);
+    pin={el,key:keyed&&keyed!==document.body?keyOf(keyed):null,keyed,top:el.getBoundingClientRect().top,ktop:keyed?.getBoundingClientRect().top};
+  }
+  function fix(){
+    fixRaf=0;
+    if(!pin||depth||lock||performance.now()-userAt<250)return;
+    let d=null;
+    if(pin.el?.isConnected&&pin.el.getBoundingClientRect().height>0)d=pin.el.getBoundingClientRect().top-pin.top;
+    else{const k=locate(pin.key);if(k)d=k.getBoundingClientRect().top-(pin.ktop??pin.top);}
+    if(d!=null&&Math.abs(d)>0.5){jump(scrollY+d);}
+    pinNow();
+  }
+  ["wheel","touchstart","touchmove","keydown","pointerdown"].forEach((t)=>addEventListener(t,()=>{userAt=performance.now();},{passive:true}));
+  addEventListener("scroll",()=>{if(!pinRaf)pinRaf=requestAnimationFrame(pinNow);},{passive:true});
+  addEventListener("resize",()=>{pin=null;pinRaf=requestAnimationFrame(pinNow);});
+  if(window.ResizeObserver){
+    const ro=new ResizeObserver(()=>{if(!fixRaf)fixRaf=requestAnimationFrame(fix);});
+    const watch=()=>{ro.observe(document.body);document.querySelectorAll("body > *, main > *, section").forEach((el)=>ro.observe(el));};
+    if(document.readyState==="loading")addEventListener("DOMContentLoaded",watch);else watch();
+  }
+  const baseUpdate=update;
+  function updatePinned(fn){try{return baseUpdate(fn);}finally{if(!depth){if(pinRaf)cancelAnimationFrame(pinRaf);pinRaf=requestAnimationFrame(pinNow);}}}
+  window.trlViewport={update:updatePinned,html:(el,value)=>{if(!el||lastHTML.get(el)===value)return false;return updatePinned(()=>{el.innerHTML=value;lastHTML.set(el,value);return true;});},offerUpdate,go,get updating(){return depth>0;}};
 })();

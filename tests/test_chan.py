@@ -34,7 +34,7 @@ class T(unittest.TestCase):
         ch["ma5"] = 100
         self.assertEqual(state(ch, 105, False), "돌파 확인")
         self.assertEqual(state(ch, 105, True), "돌파 시도(장중)")
-        self.assertEqual(state(ch, 100.5, False), "상단 근접")     # +1% 안은 돌파 아님
+        self.assertEqual(state(ch, 100.5, False), "돌파 관찰·상단 근접")     # +1% 안은 돌파 아님(11/19: 5일선 위·상단 3% 안 = 돌파 관찰)
         self.assertEqual(state(ch, 79, False), "하단 이탈")
 
     def test_breakout_needs_prior_high(self):                    # 운영자 11/19: 채널 상단 +1%와 수평 저항(전고점)을 같이
