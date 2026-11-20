@@ -4,7 +4,7 @@
 live_news.py 가 1분마다 부른다(실행 PC 한 대). 조건이 맞을 때만 쓰고 push 한다.
   python tools/move_issue.py --dry     # 지금 데이터(live news.json)로 무엇을 쓸지 보기만
 
-언제 쓰나(24시간 선물, 전일 정산 대비 = brief.futures)
+언제 쓰나(24시간 선물, 24시간 전 가격 대비 = brief.futures 하이퍼리퀴드 prevDayPx — 11/21 정정: 전일 정산 대비 아님)
 - 나스닥100 ±1.5% · S&P500 ±1.0% · 코스피200 ±2.0% 중 하나라도 넘거나, 최근 60분 안에 이 지수들의 변곡점(moves)이 생기면.
 - 같은 날 다시 쓰는 경우: 크기가 0.5%p 더 커졌거나 방향이 바뀌었거나, 새 변곡점이 생겼거나, 마지막 갱신 뒤 30분이 지났을 때.
 무엇을 쓰나(사실·수치·출처만, 인과 단정 없이 '시각이 겹친 요인'으로)
@@ -85,7 +85,7 @@ def compose(d: dict, now_ms: int) -> dict | None:
     idx = " · ".join(f"{n} {pc(fut[n]['chg'])}" for n in ("나스닥100", "S&P500", "코스피200") if n in fut)
     ch = character(d, big, mv)
     lead = ch[0].split("(")[0] if ch else "지수 급변"
-    title = f"{idx} (24시간 선물, {hm(now_ms)}) — {lead}"
+    title = f"{idx} (24시간 선물·24시간 전 대비, {hm(now_ms)}) — {lead}"
     pts = []
     for m in mv[:3]:
         oth = " · ".join(f"{k} {v:+.2f}{'bp' if '금리' in k else '%'}" for k, v in list((m.get("others") or {}).items())[:5])
