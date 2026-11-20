@@ -77,8 +77,46 @@ def parse_kr(data, now):
     return out
 
 
+def parse_cme(result, now):
+    """11/20: CME 선물(NQ=F·ES=F)은 거의 24시간 거래 — 04~20시로 자르면 한국 낮(뉴욕 밤) 봉이 모두 빠져 '자료 확인 중'이 됐다.
+    거래일 = 뉴욕 18:00 시작(다음 날짜로 셈). 하루 1시간 휴장·주말은 봉이 없으니 마지막 봉 나이로 열림을 판단."""
+    ts = result.get("timestamp") or []
+    quote = ((result.get("indicators") or {}).get("quote") or [{}])[0]
+    data = []
+    for i, stamp in enumerate(ts):
+        try:
+            stamp = float(stamp)
+            if not math.isfinite(stamp) or stamp > now.timestamp() + 120:
+                continue
+            values = ohlc([quote[k][i] for k in ("open", "high", "low", "close")])
+            if values:
+                dt = datetime.fromtimestamp(stamp, NY)
+                data.append((stamp, (dt + timedelta(hours=6)).date(), values))
+        except (KeyError, IndexError, TypeError, ValueError, OverflowError, OSError):
+            continue
+    if not data:
+        return None
+    data.sort(key=lambda r: r[0])
+    day = data[-1][1]
+    today = [r for r in data if r[1] == day]
+    history = []
+    for trading_day in sorted({r[1] for r in data}):
+        group = [r for r in data if r[1] == trading_day]
+        history.append({"day": trading_day.isoformat(), "ohlc": [group[0][2][0], max(r[2][1] for r in group),
+                       min(r[2][2] for r in group), group[-1][2][3]]})
+    values = [today[0][2][0], max(r[2][1] for r in today), min(r[2][2] for r in today), today[-1][2][3]]
+    age = now.timestamp() - data[-1][0]
+    return {"day": day.isoformat(), "ohlc": values, "source_at": int(data[-1][0] * 1000),
+            "checked_at": int(now.timestamp() * 1000), "source": "Yahoo 1분봉(CME 24시간)",
+            "session": "선물 24시간", "provider_open": age < 1800, "time_kind": "1분봉 시작",
+            "max_age_seconds": MAX_AGE["us"], "history_note": "과거는 일봉 · 오늘은 뉴욕 18시부터 이어지는 선물 거래일",
+            "scope": "CME 선물", "country": "us", "active_session": None, "history": history}
+
+
 def parse_us(result, now):
     """검증된 동일 미국 거래일의 04~20시 1분봉을 시간순으로 합친다."""
+    if str((result.get("meta") or {}).get("symbol", "")).endswith("=F"):
+        return parse_cme(result, now)
     ts = result.get("timestamp") or []
     quote = ((result.get("indicators") or {}).get("quote") or [{}])[0]
     data = []

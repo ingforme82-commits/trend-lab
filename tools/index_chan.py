@@ -75,6 +75,38 @@ def _save(path: Path, data: dict) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
 
+def parse_naver(data: list, now: datetime) -> list[list]:
+    rows = {}
+    for item in data or []:
+        day = str(item.get("localDate") or "")
+        try:
+            date = datetime.strptime(day, "%Y%m%d").date()
+        except ValueError:
+            continue
+        values = _ohlc(item.get(k) for k in ("openPrice", "highPrice", "lowPrice", "closePrice"))
+        if values and date < now.date():                    # 오늘 봉은 실시간 조회로만
+            rows[day] = [date.strftime("%m/%d"), *values]
+    return [rows[k] for k in sorted(rows)]
+
+
+def _naver_history(code: str, now: datetime, days: int = 150) -> list[list]:
+    u = (f"https://api.stock.naver.com/chart/domestic/index/{code}/day?startDateTime={(now - timedelta(days=days)).strftime('%Y%m%d')}"
+         f"&endDateTime={now.strftime('%Y%m%d')}")
+    return parse_naver(json.loads(urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=8).read()), now)
+
+
+def fill_gaps(rows: list[list], recent: list[list]) -> list[list]:
+    """11/20: 야후 지수 일봉에 11/19 가 빠져 전일·5일선이 하루 밀렸다 → 최근 네이버 일봉으로 빠진 날을 채운다(같은 날은 그대로)."""
+    have = {r[0] for r in rows}
+    first = rows[0][0] if rows else ""
+    add = [r for r in recent if r[0] not in have and r[0] >= first[:5]] if rows else list(recent)
+    if not add:
+        return rows
+    def key(r):                                              # 연말·연초 넘어갈 때 순서 유지
+        return ("1" if rows and r[0] < rows[0][0] and r[0].startswith("01/") else "0") + r[0]
+    return sorted(rows + add, key=key)
+
+
 def _history(code: str, now: datetime, yahoo) -> tuple[list[list], str]:
     try:
         import kis
@@ -87,11 +119,21 @@ def _history(code: str, now: datetime, yahoo) -> tuple[list[list], str]:
             return rows, "한국투자증권 지수 일봉"
     except Exception:  # noqa: BLE001
         pass
+    try:                                                     # 11/20: 서버에서 한투가 막히면 네이버 지수 일봉(KRX 공식 종가)
+        rows = _naver_history(code, now)
+        if len(rows) >= 20:
+            return rows, "네이버 지수 일봉"
+    except Exception:  # noqa: BLE001
+        pass
     rows = yahoo(INDEXES[code][1], "6mo", "1d")
     rows = [r for r in rows if len(r) == 5 and _ohlc(r[1:])]
     if len(rows) < 20:
         raise ValueError("Insufficient index history")
-    return rows, "야후 지수 일봉"
+    try:
+        rows = fill_gaps(rows, _naver_history(code, now, 20))
+    except Exception:  # noqa: BLE001
+        pass
+    return rows, "야후 지수 일봉(빠진 날 네이버로 보충)"
 
 
 def _quote(code: str, now: datetime) -> dict | None:
@@ -107,7 +149,7 @@ def bars(code: str, now: datetime, *, daily_path: Path, live_path: Path, yahoo) 
     daily = _read(daily_path)
     entry = daily.get(code) or {}
     warning = ""
-    if entry.get("day") != today or not entry.get("rows"):
+    if entry.get("day") != today or not entry.get("rows") or entry.get("source") == "야후 지수 일봉":   # 11/20: 빠진 날 있던 옛 캐시는 다시
         try:
             rows, source = _history(code, now, yahoo)
             if rows:
