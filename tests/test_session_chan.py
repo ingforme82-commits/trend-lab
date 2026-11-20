@@ -168,6 +168,15 @@ class SessionTests(unittest.TestCase):
             self.assertNotEqual(item["display"]["state"],"돌파 확인")
 
 
+class SplitFit(unittest.TestCase):
+    """11/21 SNDK 8:1 분할: 분할 전 확장세션 봉은 정규장 기준으로 나눠 맞춘다."""
+    def test_split_adjusts_old_extended_bar(self):
+        from session_chan import split_fit
+        self.assertAlmostEqual(split_fit([931.0, 1011.05, 920.18, 951.79], 122.21)[3], 951.79 / 8)
+        self.assertEqual(split_fit([118.1, 120.8, 108.7, 119.5], 117.18), [118.1, 120.8, 108.7, 119.5])
+        self.assertIsNone(split_fit([50, 52, 49, 51], 122.21 / 1))        # 2.4배 — 정수 비율 아님 → 버림
+
+
 if __name__=="__main__":
     unittest.main()
 

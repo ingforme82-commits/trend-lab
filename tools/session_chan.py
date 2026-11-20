@@ -266,6 +266,22 @@ def collect(groups, now, cache_path: Path):
     return quotes, errors
 
 
+def split_fit(values, regular_close):
+    """11/21 운영자 'SNDK 8:1 분할 차트 정정': 저장된 확장세션 봉이 분할 전 가격이면(정규장 종가와 2배 넘게 차이)
+    정수 분할 비율(2·3·4·5·8·10·20…)로 나눠 맞춘다. 비율이 정수에 안 맞으면 그 봉은 쓰지 않는다(정규장 봉 유지)."""
+    if not values or not regular_close or regular_close <= 0:
+        return values
+    r = values[3] / regular_close
+    if 0.5 <= r <= 2:
+        return values
+    for k in (r, 1 / r):
+        n = round(k)
+        if n >= 2 and abs(k / n - 1) <= 0.15:
+            f = 1 / n if k is r else n
+            return [v * f for v in values]
+    return None
+
+
 def display(rows, quote, anchors, rules, *, now, channel, candle, state):
     """정규장 데이터는 보존하고 화면용 projection만 반환. signals 대상 아님."""
     from copy import deepcopy
@@ -289,7 +305,9 @@ def display(rows, quote, anchors, rules, *, now, channel, candle, state):
         year = local_day.year - (1 if row[0] > local_day.strftime("%m/%d") else 0)
         day_key = f"{year}/{row[0]}".replace("/", "-")
         if history.get(day_key) and day_key < quote["day"]:
-            row[1:5] = history[day_key]
+            hv = split_fit(history[day_key], row[4])
+            if hv:
+                row[1:5] = hv
     bar = [md] + values
     if merged[-1][0] == md:
         merged[-1] = bar
