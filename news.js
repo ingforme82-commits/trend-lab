@@ -778,7 +778,7 @@
   const CH_HIDE = new Set(["YM=F"]);
   // 11/20 운영자 "이제 대장이 ANT와 엔비디아": 상장 초기 종목의 5분봉 종가 흐름
   function chIpoCard(it, cc) {
-    const bars = (it.bars || []).filter((row) => row.slice(0, 5).every(Number.isFinite));
+    const bars = (it.bars || []).filter((row) => row.length >= 5 && row[0] % 300000 === 0 && row.slice(0, 5).every(Number.isFinite));
     const sessions = { pre: "프리마켓", reg: "정규장", post: "애프터마켓" };
     let graph = '<p class="fine">5분봉 시세 대기</p>';
     if (bars.length) {
