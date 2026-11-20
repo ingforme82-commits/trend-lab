@@ -88,6 +88,17 @@
   {
    "cc": "us",
    "country": "미국",
+   "sector": "인버스 · 숏",
+   "items": [
+    [
+     "NVDQ",
+     "NVDQ 엔비디아 인버스 2배"
+    ]
+   ]
+  },
+  {
+   "cc": "us",
+   "country": "미국",
    "sector": "지수 선물",
    "items": [
     [

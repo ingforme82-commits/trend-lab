@@ -905,7 +905,7 @@
     if (!regular.display) return regular;
     const it = {...regular, ...regular.display};
     const rows = regular.rows || [];
-    const same = it.day === regular.day, pre = String(it.session).includes("프리");
+    const same = it.day === regular.day, pre = String(it.session).includes("프리") || String(it.session).includes("선물");   // 11/21: 선물 24시간도 전일 대비
     const baseRow = rows[same && (pre || it.session === "정규장") ? rows.length - 2 : rows.length - 1];
     // 옛 게시본이 전일 시간외 종가로 계산했어도 브라우저에서 정규장 기준으로 바로잡는다.
     const base = it.change_basis && Number.isFinite(it.base) && it.base > 0 ? it.base : baseRow?.[4];
@@ -913,7 +913,7 @@
       it.base = base; it.base_day = it.change_basis ? it.base_day : baseRow[0];
       it.change = it.px - base;
       it.chg = Math.round((it.px / base - 1) * 10000) / 100 || 0;
-      it.change_basis = it.session === "정규장" ? "전일 정규장 종가" : "정규장 종가";
+      it.change_basis = String(it.session).includes("선물") ? "전일 정산가" : it.session === "정규장" ? "전일 정규장 종가" : "정규장 종가";
     } else { it.base = null; it.chg = null; it.change = null; }
     return it;
   }
