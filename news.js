@@ -810,6 +810,13 @@
     const g = (x) => `<b>${x[0]} ${chFmt(cc, x[1])}</b> <small>${(x[1] / px - 1) * 100 > 0 ? "+" : ""}${((x[1] / px - 1) * 100).toFixed(1)}%</small>`;
     return `<p class="ch-lv"><span>⬆ 위 저항 ${up ? g(up) : "<b>없음(최근 고점 위)</b>"}</span><span>⬇ 아래 지지 ${dn ? g(dn) : "<b>없음</b>"}</span>${pushed.length ? `<span class="ch-lv-dn">오늘 고가가 닿고 밀린 선: ${pushed.join("·")}</span>` : ""}${held.length ? `<span class="ch-lv-up">오늘 저가를 받친 선: ${held.join("·")}</span>` : ""}</p>`;
   }
+  // 11/20 운영자 "통합 종가로 하자 · KRX 종가도 따로 표시해 체크(종가가 지금은 기준가)": 5일선 = 통합(KRX+넥장 20시), 등락률 기준가 = KRX 종가
+  function chKrClose(it, cc) {
+    if (cc !== "kr" || !(it.krx_close > 0)) return "";
+    const u = it.uni_close > 0 ? `<span>통합 종가 <b>${chFmt(cc, it.uni_close)}</b> <small>${esc(it.uni_close_day || "")}</small></span>` : "";
+    const m5 = it.ma5 > 0 ? `<span>5일선 통합 <b>${chFmt(cc, it.ma5)}</b>${it.ma5_krx > 0 ? ` · KRX <b>${chFmt(cc, it.ma5_krx)}</b>` : ""}</span>` : "";
+    return `<p class="ch-lv ch-kc"><span>KRX 종가(기준가) <b>${chFmt(cc, it.krx_close)}</b> <small>${esc(it.krx_close_day || "")}</small></span>${u}${m5}</p>`;
+  }
   function chChart(it, cc, sg) {
     const rows = it.rows, n = rows.length, N = n + 1, W = 640, H = 230, M = {l: 6, r: 74, t: 10, b: 20};
     const up = (i) => it.up_now + it.su * (i - (n - 1)), lo = (i) => {
@@ -1010,7 +1017,7 @@
         html += `<article class="ch-card${sgNow ? " t-" + sgNow.tone : ""}" data-viewport-key="channel:${esc(it.code)}">
           <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b>${(() => { const k = it.chg == null || !isFinite(it.chg) ? "dim" : it.chg > 0.005 ? "up" : it.chg < -0.005 ? "down" : "dim";   // 11/19 운영자: 현재가도 전일 종가 대비 색·굵게(상승 빨강·하락 파랑·보합 회색)
             return `<b class="mn ${k}">${chFmt(g.cc, it.px)}</b><b class="${k}"`; })()} title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(g.cc, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b>${sgNow ? `<span class="ch-sg ${sgNow.tone}">${({up: "▲", dn: "▼", wk: "△"})[sgNow.tone]} ${esc(sgNow.label)}</span>` : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span><small class="ch-session">${regular.display ? (it.session === "정규장" ? "정규장" : "시간외 · " + esc(it.session)) : (it.live ? "정규장" : "마감")}${/10분 지연/.test(it.source || "") ? " · 약 10분 지연" : ""}${it.stale ? " · 지연" : !it.live ? " · 마지막" : ""}${it.rt_at || it.source_at ? ` · ${hm(it.rt_at || it.source_at)}` : ""}</small></div>
-          ${chLvLine(it, g.cc)}${chChart(it, g.cc, sgNow)}</article>`;
+          ${chLvLine(it, g.cc)}${chKrClose(it, g.cc)}${chChart(it, g.cc, sgNow)}</article>`;
       });
       html += `</div></div>`;
     });

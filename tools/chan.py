@@ -305,6 +305,95 @@ def nxt_view(rows: list[list], ch: dict, px: float, today: str) -> dict:
             "up": round(up, 2), "lo": round(lo, 2), "gap_up": round((up / px - 1) * 100, 2), "session": "애프터" if rows[-1][0] == today else "프리"}
 
 
+# ── 11/20 운영자 "통합 종가로 하자 · KRX 종가도 따로 표시해 체크(종가가 지금은 기준가)" ──
+# 대조(SK하이닉스 11/18): KRX 정규장 종가 1,144,000(한투·NH·네이버 15:30봉) / 통합 종가 1,164,000(넥장 20:00 마지막 체결 = 네이버 일봉).
+# 5일선 = 통합 종가, 등락률 기준가 = KRX 종가. 둘 다 카드에 따로 보인다.
+KRX_SEED = ROOT / "data" / "kr_krx_closes.json"
+KRX_ARCH = keystore.state_dir() / "kr_krx_closes.json"
+
+
+def _iso(md: str, now: datetime) -> str:
+    y = now.year - (1 if md > now.strftime("%m/%d") else 0)
+    return f"{y}-{md[:2]}-{md[3:5]}"
+
+
+def uni_closes(code: str, now: datetime) -> dict:
+    """{MM/DD: 통합 종가} — 네이버 일봉(넥장 20:00 마감 반영), 하루 한 번. 오늘 값은 쓰지 않는다(진행 중)."""
+    dc = _load(DAILY); k = f"uni:{code}"; e = dc.get(k) or {}
+    today = now.strftime("%Y-%m-%d")
+    if e.get("day") != today:
+        try:
+            e = {"day": today, "c": {r[0]: r[4] for r in _naver_daily(code)}}
+            dc[k] = e; _save(DAILY, dc)
+        except Exception as x:  # noqa: BLE001
+            ERRS.append(f"{code} 통합 종가 {type(x).__name__}")
+    return {d: v for d, v in (e.get("c") or {}).items() if d != now.strftime("%m/%d")}
+
+
+def krx_closes(code: str) -> dict:
+    """{YYYY-MM-DD: KRX 종가} — 저장본(NH 일봉) + 서버가 매일 보탠 네이버 기준가."""
+    seed = (_load(KRX_SEED).get("closes") or {}).get(code) or {}
+    return {**seed, **((_load(KRX_ARCH).get(code)) or {})}
+
+
+def _krx_prev(codes: list[str], now: datetime) -> dict:
+    """{code: [시세 날짜 YYYY-MM-DD, 전일 KRX 종가]} — 네이버 거래소 시세의 '전일 대비'로 거꾸로 구한 기준가. 10분 캐시."""
+    lc = _load(LIVE); c = lc.get("_krxprev") or {}
+    if time.time() - c.get("t", 0) < 600 and set(codes) <= set(c.get("codes", [])):
+        return c.get("q") or {}
+    from krx import BASE, _parse
+    q = {}
+    try:
+        u = f"{BASE}/stock/{','.join(codes)}"
+        for d in json.loads(urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=8).read()).get("datas", []):
+            r = _parse(d)
+            if r and r.get("prev") and r.get("day"):
+                q[d["itemCode"]] = [r["day"], round(r["prev"])]
+    except Exception as x:  # noqa: BLE001
+        ERRS.append(f"KRX 기준가 {type(x).__name__}")
+        return c.get("q") or {}
+    lc["_krxprev"] = {"t": time.time(), "codes": codes, "q": q}
+    _save(LIVE, lc)
+    return q
+
+
+def archive_krx(prev: dict, now: datetime) -> None:
+    """기준가(전일 KRX 종가)를 그 전 거래일 날짜로 저장. 전 거래일 = 통합 일봉에서 시세 날짜 바로 앞 날."""
+    a = _load(KRX_ARCH); changed = False
+    for code, (day, px) in prev.items():
+        before = sorted(d for d in (_iso(m, now) for m in uni_closes(code, now)) if d < day)
+        if before and (a.get(code) or {}).get(before[-1]) != px:
+            a.setdefault(code, {})[before[-1]] = px; changed = True
+    if changed:
+        _save(KRX_ARCH, a)
+
+
+def kr_basis(code: str, rows: list[list], now: datetime, nq: dict | None) -> dict:
+    """통합·KRX 두 기준의 종가 줄·5일선·기준가. rows 마지막 봉 = 오늘(장중·마감) 또는 전일(장 전)."""
+    U, K = uni_closes(code, now), krx_closes(code)
+    md = now.strftime("%m/%d")
+    last_today = rows[-1][0] == md
+    hm = now.hour * 100 + now.minute
+    u, k, miss_u, miss_k = [], [], 0, 0
+    for i, r in enumerate(rows):
+        if i == len(rows) - 1 and last_today:
+            kx = r[4]                                          # 장중 현재가 / 15:31 뒤 KRX 종가
+            at = datetime.fromtimestamp(nq["at"] / 1000, KST).strftime("%H%M") if nq and nq.get("at") else ""
+            u.append(nq["px"] if nq and hm >= 1530 and at >= "1530" else kx); k.append(kx)
+            continue
+        kv, uv = K.get(_iso(r[0], now)), U.get(r[0])
+        if i >= len(rows) - 6:
+            miss_u += uv is None; miss_k += kv is None
+        k.append(float(kv) if kv else r[4]); u.append(float(uv) if uv else (float(kv) if kv else r[4]))
+    done_k = not last_today or hm >= 1531
+    done_u = not last_today or hm >= 2000
+    return {"u": u, "k": k, "ma5": sum(u[-5:]) / 5, "ma5_krx": sum(k[-5:]) / 5,
+            "base": k[-2] if last_today and len(k) > 1 else k[-1],
+            "krx_close": k[-1] if done_k else k[-2], "krx_close_day": rows[-1 if done_k else -2][0],
+            "uni_close": u[-1] if done_u else u[-2], "uni_close_day": rows[-1 if done_u else -2][0],
+            "miss_u": miss_u, "miss_k": miss_k}
+
+
 def _load(p: Path) -> dict:
     try:
         return json.loads(p.read_text(encoding="utf-8"))
@@ -420,7 +509,12 @@ def build(now: datetime | None = None) -> dict:
     watch_signals = [s for s in log.get("watch_signals", [])
                      if now.timestamp() * 1000 - s["ts"] < 20 * 3600_000 and s.get("contact_policy") == contact_policy]
     resists = [s for s in log.get("resists", []) if now.timestamp() * 1000 - s["ts"] < 20 * 3600_000 and s.get("contact_policy") == contact_policy]   # 5일선 저항(11/18), 주문용 signals 와 따로
-    nxq = _nxt_quotes([code for g in c["groups"] if g["cc"] == "kr" for code, _ in g["items"]], now)
+    kr_codes = [code for g in c["groups"] if g["cc"] == "kr" for code, _ in g["items"]]
+    nxq = _nxt_quotes(kr_codes, now)
+    try:                                                        # 11/20: 매일 기준가(전일 KRX 종가)를 모아 KRX 종가 줄을 잇는다
+        archive_krx(_krx_prev(kr_codes, now), now)
+    except Exception as x:  # noqa: BLE001
+        ERRS.append(f"KRX 종가 저장 {type(x).__name__}")
     ipo_cfg = c.get("ipo") or {}
     for g in c["groups"]:
         items = []
@@ -444,8 +538,16 @@ def build(now: datetime | None = None) -> dict:
             ch = channel(rows, c["anchors"], c.get("contact_rules"), last_closed=not live)
             if not ch:
                 ERRS.append(f"{code} 채널 기준점 없음"); continue
+            kb = None
+            if g["cc"] == "kr":                                   # 11/20 운영자: 5일선 = 통합 종가, 기준가 = KRX 종가
+                try:
+                    kb = kr_basis(code, rows, now, nxq.get(code))
+                    ch["ma5"] = kb["ma5"]
+                except Exception as x:  # noqa: BLE001
+                    ERRS.append(f"{code} 통합·KRX 종가 {type(x).__name__}")
             o, h, l, px = rows[-1][1:5]
-            pc = rows[-2][4]
+            pc = kb["base"] if kb else rows[-2][4]
+            pcu = kb["u"][-2] if kb else pc                       # 시그널 '어제 종가'는 5일선과 같은 통합 기준
             cd = candle(o, h, l, px, pc)
             st = state(ch, px, live)
             if g["cc"] == "kr_index" and INDEX_META.get(code, {}).get("stale"):
@@ -458,16 +560,33 @@ def build(now: datetime | None = None) -> dict:
                   **{k: (round(v, 4) if isinstance(v, float) else v) for k, v in ch.items()}}
             if g["cc"] == "kr_index":
                 it.update(INDEX_META.get(code, {}))
+            if kb:
+                it.update(ma5_krx=round(kb["ma5_krx"], 2), krx_close=kb["krx_close"], krx_close_day=kb["krx_close_day"],
+                          uni_close=kb["uni_close"], uni_close_day=kb["uni_close_day"], base=kb["base"],
+                          reg_closes=[[r[0], round(v, 2)] for r, v in zip(rows, kb["u"])][:-1],
+                          ma5_basis="통합 종가(KRX+넥장 20시) 4일 + 현재가" + (f" · 통합 {kb['miss_u']}일 KRX로 대체" if kb["miss_u"] else ""),
+                          krx_missing=kb["miss_k"])
             if g["cc"] == "kr" and code in nxq:
                 nq = nxq[code]
                 it["nxt"] = {**nq, "vs_krx": round((nq["px"] / px - 1) * 100, 2) if rows[-1][0] == now.strftime("%m/%d") else None,
-                             **nxt_view(rows, ch, nq["px"], now.strftime("%m/%d"))}
+                             **nxt_view([r[:4] + [v] for r, v in zip(rows, kb["u"])] if kb else rows, ch, nq["px"], now.strftime("%m/%d"))}
             if g["cc"] in ("kr", "us"):
                 sq = session_quotes.get(code)
                 if sq:
                     try:
                         view = display_session(rows, sq, c["anchors"], c.get("contact_rules"), now=now,
                                                channel=channel, candle=candle, state=state)
+                        if view and kb:                    # 통합 5일선·KRX 기준가로 맞춘다
+                            uc = {r[0]: v for r, v in zip(rows, kb["u"])}
+                            prior = [uc[r[0]] for r in rows if r[0] != view["day"]][-4:]
+                            if len(prior) == 4:
+                                view["ma5"] = (sum(prior) + view["px"]) / 5
+                                view["above_ma5"] = view["px"] > view["ma5"]
+                            view["reg_closes"] = [[d, round(v, 2)] for d, v in uc.items() if d != view["day"]]
+                            view["ma5_basis"] = it["ma5_basis"]
+                            kbase = {r[0]: v for r, v in zip(rows, kb["k"])}.get(view.get("base_day"))
+                            if kbase:
+                                view.update(base=kbase, change=round(view["px"] - kbase, 4), chg=round((view["px"] / kbase - 1) * 100, 2))
                         if view:
                             it["display"] = view
                     except (ValueError, TypeError, KeyError, IndexError):
@@ -484,13 +603,13 @@ def build(now: datetime | None = None) -> dict:
                 events.append({"ts": int(now.timestamp() * 1000), "code": code, "text": f"{name}: 오늘 캔들 {cd['name']} (시가 대비 {cd['vs_open']:+.2f}%, {_fmt(g['cc'], px)})"})
                 was = {**was, "shape": f"{stamp}:{cd['kind']}"}
             # 11/17 운영자: 오늘 봉이 5일선을 위로 넘으면 시그널(어제 종가는 어제까지 5일선 아래였을 때). 하루 한 번
-            closes = [r[4] for r in rows]
+            closes = kb["u"] if kb else [r[4] for r in rows]
             ma5_prev = sum(closes[-6:-1]) / 5 if len(closes) >= 6 else None
             it["gap_low"] = round((ch["lo_now"] / px - 1) * 100, 2)             # 하락 추세 지속 시 다음 채널 지지선까지
             it["above_ma5"] = px > ch["ma5"]
-            if live and ch["channel_valid"] and ma5_prev and pc <= ma5_prev and px > ch["ma5"] and was.get("ma5sig") != stamp:
+            if live and ch["channel_valid"] and ma5_prev and pcu <= ma5_prev and px > ch["ma5"] and was.get("ma5sig") != stamp:
                 sig = {"ts": int(now.timestamp() * 1000), "day": stamp, "code": code, "name": name, "cc": g["cc"], "contact_policy": contact_policy,
-                       "text": _josa(f"📐 5일선 돌파 시그널 — {name} {_fmt(g['cc'], px)}가 5일선 {_fmt(g['cc'], ch['ma5'])} 위로 (어제 {_fmt(g['cc'], pc)}는 5일선 아래) · 채널 상단선 {_fmt(g['cc'], ch['up_now'])}까지 {((ch['up_now'] / px - 1) * 100):+.1f}%")}
+                       "text": _josa(f"📐 5일선 돌파 시그널 — {name} {_fmt(g['cc'], px)}가 5일선 {_fmt(g['cc'], ch['ma5'])} 위로 (어제 {_fmt(g['cc'], pcu)}는 5일선 아래) · 채널 상단선 {_fmt(g['cc'], ch['up_now'])}까지 {((ch['up_now'] / px - 1) * 100):+.1f}%")}
                 signals.append(sig)
                 events.append({"ts": sig["ts"], "code": code, "text": sig["text"]})
                 was = {**was, "ma5sig": stamp}
@@ -502,7 +621,7 @@ def build(now: datetime | None = None) -> dict:
                 was = {**was, "watch_day": stamp}
             # 11/18 운영자 전략 '5일선 저항 시 매도·돌파 시 매수' — 저항 = 어제 5일선 아래, 오늘 고가가 5일선에 닿은 뒤 현재가가 5일선 0.3% 넘게 아래.
             # 사실만 기록하고 주문용 signals 에는 넣지 않는다(자동 주문 경로와 분리). 하루 한 번
-            if live and ch["channel_valid"] and ma5_prev and pc <= ma5_prev and h >= ch["ma5"] and px < ch["ma5"] * 0.997 and was.get("ma5res") != stamp:
+            if live and ch["channel_valid"] and ma5_prev and pcu <= ma5_prev and h >= ch["ma5"] and px < ch["ma5"] * 0.997 and was.get("ma5res") != stamp:
                 rs = {"ts": int(now.timestamp() * 1000), "day": stamp, "code": code, "name": name, "cc": g["cc"], "contact_policy": contact_policy, "kind": "resist",
                       "text": f"📐 5일선 저항 — {name} 장중 고가 {_ro(_fmt(g['cc'], h))} 5일선 {_fmt(g['cc'], ch['ma5'])} 터치 후 현재 {_fmt(g['cc'], px)} (5일선 대비 {((px / ch['ma5'] - 1) * 100):+.1f}%)"}
                 resists.append(rs)

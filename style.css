@@ -996,6 +996,7 @@ html.trl-live-update,html.trl-live-update body{overflow-anchor:none!important;sc
 .ch-lv{display:flex;flex-wrap:wrap;gap:2px 12px;margin:6px 0 2px;font-size:12.5px;color:var(--sub)}
 .ch-lv b{color:var(--ink);font-weight:700;font-variant-numeric:tabular-nums}
 .ch-lv small{font-variant-numeric:tabular-nums}
+.ch-kc{margin-top:0;font-size:12px}
 .ch-lv-dn{color:var(--down);font-weight:700} .ch-lv-up{color:var(--up);font-weight:700}
 /* 11/20 상장 초기 카드(ANT) */
 .ch-chart .ch-ipo-p{stroke:var(--ink);stroke-width:1.8}
