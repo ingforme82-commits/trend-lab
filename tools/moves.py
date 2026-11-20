@@ -380,9 +380,9 @@ def analyze(items: list[dict]) -> tuple[list[dict], dict]:
             if tag not in it["pv"]:
                 it["pv"].append(tag)
     group_moments(moves)
-    # 화면용: 금리·달러 5분 간격 시계열(하이퍼리퀴드에 없는 것)
+    # 화면용 5분 간격 시계열. 브라우저에서 직접 시세를 가져오지 못해도 표시한다.
     series = {}
-    for code in ("US10Y", "DXY", "KOSPI", "KOSDAQ"):
+    for code in ("NQ", "SP", "K200", "WTI", "BRENT", "GOLD", "US10Y", "DXY", "KOSPI", "KOSDAQ"):
         rows = data.get(code) or []
         series[code] = [[t, round(c, 4)] for t, c in rows if (t // 60000) % 5 == 0]
     return moves[:40], series

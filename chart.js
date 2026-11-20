@@ -20,8 +20,9 @@
   const pctTxt = (v) => `${v > 0 ? "+" : ""}${v.toFixed(2)}%`;
   const cls = (v) => (v > 0.005 ? "c-up" : v < -0.005 ? "c-dn" : "c-fl");
 
-  let st = { coin: COINS[0].k, range: 180, sel: null, news: [], data: [], timer: null, hover: null };
+  let st = { coin: COINS[0].k, range: 180, sel: null, news: [], data: [], timer: null, hover: null, interval: 1 };
   let root = null;
+  let loadId = 0;
 
   function build() {
     root = document.createElement("div");
@@ -59,19 +60,28 @@
   }
 
   async function load() {
+    const id = ++loadId, coin = st.coin;
     drawTabs();
     const end = Date.now(), start = end - st.range * 60000;
-    if (st.coin.startsWith("srv:")) {                              // 금리·달러: 서버가 넣어 준 5분 간격 값(미국장 시간)
-      const rows = ((window.trlSeries || {})[st.coin.slice(4)] || []).filter(([t]) => t >= start);
+    const usePublished = () => {
+      const code = coin.startsWith("srv:") ? coin.slice(4) : CODE[coin];
+      const rows = (window.trlSeries?.[code] || []).filter(([t]) => t >= start);
       st.data = rows.map(([t, v]) => ({ t, o: v, h: v, l: v, c: v, v: 0 }));
+      st.interval = 5;
       return draw();
-    }
+    };
+    if (coin.startsWith("srv:")) return usePublished();
     try {
       const r = await fetch("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type: "candleSnapshot", req: { coin: st.coin, interval: "1m", startTime: start, endTime: end } }) });
+        signal: AbortSignal.timeout(8000),
+        body: JSON.stringify({ type: "candleSnapshot", req: { coin, interval: "1m", startTime: start, endTime: end } }) });
+      if (!r.ok) throw Error("Candle request failed");
       const d = await r.json();
+      if (id !== loadId) return;
+      if (!Array.isArray(d) || d.length < 2) return usePublished();
       st.data = d.map((c) => ({ t: c.t, o: +c.o, h: +c.h, l: +c.l, c: +c.c, v: +c.v }));
-    } catch { st.data = []; }
+      st.interval = 1;
+    } catch { if (id === loadId) usePublished(); return; }
     draw();
   }
 
@@ -83,7 +93,15 @@
   let geo = null;
   function draw() {
     const box = root.querySelector("#cmChart"), D = st.data, meta = COINS.find((c) => c.k === st.coin);
-    if (D.length < 2) { box.innerHTML = `<p class="fine" style="padding:20px">차트 데이터를 불러오지 못했습니다.</p>`; return; }
+    if (D.length < 2) {
+      geo = null;
+      root.querySelector("#cmTitle").textContent = meta.n;
+      root.querySelector("#cmInfo").textContent = "";
+      root.querySelector("#cmNews").textContent = "";
+      root.querySelector("#cmTip").hidden = true;
+      box.innerHTML = `<p class="fine" style="padding:20px">이 구간의 차트 데이터가 없습니다. 다른 시간 범위를 선택할 수 있습니다.</p>`;
+      return;
+    }
     const W = Math.max(300, box.clientWidth), H = window.innerWidth < 640 ? 300 : 420;
     const pad = { l: 8, r: 62, t: 22, b: 26 }, volH = H * 0.16;
     const pw = W - pad.l - pad.r, ph = H - pad.t - pad.b - volH;
@@ -104,7 +122,9 @@
     }
     const nt = Math.min(6, Math.floor(pw / 90));                     // 시간 눈금
     for (let i = 0; i <= nt; i++) { const t = t0 + ((t1 - t0) * i) / nt; s += `<text x="${X(t)}" y="${H - 8}" class="cm-ax" text-anchor="${i === 0 ? "start" : i === nt ? "end" : "middle"}">${hm(t)}</text>`; }
-    D.forEach((x) => {                                               // 캔들 + 거래량
+    if (st.interval === 5) {
+      s += `<polyline fill="none" class="nc-line ${D.at(-1).c >= D[0].c ? "up" : "down"}" points="${D.map((x) => `${X(x.t)},${Y(x.c)}`).join(" ")}"/>`;
+    } else D.forEach((x) => {                                       // 캔들 + 거래량
       const up = x.c >= x.o, cx = X(x.t), c = up ? "cm-up" : "cm-dn";
       s += `<line x1="${cx}" x2="${cx}" y1="${Y(x.h)}" y2="${Y(x.l)}" class="${c}"/>`;
       s += `<rect x="${cx - bw / 2}" y="${Y(Math.max(x.o, x.c))}" width="${bw}" height="${Math.max(1, Math.abs(Y(x.o) - Y(x.c)))}" class="${c} f"/>`;
@@ -139,7 +159,7 @@
     } else {
       info = `최근 ${RANGES.find(([m]) => m === st.range)[1]} <b class="${cls(chg)}">${chgTxt(chg)}</b> · 색칠한 구간은 변곡점, 빨간 점(🔴)은 그 관련 뉴스입니다. 점을 누르면 그 뉴스 이후 변화를 보여 줍니다.`;
     }
-    root.querySelector("#cmTitle").innerHTML = `${meta.n} <span>${fmt(last)}</span> <b class="${cls(chg)}">${chgTxt(chg)}</b> <small>${st.coin.startsWith("srv:") ? "5분 간격" : "1분봉"}</small>`;
+    root.querySelector("#cmTitle").innerHTML = `${meta.n} <span>${fmt(last)}</span> <b class="${cls(chg)}">${chgTxt(chg)}</b> <small>${st.interval === 5 ? "5분 간격" : "1분봉"}</small>`;
     root.querySelector("#cmInfo").innerHTML = info;
     box.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${s}<g id="cmHover"></g></svg>`;
     // 차트 구간의 속보 목록(누르면 선택)
@@ -162,7 +182,8 @@
     const prev = D[best - 1] ? D[best - 1].c : x.o, ch = (x.c / prev - 1) * 100;
     let since = "";
     if (st.sel) { let i = D.findIndex((y) => y.t > st.sel); i = i === -1 ? D.length - 1 : Math.max(0, i - 1); if (best >= i) since = `<br>속보 이후 <b class="${cls((x.c / D[i].c - 1) * 100)}">${pctTxt((x.c / D[i].c - 1) * 100)}</b>`; }
-    tip.innerHTML = `<b>${hm(x.t)}</b> 시 ${f(x.o)} · 고 ${f(x.h)} · 저 ${f(x.l)} · 종 ${f(x.c)} <b class="${cls(ch)}">${pctTxt(ch)}</b>${since}`;
+    const price = st.interval === 5 ? f(x.c) : `시 ${f(x.o)} · 고 ${f(x.h)} · 저 ${f(x.l)} · 종 ${f(x.c)}`;
+    tip.innerHTML = `<b>${hm(x.t)}</b> ${price} <b class="${cls(ch)}">${pctTxt(ch)}</b>${since}`;
     tip.hidden = false;
   }
 

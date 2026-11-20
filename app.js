@@ -227,6 +227,29 @@ function hlOrder(items) {
   const slot = hr >= 8 && hr < 16 ? ["kr", "g", "us"] : hr >= 16 && hr < 20 ? ["kr", "us", "g"] : ["us", "g", "kr"];
   return items.map((x, i) => ({x, i, r: slot.indexOf(hlMkt(x))})).sort((a, b) => a.r - b.r || (b.x.main ? 1 : 0) - (a.x.main ? 1 : 0) || a.i - b.i).map((o) => o.x);
 }
+// 추세 판단에 표시된 시장별 최신 거래일 일봉의 시가·종가를 비교한다.
+function hlTone(market) {
+  const groups = window.trlChan?.groups || [];
+  const now = KST(), kstHour = now.getHours();
+  const region = market === "g" ? (kstHour >= 8 && kstHour < 20 ? "kr" : "us") : market;
+  const rows = new Map();
+  for (const group of groups) {
+    if ((group.cc === "kr_index" ? "kr" : group.cc) !== region) continue;
+    for (const item of group.items) {
+      if (region === "us" && item.code.endsWith("=F")) continue;
+      const bar = item.rows?.at(-1);
+      if (typeof bar?.[0] === "string" && bar[1] > 0 && bar[4] > 0) rows.set(item.code, bar);
+    }
+  }
+  const dated = [...rows.values()].map(([day, open, , , close]) => {
+    const [month, date] = day.split("/").map(Number);
+    const year = now.getFullYear() - (month > now.getMonth() + 1 ? 1 : 0);
+    return [Date.UTC(year, month - 1, date), Math.sign(close - open)];
+  });
+  const latest = Math.max(...dated.map(([day]) => day));
+  const score = dated.reduce((sum, [day, direction]) => sum + (day === latest ? direction : 0), 0);
+  return score > 0 ? "hl-up" : score < 0 ? "hl-down" : "";
+}
 function renderHeadlineRaw() {
   try {
     const h = hlData || {};
@@ -235,7 +258,7 @@ function renderHeadlineRaw() {
     const tags = new Set(auto.map((x) => x.tag));
     const items = hlOrder([...auto, ...(h.items || []).filter((x) => (!x.until || x.until >= today) && !tags.has(x.tag))]);
     if (!items.length) return;
-    $("#hlList").innerHTML = items.map((x) => `<article class="hl-card${x.main ? " hl-main" : ""}" data-viewport-key="headline:${esc(x.tag || x.title)}">
+    $("#hlList").innerHTML = items.map((x) => `<article class="hl-card${x.main ? ` hl-main ${hlTone(hlMkt(x))}` : ""}" data-viewport-key="headline:${esc(x.tag || x.title)}">
       <p class="hl-tag">${x.main ? '<span class="hl-badge">메인</span>' : ""}${esc(x.tag || "")}${x.when ? ` <small>${esc(x.when)}</small>` : ""}</p>
       <h3 class="hl-title">${esc(x.title)}</h3>
       <ul class="hl-pts">${(x.points || []).map((p) => `<li>${esc(p)}</li>`).join("")}</ul>
@@ -736,8 +759,8 @@ function bandSplit(s) {
   return out.map((x) => x.trim()).filter(Boolean);
 }
 function bandHtml(label, text, sigHtml) {
-  const items = bandSplit(text || "").map((x) => '<a href="#brief" class="bi">' + esc(x) + '</a>').join("");
-  return '<div class="wrap band-w" title="' + esc(text || "") + '"><a href="#brief" class="band-lab">' + label + '</a><div class="band-items">' + (sigHtml || "") + items + '</div></div>';
+  const items = bandSplit(text || "").map((x) => '<a href="#news" class="bi">' + esc(x) + '</a>').join("");
+  return '<div class="wrap band-w" title="' + esc(text || "") + '"><a href="#news" class="band-lab">' + label + '</a><div class="band-items">' + (sigHtml || "") + items + '</div></div>';
 }
 function bandFit() { /* 11/17: 흐르는 띠 없앰(고정 표시) — 예전 호출 자리 유지 */ }
 window.addEventListener("resize", () => bandFit());

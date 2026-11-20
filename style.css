@@ -318,8 +318,8 @@ body{overflow-x:hidden}
 .nc-h{display:flex;align-items:baseline;gap:8px;font-size:14px}
 .nc-n{font-weight:700}
 .nc-v{margin-left:auto;font-weight:700;font-variant-numeric:tabular-nums}
-.nc-svg{width:100%;height:76px;display:block;margin:6px 0 2px}
-.nc-line{fill:none;stroke-width:1.6;vector-effect:non-scaling-stroke}
+.nc-svg{width:100%;height:104px;display:block;margin:6px 0 2px}
+.nc-line{fill:none;stroke-width:2.4;vector-effect:non-scaling-stroke}
 .nc-line.up{stroke:var(--up)}.nc-line.down{stroke:var(--down)}
 .nc-dot{fill:var(--gold);stroke:#fff;stroke-width:1}
 .nc-sel{stroke:var(--navy);stroke-width:1.5;stroke-dasharray:3 3;vector-effect:non-scaling-stroke}
@@ -669,12 +669,14 @@ body{overflow-x:hidden}
 .hl-live li{padding:2px 0}
 .hl-live time{font-weight:700;font-variant-numeric:tabular-nums;margin-right:4px}
 .hl-live-src{color:var(--sub);font-size:12px}
-.hl-card.hl-main{grid-column:1/-1;border:2px solid #dc2626;border-left:8px solid #dc2626;background:#fffafa;box-shadow:0 4px 16px rgba(220,38,38,.12)}
-.hl-card.hl-main .hl-tag{color:#b91c1c;font-size:14px}
+.hl-card.hl-main{--hl-accent:#5b6474;--hl-bg:#f8fafc;grid-column:1/-1;border:2px solid var(--hl-accent);border-left-width:8px;background:var(--hl-bg)}
+.hl-card.hl-up{--hl-accent:#b91c1c;--hl-bg:#fffafa}
+.hl-card.hl-down{--hl-accent:#1d4ed8;--hl-bg:#f7faff}
+.hl-card.hl-main .hl-tag{color:var(--hl-accent);font-size:14px}
 .hl-card.hl-main .hl-title{font-size:20px}
 .hl-card.hl-main .hl-pts{font-size:15px;columns:2 360px;column-gap:28px}
 .hl-card.hl-main .hl-pts li{break-inside:avoid}
-.hl-badge{display:inline-block;background:#dc2626;color:#fff;border-radius:6px;padding:1px 7px;font-size:12px;margin-right:6px;vertical-align:1px}
+.hl-badge{display:inline-block;background:var(--hl-accent);color:#fff;border-radius:6px;padding:1px 7px;font-size:12px;margin-right:6px;vertical-align:1px}
 .mn-pin.mn-main a{font-weight:700}
 .mn-pin.mn-main .mn-t{color:#b91c1c}
 .hl-foot{margin:12px 0 0;font-size:12px;color:var(--sub)}
@@ -996,6 +998,5 @@ html.trl-live-update,html.trl-live-update body{overflow-anchor:none!important;sc
 .ch-lv small{font-variant-numeric:tabular-nums}
 .ch-lv-dn{color:var(--down);font-weight:700} .ch-lv-up{color:var(--up);font-weight:700}
 /* 11/20 상장 초기 카드(ANT) */
-.ch-chart .ch-ipo-l{stroke:var(--down);stroke-width:1.5;stroke-dasharray:5 3}
 .ch-chart .ch-ipo-p{stroke:var(--ink);stroke-width:1.8}
 .ch-ipo .ch-nm small{font-weight:400;color:var(--sub);font-size:12px}

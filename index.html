@@ -50,7 +50,7 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
       <a href="#chan">추세 판단</a>
       <a href="#headline">주요 이슈</a>
       <a href="#market">시세</a>
-      <a href="#brief">브리핑</a>
+      <a href="#brief" hidden>브리핑</a>
       <a href="#news">속보</a>
       <a href="#quiz">성향 테스트</a>
       <a href="#study">그룹 스터디</a>
@@ -133,14 +133,12 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
   </div>
 </section>
 
-<section class="sec" id="brief">
+<section class="sec" id="brief" hidden>
   <div class="wrap">
     <div class="sec-head">
       <div>
         <h2>📋 시장 브리핑</h2>
-        <p class="sec-sub">1분마다 갱신 · 평일 07:20 · 12:00 · 14:00 · 20:05 · 22:15 기록</p>
       </div>
-      <p class="stamp" id="briefStamp"></p>
     </div>
     <div class="brief" id="briefNow"></div>
   </div>
