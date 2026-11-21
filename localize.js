@@ -180,6 +180,101 @@
 
   /* ── 숫자 자리표 ── */
   const NUMBER = /\d+(?:[.,:]\d+)*/g;
+  const ENGLISH_UI = {
+  "개장 전": "Before market open",
+  "장중": "Intraday",
+  "마감": "Closed",
+  "정규장": "Regular session",
+  "프리마켓": "Premarket",
+  "애프터마켓": "After hours",
+  "주간거래": "Day session",
+  "마지막": "Last available",
+  "자료 확인 중": "Checking data",
+  "확인 중": "Checking",
+  "시세 대기": "Awaiting quotes",
+  "시세를 받지 못함": "Quotes unavailable",
+  "조회 시각 확인 불가": "Quote retrieval time unavailable",
+  "원천 시각 확인 불가": "Source timestamp unavailable",
+  "전일 종가": "Previous close",
+  "전일 종가 기준": "Previous-close basis",
+  "전일 종가 대비": "vs. previous close",
+  "전일 종가부터": "Since the previous close",
+  "당일 정규장 마지막 {0}분봉 종가": "Last regular-session {0}-minute close today",
+  "직전 정규장 마지막 {0}분봉 종가": "Last {0}-minute close of the prior regular session",
+  "정규장 종가": "Regular-session close",
+  "정규장 진행 중 · 지금": "Regular session · now",
+  "시간외": "Extended hours",
+  "시가": "Open",
+  "고가": "High",
+  "저가": "Low",
+  "종가": "Close",
+  "현재가": "Last price",
+  "등락률": "Change (%)",
+  "종목": "Symbol",
+  "업종": "Industry",
+  "오늘": "Today",
+  "이번 시간": "This hour",
+  "거래대금": "Trading value",
+  "거래량": "Volume",
+  "거래대금 상위": "Most traded by value",
+  "상승": "Advancing",
+  "하락": "Declining",
+  "보합": "Unchanged",
+  "전체": "All",
+  "더 보기": "Show more",
+  "닫기": "Close",
+  "불러오는 중…": "Loading…",
+  "채널 안": "Inside channel",
+  "채널 상단": "Channel ceiling",
+  "채널 하단": "Channel floor",
+  "수평 하단": "Horizontal floor",
+  "수평 지지": "Horizontal support",
+  "수평 저항": "Horizontal resistance",
+  "위 저항": "Resistance above",
+  "아래 지지": "Support below",
+  "⬆ 위 저항": "Resistance above",
+  "⬇ 아래 지지": "Support below",
+  "상단 근접": "Near the channel ceiling",
+  "하단 이탈": "Below the channel floor",
+  "하단 위": "Above the floor",
+  "구간 안": "Inside the band",
+  "채널선 교차·재확인": "Channel lines cross · recheck",
+  "접촉 검증 대기": "Awaiting confirmation of touches",
+  "돌파 확인": "Breakout confirmed",
+  "돌파 시도(장중)": "Intraday breakout attempt",
+  "돌파 관찰·상단 근접": "Watching for a breakout · near ceiling",
+  "채널 위·{0}일선 아래": "Above channel · below {0}-day MA",
+  "채널 돌파·전고점 아래": "Above channel · below prior high",
+  "{0}일선": "{0}-day MA",
+  "마지막 봉": "Latest bar",
+  "{0}분봉 · 한국시간 · 시간외는 음영": "{0}-minute candles · KST · extended hours shaded",
+  "정규장·시간외 {0}분봉": "Regular and extended-hours {0}-minute candles",
+  "등락 기준가 확인 중": "Checking the reference price",
+  "한국 시간 조회": "Retrieved in Korea time",
+  "코스피": "KOSPI",
+  "코스닥": "KOSDAQ",
+  "코스피{0}": "KOSPI {0}",
+  "엔비디아": "NVIDIA",
+  "앤트로픽": "Anthropic",
+  "삼성전자": "Samsung Electronics",
+  "삼성전자우": "Samsung Electronics Preferred",
+  "SK하이닉스": "SK hynix",
+  "마이크론": "Micron",
+  "샌디스크": "SanDisk",
+  "미국 반도체": "U.S. semiconductors",
+  "시장 브리핑": "Market briefing",
+  "실시간 시세": "Live quotes",
+  "주요 시황": "Market highlights",
+  "실시간 속보": "Breaking news",
+  "연결된 뉴스 없음": "No related news",
+  "최근 관련 속보가 없습니다.": "No recent related news.",
+  "최근 {0}시간": "Past {0} hours",
+  "약 {0}분 지연": "About {0} minutes delayed",
+  "{0}일선 위": "Above the {0}-day MA",
+  "{0}일선 아래": "Below the {0}-day MA",
+  "원화": "KRW",
+  "달러": "USD"
+};
   const SLOT = /[{｛]\s*(\d+)\s*[}｝]/g;
 
   function fill(output, numbers) {
@@ -237,6 +332,20 @@
     if (states[key] === original) return;
     states[key] = original;
     tracked.set(node, states);
+    const numbers = [];
+    const template = source.replace(NUMBER, (number) => {
+      numbers.push(number);
+      return "{" + (numbers.length - 1) + "}";
+    });
+    const fixed = language === "en" && Object.hasOwn(ENGLISH_UI, template)
+      ? fill(ENGLISH_UI[template], numbers) : null;
+    if (fixed) {
+      const value = original.replace(original.trim(), () => fixed);
+      states[key] = value;
+      if (attribute) node.setAttribute(attribute, value);
+      else node.data = value;
+      return;
+    }
     translate(source).then((output) => {
       if (!output) {
         if (states[key] === original) delete states[key];
