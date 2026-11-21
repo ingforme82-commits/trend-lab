@@ -548,7 +548,10 @@ def build(now: datetime | None = None) -> dict:
                 ERRS.append(f"{code} 시세 {type(x).__name__}"); continue
             if len(rows) < 20:
                 ERRS.append(f"{code} 일봉 {len(rows)}개뿐"); continue
-            ch = channel(rows, c["anchors"], c.get("contact_rules"), last_closed=not live)
+            anc = c["anchors"]
+            if g.get("inverse"):                                # 11/21 운영자 "SKDD 하방 지지선 오류": 인버스는 기초자산과 반대로 움직이므로
+                anc = {"hi1": anc["lo1"], "hi2": anc["lo2"], "lo1": anc["hi1"], "lo2": anc["hi2"]}   # 기초자산 저점 구간 = 인버스 고점 구간
+            ch = channel(rows, anc, c.get("contact_rules"), last_closed=not live)
             if not ch:
                 ERRS.append(f"{code} 채널 기준점 없음"); continue
             kb = None
@@ -587,7 +590,7 @@ def build(now: datetime | None = None) -> dict:
                 sq = session_quotes.get(code)
                 if sq:
                     try:
-                        view = display_session(rows, sq, c["anchors"], c.get("contact_rules"), now=now,
+                        view = display_session(rows, sq, anc, c.get("contact_rules"), now=now,
                                                channel=channel, candle=candle, state=state)
                         if view and kb:                    # 통합 5일선·KRX 기준가로 맞춘다
                             uc = {r[0]: v for r, v in zip(rows, kb["u"])}
