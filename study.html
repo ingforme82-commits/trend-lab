@@ -32,7 +32,7 @@
       <a href="index.html#curriculum">커리큘럼</a>
     </nav>
     <select id="trlLanguage" aria-label="언어 선택"></select>
-    <div id="trlGoogleTranslate" class="trl-gt notranslate" title="Google 번역 · 100+ languages" hidden></div>
+    <div id="trlGoogleTranslate" class="trl-gt notranslate" hidden></div>
     <a class="btn btn-kakao btn-sm" href="https://invite.kakao.com/tc/p7OX5rMjd0" target="_blank" rel="noopener">오픈채팅</a>
   </div>
 </header>
@@ -173,6 +173,6 @@ $("#lb").addEventListener("touchstart", (e) => { tx = e.touches[0].clientX; }, {
 $("#lb").addEventListener("touchend", (e) => { if (tx === null) return; const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 50) openLb(cur + (dx < 0 ? 1 : -1)); tx = null; });
 </script>
 <script src="localize.js?v=20261121-breakout-gt" defer></script>
-<script src="gtranslate.js?v=20261121-gt" defer></script>
+<script src="gtranslate.js?v=20261121-lang10" defer></script>
 </body>
 </html>
