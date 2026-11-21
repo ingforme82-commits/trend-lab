@@ -11,7 +11,8 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parents[1]
-NEWS = Path(os.environ["TRL_NEWS_JSON"]).read_bytes() if os.environ.get("TRL_NEWS_JSON") else b'{"items":[]}'
+import time
+NEWS = Path(os.environ["TRL_NEWS_JSON"]).read_bytes() if os.environ.get("TRL_NEWS_JSON") else json.dumps({"items": [], "updated": int(time.time() * 1000)}).encode()
 DATA = ("#newsList,#moveList,#tgSum,#heroLive,#ticker,#notice,#hlList,#chanBoard,#chanSig,#s7Box,#watchBox,#sectorBox,#flowBox,"
         "#briefNow,#newsCharts,#trendBox,#checkList,#archList,#eduList,#upList,#studyInfo,#curList,#bookList,#worldGrid,#srcScoreBody,"
         "#moveReact,#heroStudy,#archStats,#archChips,#newsChips,#curNote,#curSub,#bookSub,#tickGrid,.quiz-box,#result,main.sec")

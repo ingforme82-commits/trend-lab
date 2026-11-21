@@ -15,6 +15,11 @@
     "zh-hans": ["简体中文", "语言", "部分内容无法翻译，已显示原文。"],
     "zh-hant": ["繁體中文（台灣）", "語言", "部分內容無法翻譯，已顯示原文。"],
     fr: ["Français", "Langue", "Certaines parties sont affichées dans leur langue d’origine."],
+    // 11/21: 예전엔 구글 사이트 번역 위젯이 맡던 4개 — 위젯은 1~2초마다 다시 그려지는 칸을 못 따라가 절반 넘게 한국어로 남았다
+    de: ["Deutsch", "Sprache", "Einige Texte konnten nicht übersetzt werden und werden im Original angezeigt."],
+    vi: ["Tiếng Việt", "Ngôn ngữ", "Một số nội dung chưa dịch được nên hiển thị bản gốc."],
+    id: ["Bahasa Indonesia", "Bahasa", "Sebagian teks tidak dapat diterjemahkan dan ditampilkan dalam bahasa aslinya."],
+    ar: ["العربية", "اللغة", "تعذّرت ترجمة بعض النصوص فتظهر بلغتها الأصلية."],
   };
   const page = new URL(location.href);
   const requested = (page.searchParams.get("lang") || "ko").toLowerCase();

@@ -20,19 +20,15 @@
       location.replace(u.href);
       return;
     }
-    if (/(?:^|;\s*)googtrans=\/ko\/(?!ko)/.test(document.cookie)) return;   // 구글 번역 언어로 보는 중
+    // 11/21: 구글 위젯 언어(de·vi·id·ar)도 자체 번역으로 옮김 — 예전 googtrans 쿠키가 있으면 그 언어로 이어서 연다
+    const legacyG = (document.cookie.match(/(?:^|;\s*)googtrans=\/ko\/(de|vi|id|ar)(?:;|$)/) || [])[1];
     let pick = (document.cookie.match(/(?:^|;\s*)trl_lang=([^;]+)/) || [])[1] || "";
     if (!pick) try { pick = localStorage.getItem("trl:lang") || ""; } catch { /* 저장소 없음 */ }
-    pick = decodeURIComponent(pick || "en");
+    pick = decodeURIComponent(legacyG || pick || "en");
     if (pick === "ko") return;
     if (pick === "g:zh-TW") pick = "zh-hant";
-    if (pick.startsWith("g:")) {
-      const host = location.hostname, v = "googtrans=/ko/" + pick.slice(2) + "; max-age=31536000; path=/";
-      document.cookie = v;
-      if (host.includes(".")) { document.cookie = v + "; domain=" + host; document.cookie = v + "; domain=." + host.replace(/^www\./, ""); }
-      return;
-    }
-    if (!/^(en|ja|zh-hans|zh-hant|fr)$/.test(pick)) pick = "en";
+    if (pick.startsWith("g:")) pick = pick.slice(2);
+    if (!/^(en|ja|zh-hans|zh-hant|fr|de|vi|id|ar)$/.test(pick)) pick = "en";
     u.searchParams.set("lang", pick);
     location.replace(u.href);
   } catch { /* 실패하면 원문(한국어) 그대로 */ }
