@@ -1061,3 +1061,28 @@ iframe.skiptranslate,.goog-te-banner-frame,#goog-gt-tt,.goog-te-balloon-frame,.V
 .foot-links{display:flex;flex-wrap:wrap;gap:6px 16px;margin:8px 0}
 .foot-links a{color:#fff;text-decoration:none;border-bottom:1px solid rgba(255,255,255,.35)}
 .foot-links a:hover{border-bottom-color:#fff}
+
+/* 11/21 리뉴얼: 머리 ⋯ 메뉴 · 운영자 소개 · 한국어 진행 표시 */
+.nav-more{position:relative;flex:none}
+.nav-more>summary{list-style:none;cursor:pointer;font-size:18px;line-height:1;padding-inline:10px}
+.nav-more>summary::-webkit-details-marker{display:none}
+.nav-more-menu{position:absolute;right:0;top:calc(100% + 6px);z-index:60;display:flex;flex-direction:column;gap:6px;min-width:170px;padding:8px;border-radius:10px;background:var(--navy);border:1px solid #3a4b63;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+.nav-more-menu .btn{width:100%;justify-content:flex-start;text-align:left}
+.nav-more-menu [hidden]{display:none!important}
+.about-me{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px 24px;margin:0 0 22px;padding:20px 22px;border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:12px;background:var(--card,#fff)}
+.about-me .am-txt{flex:1 1 360px;min-width:0}
+.about-me .eyebrow{margin:0 0 4px}
+.about-me h3{margin:0 0 6px;font-size:22px}
+.about-me h3 span{font-size:15px;font-weight:600;color:var(--sub);margin-left:6px}
+.about-me p{margin:0;line-height:1.6}
+.about-me .am-links{display:flex;flex-wrap:wrap;gap:8px}
+.ko-hide{display:none}
+html:not([lang="ko"]) .ko-hide,html.translated-ltr .ko-hide,html.translated-rtl .ko-hide{display:inline}
+.ko-hide::before{content:" · "}
+@media (prefers-color-scheme:dark){.about-me{background:rgba(255,255,255,.03)}}
+@media (max-width:520px){.nav .nav-in{column-gap:.45rem}.trl-language{max-width:6.6rem!important}.nav-more>summary{padding-inline:8px!important}}
+/* 금색 띠 이름표: 영어처럼 긴 문구는 모바일에서 줄바꿈(가로 넘침 방지) */
+@media (max-width:760px){.notice .band-w{flex-wrap:wrap}.notice .band-lab{white-space:normal;flex:1 1 100%;min-width:0;border-right:0;padding-right:0}}
+/* 휴대폰: 블로그는 ⋯ 메뉴 안으로(머리 한 줄 유지) */
+.nav-more-menu .more-blog{display:none}
+@media (max-width:520px){.nav-in .nav-blog{display:none!important}.nav-more-menu .more-blog{display:flex}}

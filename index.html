@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<script src="langauto.js?v=20261121-market-style"></script>
+<script src="langauto.js?v=20261121-renew"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="canonical" href="https://trlab.net/">
 <link rel="alternate" hreflang="ko" href="https://trlab.net/">
@@ -24,7 +24,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261121-market-style">
+<link rel="stylesheet" href="style.css?v=20261121-renew">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0f1b2d">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
@@ -60,6 +60,7 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
       <a href="#study">그룹 스터디</a>
       <a href="#archive">아카이브</a>
       <a href="#curriculum">커리큘럼</a>
+      <a href="#about">소개</a>
     </nav>
     <select id="trlLanguage" class="trl-language" aria-label="언어 선택">
       <option value="ko" lang="ko">한국어</option>
@@ -70,13 +71,21 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
       <option value="fr" lang="fr">Français</option>
     </select>
     <div id="trlGoogleTranslate" class="trl-gt notranslate" hidden></div>
-    <a class="btn btn-ghost btn-sm" href="/en/" lang="en" hreflang="en">English overview</a>
-    <button class="btn btn-gold btn-sm" id="installBtn" type="button" hidden>📲 앱 설치</button>
-    <button class="btn btn-ghost btn-sm" id="pushBtn" type="button" hidden>🔔 알림 받기</button>
     <a class="btn btn-kakao btn-sm" href="https://invite.kakao.com/tc/p7OX5rMjd0" target="_blank" rel="noopener">오픈채팅</a>
     <a class="btn btn-ghost btn-sm nav-blog" href="https://blog.naver.com/ingforme" target="_blank" rel="noopener">블로그</a>
+    <details class="nav-more" id="navMore">
+      <summary class="btn btn-ghost btn-sm" aria-label="More">⋯</summary>
+      <div class="nav-more-menu">
+        <button class="btn btn-gold btn-sm" id="installBtn" type="button" hidden>📲 앱 설치</button>
+        <button class="btn btn-ghost btn-sm" id="pushBtn" type="button" hidden>🔔 알림 받기</button>
+        <a class="btn btn-ghost btn-sm more-blog" href="https://blog.naver.com/ingforme" target="_blank" rel="noopener">블로그</a>
+        <a class="btn btn-ghost btn-sm" href="#about">소개</a>
+        <a class="btn btn-ghost btn-sm" href="/en/" lang="en" hreflang="en">English overview</a>
+      </div>
+    </details>
   </div>
   <div class="notice" id="notice" hidden></div>
+  <script>(()=>{const m=document.getElementById("navMore");if(!m)return;document.addEventListener("click",(e)=>{if(m.open&&(!m.contains(e.target)||e.target.closest(".nav-more-menu a,.nav-more-menu button")))m.open=false;});})();</script>
   <div class="ticker" id="ticker" hidden></div>
 </header>
 
@@ -193,6 +202,29 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
 
 <!-- 블로그 분석 글·시황 리포트 칸은 2026-10-28 운영자 결정으로 뺌 -->
 
+<section class="sec" id="about">
+  <div class="wrap">
+    <div class="sec-head"><div><h2>우리가 보는 것</h2><p class="sec-sub">매일 같은 기준으로, 같은 순서로 확인합니다.</p></div></div>
+    <div class="about-me">
+      <div class="am-txt">
+        <p class="eyebrow">운영자</p>
+        <h3 translate="no" class="notranslate">조영근 <span>Cho Young-geun</span></h3>
+        <p>추세추종 리서치 랩(TRL)을 운영합니다. 시장 흐름을 숫자로 매일 정리하고, 매달 서울 양재에서 오프라인 그룹 스터디와 독서 토론을 엽니다.</p>
+      </div>
+      <div class="am-links">
+        <a class="btn btn-gold" href="https://blog.naver.com/ingforme" target="_blank" rel="noopener">📝 블로그</a>
+        <a class="btn btn-kakao" href="https://invite.kakao.com/tc/p7OX5rMjd0" target="_blank" rel="noopener">💬 오픈채팅</a>
+      </div>
+    </div>
+    <div class="pillars">
+      <div class="pillar"><span class="p-ico">📈</span><h3>추세를 따른다</h3><p>바닥과 꼭지를 맞히기보다, 이미 시작된 흐름 안에 있는지를 확인합니다.</p></div>
+      <div class="pillar"><span class="p-ico">📏</span><h3>5일선과 Envelope</h3><p>반등이 진짜인지는 5일선 회복과 유지로, 과열과 이탈은 이동평균 위아래 띠로 봅니다.</p></div>
+      <div class="pillar"><span class="p-ico">🌐</span><h3>밤사이 프록시</h3><p>야간선물·EWY·코스피200 무기한 선물·유가·금리로 다음 날 한국장을 미리 점검합니다.</p></div>
+      <div class="pillar"><span class="p-ico">🧾</span><h3>사실과 수치만</h3><p>매수·매도 권유 없이 숫자와 일정, 출처를 남깁니다. 판단은 각자의 규칙으로.</p></div>
+    </div>
+  </div>
+</section>
+
 <section class="sec sec-dark" id="quiz">
   <div class="wrap quiz-wrap">
     <div class="quiz-intro" id="quizIntro">
@@ -216,21 +248,9 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
   </div>
 </section>
 
-<section class="sec" id="about">
-  <div class="wrap">
-    <div class="sec-head"><div><h2>우리가 보는 것</h2><p class="sec-sub">매일 같은 기준으로, 같은 순서로 확인합니다.</p></div></div>
-    <div class="pillars">
-      <div class="pillar"><span class="p-ico">📈</span><h3>추세를 따른다</h3><p>바닥과 꼭지를 맞히기보다, 이미 시작된 흐름 안에 있는지를 확인합니다.</p></div>
-      <div class="pillar"><span class="p-ico">📏</span><h3>5일선과 Envelope</h3><p>반등이 진짜인지는 5일선 회복과 유지로, 과열과 이탈은 이동평균 위아래 띠로 봅니다.</p></div>
-      <div class="pillar"><span class="p-ico">🌐</span><h3>밤사이 프록시</h3><p>야간선물·EWY·코스피200 무기한 선물·유가·금리로 다음 날 한국장을 미리 점검합니다.</p></div>
-      <div class="pillar"><span class="p-ico">🧾</span><h3>사실과 수치만</h3><p>매수·매도 권유 없이 숫자와 일정, 출처를 남깁니다. 판단은 각자의 규칙으로.</p></div>
-    </div>
-  </div>
-</section>
-
 <section class="sec sec-gold" id="study">
   <div class="wrap">
-    <div class="sec-head"><div><p class="eyebrow dark">오프라인 그룹 스터디 · 서울 양재</p><h2>다가오는 그룹 스터디</h2><p class="sec-sub dark">강의만 듣고 끝나는 모임이 아니라, 각자 차트와 매매 기록을 가져와 발표하고 서로 피드백하는 그룹 스터디입니다. 매달 두 번 — 차트로 배우는 정기 스터디, 책으로 생각을 넓히는 독서 토론.</p></div></div>
+    <div class="sec-head"><div><p class="eyebrow dark">오프라인 그룹 스터디 · 서울 양재<span class="ko-hide">한국어 진행</span></p><h2>다가오는 그룹 스터디</h2><p class="sec-sub dark">강의만 듣고 끝나는 모임이 아니라, 각자 차트와 매매 기록을 가져와 발표하고 서로 피드백하는 그룹 스터디입니다. 매달 두 번 — 차트로 배우는 정기 스터디, 책으로 생각을 넓히는 독서 토론.</p></div></div>
     <div class="up-grid" id="upList"></div>
     <div class="howto">
       <h3>그룹 스터디는 이렇게 진행합니다</h3>
@@ -301,6 +321,12 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
   const note = document.getElementById("trlLanguageNote");
   const translations = {
   "en": {
+    "소개": "About",
+    "운영자": "Founder",
+    "📝 블로그": "📝 Blog",
+    "💬 오픈채팅": "💬 Open chat",
+    "한국어 진행": "held in Korean",
+    "추세추종 리서치 랩(TRL)을 운영합니다. 시장 흐름을 숫자로 매일 정리하고, 매달 서울 양재에서 오프라인 그룹 스터디와 독서 토론을 엽니다.": "Runs Trend Research Lab (TRL). Tracks market trends with data every day and hosts monthly in-person study groups and book discussions in Yangjae, Seoul.",
     "TRL 트렌드 리서치 랩 | 주식 시황·뉴스·추세 분석": "Trend Research Lab | Markets, news and trend analysis",
     "추세 판단": "Trend signals",
     "주요 이슈": "Key developments",
@@ -315,11 +341,11 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
     "🔔 알림 받기": "Enable alerts",
     "오픈채팅": "Open chat",
     "블로그": "Blog",
-    "TRL 트렌드 리서치 랩 · 조영근 추세추종 리서치": "Trend Research Lab · Cho Young-geun’s trend research",
-    "숫자로 확인하는": "Track market trends",
-    "추세추종": "with data",
-    "선물·금리·유가·환율·해외 프록시를 매일 정리합니다.": "Daily coverage of futures, rates, oil, currencies and global proxies.",
-    "의견보다 사실과 수치, 예측보다 흐름 확인.": "Facts and figures first. Follow the market as it moves.",
+    "TRL 트렌드 리서치 랩 · 조영근 추세추종 리서치": "Trend Research Lab · by Cho Young-geun",
+    "숫자로 확인하는": "Data-driven",
+    "추세추종": "trend following",
+    "선물·금리·유가·환율·해외 프록시를 매일 정리합니다.": "Futures, rates, oil, FX and overnight proxies, tracked every day.",
+    "의견보다 사실과 수치, 예측보다 흐름 확인.": "Facts and figures over opinions. Confirm the trend instead of predicting it.",
     "나의 투자 스타일 테스트": "Find your investing style",
     "다음 그룹 스터디": "Next group study",
     "불러오는 중…": "Loading…",
@@ -393,6 +419,12 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
     "본 사이트와 그룹 스터디는 교육 목적이며, 특정 종목을 추천하지 않고 수익을 보장하지 않습니다. 게시된 내용은 투자 참고용이며 투자 판단의 최종 책임은 본인에게 있습니다.": "This site and group study are educational. We make no securities recommendations or guarantees of returns. You are responsible for your investment decisions."
   },
   "ja": {
+    "소개": "紹介",
+    "운영자": "運営者",
+    "📝 블로그": "📝 ブログ",
+    "💬 오픈채팅": "💬 オープンチャット",
+    "한국어 진행": "韓国語で実施",
+    "추세추종 리서치 랩(TRL)을 운영합니다. 시장 흐름을 숫자로 매일 정리하고, 매달 서울 양재에서 오프라인 그룹 스터디와 독서 토론을 엽니다.": "トレンドリサーチラボ（TRL）を運営。市場の流れを毎日データで整理し、毎月ソウル良才で対面の勉強会と読書会を開いています。",
     "TRL 트렌드 리서치 랩 | 주식 시황·뉴스·추세 분석": "Trend Research Lab | 市況・ニュース・トレンド分析",
     "추세 판단": "トレンド判定",
     "주요 이슈": "主要トピック",
@@ -485,6 +517,12 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
     "본 사이트와 그룹 스터디는 교육 목적이며, 특정 종목을 추천하지 않고 수익을 보장하지 않습니다. 게시된 내용은 투자 참고용이며 투자 판단의 최종 책임은 본인에게 있습니다.": "本サイトと勉強会は教育目的です。特定の銘柄の推奨や利益の保証は行いません。投資判断はご自身の責任で行ってください。"
   },
   "zh-hans": {
+    "소개": "关于",
+    "운영자": "创办人",
+    "📝 블로그": "📝 博客",
+    "💬 오픈채팅": "💬 开放聊天室",
+    "한국어 진행": "韩语进行",
+    "추세추종 리서치 랩(TRL)을 운영합니다. 시장 흐름을 숫자로 매일 정리하고, 매달 서울 양재에서 오프라인 그룹 스터디와 독서 토론을 엽니다.": "运营趋势研究实验室（TRL）。每天用数据整理市场走势，每月在首尔良才举办线下学习小组和读书讨论会。",
     "TRL 트렌드 리서치 랩 | 주식 시황·뉴스·추세 분석": "Trend Research Lab | 市场行情、新闻与趋势分析",
     "추세 판단": "趋势判断",
     "주요 이슈": "重点动态",
@@ -577,6 +615,12 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
     "본 사이트와 그룹 스터디는 교육 목적이며, 특정 종목을 추천하지 않고 수익을 보장하지 않습니다. 게시된 내용은 투자 참고용이며 투자 판단의 최종 책임은 본인에게 있습니다.": "本站及学习小组用于教育。不推荐特定证券，也不保证收益。投资决定由您自行负责。"
   },
   "fr": {
+    "소개": "À propos",
+    "운영자": "Fondateur",
+    "📝 블로그": "📝 Blog",
+    "💬 오픈채팅": "💬 Salon de discussion",
+    "한국어 진행": "en coréen",
+    "추세추종 리서치 랩(TRL)을 운영합니다. 시장 흐름을 숫자로 매일 정리하고, 매달 서울 양재에서 오프라인 그룹 스터디와 독서 토론을 엽니다.": "Fondateur du Trend Research Lab (TRL). Il suit chaque jour les tendances du marché à partir des données et anime chaque mois un groupe d’étude et un club de lecture à Yangjae, Séoul.",
     "TRL 트렌드 리서치 랩 | 주식 시황·뉴스·추세 분석": "Trend Research Lab | Marchés, actualité et tendances",
     "추세 판단": "Signaux de tendance",
     "주요 이슈": "Faits marquants",
@@ -1121,15 +1165,15 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
   }).observe(result, { childList: true });
 })();
 </script>
-<script src="localize.js?v=20261121-market-style" defer></script>
-<script src="gtranslate.js?v=20261121-market-style" defer></script>
+<script src="localize.js?v=20261121-renew" defer></script>
+<script src="gtranslate.js?v=20261121-renew" defer></script>
 <script src="count.js?v=20261116-visitors"></script>
 <script src="presence.js?v=20261116-visitors"></script>
 <script src="flow-core.js?v=20261116-flow"></script>
 <script src="viewport.js?v=20261120-steady-pin"></script>
 <script src="app.js?v=20261118-scoped-anchor"></script>
 <script src="chart.js?v=20261121-market-style"></script>
-<script src="news.js?v=20261121-market-style"></script>
+<script src="news.js?v=20261121-renew"></script>
 <script src="fold.js?v=20261118-stable-scroll"></script>
 <script src="tint.js?v=20261118-stable-scroll"></script>
 <!-- 11/17 운영자: 지수 흐름·분할 칸(flow.js)은 내림 — 추세 판단 채널 그래프가 대신 맨 위 -->
