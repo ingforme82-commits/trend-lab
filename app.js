@@ -315,6 +315,14 @@ function hlTone(market) {
   const score = dated.reduce((sum, [day, direction]) => sum + (day === latest ? direction : 0), 0);
   return score > 0 ? "hl-up" : score < 0 ? "hl-down" : "";
 }
+// 11/21: 카드에 i18n.{en,…} 이 있으면 그 언어 화면에서 사람이 쓴 번역을 그대로 쓰고 자동 번역은 건너뛴다(translate="no").
+//  숫자가 한국어 단위에 붙은 문장(87.79달러입니다·16시~20시)은 자동 번역이 자주 깨져서 중요 카드만 직접 번역해 둔다.
+const pageLang = (() => { try { const q = new URL(location.href).searchParams.get("lang"); return (q || document.documentElement.lang || "ko").toLowerCase(); } catch { return "ko"; } })();
+function hlLang(x) {
+  const t = x && x.i18n && (x.i18n[pageLang] || x.i18n[pageLang.split("-")[0]]);
+  return t ? { ...x, ...t, _fixed: true } : x;
+}
+window.trlHlLang = hlLang;
 function renderHeadlineRaw() {
   try {
     const h = hlData || {};
@@ -323,13 +331,13 @@ function renderHeadlineRaw() {
     const tags = new Set(auto.map((x) => x.tag));
     const items = hlOrder([...auto, ...(h.items || []).filter((x) => (!x.until || x.until >= today) && !tags.has(x.tag))]);
     if (!items.length) return;
-    $("#hlList").innerHTML = items.map((x) => `<article class="hl-card${x.main ? ` hl-main ${hlTone(hlMkt(x))}` : ""}" data-viewport-key="headline:${esc(x.tag || x.title)}">
-      <p class="hl-tag">${x.main ? '<span class="hl-badge">메인</span>' : ""}${esc(x.tag || "")}${x.when ? ` <small>${esc(x.when)}</small>` : ""}</p>
-      <h3 class="hl-title">${esc(x.title)}</h3>
-      <ul class="hl-pts">${(x.points || []).map((p) => `<li>${esc(p)}</li>`).join("")}</ul>
+    $("#hlList").innerHTML = items.map((x0) => { const x = hlLang(x0), nt = x._fixed ? ' translate="no"' : ""; return `<article class="hl-card${x.main ? ` hl-main ${hlTone(hlMkt(x))}` : ""}" data-viewport-key="headline:${esc(x0.tag || x0.title)}">
+      <p class="hl-tag">${x.main ? '<span class="hl-badge">메인</span>' : ""}<span${nt}>${esc(x.tag || "")}${x.when ? ` <small>${esc(x.when)}</small>` : ""}</span></p>
+      <h3 class="hl-title"${nt}>${esc(x.title)}</h3>
+      <ul class="hl-pts"${nt}>${(x.points || []).map((p) => `<li>${esc(p)}</li>`).join("")}</ul>
       ${hlLive(x)}
-      ${x.source ? `<p class="hl-src">출처: ${esc(x.source)}</p>` : ""}
-    </article>`).join("");
+      ${x.source ? (x._fixed ? `<p class="hl-src" translate="no">${esc(x.src_label || "Source")}: ${esc(x.source)}</p>` : `<p class="hl-src">출처: ${esc(x.source)}</p>`) : ""}
+    </article>`; }).join("");
     $("#hlStamp").textContent = h.updated ? `${h.updated} 정리` : "";
     $("#headline").hidden = false;
   } catch { /* 주요 이슈 없으면 칸 숨김 */ }

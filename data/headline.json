@@ -87,7 +87,24 @@
    ],
    "source": "Yahoo Finance(트렌드랩 5분봉·현재가 수집, 시간외 뉴욕 19:59 마지막) · 연합뉴스 · 연합인포맥스 · 뉴시스 · CNBC · FT · 가디언",
    "watch": "앤트로픽|Anthropic|\\bANT\\b",
-   "mkt": "us"
+   "mkt": "us",
+   "i18n": {
+    "en": {
+     "tag": "🤖 Anthropic (ANT)",
+     "title": "Anthropic falls 8.5% on its second trading day — closes at $88.91, $87.79 after hours",
+     "when": "Updated Nov 21, 22:10 KST · Based on the U.S. regular session and after-hours trading on Fri, Nov 20 · Next regular session: Mon, Nov 23, 23:30 KST (9:30 a.m. ET)",
+     "points": [
+      "Regular-session close on Fri, Nov 20: $88.91, down 8.50% from the previous close of $97.17 and up 7.1% from the $83 IPO price.",
+      "Open $88.17, high $92.56, low $83.05. The intraday low came within a few cents of the $83 IPO price.",
+      "After hours (4–8 p.m. ET): last trade $87.79, 1.26% below the regular-session close. After-hours low: $87.15.",
+      "Two-day path: first trade $111.50 → day-one close $97.17 → day-two close $88.91. That is 20.3% below the first trade and 22.7% below the post-listing high of $114.99.",
+      "Coverage: Yonhap reported an 8.5% drop on the second day of trading; CNBC reported a decline of nearly 9% amid a tech sell-off; the FT reported that the Nasdaq-100 entered a bear market.",
+      "With the over-allotment (greenshoe) option exercised, total proceeds reached $93.5 billion (CNBC, Yonhap Infomax).",
+      "This is a factual summary, not a recommendation to buy or sell."
+     ],
+     "source": "Yahoo Finance (TRL 5-minute bars and last price; after-hours through 7:59 p.m. ET) · Yonhap · Yonhap Infomax · Newsis · CNBC · FT · The Guardian"
+    }
+   }
   },
   {
    "tag": "🗓️ 11/16~20 주간 관전",

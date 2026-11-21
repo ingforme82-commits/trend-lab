@@ -1279,7 +1279,8 @@
     const box = q("#heroLive"); if (!box) return;
     const autoC = (window.trlAuto || []).filter((x) => !x.until || x.until >= kstDay(Date.now())), autoT = new Set(autoC.map((x) => x.tag));
     const hl = [...autoC, ...headline.filter((x) => !autoT.has(x.tag))];
-    const pins = [...hl.filter((x) => x.main), ...hl.filter((x) => !x.main)].map((x) => `<li class="mn-pin${x.main ? " mn-main" : ""}"><a href="#headline"><span class="mn-t">${x.main ? "🔴" : "📌"} ${esc(x.tag || "주요 이슈")}</span> <b>${esc(x.title)}</b>${x.when ? ` <small>${esc(x.when)}</small>` : ""}</a></li>`);
+    const L = window.trlHlLang || ((y) => y);
+    const pins = [...hl.filter((x) => x.main), ...hl.filter((x) => !x.main)].map((x0) => { const x = L(x0); return `<li class="mn-pin${x.main ? " mn-main" : ""}"><a href="#headline"${x._fixed ? ' translate="no"' : ""}><span class="mn-t">${x.main ? "🔴" : "📌"} ${esc(x.tag || "주요 이슈")}</span> <b>${esc(x.title)}</b>${x.when ? ` <small>${esc(x.when)}</small>` : ""}</a></li>`; });
     const live = mainNews().map((n) => {
       const g = gist(newsText(n)), full = newsText(n).replace(/…$/, "");
       const t = g !== full ? `<span class="mn-x" data-open="0" title="눌러서 전체 보기">${esc(g)}</span><span class="mn-full" hidden>${esc(full)}</span>` : esc(g);
