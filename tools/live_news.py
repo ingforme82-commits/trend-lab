@@ -68,6 +68,12 @@ BROKER_STRAT = {"hedgecat0301", "HANAStrategy", "HANA_Macro", "Meritz_strategy",
                 "eqmirae", "hanwhastrategy", "lim_econ", "hmsecstrat", "kisthemacro", "huhjae", "SK_Research_Asset", "KiwoomResearch",
                 "yuantais", "tRadarnewsdesk"}
 ANALYSIS = {"cahier_de_market", "Badonions", "corevalue"}
+# 섹터 전담 애널리스트 채널(2026-11-21): 글마다 '[유안타증권 반도체 백길현]'·'Analyst'·전화번호 머리말이 붙어서
+# 일반 채널용 BROKER 걸러내기에 전부 걸려 사이트에 한 건도 안 나왔다. 이 채널들은 BROKER 대신
+# STOCKREC(목표가·투자의견 등 매매 판단 글)만 빼고, 머리말·연락처 줄은 clean_line 이 떼어 낸다.
+SECTOR_ANALYST = {"YSKoreaSemi", "kiwoom_semibat", "anna7673", "growthbio", "huhpharm", "KB_EPC_MJ",
+                  "HanaResearchTelecom", "china_kis", "yuantaresearch"}
+TG_STATS: dict = {}   # 채널별 {읽음, 실림, 뺀 이유별 건수} — news.json health 에 실어 원인 확인용
 # 개별 종목 매매 판단으로 읽힐 수 있는 글(모든 채널 공통으로 뺀다)
 STOCKREC = re.compile(r"목표주가|목표가|TP\s|투자의견|BUY\b|매수\(유지\)|Outperform|Overweight|Underweight|비중\s?확대|비중\s?축소|"
                       r"상향 조정|하향 조정|커버리지 개시|Initiat", re.I)
@@ -195,13 +201,36 @@ def _alert(kind: str, key: str, text: str) -> None:
         pass
 
 
+ALL_STAMP = ROOT / "tools" / ".tg_all_at"      # 전체 채널 수집이 마지막으로 끝난 시각(저장소 밖으로 안 나감)
+ALL_EVERY = 9 * 60
+
+
 def refresh() -> None:
-    """텔레 받기: 1분마다 속보 채널 3개, 10분마다(분이 0으로 끝날 때) 전체 채널."""
+    """텔레 받기: 1분마다 속보 채널 3개, 마지막 전체 수집 뒤 9분이 지났으면 전체 채널.
+
+    2026-11-21 수정: 예전에는 '실행 시각의 분이 0으로 끝날 때'만 전체를 받았다. 예약 작업은 1분마다지만
+    한 번 실행이 1분을 넘기면 다음 실행을 건너뛰므로(MultipleInstances IgnoreNew) :00·:10… 차례가 자주 빠졌고,
+    그만큼 김치터미널·카이에·실시간 주식뉴스 외 채널은 몇십 분씩 안 들어왔다. 이제는 경과 시간으로 판단하고,
+    실패·시간 초과면 시각을 남기지 않아 다음 실행에서 바로 다시 시도한다."""
     if not TGR_PY.exists():
         return
-    args = [str(TGR_PY), "fast_news.py"] + (["--all"] if datetime.now(KST).minute % 10 == 0 else [])
-    subprocess.run(args, cwd=TGR, capture_output=True, timeout=55,
-                   env={**os.environ, "PYTHONIOENCODING": "utf-8"}, creationflags=NO_WINDOW)
+    try:
+        last = float(ALL_STAMP.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        last = 0.0
+    full = datetime.now(timezone.utc).timestamp() - last >= ALL_EVERY
+    args = [str(TGR_PY), "fast_news.py"] + (["--all"] if full else [])
+    done = subprocess.run(args, cwd=TGR, capture_output=True, timeout=55,
+                          env={**os.environ, "PYTHONIOENCODING": "utf-8"}, creationflags=NO_WINDOW)
+    REFRESH["full"] = full
+    if full and done.returncode == 0:
+        now = datetime.now(timezone.utc).timestamp()
+        ALL_STAMP.write_text(str(now), encoding="utf-8")
+        REFRESH["all_at"] = int(now * 1000)
+    elif full:
+        log(f"텔레 전체 채널 수집 실패(종료코드 {done.returncode}) — 다음 실행에서 다시 시도")
+    if "all_at" not in REFRESH and last:
+        REFRESH["all_at"] = int(last * 1000)
 
 
 BYLINE = re.compile(r"☎|☏|T\.\s?\d|\d{2,3}-\d{3,4}-\d{4}|@\w|애널리스트|Analyst|자료\s?링크|링크\s?[:▶]|^[-=_]{3,}$|"
@@ -275,25 +304,46 @@ def from_telegram() -> list[dict]:
     cut = datetime.now(timezone.utc) - timedelta(hours=KEEP_H)
     q = f"select channel_username, posted_at, text, collected_at from messages where posted_at >= ? and channel_username in ({','.join('?' * len(CHANNELS))})"
     out = []
+    TG_STATS.clear()
+
+    def drop(ch: str, why: str) -> None:
+        s = TG_STATS.setdefault(CHANNELS[ch], {"read": 0, "kept": 0})
+        s[why] = s.get(why, 0) + 1
+
     for ch, posted, text, collected in con.execute(q, (since, *CHANNELS)):
         if ch not in BROKER_STRAT and ch not in ANALYSIS and datetime.fromisoformat(posted) < cut:
             continue                                   # 시황·전략 글만 48시간, 나머지는 30시간
-        if not text or STOCKREC.search(text) or JUNK.search(text):
+        TG_STATS.setdefault(CHANNELS[ch], {"read": 0, "kept": 0})["read"] += 1
+        if not text:
+            drop(ch, "empty")                          # 사진·PDF만 있는 글
+            continue
+        if STOCKREC.search(text):
+            drop(ch, "stockrec")
+            continue
+        if JUNK.search(text):
+            drop(ch, "junk")
             continue
         strat, analysis = ch in BROKER_STRAT, ch in ANALYSIS
         if not (strat or analysis):
-            # 일반 채널: 증권사 리포트 머리말·링크 모음·보고서 모음 글은 뺀다
-            if BROKER.search(text) or len(re.findall(r"https?://", text)) >= 3 or text.lstrip().startswith("<"):
+            # 일반 채널: 증권사 리포트 머리말·링크 모음·보고서 모음 글은 뺀다(섹터 애널리스트 채널은 머리말 검사 제외)
+            if ch not in SECTOR_ANALYST and BROKER.search(text):
+                drop(ch, "broker")
+                continue
+            if len(re.findall(r"https?://", text)) >= 3 or text.lstrip().startswith("<"):
+                drop(ch, "links")
                 continue
         h, sub, orig = clean_line(text, with_sub=strat or analysis)
         lm = URL_ONLY.match(text)
         if lm:                                          # 링크만 올린 글 → 기사 제목·언론사(링크는 싣지 않음)
             got_t = link_title(lm.group(1))
             if not got_t:
+                drop(ch, "link_only")
                 continue
             h, orig = got_t
         if len(h) < 12 or re.fullmatch(r"[\w.\-]+\.(?:com|co\.kr|kr|net|io)", h, re.I):   # 사이트 주소만 있는 글
+            drop(ch, "short")
             continue
+        TG_STATS[CHANNELS[ch]]["kept"] += 1
         tg = tags_of(text)
         # 시장 키워드가 없는 글도 싣는다('기타', 중요도 낮게) — 2026-10-28 운영자 요청
         ts = datetime.fromisoformat(posted).astimezone(timezone.utc)
@@ -583,7 +633,8 @@ def build() -> dict:
     tg_got = max((i.get("got") or 0 for i in tg_items), default=0)
     en = [i for i in items if i.get("tr") in ("auto", "fail")]
     out = {"updated": now_ms, "items": items, "moves": [], "series": {}, "sectors": sector_cards, "leaders": leaders,
-           "health": {"tg": {"last": tg_last, "got": tg_got, "refresh": REFRESH.get("ok"), "n": len(tg_items)},
+           "health": {"tg": {"last": tg_last, "got": tg_got, "refresh": REFRESH.get("ok"), "n": len(tg_items),
+                             "all_at": REFRESH.get("all_at"), "by_src": dict(TG_STATS)},
                       "rss": dict(RSS_HEALTH), "tr": {"auto": sum(1 for i in en if i.get("tr") == "auto"), "fail": sum(1 for i in en if i.get("tr") == "fail"), "details": dict(TRANSLATION_HEALTH)},
                       "groups": sum(1 for i in items if i.get("also"))}}
     try:                                                  # 변곡점 감지 + 직전 뉴스 연결(실패해도 속보는 그대로)
