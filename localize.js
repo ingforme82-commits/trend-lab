@@ -13,17 +13,18 @@
     en: ["English", "Language", "Some text could not be translated. The original is shown."],
     ja: ["日本語", "言語", "翻訳できなかった箇所は原文を表示しています。"],
     "zh-hans": ["简体中文", "语言", "部分内容无法翻译，已显示原文。"],
+    "zh-hant": ["繁體中文（台灣）", "語言", "部分內容無法翻譯，已顯示原文。"],
     fr: ["Français", "Langue", "Certaines parties sont affichées dans leur langue d’origine."],
   };
   const page = new URL(location.href);
   const requested = (page.searchParams.get("lang") || "ko").toLowerCase();
   const language = Object.hasOwn(languages, requested) ? requested : "ko";
-  const tag = language === "zh-hans" ? "zh-Hans" : language;
+  const tag = language === "zh-hans" ? "zh-Hans" : language === "zh-hant" ? "zh-Hant" : language;
   const menu = document.getElementById("trlLanguage");
   if (menu && !menu.options.length) {
     for (const [code, info] of Object.entries(languages)) {
       const option = new Option(info[0], code);
-      option.lang = code === "zh-hans" ? "zh-Hans" : code;
+      option.lang = code === "zh-hans" ? "zh-Hans" : code === "zh-hant" ? "zh-Hant" : code;
       menu.add(option);
     }
     menu.value = language;
@@ -45,7 +46,7 @@
   }
   const excluded = "script, style, noscript, select, textarea, input, [contenteditable], [translate=no], #trlLanguageNote";
   const spaced = language === "en" || language === "fr";
-  const target = language === "zh-hans" ? "zh-CN" : language;
+  const target = language === "zh-hans" ? "zh-CN" : language === "zh-hant" ? "zh-TW" : language;
 
   /* ── 캐시: 숫자를 뺀 '틀' 단위로 저장. 값 "" = 자리표가 깨져서 조각 번역으로 처리하는 틀 ── */
   const cacheKey = "trl:public-translations:v2:" + language;
@@ -427,6 +428,31 @@
     ["원화","韓国ウォン","韩元","Won sud-coréen"],
     ["달러","米ドル","美元","Dollar américain"]
   ].map(([source, ja, zh, fr]) => [source, { ja, "zh-hans": zh, fr }]));
+  const TAIWAN_UI = {
+  "실시간 시세": "即時行情",
+  "주요 시황": "市場概況",
+  "시장 브리핑": "市場簡報",
+  "실시간 속보": "即時快訊",
+  "개장 전": "開盤前",
+  "장중": "盤中",
+  "마감": "收盤",
+  "정규장": "正常交易時段",
+  "시간외": "盤外交易",
+  "프리마켓": "盤前交易",
+  "애프터마켓": "盤後交易",
+  "시세 확인 중": "正在查詢行情",
+  "연결된 뉴스 없음": "暫無相關新聞",
+  "최근 {0}시간": "過去 {0} 小時",
+  "약 {0}분 지연": "延遲約 {0} 分鐘",
+  "{0}일선": "{0} 日均線",
+  "{0}일선 위": "高於 {0} 日均線",
+  "{0}일선 아래": "低於 {0} 日均線",
+  "정규장·시간외 {0}분봉": "正常與盤外交易 {0} 分鐘 K 線",
+  "채널 상단 저항": "通道上緣壓力",
+  "코스피{0}": "KOSPI {0}",
+  "원화": "韓元",
+  "달러": "美元"
+};
   const SLOT = /[{｛]\s*(\d+)\s*[}｝]/g;
 
   function fill(output, numbers) {
@@ -509,7 +535,8 @@
     const lead = (template.match(/^[▲▼△⬆⬇⚡•·]\s*/) || [""])[0], body = template.slice(lead.length);
     const label = language === "en" && Object.hasOwn(ENGLISH_UI, template) ? ENGLISH_UI[template]
       : language === "en" && lead && Object.hasOwn(ENGLISH_UI, body) ? lead + ENGLISH_UI[body]
-      : MARKET_UI.get(template)?.[language];
+      : language === "zh-hant" && Object.hasOwn(TAIWAN_UI, template)
+        ? TAIWAN_UI[template] : MARKET_UI.get(template)?.[language];
     const fixed = label ? fill(label, numbers) : null;
     if (fixed) {
       const value = original.replace(original.trim(), () => fixed);

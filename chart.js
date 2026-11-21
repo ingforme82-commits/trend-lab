@@ -16,6 +16,13 @@
   const KAKAO = "https://invite.kakao.com/tc/p7OX5rMjd0";
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const kst = (ms) => new Date(ms + (new Date().getTimezoneOffset() + 540) * 60000);
+  const marketLocale = document.documentElement.dataset.marketLocale || "ko-KR";
+  const ohlc = ({
+    "en-US": ["O", "H", "L", "C"],
+    "ja-JP": ["始", "高", "安", "終"],
+    "zh-CN": ["开", "高", "低", "收"],
+    "zh-TW": ["開", "高", "低", "收"],
+  })[marketLocale] || ["시", "고", "저", "종"];
   const hm = (ms) => { const d = kst(ms); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
   const pctTxt = (v) => `${v > 0 ? "+" : ""}${v.toFixed(2)}%`;
   const cls = (v) => (v > 0.005 ? "c-up" : v < -0.005 ? "c-dn" : "c-fl");
@@ -151,7 +158,7 @@
     const Y = (v) => pad.t + (1 - (v - lo) / rg) * ph;
     const vmax = Math.max(...D.map((x) => x.v)) || 1;
     geo = { X, Y, D, pad, W, H, ph, step, t0, t1, meta };
-    const fmt = (v) => (meta.u || "") + v.toLocaleString("ko-KR", { minimumFractionDigits: meta.d, maximumFractionDigits: meta.d }) + (meta.bp ? "%" : "");
+    const fmt = (v) => (meta.u || "") + v.toLocaleString(marketLocale, { minimumFractionDigits: meta.d, maximumFractionDigits: meta.d }) + (meta.bp ? "%" : "");
     const chgOf = (a, b) => (meta.bp ? (b - a) * 100 : (b / a - 1) * 100);
     const chgTxt = (v) => (meta.bp ? `${v > 0 ? "+" : ""}${v.toFixed(1)}bp` : pctTxt(v));
     const bw = Math.max(1, step * 0.65);
@@ -235,11 +242,11 @@
     D.forEach((x, i) => { const d = Math.abs(X(x.t) - st.hover); if (d < bd) { bd = d; best = i; } });
     const x = D[best], cx = X(x.t);
     g.innerHTML = `<line x1="${cx}" x2="${cx}" y1="${pad.t}" y2="${H - pad.b}" class="cm-cross"/><line x1="${pad.l}" x2="${W - pad.r}" y1="${Y(x.c)}" y2="${Y(x.c)}" class="cm-cross"/>`;
-    const f = (v) => v.toLocaleString("ko-KR", { minimumFractionDigits: meta.d, maximumFractionDigits: meta.d });
+    const f = (v) => (meta.u || "") + v.toLocaleString(marketLocale, { minimumFractionDigits: meta.d, maximumFractionDigits: meta.d }) + (meta.bp ? "%" : "");
     const prev = D[best - 1] ? D[best - 1].c : x.o, ch = (x.c / prev - 1) * 100;
     let since = "";
     if (st.sel) { let i = D.findIndex((y) => y.t > st.sel); i = i === -1 ? D.length - 1 : Math.max(0, i - 1); if (best >= i) since = `<br>속보 이후 <b class="${cls((x.c / D[i].c - 1) * 100)}">${pctTxt((x.c / D[i].c - 1) * 100)}</b>`; }
-    const price = st.interval === 5 ? f(x.c) : `시 ${f(x.o)} · 고 ${f(x.h)} · 저 ${f(x.l)} · 종 ${f(x.c)}`;
+    const price = st.interval === 5 ? f(x.c) : [x.o, x.h, x.l, x.c].map((value, i) => `${ohlc[i]} ${f(value)}`).join(" · ");
     tip.innerHTML = `<b>${hm(x.t)}</b> ${price} <b class="${cls(ch)}">${pctTxt(ch)}</b>${since}`;
     tip.hidden = false;
   }

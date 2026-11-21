@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
 <meta charset="utf-8">
-<script src="langauto.js?v=20261121-en"></script>
+<script src="langauto.js?v=20261121-market-style"></script>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link rel="canonical" href="https://trlab.net/">
 <link rel="alternate" hreflang="ko" href="https://trlab.net/">
@@ -24,7 +24,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261121-cho">
+<link rel="stylesheet" href="style.css?v=20261121-market-style">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0f1b2d">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
@@ -66,6 +66,7 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
       <option value="en" lang="en">English</option>
       <option value="ja" lang="ja">日本語</option>
       <option value="zh-hans" lang="zh-Hans">简体中文</option>
+      <option value="zh-hant" lang="zh-Hant">繁體中文（台灣）</option>
       <option value="fr" lang="fr">Français</option>
     </select>
     <div id="trlGoogleTranslate" class="trl-gt notranslate" hidden></div>
@@ -688,7 +689,7 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
 };
   const url = new URL(window.location.href);
   const requested = (url.searchParams.get("lang") || "ko").toLowerCase();
-  const language = Object.hasOwn(translations, requested) ? requested : "ko";
+  const language = requested === "zh-hant" || Object.hasOwn(translations, requested) ? requested : "ko";
   menu.value = language;
   const header = document.querySelector("header.nav");
   if (header && typeof ResizeObserver === "function") {
@@ -702,6 +703,11 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
     url.hash = window.location.hash;
     window.location.assign(url);
   });
+  if (language === "zh-hant") {
+    document.documentElement.lang = "zh-Hant";
+    menu.setAttribute("aria-label", "語言");
+    return;
+  }
   if (language === "ko") return;
 
   document.documentElement.lang = language === "zh-hans" ? "zh-Hans" : language;
@@ -1115,15 +1121,15 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
   }).observe(result, { childList: true });
 })();
 </script>
-<script src="localize.js?v=20261121-cho" defer></script>
-<script src="gtranslate.js?v=20261121-cho" defer></script>
+<script src="localize.js?v=20261121-market-style" defer></script>
+<script src="gtranslate.js?v=20261121-market-style" defer></script>
 <script src="count.js?v=20261116-visitors"></script>
 <script src="presence.js?v=20261116-visitors"></script>
 <script src="flow-core.js?v=20261116-flow"></script>
 <script src="viewport.js?v=20261120-steady-pin"></script>
 <script src="app.js?v=20261118-scoped-anchor"></script>
-<script src="chart.js?v=20261121-news-chart-gold2"></script>
-<script src="news.js?v=20261121-cho"></script>
+<script src="chart.js?v=20261121-market-style"></script>
+<script src="news.js?v=20261121-market-style"></script>
 <script src="fold.js?v=20261118-stable-scroll"></script>
 <script src="tint.js?v=20261118-stable-scroll"></script>
 <!-- 11/17 운영자: 지수 흐름·분할 칸(flow.js)은 내림 — 추세 판단 채널 그래프가 대신 맨 위 -->

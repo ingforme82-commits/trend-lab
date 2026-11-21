@@ -20,6 +20,7 @@
   const q = (s) => document.querySelector(s);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const kst = (ms) => new Date(ms + (new Date().getTimezoneOffset() + 540) * 60000);
+  const marketLocale = document.documentElement.dataset.marketLocale || "ko-KR";
   const hm = (ms) => { const d = kst(ms); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
   const ago = (ms) => { const m = Math.round((Date.now() - ms) / 60000); return m < 1 ? "방금" : m < 60 ? `${m}분 전` : m < 1440 ? `${Math.floor(m / 60)}시간 전` : `${Math.floor(m / 1440)}일 전`; };
   const setText = (s, t) => { const e = q(s); if (e) e.textContent = t; };
@@ -439,7 +440,7 @@
         : "원천 시각 확인 불가";
     };
     const regularLine = nhRegular ? `<p class="lc-f">NH 정규장 ${$(nhRegular.px)} · ${sourceTime(nhRegular)}</p>` : "";
-    const queryLabel = queried ? `${new Date(queried).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })} 한국 시간 조회` : "조회 시각 확인 불가";
+    const queryLabel = queried ? `${new Date(queried).toLocaleString(marketLocale, { timeZone: "Asia/Seoul" })} 한국 시간 조회` : "조회 시각 확인 불가";
     const label = active ? `${e.sess === "day" ? "주간거래" : e.sess === "pre" ? "프리마켓" : "애프터마켓"} · ${queryLabel}` : `${+x.day.slice(5, 7)}/${+x.day.slice(8, 10)} ${x.open ? "장중" : "마감"}`;
     const chip = (ok, t) => `<span class="lc-c ${ok ? "on" : "off"}">${ok ? "▲" : "▼"} ${t}</span>`;
     const C = [chip(x.over_ma5, `5일선 ${x.over_ma5 ? "위" : "아래"} ${pc(x.vs_ma5)}`)];
@@ -581,7 +582,7 @@
       if (x.focus.includes("three")) L.push(`연속 양봉: 전일까지 ${x.streak_prev}일 → 오늘 ${x.bull ? `양봉 ${st} = ${x.streak}일째` : `양봉 아님(${st})`}${x.three ? ` · <b>적삼병 조건 ${x.open ? "충족 중(마감 전)" : "충족 마감"}</b>` : ""}`);
       if (x.level) L.push(`${$$(x.level)} 구간: ${(() => { const d = (x.px / x.level - 1) * 100; return Math.abs(d) < 0.15 ? "현재가가 그 부근" : `현재가가 ${sgn(d)} ${d > 0 ? "위" : "아래"}`; })()}${x.level_touched ? " · 오늘 고가가 도달" : ""}${(x.level_hits || []).length ? ` · 최근 10거래일 중 넘었다가 아래에서 마감한 날 ${x.level_hits.map((h) => md(h.d)).join("·")}` : ""}`);
       if (!compact) {
-        if (e.ext) L.push(`🌙 ${e.ext.sess === "pre" ? "프리마켓" : e.ext.sess === "day" ? "주간거래" : "애프터마켓"} $${(+e.ext.px).toFixed(4)} · 정규장 종가 ${$$(e.ext.base)} 대비 ${(e.ext.px - e.ext.base) >= 0 ? "+" : "-"}$${Math.abs(e.ext.px - e.ext.base).toFixed(4)} (${sgn(e.ext.chg)}) <small class="dim">${e.ext.stale ? "마지막 체결 " : "체결 "}${new Date(e.ext.at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" })} KST</small>`);
+        if (e.ext) L.push(`🌙 ${e.ext.sess === "pre" ? "프리마켓" : e.ext.sess === "day" ? "주간거래" : "애프터마켓"} $${(+e.ext.px).toFixed(4)} · 정규장 종가 ${$$(e.ext.base)} 대비 ${(e.ext.px - e.ext.base) >= 0 ? "+" : "-"}$${Math.abs(e.ext.px - e.ext.base).toFixed(4)} (${sgn(e.ext.chg)}) <small class="dim">${e.ext.stale ? "마지막 체결 " : "체결 "}${new Date(e.ext.at).toLocaleString(marketLocale, { timeZone: "Asia/Seoul" })} KST</small>`);
         if (e.base_chg != null) L.push(`기초: ${esc(e.base || "")} ${sgn(e.base_chg)}${e.x3 != null ? ` · ×3 = ${sgn(e.x3)}, 실제와 차이 ${e.x3_gap > 0 ? "+" : ""}${e.x3_gap}%p` : ""}${e.kr200 != null ? ` · 코스피200 야간 ${sgn(e.kr200)}` : ""}${e.members ? ` · 구성 대형주 ${e.members.n_up}/${e.members.n} 상승` : ""}`);
         if (e.h24 && !x.open) L.push(`24시간 시세(하이퍼리퀴드) ${$$(e.h24.px)} · 정규장 가격 대비 ${sgn(e.h24.vs_reg)}`);
       }
@@ -758,10 +759,16 @@
   let chanOpen = null;
   const CH_ST = {"돌파 확인": "ok", "돌파 시도(장중)": "try", "돌파 관찰·상단 근접": "near", "채널 위·5일선 아래": "warn", "채널 돌파·전고점 아래": "warn", "상단 근접": "near", "채널 안": "in", "하단 이탈": "bad"};
   const CH_FLAG = {kr: "🇰🇷", kr_index: "🇰🇷", us: "🇺🇸", jp: "🇯🇵"};
-  const chFmt = (cc, v) => v == null ? "-" : cc === "kr_index" ? (+v).toLocaleString("ko-KR", {minimumFractionDigits: 2, maximumFractionDigits: 2}) + "pt" : cc === "us" ? "$" + (+v).toLocaleString("en-US", {minimumFractionDigits: 2, maximumFractionDigits: 2})
-    : Math.round(v).toLocaleString("ko-KR") + (cc === "jp" ? "엔" : "원");
+  const chartPriceFormat = {
+    kr_index: new Intl.NumberFormat(marketLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),
+    us: new Intl.NumberFormat(marketLocale, { style: "currency", currency: "USD" }),
+    kr: new Intl.NumberFormat(marketLocale, { style: "currency", currency: "KRW" }),
+    jp: new Intl.NumberFormat(marketLocale, { style: "currency", currency: "JPY" }),
+  };
+  const chFmt = (cc, value) => value == null ? "-"
+    : (chartPriceFormat[cc] || chartPriceFormat.kr).format(value) + (cc === "kr_index" ? " pt" : "");
   function chGlyph(r) {                                       // 오늘 봉(시가·고가·저가·현재가) 작은 그림
-    const [, o, h, l, c] = r, rng = (h - l) || 1, Y = (v) => 3 + (h - v) / rng * 26, col = c >= o ? "var(--up)" : "var(--down)";
+    const [, o, h, l, c] = r, rng = (h - l) || 1, Y = (v) => 3 + (h - v) / rng * 26, col = c >= o ? "var(--market-up)" : "var(--market-down)";
     return `<svg class="ch-gl" viewBox="0 0 14 32" aria-hidden="true"><line x1="7" x2="7" y1="${Y(h)}" y2="${Y(l)}" stroke="${col}" stroke-width="1.4"/><rect x="2.5" y="${Y(Math.max(o, c))}" width="9" height="${Math.max(1.5, Math.abs(Y(o) - Y(c)))}" fill="${col}" rx="1"/></svg>`;
   }
   // 📏 수평선(운영자 11/19 "수평 및 채널 추세선에서 움직이는 걸 숫자로"): 좌우 3봉보다 높은 고점·낮은 저점(스윙) 중
@@ -796,7 +803,7 @@
       const axis = [...new Set([lo, hi])].map((v) => `<line class="ch-grid" x1="${left}" x2="${W - right}" y1="${y(v)}" y2="${y(v)}"/><text class="ch-ax" x="${W - right + 4}" y="${y(v) + 4}">${chFmt(cc, v)}</text>`).join("");
       const label = (t) => `${kstDay(t).slice(5)} ${hm(t)}`;
       const candles = bars.map(([, o, h, l, c, session, source], i) => {
-        const color = c >= o ? "var(--up)" : "var(--down)";
+        const color = c >= o ? "var(--market-up)" : "var(--market-down)";
         const shade = session === "pre" || session === "post"
           ? `<rect x="${left + i * step}" y="${top}" width="${step}" height="${H - top - bottom}" fill="var(--gold)" opacity=".17"/>`
           : "";
@@ -937,7 +944,7 @@
       if (bk != null) s += `<polygon class="ch-band-old" points="${X(bk)},${Y(up(bk))} ${X(n)},${Y(up(n))} ${X(n)},${Y(lo(n))} ${X(bk)},${Y(lo(bk))}"/>`;
     }
     const cw = Math.max(2, st * 0.6);
-    rows.forEach((r, i) => { const [, o, h, l, c] = r, col = c >= o ? "var(--up)" : "var(--down)";
+    rows.forEach((r, i) => { const [, o, h, l, c] = r, col = c >= o ? "var(--market-up)" : "var(--market-down)";
       s += `<line x1="${X(i)}" x2="${X(i)}" y1="${Y(h)}" y2="${Y(l)}" stroke="${col}"/><rect x="${X(i) - cw / 2}" y="${Y(Math.max(o, c))}" width="${cw}" height="${Math.max(1, Math.abs(Y(o) - Y(c)))}" fill="${col}" rx="1"${i === n - 1 && it.live ? ' class="ch-live"' : ""}/>`; });
     const cl5 = chCl(it), ma = rows.map((_, i) => i >= 4 ? cl5.slice(i - 4, i + 1).reduce((a, b) => a + b, 0) / 5 : null);   // 5일선 = 정규장 종가 기준
     s += `<polyline class="ch-ma" points="${ma.map((v, i) => v == null ? "" : `${X(i)},${Y(v)}`).join(" ").trim()}"/>`;

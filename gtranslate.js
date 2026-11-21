@@ -2,12 +2,11 @@
   "use strict";
   /* 11/21 운영자 "언어 선택은 10개 정도로, 각 언어 이름은 그 나라 말로":
    * 언어 메뉴 하나(#trlLanguage)에 10개 — 한국어·English·日本語·简体中文·繁體中文·Français·Deutsch·Tiếng Việt·Bahasa Indonesia·العربية
-   * - 자체 번역(?lang=en/ja/zh-hans/fr, 시장 용어 고정표) 4개 + 구글 사이트 번역(googtrans 쿠키) 5개.
+   * - 자체 번역(?lang=en/ja/zh-hans/fr, 시장 용어 고정표) 4개 + 구글 사이트 번역(googtrans 쿠키) 4개.
    * - 둘이 겹치지 않게 한 번에 하나만: 자체 언어로 볼 때는 구글 쿠키를 지우고, 구글 언어를 고르면 ?lang 을 뺀다.
    * - 구글 위젯 스크립트는 translate.google.com 에서 받고, 위젯 자체 드롭다운은 숨긴다(메뉴는 우리 것 하나).
    */
   const GOOGLE = [
-    ["zh-TW", "繁體中文", "zh-hans"],          // [구글 코드, 그 나라 말 이름, 이 옵션 뒤에 넣기]
     ["de", "Deutsch", "fr"],
     ["vi", "Tiếng Việt", "de"],
     ["id", "Bahasa Indonesia", "vi"],
@@ -30,7 +29,7 @@
   const current = () => ((document.cookie.match(/(?:^|;\s*)googtrans=\/ko\/([^;]+)/) || [])[1] || "");
   if (own) setGoogle("");
 
-  // 메뉴에 구글 번역 언어 5개를 그 나라 말 이름으로 끼워 넣는다
+  // 메뉴에 구글 번역 언어 4개를 그 나라 말 이름으로 끼워 넣는다
   menu.classList.add("notranslate");
   menu.setAttribute("translate", "no");
   for (const [code, name, after] of GOOGLE) {
@@ -42,8 +41,8 @@
   }
   // 구글 쿠키가 빠졌어도(이동 중 지워짐 등) 메뉴에서 고른 구글 언어가 기억돼 있으면 다시 켠다
   const saved = decodeURIComponent((document.cookie.match(/(?:^|;\s*)trl_lang=([^;]+)/) || [])[1] || "");
-  if (!own && !current() && saved.startsWith("g:") && !new URL(location.href).searchParams.has("lang")) setGoogle(saved.slice(2));
-  const g = own ? "" : current();
+  if (!own && !current() && GOOGLE.some(([code]) => saved === "g:" + code) && !new URL(location.href).searchParams.has("lang")) setGoogle(saved.slice(2));
+  const g = !own && GOOGLE.some(([code]) => code === current()) ? current() : "";
   if (g && GOOGLE.some(([c]) => c === g)) menu.value = "g:" + g;
 
   // 메뉴 변경: 다른 스크립트(자체 번역 이동)보다 먼저 받는다
