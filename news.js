@@ -862,11 +862,33 @@
     return `<p class="ch-lv"><span>⬆ 위 저항 ${up ? g(up) : "<b>없음(최근 고점 위)</b>"}</span><span>⬇ 아래 지지 ${dn ? g(dn) : "<b>없음</b>"}</span>${horizontalLabel}${pushed.length ? `<span class="ch-lv-dn">오늘 고가가 닿고 밀린 선: ${pushed.join("·")}</span>` : ""}${held.length ? `<span class="ch-lv-up">오늘 저가를 받친 선: ${held.join("·")}</span>` : ""}</p>`;
   }
   // 11/20 운영자 "통합 종가로 하자 · KRX 종가도 따로 표시해 체크(종가가 지금은 기준가)": 5일선 = 통합(KRX+넥장 20시), 등락률 기준가 = KRX 종가
-  function chKrClose(it, cc) {
-    if (cc !== "kr" || !(it.krx_close > 0)) return "";
-    const u = it.uni_close > 0 ? `<span>통합 종가 <b>${chFmt(cc, it.uni_close)}</b> <small>${esc(it.uni_close_day || "")}</small></span>` : "";
-    const m5 = it.ma5 > 0 ? `<span>5일선 통합 <b>${chFmt(cc, it.ma5)}</b>${it.ma5_krx > 0 ? ` · KRX <b>${chFmt(cc, it.ma5_krx)}</b>` : ""}</span>` : "";
-    return `<p class="ch-lv ch-kc"><span>KRX 종가(기준가) <b>${chFmt(cc, it.krx_close)}</b> <small>${esc(it.krx_close_day || "")}</small></span>${u}${m5}</p>`;
+  // 11/21 운영자 "각 종목들 종가와 시간외 현재 시각 금액을 별도로 표시": 정규장 종가 줄 + 시간외(프리·애프터·넥장) 현재가·시각·종가 대비 따로
+  function chCloseExt(regular, it, cc) {
+    if (cc !== "kr" && cc !== "us") return "";
+    const sgn = (v) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(2)}%`;
+    const kc = (v) => v > 0.005 ? "up" : v < -0.005 ? "down" : "dim";
+    const when = (ms) => { if (!(ms > 0)) return ""; const d = kstDay(ms), t = kstDay(Date.now()); return (d === t ? "" : d.slice(5).replace("-", "/") + " ") + hm(ms); };
+    const ext = (label, px, ms, base) => px > 0 && base > 0
+      ? `<span>${label} <b class="${kc(px / base - 1)}">${chFmt(cc, px)}</b> <small class="${kc(px / base - 1)}">${sgn((px / base - 1) * 100)}</small> <small>⏱ ${when(ms)} · 종가 대비</small></span>` : "";
+    if (cc === "kr") {
+      const kx = regular.krx_close > 0 ? regular.krx_close : null;
+      if (!kx) return "";
+      const u = regular.uni_close > 0 ? `<span>통합 종가 <b>${chFmt(cc, regular.uni_close)}</b> <small>${esc(regular.uni_close_day || "")}</small></span>` : "";
+      const nx = regular.nxt || {}, hmK = (() => { const d = kst(Date.now()); return d.getHours() * 100 + d.getMinutes(); })();
+      const krxOpen = regular.live && hmK >= 900 && hmK < 1530;
+      const x = nx.px > 0 && !krxOpen ? ext(`넥장 ${nx.session === "프리" ? "프리마켓" : "애프터마켓"}`, nx.px, nx.at, kx)
+        : `<span><small>시간외 ${krxOpen ? "— KRX 정규장 중" : "오늘 넥장 체결 없음 · 마지막 넥장가 = 통합 종가"}</small></span>`;
+      const m5 = it.ma5 > 0 ? `<span>5일선 통합 <b>${chFmt(cc, it.ma5)}</b>${regular.ma5_krx > 0 ? ` · KRX <b>${chFmt(cc, regular.ma5_krx)}</b>` : ""}</span>` : "";
+      return `<p class="ch-lv ch-kc"><span>KRX 종가(기준가) <b>${chFmt(cc, kx)}</b> <small>${esc(regular.krx_close_day || "")}</small></span>${u}${x}${m5}</p>`;
+    }
+    const rows = regular.rows || [], n = rows.length;
+    if (!n || String((regular.display || {}).session || "").includes("선물")) return "";
+    const close = regular.live ? rows[n - 2] : rows[n - 1];
+    if (!close || !(close[4] > 0)) return "";
+    const d = regular.display, extOn = d && d.session && d.session !== "정규장" && d.px > 0;
+    const x = regular.live ? `<span><small>정규장 진행 중 · 현재 <b>${chFmt(cc, regular.px)}</b></small></span>`
+      : extOn ? ext(esc(d.session), d.px, d.source_at, close[4]) : `<span><small>시간외 시세 확인 중</small></span>`;
+    return `<p class="ch-lv ch-kc"><span>${regular.live ? "전일 " : ""}정규장 종가 <b>${chFmt(cc, close[4])}</b> <small>${esc(close[0])}</small></span>${x}</p>`;
   }
   function chChart(it, cc, sg, horizontal) {
     const rows = it.rows, n = rows.length, N = n + 1, W = 640, H = 230, M = {l: 6, r: 74, t: 10, b: 20};
@@ -1073,7 +1095,11 @@
         html += `<article class="ch-card${sgNow ? " t-" + sgNow.tone : ""}" data-viewport-key="channel:${esc(it.code)}">
           <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b>${(() => { const k = it.chg == null || !isFinite(it.chg) ? "dim" : it.chg > 0.005 ? "up" : it.chg < -0.005 ? "down" : "dim";   // 11/19 운영자: 현재가도 전일 종가 대비 색·굵게(상승 빨강·하락 파랑·보합 회색)
             return `<b class="mn ${k}">${chFmt(g.cc, it.px)}</b><b class="${k}"`; })()} title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(g.cc, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b>${sgNow ? `<span class="ch-sg ${sgNow.tone}">${({up: "▲", dn: "▼", wk: "△"})[sgNow.tone]} ${esc(sgNow.label)}</span>` : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span><small class="ch-session">${regular.display ? (it.session === "정규장" ? "정규장" : "시간외 · " + esc(it.session)) : (it.live ? "정규장" : "마감")}${/10분 지연/.test(it.source || "") ? " · 약 10분 지연" : ""}${it.stale ? " · 지연" : !it.live ? " · 마지막" : ""}${it.rt_at || it.source_at ? ` · ${hm(it.rt_at || it.source_at)}` : ""}</small></div>
+<<<<<<< Updated upstream
           ${chLvLine(it, g.cc, horizontal)}${chKrClose(it, g.cc)}${chChart(it, g.cc, sgNow, horizontal)}</article>`;
+=======
+          ${chLvLine(it, g.cc)}${chCloseExt(regular, it, g.cc)}${chChart(it, g.cc, sgNow)}</article>`;
+>>>>>>> Stashed changes
       });
       html += `</div></div>`;
     });
