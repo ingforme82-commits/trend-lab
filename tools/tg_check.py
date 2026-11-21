@@ -36,6 +36,28 @@ WHY = {"stockrec": "목표가·투자의견", "broker": "리포트 머리말", "
        "link_only": "링크만(제목 못 받음)", "short": "너무 짧음", "junk": "홍보 말투"}
 
 
+ORACLE_TG = Path.home() / ".local" / "share" / "trl" / "telegram"   # Oracle 수집기(telegram_collect_once.py) 저장 위치
+
+
+def find_db() -> Path | None:
+    """PC: market-site/tg_research/data/tgr.sqlite3 · Oracle: ~/.local/share/trl/telegram/tgr.sqlite3 (TRL_TG_DB 로 지정 가능)."""
+    import os
+    for p in (os.environ.get("TRL_TG_DB"), ln.DB, ORACLE_TG / "tgr.sqlite3"):
+        if p and Path(p).exists():
+            return Path(p)
+    return None
+
+
+def oracle_report() -> None:
+    try:
+        r = json.loads((ORACLE_TG / "collection-report.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    print(f"Oracle 수집 보고: 마지막 끝 {fmt(r.get('finished_at'))} · 채널 {r.get('channels_ok')}/{r.get('channels_configured')} 성공"
+          + (f" · 실패 {', '.join(map(str, r['channels_failed']))}" if r.get("channels_failed") else "")
+          + (f" · 방식: {r['collection_mode']}" if r.get("collection_mode") else ""))
+
+
 def site_owner() -> str:
     try:
         cfg = ln.TGR.parent / "oracle" / "site_executor.json"
@@ -48,10 +70,14 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--hours", type=int, default=30)
     a = ap.parse_args()
-    if not ln.DB.exists():
-        print(f"텔레 DB 없음: {ln.DB} — 이 PC에는 수집기가 없거나 경로(TRL_TG_DIR)가 다릅니다.")
+    db = find_db()
+    if not db:
+        print(f"텔레 DB 없음: {ln.DB} · {ORACLE_TG / 'tgr.sqlite3'} — 수집기가 없거나 경로가 다릅니다(TRL_TG_DB=경로 로 지정).")
         return 1
-    con = sqlite3.connect(str(ln.DB))
+    ln.DB = db
+    print("텔레 DB:", db)
+    oracle_report()
+    con = sqlite3.connect(f"file:{db}?mode=ro", uri=True)
     now = datetime.now(timezone.utc)
     since = (now - timedelta(hours=a.hours)).isoformat()
     rows = {r[0]: r[1:] for r in con.execute(
@@ -64,13 +90,15 @@ def main() -> int:
         print(f"DB 전체 마지막 수집: {fmt(last_any)} ({lag_h:.1f}시간 전)")
         if lag_h > 0.5:
             print("  ⚠ 30분 넘게 새로 들어온 글이 없음 — " + (
-                "사이트를 Oracle이 돌리므로 이 PC DB는 멈춰 있는 게 정상. Oracle 서버에서 다시 실행하세요." if owner == "oracle"
+                "Oracle 수집기가 멈춤: journalctl -u trl-site-news -n 50 · 위 '수집 보고' 실패 채널 확인." if db.is_relative_to(ORACLE_TG)
+                else "사이트를 Oracle이 돌리므로 이 PC DB는 멈춰 있는 게 정상. Oracle 서버에서 다시 실행하세요." if owner == "oracle"
                 else "fast_news.py 가 안 돌고 있음(트렌드랩_속보갱신 작업·텔레 세션·live_news.log 확인)."))
-    try:
-        stamp = float(ln.ALL_STAMP.read_text(encoding="utf-8"))
-        print("전체 채널 수집 마지막 성공:", datetime.fromtimestamp(stamp, KST).strftime("%m-%d %H:%M:%S"))
-    except (OSError, ValueError):
-        print("전체 채널 수집 마지막 성공: 기록 없음(이 PC에서 새 코드가 아직 한 번도 안 돌았음)")
+    if not db.is_relative_to(ORACLE_TG):              # Oracle 은 별도 수집기 → 위 '수집 보고'를 본다
+        try:
+            stamp = float(ln.ALL_STAMP.read_text(encoding="utf-8"))
+            print("전체 채널 수집 마지막 성공:", datetime.fromtimestamp(stamp, KST).strftime("%m-%d %H:%M:%S"))
+        except (OSError, ValueError):
+            print("전체 채널 수집 마지막 성공: 기록 없음(이 PC에서 새 코드가 아직 한 번도 안 돌았음)")
     ln.from_telegram()
     stats = ln.TG_STATS
     print(f"\n{'채널':24} {'최근'+str(a.hours)+'h':>6} {'마지막 글':>11} {'마지막 수집':>11} {'읽음':>4} {'실림':>4}  판정")
