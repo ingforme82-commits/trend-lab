@@ -376,6 +376,31 @@
   "미국": "U.S.",
   "일본": "Japan"
 };
+  const MARKET_UI = new Map([
+    ["실시간 시세","リアルタイム相場","实时行情","Cours en direct"],
+    ["주요 시황","市場概況","市场概况","Vue d’ensemble du marché"],
+    ["시장 브리핑","市場ブリーフィング","市场简报","Point de marché"],
+    ["실시간 속보","速報","实时快讯","Actualités en direct"],
+    ["개장 전","寄り付き前","开盘前","Avant l’ouverture"],
+    ["장중","取引時間中","交易时段","En séance"],
+    ["마감","取引終了","已收盘","Séance clôturée"],
+    ["정규장","通常取引","常规交易时段","Séance régulière"],
+    ["시간외","時間外取引","盘外交易","Hors séance"],
+    ["프리마켓","プレマーケット","盘前交易","Préouverture"],
+    ["애프터마켓","アフターマーケット","盘后交易","Après-Bourse"],
+    ["시세 확인 중","相場を確認中","正在查询行情","Chargement des cours"],
+    ["연결된 뉴스 없음","関連ニュースなし","暂无相关新闻","Aucune actualité associée"],
+    ["최근 {0}시간","直近{0}時間","过去{0}小时","{0} dernières heures"],
+    ["약 {0}분 지연","約{0}分遅れ","延迟约{0}分钟","Retard d’environ {0} min"],
+    ["{0}일선","{0}日移動平均線","{0}日均线","Moyenne mobile à {0} jours"],
+    ["{0}일선 위","{0}日移動平均線を上回る","高于{0}日均线","Au-dessus de la MM à {0} jours"],
+    ["{0}일선 아래","{0}日移動平均線を下回る","低于{0}日均线","Sous la MM à {0} jours"],
+    ["정규장·시간외 {0}분봉","通常取引・時間外取引の{0}分足","常规及盘外交易{0}分钟K线","Bougies de {0} min en séance et hors séance"],
+    ["채널 상단 저항","チャネル上限の抵抗","通道上沿阻力","Résistance en haut du canal"],
+    ["코스피{0}","KOSPI {0}","KOSPI {0}","KOSPI {0}"],
+    ["원화","韓国ウォン","韩元","Won sud-coréen"],
+    ["달러","米ドル","美元","Dollar américain"]
+  ].map(([source, ja, zh, fr]) => [source, { ja, "zh-hans": zh, fr }]));
   const SLOT = /[{｛]\s*(\d+)\s*[}｝]/g;
 
   function fill(output, numbers) {
@@ -419,7 +444,7 @@
 
   async function translate(raw) {
     const source = preTerms(raw);
-    if (!/[가-힣]/.test(source)) return source;
+    if (language === "en" && !/[가-힣]/.test(source)) return source;
     const numbers = [];
     const template = source.replace(NUMBER, (match) => { numbers.push(match); return "{" + (numbers.length - 1) + "}"; });
     if (!numbers.length) return request(source);
@@ -452,8 +477,9 @@
       numbers.push(number);
       return "{" + (numbers.length - 1) + "}";
     });
-    const fixed = language === "en" && Object.hasOwn(ENGLISH_UI, template)
-      ? fill(ENGLISH_UI[template], numbers) : null;
+    const label = language === "en" && Object.hasOwn(ENGLISH_UI, template)
+      ? ENGLISH_UI[template] : MARKET_UI.get(template)?.[language];
+    const fixed = label ? fill(label, numbers) : null;
     if (fixed) {
       const value = original.replace(original.trim(), () => fixed);
       states[key] = value;
