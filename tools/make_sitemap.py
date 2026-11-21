@@ -15,10 +15,10 @@ BASE = "https://trlab.net/"
 
 
 def main() -> None:
-    pages = [("", "hourly", "1.0"), ("study.html", "weekly", "0.6")]
+    pages = [("", "hourly", "1.0"), ("study.html", "weekly", "0.6"), ("en/", "weekly", "0.8")]
     # 블로그 분석 글(posts/)은 2026-10-28 사이트에서 뺌
     def lastmod(rel: str) -> str:
-        f = ROOT / urllib.parse.unquote(rel or "index.html")
+        f = ROOT / urllib.parse.unquote(rel + "index.html" if not rel or rel.endswith("/") else rel)
         return datetime.fromtimestamp(f.stat().st_mtime, timezone.utc).strftime("%Y-%m-%d") if f.exists() else ""
     rows = "\n".join(f"  <url><loc>{BASE}{p}</loc><lastmod>{lastmod(p)}</lastmod><changefreq>{c}</changefreq><priority>{pr}</priority></url>"
                      for p, c, pr in pages)
