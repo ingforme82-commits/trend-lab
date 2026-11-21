@@ -656,7 +656,7 @@ async function loadStudies() {
     const sById = Object.fromEntries(list.map((s) => [s.id, s]));
     $("#bookList").innerHTML = books.books.map((b, i) => {
       const st = b.study && sById[b.study];
-      const tag = st ? (upcoming.includes(st) ? `<em class="cur-next">${fmtD(st.date)} 예정</em>` : `<em class="cur-done">${fmtD(st.date)} 완료</em>`) : `<em class="bk-sel">선정 도서</em>`;
+      const tag = st ? (upcoming.includes(st) ? `<em class="cur-next">${fmtD(st.date)}${st.confirmed ? "" : " 예정"}</em>` : `<em class="cur-done">${fmtD(st.date)} 완료</em>`) : `<em class="bk-sel">선정 도서</em>`;
       const body = `<span class="bk-n">${i + 1}</span><span class="bk-t"><b>${esc(b.title)}</b><small>${esc(b.author)}</small></span>${tag}`;
       return `<li>${st ? `<a href="study.html?id=${encodeURIComponent(st.id)}">${body}</a>` : `<div>${body}</div>`}</li>`;
     }).join("");
@@ -877,7 +877,7 @@ function archCard(s, isNext, label) {
     : s.poster ? `<img src="${esc(s.poster.thumb)}" alt="${esc(s.title || "")} 안내 포스터" loading="lazy">`
     : `<div class="arc-ph"><span>${isNext ? "🗓️" : "📚"}</span>${isNext ? `${dday(s.date)} · 다음 스터디` : "사진 정리 중"}</div>`;
   return `<a class="arc${isNext ? " next" : ""}" href="study.html?id=${encodeURIComponent(s.id)}">
-    <div class="arc-img">${img}<span class="arc-month">${isNext ? "예정" : `${d.getFullYear() % 100}년 ${d.getMonth() + 1}월`}</span></div>
+    <div class="arc-img">${img}<span class="arc-month">${isNext && !s.confirmed ? "예정" : `${d.getFullYear() % 100}년 ${d.getMonth() + 1}월`}</span></div>
     <div class="arc-body"><p class="arc-date">${label(s)} · ${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]})</p>
     <h3 class="arc-title">${esc(s.title)}</h3><p class="arc-sub">${esc(s.book || s.theme || "")}</p></div></a>`;
 }
