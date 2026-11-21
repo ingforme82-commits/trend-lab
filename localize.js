@@ -1,5 +1,12 @@
 (() => {
   "use strict";
+  /* 다국어 자동 번역 — 2026-11-21 개정(v2)
+   * 고친 문제: 실시간 시세·속보 칸은 1~2초마다 숫자만 바뀐 새 문장("기준 전일 종가 53,400원")을 만든다.
+   * 예전에는 이 문장마다 번역 요청을 따로 보내서 요청이 폭주 → 번역 서버가 429(요청 과다)로 막음 →
+   * 60초 쉬는 동안 대기 줄에 있던 나머지 문장(속보·브리핑·버튼)까지 한국어로 남았다. 캐시(600개)도 숫자 문장으로 금방 밀려났다.
+   * 지금: ① 숫자는 {0},{1}… 자리표로 빼고 '틀'만 번역해 캐시(숫자가 바뀌어도 재요청 없음)
+   *       ② 여러 문장을 한 요청으로 묶어 보냄(요청 수 수십 분의 1)  ③ 429·실패는 버리지 않고 쉬었다가 최대 3번 다시 시도
+   */
 
   const languages = {
     ko: ["한국어", "언어 선택", ""],
@@ -37,82 +44,190 @@
     note.hidden = true;
   }
   const excluded = "script, style, noscript, select, textarea, input, [contenteditable], [translate=no], #trlLanguageNote";
-  const cacheKey = "trl:public-translations:v1:" + language;
+  const spaced = language === "en" || language === "fr";
+  const target = language === "zh-hans" ? "zh-CN" : language;
+
+  /* ── 캐시: 숫자를 뺀 '틀' 단위로 저장. 값 "" = 자리표가 깨져서 조각 번역으로 처리하는 틀 ── */
+  const cacheKey = "trl:public-translations:v2:" + language;
+  const CACHE_MAX = 4000;
   let saved = [];
   try {
+    localStorage.removeItem("trl:public-translations:v1:" + language);   // 숫자 문장으로 가득 찬 예전 캐시 정리
     const entries = JSON.parse(localStorage.getItem(cacheKey) || "[]");
     if (Array.isArray(entries)) saved = entries;
   } catch { /* Storage is optional. */ }
   const cache = new Map(saved);
-  const pending = new Map();
-  const queue = [];
-  let running = 0;
-  let cooldown = 0;
-  let nextPump;
   let saveTimer;
-
   function remember(source, translated) {
+    cache.delete(source);
     cache.set(source, translated);
-    while (cache.size > 600) cache.delete(cache.keys().next().value);
+    while (cache.size > CACHE_MAX) cache.delete(cache.keys().next().value);
     clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
       try { localStorage.setItem(cacheKey, JSON.stringify([...cache])); }
       catch { /* Storage is optional. */ }
-    }, 300);
+    }, 500);
   }
 
-  async function fetchTranslation(source) {
-    const params = new URLSearchParams({
-      client: "gtx", sl: /[가-힣]/.test(source) ? "ko" : "en", tl: language === "zh-hans" ? "zh-CN" : language, dt: "t", q: source,
+  /* ── 요청 묶음 보내기 ── */
+  const BATCH_ITEMS = 25;          // 한 요청에 담는 문장 수
+  const BATCH_URL = 6000;          // 주소 길이 상한(인코딩 후)
+  const PARALLEL = 2;              // 동시에 보내는 요청 수
+  const MAX_TRIES = 3;
+  const pending = new Map();       // text → Promise
+  const queue = [];                // { text, sl, resolve, tries, single }
+  let running = 0;
+  const GAP = 400;                 // 요청 출발 최소 간격(ms) — 몰아 보내면 429
+  let cooldown = 0;
+  let backoff = 0;
+  let lastStart = 0;
+  let nextPump;
+
+  function endpoint(sl, q) {
+    return "https://translate.googleapis.com/translate_a/single?" + new URLSearchParams({ client: "gtx", sl, tl: target, dt: "t", q });
+  }
+
+  async function call(sl, q) {
+    const response = await fetch(endpoint(sl, q), {
+      credentials: "omit", referrerPolicy: "no-referrer", signal: AbortSignal.timeout(10000),
     });
-    const response = await fetch("https://translate.googleapis.com/translate_a/single?" + params, {
-      credentials: "omit", referrerPolicy: "no-referrer", signal: AbortSignal.timeout(8000),
-    });
-    if (response.status === 429 || response.status === 403) cooldown = Date.now() + 60000;
+    if (response.status === 429 || response.status === 403) {
+      backoff = Math.min(backoff ? backoff * 2 : 5000, 60000);   // 5초 → 10초 → … 최대 60초
+      cooldown = Date.now() + backoff;
+      const error = Error("Rate limited");
+      error.limited = true;
+      throw error;
+    }
     if (!response.ok) throw Error("Translation unavailable");
+    backoff = 0;
     const data = await response.json();
-    const output = data[0]?.map((part) => part[0] || "").join("").trim();
-    if (!output) throw Error("Empty translation");
-    return output;
+    return (data[0] || []).map((part) => part[0] || "").join("");
+  }
+
+  function take() {
+    const first = queue.shift();
+    const batch = [first];
+    if (first.single) return batch;
+    let size = endpoint(first.sl, first.text).length;
+    for (let i = 0; i < queue.length && batch.length < BATCH_ITEMS;) {
+      const item = queue[i];
+      const extra = encodeURIComponent("\n" + item.text).length;
+      if (item.single || item.sl !== first.sl || size + extra > BATCH_URL) { i++; continue; }
+      batch.push(item);
+      size += extra;
+      queue.splice(i, 1);
+    }
+    return batch;
+  }
+
+  function settle(item, output) {
+    pending.delete(item.text);
+    if (output) remember(item.text, output);
+    item.resolve(output || null);
+  }
+
+  function retry(item, limited) {
+    item.tries++;
+    if (item.tries >= MAX_TRIES) {
+      if (note) note.hidden = false;
+      settle(item, null);
+      return;
+    }
+    if (!limited) item.single = true;   // 묶음이 깨졌으면 다음엔 한 문장씩
+    queue.push(item);
   }
 
   function pump() {
     clearTimeout(nextPump);
-    if (!queue.length) return;
-    if (Date.now() < cooldown) {
-      nextPump = setTimeout(pump, cooldown - Date.now());
+    if (!queue.length || running >= PARALLEL) return;
+    const wait = Math.max(cooldown, lastStart + GAP) - Date.now();
+    if (wait > 0) {
+      nextPump = setTimeout(pump, wait + 20);
       return;
     }
-    while (running < 4 && queue.length) {
-      const { source, resolve } = queue.shift();
+    {
+      const batch = take();
+      lastStart = Date.now();
       running++;
-      fetchTranslation(source).then((output) => {
-        remember(source, output);
-        resolve(output);
-      }).catch(() => {
-        if (note) note.hidden = false;
-        resolve(null);
+      call(batch[0].sl, batch.map((item) => item.text).join("\n")).then((output) => {
+        const lines = output.split("\n").map((line) => line.trim());
+        while (lines.length > batch.length && lines[lines.length - 1] === "") lines.pop();
+        if (lines.length !== batch.length || lines.some((line) => !line)) {
+          if (batch.length === 1) throw Error("Empty translation");
+          batch.forEach((item) => { item.single = true; queue.push(item); });   // 줄 수가 안 맞으면 한 문장씩 다시
+          return;
+        }
+        batch.forEach((item, i) => settle(item, lines[i]));
+      }).catch((error) => {
+        batch.forEach((item) => retry(item, error.limited));
       }).finally(() => {
-        pending.delete(source);
         running--;
         pump();
       });
+      pump();   // 다음 묶음은 GAP 뒤에 출발
     }
   }
 
-  function translate(source) {
-    if (cache.has(source)) return Promise.resolve(cache.get(source));
-    if (pending.has(source)) return pending.get(source);
-    const promise = new Promise((resolve) => queue.push({ source, resolve }));
-    pending.set(source, promise);
+  function request(text) {
+    if (cache.has(text)) return Promise.resolve(cache.get(text));
+    if (pending.has(text)) return pending.get(text);
+    const sl = /[가-힣]/.test(text) ? "ko" : "en";
+    const promise = new Promise((resolve) => queue.push({ text, sl, resolve, tries: 0, single: false }));
+    pending.set(text, promise);
     pump();
     return promise;
   }
 
+  /* ── 숫자 자리표 ── */
+  const NUMBER = /\d+(?:[.,:]\d+)*/g;
+  const SLOT = /[{｛]\s*(\d+)\s*[}｝]/g;
+
+  function fill(output, numbers) {
+    const normal = output.replace(SLOT, (_, i) => "{" + i + "}");
+    const found = normal.match(/\{\d+\}/g) || [];
+    if (found.length !== numbers.length) return null;
+    const seen = new Set(found);
+    if (seen.size !== numbers.length || numbers.some((_, i) => !seen.has("{" + i + "}"))) return null;
+    return normal.replace(/\{(\d+)\}/g, (_, i) => numbers[+i]);
+  }
+
+  async function bySegments(template, numbers) {
+    const parts = template.split(/\{\d+\}/);
+    const outputs = await Promise.all(parts.map((part) => {
+      const core = part.trim();
+      if (!/[가-힣]/.test(core)) return part;
+      return request(core).then((out) => (out ? part.replace(core, () => out) : null));
+    }));
+    if (outputs.some((out) => out == null)) return null;
+    // 한국어는 '53,400원'처럼 단위를 붙여 쓰므로, 영어·프랑스어는 번역된 낱말과 숫자 사이에 한 칸 띄운다.
+    const letter = /[A-Za-zÀ-ÿ]/;
+    let text = outputs[0];
+    for (let i = 0; i < numbers.length; i++) {
+      const before = /[가-힣]$/.test(parts[i]) && letter.test(text.slice(-1));
+      const after = /^[가-힣]/.test(parts[i + 1]) && letter.test(outputs[i + 1].charAt(0));
+      text += (spaced && before ? " " : "") + numbers[i] + (spaced && after ? " " : "") + outputs[i + 1];
+    }
+    return text;
+  }
+
+  async function translate(source) {
+    const numbers = [];
+    const template = source.replace(NUMBER, (match) => { numbers.push(match); return "{" + (numbers.length - 1) + "}"; });
+    if (!numbers.length) return request(source);
+    if (cache.get(template) !== "") {
+      const out = await request(template);
+      const filled = out && fill(out, numbers);
+      if (filled) return filled;
+      if (out) remember(template, "");   // 자리표가 깨지는 틀 → 다음부터 바로 조각 번역
+    }
+    return bySegments(template, numbers);
+  }
+
+  /* ── 화면 적용 ── */
   const tracked = new WeakMap();
   function translateValue(node, attribute) {
     const original = attribute ? node.getAttribute(attribute) : node.data;
-    const source = original?.trim();
+    const source = original?.trim().replace(/\s+/g, " ");
     if (!source) return;
     const korean = /[가-힣]/.test(source);
     const englishSentence = language !== "en" && (attribute ? node : node.parentElement).closest("[lang=en]") && (source.match(/[A-Za-z]{2,}/g) || []).length >= 5;
@@ -130,7 +245,8 @@
       if (!node.isConnected) return;
       const current = attribute ? node.getAttribute(attribute) : node.data;
       if (current !== original) return;
-      const value = original.replace(source, () => output);
+      const trimmed = original.trim();
+      const value = original.replace(trimmed, () => output);
       states[key] = value;
       if (attribute) node.setAttribute(attribute, value);
       else node.data = value;
