@@ -20,6 +20,7 @@ function skhyMeta(px) {
 const TICKS = [
   { g: "🇰🇷 한국", sub: "코스피·대형주·한국 ETF(24시간 프록시 포함)" },
   { k: "KOSPI", n: "코스피", d: 2, krOnly: true },
+  { k: "KOSDAQ", n: "KOSDAQ", d: 2, krOnly: true },
   { k: "KR200", n: "코스피200", d: 2 },
   { k: "SMSN", n: "삼성전자", d: 2, u: "$", won: true },
   { k: "SKHX", n: "SK하이닉스", d: 2, u: "$", won: true },
@@ -38,7 +39,8 @@ const TICKS = [
   { k: "KRW", n: "원/달러", d: 1, suf: "원", fx: "원/달러" },
   { k: "CL", n: "WTI 원유", d: 2, u: "$" },
   { k: "BRENTOIL", n: "브렌트유", d: 2, u: "$" },
-  { k: "GOLD", n: "금", d: 1, u: "$" },
+  { k: "GC", n: "금 선물 (COMEX GC)", d: 2 },
+  { k: "GOLD", n: "금 무기한 선물", d: 1, u: "$" },
   { k: "NATGAS", n: "천연가스", d: 3, u: "$" },
   { k: "DXY", n: "달러인덱스", d: 2, fx: "달러인덱스" },
   { k: "UST2Y", n: "미 2년물 금리", srv: "tnx", t: "2Y" },
@@ -60,6 +62,15 @@ async function loadTicks() {
     const krw = map.KRW ? +map.KRW.markPx : null;
     const html = TICKS.map((t) => {
       if (t.g) return `<p class="tick-group" role="heading" aria-level="3">${t.g}${t.sub ? ` <small>${t.sub}</small>` : ""}</p>`;
+      if (t.k === "GC") {
+        const quote = (window.trlWorld || []).find((item) => item.sym === "GC=F");
+        const valid = quote && Number.isFinite(quote.px) && quote.px > 0 && Number.isFinite(quote.chg) && Number.isFinite(quote.at) && quote.at > 0;
+        if (!valid) return `<div class="tick" data-k="GC"><p class="t-name">${t.n}</p><p class="t-px">-</p><p class="fine">시세 확인 중</p></div>`;
+        const c = quote.chg > 0.005 ? "c-up" : quote.chg < -0.005 ? "c-dn" : "c-fl";
+        const stamp = new Date(quote.at).toLocaleString("en-GB", { timeZone: "Asia/Seoul", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hour12: false });
+        const status = Date.now() - quote.at > 15 * 60000 ? "마지막 시세" : "지연 가능";
+        return `<div class="tick" data-k="GC"><p class="t-name">${t.n}</p><p class="t-px">$${quote.px.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p><p class="t-ch ${c}">${quote.chg > 0 ? "+" : ""}${quote.chg.toFixed(2)}%</p><p class="fine">Yahoo Finance · ${stamp} KST · ${status}</p></div>`;
+      }
       if (t.srv === "tnx") {                              // 미 국채 2·10·30년 금리(CNBC, 없으면 야후): 수준은 %, 변화는 bp
         const U = window.trlUst || {};
         const r = U[t.t] || (t.t === "10Y" ? window.trlTnx || {} : {});
@@ -106,13 +117,13 @@ async function loadTicks() {
       }
       const x = t.krOnly ? null : map[t.k];
       const kr = (window.trlKr || {})[t.k];
-      if (t.krOnly && !(kr && kr.px)) return "";
+      if (t.krOnly && !(kr && kr.px)) return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">-</p><p class="fine">시세 확인 중</p></div>`;
       const sg = (v) => `<b class="${v > 0.005 ? "c-up" : v < -0.005 ? "c-dn" : "c-fl"}">${v > 0 ? "+" : ""}${v.toFixed(2)}%</b>`;
       const h24 = x && +x.prevDayPx ? (+x.markPx / +x.prevDayPx - 1) * 100 : null;
       const meta = x && +x.dayNtlVlm > 0 ? `<p class="t-meta">24h 거래대금 $${fmtVol(+x.dayNtlVlm)}${x.oraclePx && +x.oraclePx ? ` · 기초가격 대비 ${sg((+x.markPx / +x.oraclePx - 1) * 100)}` : ""}</p>` : "";
       if (kr && kr.px && (kr.open || !x)) {               // 한국 정규장: 한국거래소 실시간 가격 · 전일 종가 대비(네이버)
         const ck = kr.chg > 0.005 ? "c-up" : kr.chg < -0.005 ? "c-dn" : "c-fl";
-        const v = t.k === "KR200" || t.k === "KOSPI" ? kr.px.toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Math.round(kr.px).toLocaleString("ko-KR") + "원";
+        const v = ["KR200", "KOSPI", "KOSDAQ"].includes(t.k) ? kr.px.toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Math.round(kr.px).toLocaleString("ko-KR") + "원";
         const age = Date.now() - kr.at > 10 * 60000 ? ` · <b class="h-warn">${Math.round((Date.now() - kr.at) / 60000)}분 전 값</b>` : "";
         return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">${v}</p><p class="t-ch ${ck}">${kr.chg > 0 ? "▲" : kr.chg < 0 ? "▼" : ""} ${kr.chg > 0 ? "+" : ""}${kr.chg.toFixed(2)}% <small>정규장</small></p>
           <p class="t-meta">한국거래소 ${hhmm(KSTof(kr.at))}${age}${h24 != null ? ` · 24h 프록시 ${sg(h24)}` : ""}</p>${meta}</div>`;
@@ -133,7 +144,7 @@ async function loadTicks() {
     setTimeout(() => document.querySelectorAll(".tick.flash").forEach((e) => e.classList.remove("flash")), 900);
     const k = KST();
     window.trlTickAt = Date.now();
-    $("#tickStamp").innerHTML = `<span class="ts-dot" aria-hidden="true"></span>마지막 업데이트 <b>${k.getMonth() + 1}/${k.getDate()}(${DOW[k.getDay()]}) ${hhmm(k)}:${String(k.getSeconds()).padStart(2, "0")} KST</b> <span data-tick-ago></span> · 하이퍼리퀴드 24시간 선물 실시간`;
+    $("#tickStamp").innerHTML = `<span class="ts-dot" aria-hidden="true"></span>마지막 업데이트 <b>${k.getMonth() + 1}/${k.getDate()}(${DOW[k.getDay()]}) ${hhmm(k)}:${String(k.getSeconds()).padStart(2, "0")} KST</b> <span data-tick-ago></span> · 출처별 시세 기준 시각 확인`;
     renderPulse();
   } catch (e) {
     $("#tickStamp").innerHTML = window.trlTickAt
@@ -147,7 +158,7 @@ async function loadTicks() {
 /* ── Market Pulse · 현재 시장(2026-11-21 UX) ──
  * 숫자는 아래 시세 칸(#tickGrid)에 이미 그려진 값을 그대로 옮긴다 — 같은 출처·같은 기준, 새 계산·추정 없음.
  * 칸이 아직 없으면 '-'(불러오는 중)로 둔다. 장 상태는 한국 시간·뉴욕 시간 기준 시간표(휴장일은 한국거래소 응답이 있으면 그 값). */
-const PULSE = [["KOSPI", "코스피", "KR200"], ["XYZ100", "나스닥100"], ["SP500", "S&P500"], ["KRW", "원/달러"], ["CL", "WTI 원유"], ["US10Y", "미 10년물"]];
+const PULSE = [["KOSPI", "코스피", "KR200"], ["KOSDAQ", "KOSDAQ"], ["XYZ100", "나스닥100"], ["SP500", "S&P500"], ["KRW", "원/달러"], ["CL", "WTI 원유"], ["GC", "COMEX GC"], ["US10Y", "미 10년물"]];
 function marketSessions(now = Date.now()) {
   const k = KST(new Date(now)), kd = k.getDay(), km = k.getHours() * 60 + k.getMinutes();
   const kr = (window.trlKr || {}).KOSPI || (window.trlKr || {}).KR200;
