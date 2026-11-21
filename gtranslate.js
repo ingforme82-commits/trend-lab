@@ -40,6 +40,9 @@
     const ref = [...menu.options].find((o) => o.value === after || o.value === "g:" + after);
     menu.add(opt, ref ? ref.index + 1 : null);
   }
+  // 구글 쿠키가 빠졌어도(이동 중 지워짐 등) 메뉴에서 고른 구글 언어가 기억돼 있으면 다시 켠다
+  const saved = decodeURIComponent((document.cookie.match(/(?:^|;\s*)trl_lang=([^;]+)/) || [])[1] || "");
+  if (!own && !current() && saved.startsWith("g:") && !new URL(location.href).searchParams.has("lang")) setGoogle(saved.slice(2));
   const g = own ? "" : current();
   if (g && GOOGLE.some(([c]) => c === g)) menu.value = "g:" + g;
 
