@@ -141,7 +141,7 @@
     if (!items.length) return "";
     return `<div class="lvbox"><p class="mm-h">☀️ ${esc(s.session)} · NH HTS 확인 <small>수동 캡처 · 실시간 자동 갱신 아님</small></p><div class="lc-g">${items.map((x) => {
       const delta = x.px - x.base, chg = delta / x.base * 100, sign = delta > 0 ? "+" : delta < 0 ? "-" : "";
-      return `<div class="lc"><p class="lc-h"><b>${esc(x.sym)}</b> <small>${esc(s.session)}</small></p><p class="lc-p"><b class="lc-px">$${x.px.toFixed(2)}</b> <b class="${cls(chg)}">${sign}${Math.abs(chg).toFixed(2)}%</b></p><p class="lc-f">정규장 종가 $${x.base.toFixed(2)} 대비 <b class="${cls(chg)}">${sign}$${Math.abs(delta).toFixed(2)}</b></p><p class="lc-f">${md2(Date.parse(x.at))} ${hm(Date.parse(x.at))} KST 화면 확인</p></div>`;
+      return `<div class="lc"><p class="lc-h"><b>${esc(x.sym)}</b> <small>${esc(s.session)}</small></p><p class="lc-p"><b class="lc-px">$${x.px.toFixed(2)}</b> <b class="${cls(chg)}">${sign}${Math.abs(chg).toFixed(2)}%</b></p><p class="lc-f">정규장 종가 ${x.base.toFixed(2)} 대비</p><p class="lc-f">${md2(Date.parse(x.at))} ${hm(Date.parse(x.at))} KST 화면 확인</p></div>`;
     }).join("")}</div><p class="mm-f">${esc(s.source)} · 아래 시간외 마지막 체결은 이전 애프터마켓 자료로 구분합니다. 캡처 시각 이후 가격은 달라질 수 있습니다.</p></div>`;
   }
   async function loadCandles() {
@@ -450,7 +450,8 @@
     };
     const regularLine = nhRegular ? `<p class="lc-f">NH 정규장 ${$(nhRegular.px)} · ${sourceTime(nhRegular)}</p>` : "";
     const queryLabel = queried ? `${new Date(queried).toLocaleString(marketLocale, { timeZone: "Asia/Seoul" })} 한국 시간 조회` : "조회 시각 확인 불가";
-    const label = active ? `${e.sess === "day" ? "주간거래" : e.sess === "pre" ? "프리마켓" : "애프터마켓"} · ${queryLabel}` : `${+x.day.slice(5, 7)}/${+x.day.slice(8, 10)} ${x.open ? "장중" : "마감"}`;
+    const SN = { pre: "프리마켓", post: "애프터마켓", day: "주간거래" };
+    const label = active ? (SN[e.sess] || "시간외") : `${+x.day.slice(5, 7)}/${+x.day.slice(8, 10)} ${x.open ? "장중" : "마감"}`;
     const chip = (ok, t) => `<span class="lc-c ${ok ? "on" : "off"}">${ok ? "▲" : "▼"} ${t}</span>`;
     const C = [chip(x.over_ma5, `5일선 ${x.over_ma5 ? "위" : "아래"} ${pc(x.vs_ma5)}`)];
     if (x.ma20 != null) C.push(chip(x.over_ma20, `20일선 ${x.over_ma20 ? "위" : "아래"} ${pc(x.vs_ma20)}`));
@@ -461,8 +462,7 @@
       const pos = Math.max(0, Math.min(100, (x.px - x.lo20) / (x.hi20 - x.lo20) * 100));
       bar = `<div class="lc-r"><small>20일 저가 ${$$(x.lo20)}</small><span class="lc-b"><i style="left:${pos.toFixed(0)}%"></i></span><small>고가 ${$$(x.hi20)}</small></div>`;
     }
-    const SN = { pre: "프리마켓", post: "애프터마켓", day: "주간거래" };
-    const ext = e ? `<p class="lc-f">${active ? `${SN[e.sess] || "시간외"} · 정규장 종가 ${$$(e.base)} 대비 ${pc(e.chg)}${e.stale ? ` · 마지막 체결 ${hm(e.at)}` : ""}` : `${SN[e.sess] || "시간외"} 마지막 체결 ${$$(e.px)} ${pc(e.chg)} · ${e.at ? md2(e.at) + " " + hm(e.at) : ""}`} <small>· ${esc(e.source || "야후")} · ${queryLabel}${e.source_time ? ` · ${sourceTime(e)}` : ""}</small></p>` : `<p class="lc-f">${x.open ? "정규장 거래 중 — 위 가격이 실시간" : "시간외 거래 없는 시간(정규장 종가 표시)"}</p>`;
+    const ext = e ? `<p class="lc-f">${active ? `${e.base > 0 ? `정규장 종가 ${$(e.base)} 대비` : "기준가 확인 중"}` : `${SN[e.sess] || "시간외"} 마지막 체결 ${$$(e.px)} ${pc(e.chg)} · ${e.at ? md2(e.at) + " " + hm(e.at) : ""}`} <small>· ${esc(e.source || "야후")}${active ? ` · ${e.source_time ? sourceTime(e) : queryLabel}` : ""}</small></p>` : `<p class="lc-f">${x.open ? "정규장 거래 중 — 위 가격이 실시간" : "시간외 거래 없는 시간(정규장 종가 표시)"}</p>`;
     const base = x.base_chg != null ? `기초 ${esc(String(x.base).replace(/\(.*\)/, ""))} <b class="${cls(x.base_chg)}">${pc(x.base_chg)}</b>` : "";
     const mem = x.members ? ` · 구성 대형주 ${x.members.n_up}/${x.members.n} 상승` : "";
     return `<div class="lc"><p class="lc-h"><b>${esc(x.sym)}</b> <small class="dim">${esc(x.name)}</small></p>
@@ -906,15 +906,11 @@
       const m5 = it.ma5 > 0 ? `<p class="cx-ma">5일선 통합 <b>${chFmt(cc, it.ma5)}</b>${regular.ma5_krx > 0 ? ` · KRX <b>${chFmt(cc, regular.ma5_krx)}</b>` : ""}</p>` : "";
       return `<div class="cx-row">${cells.join("")}</div>${m5}`;
     }
-    const rows = regular.rows || [], n = rows.length;
-    if (!n || String((regular.display || {}).session || "").includes("선물")) return "";
-    const close = regular.live ? rows[n - 2] : rows[n - 1];
-    if (!close || !(close[4] > 0)) return "";
-    const d = regular.display, extOn = d && d.session && d.session !== "정규장" && d.px > 0;
-    const cells = [cell("cx-cls", `${regular.live ? "전일 " : ""}정규장 종가`, chFmt(cc, close[4]), esc(close[0]))];
-    if (regular.live) { const v = (regular.px / close[4] - 1) * 100; cells.push(cell("cx-live", "정규장 진행 중 · 지금", `<span class="${kc(v)}">${chFmt(cc, regular.px)}</span>`, `<b class="${kc(v)}">${sgn(v)}</b> 전일 종가 대비`)); }
-    else cells.push(extOn ? ext(`${esc(d.session)} · 지금`, d.px, d.source_at, close[4], "종가 대비") : none("시간외", "시세 확인 중"));
-    return `<div class="cx-row">${cells.join("")}</div>`;
+    // U.S. cards already show the session price and change in the header.
+    // Keep the comparison price visible on touch screens when it is distinct.
+    if (!(it.base > 0) || it.base === it.px) return "";
+    const basis = it.change_basis || "전일 정규장 종가";
+    return `<p class="cx-ma">${esc(basis)} <b>${chFmt(cc, it.base)}</b></p>`;
   }
   function chChart(it, cc, sg, horizontal) {
     const rows = it.rows, n = rows.length, N = n + 1, W = 640, H = 230, M = {l: 6, r: 74, t: 10, b: 20};
@@ -1138,7 +1134,7 @@
         html += `<article class="ch-card${sgNow ? " t-" + sgNow.tone : ""}" data-viewport-key="channel:${esc(it.code)}">
           <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b>${(() => { const k = it.chg == null || !isFinite(it.chg) ? "dim" : it.chg > 0.005 ? "up" : it.chg < -0.005 ? "down" : "dim";   // 11/19 운영자: 현재가도 전일 종가 대비 색·굵게(상승 빨강·하락 파랑·보합 회색)
             const ses = regular.display && it.session !== "정규장" ? [String(it.session).replace("마켓", "").replace("선물 24시간", "선물"), "ext"] : it.live ? ["정규장", "live"] : ["종가", "cls"];
-            return `<span class="ch-ptag p-${ses[1]}">${esc(ses[0])}</span><b class="mn ${k}">${chFmt(g.cc, it.px)}</b><b class="${k}"`; })()} title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(g.cc, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b>${sgNow ? `<span class="ch-sg ${sgNow.tone}">${({up: "▲", dn: "▼", wk: "△"})[sgNow.tone]} ${esc(sgNow.label)}</span>` : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span><small class="ch-session">${regular.display ? (it.session === "정규장" ? "정규장" : "시간외 · " + esc(it.session)) : (it.live ? "정규장" : "마감")}${/10분 지연/.test(it.source || "") ? " · 약 10분 지연" : ""}${it.stale ? " · 지연" : !it.live ? " · 마지막" : ""}${it.rt_at || it.source_at ? ` · ${hm(it.rt_at || it.source_at)}` : ""}</small></div>
+            return `<span class="ch-ptag p-${ses[1]}">${esc(ses[0])}</span><b class="mn ${k}">${chFmt(g.cc, it.px)}</b><b class="${k}"`; })()} title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(g.cc, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b>${sgNow ? `<span class="ch-sg ${sgNow.tone}">${({up: "▲", dn: "▼", wk: "△"})[sgNow.tone]} ${esc(sgNow.label)}</span>` : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span><small class="ch-session">${g.cc === "us" ? [ /10분 지연/.test(it.source || "") ? "약 10분 지연" : it.stale ? "지연" : !it.live ? "마지막 체결" : "", it.rt_at || it.source_at ? hm(it.rt_at || it.source_at) + " KST" : "" ].filter(Boolean).join(" · ") : (regular.display ? (it.session === "정규장" ? "정규장" : "시간외 · " + esc(it.session)) : (it.live ? "정규장" : "마감")) + (/10분 지연/.test(it.source || "") ? " · 약 10분 지연" : "") + (it.stale ? " · 지연" : !it.live ? " · 마지막" : "") + (it.rt_at || it.source_at ? ` · ${hm(it.rt_at || it.source_at)}` : "")}</small></div>
           ${chLvLine(it, g.cc, horizontal)}${chCloseExt(regular, it, g.cc)}${chChart(it, g.cc, sgNow, horizontal)}</article>`;
       });
       html += `</div></div>`;
