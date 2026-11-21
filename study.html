@@ -108,7 +108,7 @@ let shots = [], cur = 0;
   $("#sv").innerHTML = `
     <p class="sv-back"><a href="index.html#archive">← 스터디 아카이브</a></p>
     <span class="sv-kind">${se.emoji || ""} ${esc(se.name || "")}${nth ? " · " + nth : ""}</span>
-    <p class="eyebrow dark">${fmt(s.date)} ${ampm(s.time)}${isUp ? ` · 예정 <b style="color:#d6343f">${dday(s.date)}</b>` : ""}</p>
+    <p class="eyebrow dark">${fmt(s.date)} ${ampm(s.time)}${isUp ? ` · ${s.confirmed ? "" : "예정 "}<b style="color:#d6343f">${dday(s.date)}</b>` : ""}</p>
     <h1 class="sv-title">${esc(s.title)}</h1>
     ${s.theme ? `<p class="sv-theme">${esc(s.theme)}</p>` : ""}
     <ul class="sv-meta">
