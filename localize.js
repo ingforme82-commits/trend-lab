@@ -514,6 +514,46 @@
 
   /* ── 화면 적용 ── */
   const tracked = new WeakMap();
+  const retries = new WeakMap();
+  // 사이트 고정 문구표(i18n-ui.js): 6개 언어를 사람이 쓴 번역으로 — 자동 번역보다 먼저 쓴다. 요일 (월)…(일)은 ({w})로 찾는다.
+  // 한 조각: 문구 그대로 → 숫자 자리표 틀 → 앞머리 기호(·▲…) 뗀 틀 순서로 사전에서 찾는다. 못 찾으면 null.
+  function dictOne(text) {
+    const t = text.trim();
+    if (!t || !/[가-힣]/.test(t)) return t;
+    const hit = siteUi(t);
+    if (hit) return hit;
+    const nums = [];
+    const tpl = t.replace(NUMBER, (m) => { nums.push(m); return "{" + (nums.length - 1) + "}"; });
+    const lead = (tpl.match(/^[▲▼△⬆⬇⚡•·]\s*/) || [""])[0];
+    const label = siteUi(tpl) || (lead && siteUi(tpl.slice(lead.length)) ? lead + siteUi(tpl.slice(lead.length)) : null);
+    return label ? fill(label, nums) : null;
+  }
+  // ' · '로 이어진 줄은 조각마다 사전을 찾아 모두 있으면 이어 붙인다(티커·숫자처럼 한글 없는 조각은 그대로).
+  function dictParts(text) {
+    const t = text.trim();
+    if (!/\s·|·\s/.test(t)) return null;
+    const parts = t.split(/(\s+·\s+|^·\s+|\s+·$)/);
+    let any = false;
+    const out = parts.map((p, i) => {
+      if (i % 2) return p;                          // 구분자
+      const r = dictOne(p);
+      if (r === null) return null;
+      if (r !== p.trim()) any = true;
+      return r;
+    });
+    return any && !out.includes(null) ? out.join("") : null;
+  }
+  function siteUi(template) {
+    const UI = window.TRL_UI;
+    if (!UI) return null;
+    const days = [];
+    const key = template.replace(/\((월|화|수|목|금|토|일)\)/g, (m, d) => { days.push(d); return "({w})"; });
+    const t = UI[key] && UI[key][language];
+    if (!t) return null;
+    const W = window.TRL_WEEK || {};
+    let i = 0;
+    return t.replace(/\{w\}/g, () => (W[days[i++]] || {})[language] || "");
+  }
   function translateValue(node, attribute) {
     if (!node.isConnected) return;
     const original = attribute ? node.getAttribute(attribute) : node.data;
@@ -533,7 +573,16 @@
       return "{" + (numbers.length - 1) + "}";
     });
     const lead = (template.match(/^[▲▼△⬆⬇⚡•·]\s*/) || [""])[0], body = template.slice(lead.length);
-    const label = language === "en" && Object.hasOwn(ENGLISH_UI, template) ? ENGLISH_UI[template]
+    const exact = siteUi(source) || dictParts(source);   // 숫자까지 그대로인 문구(나스닥100) · ' · '로 이어진 조각 문구(BABA · 중국)
+    if (exact) {
+      const value = original.replace(original.trim(), () => exact);
+      states[key] = value;
+      if (value !== original) { if (attribute) node.setAttribute(attribute, value); else node.data = value; }
+      return;
+    }
+    const site = siteUi(template) || (lead && siteUi(body) ? lead + siteUi(body) : null);
+    const label = site ? site
+      : language === "en" && Object.hasOwn(ENGLISH_UI, template) ? ENGLISH_UI[template]
       : language === "en" && lead && Object.hasOwn(ENGLISH_UI, body) ? lead + ENGLISH_UI[body]
       : language === "zh-hant" && Object.hasOwn(TAIWAN_UI, template)
         ? TAIWAN_UI[template] : MARKET_UI.get(template)?.[language];
@@ -549,6 +598,10 @@
     translate(source).then((output) => {
       if (!output) {
         if (states[key] === original) delete states[key];
+        // 11/21: 번역 서버가 막혀(429) 실패한 글은 예전엔 다시 안 그려지면 영영 한국어로 남았다(LAB 머리글·바닥 문구 등).
+        // 같은 글을 30초·1분·2분…(최대 10분 간격, 8번) 뒤 다시 시도한다.
+        const n = (retries.get(node) || 0) + 1;
+        if (n <= 8) { retries.set(node, n); setTimeout(() => enqueue(node, attribute), Math.min(30000 * 2 ** (n - 1), 600000)); }
         return;
       }
       if (!node.isConnected) return;
@@ -576,7 +629,6 @@
 
   // Yield between small batches so market rendering and input can run.
   const work = new Map();
-  let active;
   let timer;
   function enqueue(node, attribute = null) {
     if (node?.nodeType !== 1 && node?.nodeType !== 3) return;
@@ -591,36 +643,42 @@
   const blocked = (el) => el.closest(excluded) && !(el.closest("select") && !el.closest("#trlLanguage, #trlGoogleTranslate, [translate=no]"));
   function visit(node, attribute) {
     const element = node.nodeType === 3 ? node.parentElement : node;
-    if (!element || blocked(element)) return;
+    if (!element) return;
+    // 입력칸은 내용은 건드리지 않고 안내 글(placeholder·aria-label·title)만 번역한다(11/21 속보 검색칸)
+    if (node.nodeType === 1 && node.matches("input, textarea") && !node.closest("[translate=no]")) {
+      for (const name of ["placeholder", "aria-label", "title"]) if (!attribute || attribute === name) translateValue(node, name);
+      return;
+    }
+    if (blocked(element)) return;
     if (node.nodeType === 3) translateValue(node);
     else {
       if ((!attribute || attribute === "href") && node.matches("a[href]")) preserveLanguage(node);
-      for (const name of ["title", "aria-label", "alt"]) {
+      for (const name of ["title", "aria-label", "alt", "placeholder"]) {
         if (!attribute || attribute === name) translateValue(node, name);
       }
     }
   }
 
+  // 11/21: 예전엔 body 전체를 TreeWalker 하나로 훑다가, 1~2초마다 다시 그려지는 시세 칸 때문에 '지금 보던 노드'가 사라지면
+  // 나머지 페이지 전체를 건너뛰었다(LAB 머리글·바닥 문구가 한국어로 남던 원인). 이제 요소마다 자식을 작업 목록에 넣어 넓게 훑는다 —
+  // 다시 그려져 사라진 칸만 빠지고(새 내용은 MutationObserver 가 다시 넣음), 나머지는 끝까지 간다.
   function flush() {
     timer = null;
-    const deadline = performance.now() + 5;
-    for (let count = 0; count < 100 && performance.now() < deadline; count++) {
-      if (!active) {
-        const next = work.values().next().value;
-        if (!next) break;
-        work.delete(next.node);
-        if (!next.node.isConnected) continue;
-        visit(next.node, next.attribute);
-        if (!next.attribute && next.node.nodeType === 1 && !blocked(next.node)) {
-          active = document.createTreeWalker(next.node, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+    const deadline = performance.now() + 6;
+    for (let count = 0; count < 200 && performance.now() < deadline; count++) {
+      const next = work.values().next().value;
+      if (!next) break;
+      work.delete(next.node);
+      if (!next.node.isConnected) continue;
+      visit(next.node, next.attribute);
+      if (!next.attribute && next.node.nodeType === 1 && !blocked(next.node)) {
+        for (const child of next.node.childNodes) {
+          if (child.nodeType === 3) visit(child);
+          else if (child.nodeType === 1 && !work.has(child)) work.set(child, { node: child, attribute: null });
         }
-        continue;
       }
-      const node = active.currentNode.isConnected ? active.nextNode() : null;
-      if (node) visit(node);
-      else active = null;
     }
-    if (active || work.size) timer = setTimeout(flush, 0);
+    if (work.size) timer = setTimeout(flush, 0);
   }
 
   enqueue(document.body);
@@ -633,6 +691,6 @@
     }
   }).observe(document.documentElement, {
     childList: true, subtree: true, characterData: true, attributes: true,
-    attributeFilter: ["href", "title", "aria-label", "alt"],
+    attributeFilter: ["href", "title", "aria-label", "alt", "placeholder"],
   });
 })();
