@@ -1215,3 +1215,12 @@ html.trl-reserve #heroLive[hidden]{min-height:700px}
   .tick .fine,.tick .t-meta{font-size:11.5px;line-height:1.45}
 }
 @media (max-width:760px){.nav .notice:not([hidden]){min-height:65px;box-sizing:border-box}}
+/* 11/21 영어판 하단 메뉴 밀림: 속보 칸이 번역된 긴 문장(+5 minutes Calculating 등)을 줄바꿈하지 못해 645px로 넓어지고
+   → 휴대폰이 화면을 축소해 고정 하단 메뉴가 화면 밖으로 밀렸다. 그리드 칸이 내용 폭 아래로 줄어들 수 있게 하고, 전체 가로 넘침도 막는다 */
+.nws{grid-template-columns:minmax(0,1fr)}
+.nw{grid-template-columns:62px minmax(0,1fr)}
+@media (max-width:600px){.nw{grid-template-columns:48px minmax(0,1fr)}}
+.nw-b,.nw-m,.nw-r{min-width:0}
+.nw-txt,.nw-sub,.nw-src,.nw-pv{overflow-wrap:anywhere}
+.rw{white-space:normal}
+html,body{overflow-x:clip}
