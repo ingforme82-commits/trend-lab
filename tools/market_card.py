@@ -19,7 +19,17 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 ROOT = Path(__file__).resolve().parents[1]
 HEAD = ROOT / "data" / "headline.json"
-STATE = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "trendlab" / "market_card_state.json"
+
+
+def _local_base() -> Path:
+    """%LOCALAPPDATA% (비어 있으면 홈\\AppData\\Local, 리눅스는 홈) — keystore.local_base 와 같은 규칙."""
+    v = os.environ.get("LOCALAPPDATA", "").strip()
+    if v:
+        return Path(v)
+    return Path.home() / "AppData" / "Local" if os.name == "nt" else Path.home()
+
+
+STATE = _local_base() / "trendlab" / "market_card_state.json"
 KST = timezone(timedelta(hours=9))
 TAG = "📊 오늘 시황(자동)"
 MANUAL_TAG = "📊 오늘 시황"

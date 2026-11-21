@@ -27,7 +27,17 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 HEAD = ROOT / "data" / "headline.json"
-STATE = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "trendlab" / "macro_issue_state.json"
+
+
+def _local_base() -> Path:
+    """%LOCALAPPDATA% (비어 있으면 홈\\AppData\\Local, 리눅스는 홈) — keystore.local_base 와 같은 규칙."""
+    v = os.environ.get("LOCALAPPDATA", "").strip()
+    if v:
+        return Path(v)
+    return Path.home() / "AppData" / "Local" if os.name == "nt" else Path.home()
+
+
+STATE = _local_base() / "trendlab" / "macro_issue_state.json"
 KST = timezone(timedelta(hours=9))
 TAG = "📈 금리·유가·환율 변화(자동)"
 OLD_TAGS = ("📈 금리·유가 변화(자동)",)        # 11/13 이름 바뀜 — 예전 카드는 새 카드로 갈아 끼움

@@ -26,7 +26,17 @@ from pathlib import Path
 KST = timezone(timedelta(hours=9))
 BASE = "https://m.stock.naver.com/api/stocks"
 UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
-DIR = Path(os.environ.get("LOCALAPPDATA", str(Path.home()))) / "trendlab"
+
+
+def _local_base() -> Path:
+    """%LOCALAPPDATA% (비어 있으면 홈\\AppData\\Local, 리눅스는 홈) — keystore.local_base 와 같은 규칙."""
+    v = os.environ.get("LOCALAPPDATA", "").strip()
+    if v:
+        return Path(v)
+    return Path.home() / "AppData" / "Local" if os.name == "nt" else Path.home()
+
+
+DIR = _local_base() / "trendlab"
 MAP = DIR / "hot_sectors_map.json"
 STATE = DIR / "hot_sectors_state.json"
 TAG = "🔥 오늘 주도 섹터(자동)"

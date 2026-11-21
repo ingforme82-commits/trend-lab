@@ -73,9 +73,18 @@ def has(name: str) -> bool:
     return bool(get(name))
 
 
+def local_base(osname: str | None = None) -> Path:
+    """Windows 상태 폴더의 바탕. LOCALAPPDATA 가 비어 있는 실행(일부 예약 작업)에서도 홈 바로 밑 'trendlab'이 아니라
+    늘 %USERPROFILE%\\AppData\\Local 을 쓴다 — 2026-11-10 홈에 trendlab 폴더가 따로 생겨 두 군데로 갈라졌던 문제(2026-11-21)."""
+    v = os.environ.get("LOCALAPPDATA", "").strip()
+    if v:
+        return Path(v)
+    return Path.home() / "AppData" / "Local" if (osname or os.name) == "nt" else Path.home()
+
+
 def state_dir(osname: str | None = None) -> Path:
     if (osname or os.name) == "nt":
-        base = Path(os.environ.get("LOCALAPPDATA", str(Path.home())))
+        base = local_base("nt")
     else:
         base = Path(os.environ.get("XDG_STATE_HOME", "").strip() or (Path.home() / ".local" / "state"))
     d = base / "trendlab"

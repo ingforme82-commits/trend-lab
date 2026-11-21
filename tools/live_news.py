@@ -234,7 +234,8 @@ def refresh() -> None:
 
 
 BYLINE = re.compile(r"☎|☏|T\.\s?\d|\d{2,3}-\d{3,4}-\d{4}|@\w|애널리스트|Analyst|자료\s?링크|링크\s?[:▶]|^[-=_]{3,}$|"
-                    r"^\W*\[[^\]]{0,40}(증권|리서치|전략|매크로|퀀트|Research)[^\]]*\]\W*$|^\W*(안녕하세요|안녕하십니까)", re.I)
+                    r"^\W*\[[^\]]{0,40}(증권|리서치|전략|매크로|퀀트|Research)[^\]]*\]\W*$|^\W*(안녕하세요|안녕하십니까)|"
+                    r"^\W*[가-힣A-Za-z]{1,8}\s?(증권\s?)?리서치\s?센터(\s?[가-힣]{2,8}팀)?(\s?채널)?\W*$|투자\s?판단의\s?(최종\s?)?참고|^\W*link\s*:", re.I)
 
 
 def _lines(text: str) -> list[str]:
@@ -329,10 +330,13 @@ def from_telegram() -> list[dict]:
             if ch not in SECTOR_ANALYST and BROKER.search(text):
                 drop(ch, "broker")
                 continue
-            if len(re.findall(r"https?://", text)) >= 3 or text.lstrip().startswith("<"):
+            # 링크 모음 글은 뺀다. 섹터 애널리스트 채널의 '데일리 섹터 News & Comments'는 기사마다 link 줄이 붙어
+            # 3개를 넘기 일쑤라(11/20 유안타 리서치 5건 모두) 제외 — 링크는 clean_line 이 떼어 낸다(2026-11-21)
+            if (ch not in SECTOR_ANALYST and len(re.findall(r"https?://", text)) >= 3) or text.lstrip().startswith("<"):
                 drop(ch, "links")
                 continue
-        h, sub, orig = clean_line(text, with_sub=strat or analysis)
+        sector = ch in SECTOR_ANALYST
+        h, sub, orig = clean_line(text, with_sub=strat or analysis or sector)
         lm = URL_ONLY.match(text)
         if lm:                                          # 링크만 올린 글 → 기사 제목·언론사(링크는 싣지 않음)
             got_t = link_title(lm.group(1))
