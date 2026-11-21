@@ -54,7 +54,9 @@
   try {
     localStorage.removeItem("trl:public-translations:v1:" + language);   // 숫자 문장으로 가득 찬 예전 캐시 정리
     const entries = JSON.parse(localStorage.getItem(cacheKey) || "[]");
-    if (Array.isArray(entries)) saved = entries;
+    if (Array.isArray(entries)) saved = entries.filter((entry) =>
+      Array.isArray(entry) && typeof entry[0] === "string" && typeof entry[1] === "string"
+    ).slice(-CACHE_MAX);
   } catch { /* Storage is optional. */ }
   const cache = new Map(saved);
   let saveTimer;
@@ -111,7 +113,7 @@
     let size = endpoint(first.sl, first.text).length;
     for (let i = 0; i < queue.length && batch.length < BATCH_ITEMS;) {
       const item = queue[i];
-      const extra = encodeURIComponent("\n" + item.text).length;
+      const extra = new URLSearchParams({ q: "\n" + item.text }).toString().length;
       if (item.single || item.sl !== first.sl || size + extra > BATCH_URL) { i++; continue; }
       batch.push(item);
       size += extra;
@@ -321,6 +323,7 @@
   /* ── 화면 적용 ── */
   const tracked = new WeakMap();
   function translateValue(node, attribute) {
+    if (!node.isConnected) return;
     const original = attribute ? node.getAttribute(attribute) : node.data;
     const source = original?.trim().replace(/\s+/g, " ");
     if (!source) return;
@@ -342,6 +345,7 @@
     if (fixed) {
       const value = original.replace(original.trim(), () => fixed);
       states[key] = value;
+      if (value === original) return;
       if (attribute) node.setAttribute(attribute, value);
       else node.data = value;
       return;
@@ -353,31 +357,13 @@
       }
       if (!node.isConnected) return;
       const current = attribute ? node.getAttribute(attribute) : node.data;
-      if (current !== original) return;
+      if (current !== original || states[key] !== original) return;
       const trimmed = original.trim();
       const value = original.replace(trimmed, () => output);
       states[key] = value;
       if (attribute) node.setAttribute(attribute, value);
       else node.data = value;
     });
-  }
-
-  function scan(root) {
-    if (!root || (root.nodeType !== 1 && root.nodeType !== 3)) return;
-    const element = root.nodeType === 3 ? root.parentElement : root;
-    if (!element || element.closest(excluded)) return;
-    if (root.nodeType === 3) {
-      translateValue(root);
-      return;
-    }
-    const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-    for (let node = walker.nextNode(); node; node = walker.nextNode()) {
-      if (!node.parentElement.closest(excluded)) translateValue(node);
-    }
-    for (const node of [element, ...element.querySelectorAll("[title], [aria-label], [alt]")]) {
-      if (node.closest(excluded)) continue;
-      for (const attribute of ["title", "aria-label", "alt"]) translateValue(node, attribute);
-    }
   }
 
   function preserveLanguage(anchor) {
@@ -392,25 +378,60 @@
     }
   }
 
-  function scanLinks(node) {
-    if (node.nodeType !== 1) return;
-    if (node.matches("a[href]")) preserveLanguage(node);
-    node.querySelectorAll("a[href]").forEach(preserveLanguage);
+  // Yield between small batches so market rendering and input can run.
+  const work = new Map();
+  let active;
+  let timer;
+  function enqueue(node, attribute = null) {
+    if (node?.nodeType !== 1 && node?.nodeType !== 3) return;
+    const entry = work.get(node);
+    if (!entry || attribute === null || entry.attribute !== null) {
+      work.set(node, { node, attribute: entry && entry.attribute !== attribute ? null : attribute });
+    }
+    if (!timer) timer = setTimeout(flush, 0);
   }
 
-  scan(document.body);
-  scan(document.querySelector("title"));
-  scanLinks(document.body);
+  function visit(node, attribute) {
+    const element = node.nodeType === 3 ? node.parentElement : node;
+    if (!element || element.closest(excluded)) return;
+    if (node.nodeType === 3) translateValue(node);
+    else {
+      if ((!attribute || attribute === "href") && node.matches("a[href]")) preserveLanguage(node);
+      for (const name of ["title", "aria-label", "alt"]) {
+        if (!attribute || attribute === name) translateValue(node, name);
+      }
+    }
+  }
+
+  function flush() {
+    timer = null;
+    const deadline = performance.now() + 5;
+    for (let count = 0; count < 100 && performance.now() < deadline; count++) {
+      if (!active) {
+        const next = work.values().next().value;
+        if (!next) break;
+        work.delete(next.node);
+        if (!next.node.isConnected) continue;
+        visit(next.node, next.attribute);
+        if (!next.attribute && next.node.nodeType === 1 && !next.node.closest(excluded)) {
+          active = document.createTreeWalker(next.node, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
+        }
+        continue;
+      }
+      const node = active.currentNode.isConnected ? active.nextNode() : null;
+      if (node) visit(node);
+      else active = null;
+    }
+    if (active || work.size) timer = setTimeout(flush, 0);
+  }
+
+  enqueue(document.body);
+  enqueue(document.querySelector("title"));
   new MutationObserver((records) => {
     for (const record of records) {
-      if (record.type === "attributes") {
-        if (record.attributeName === "href") preserveLanguage(record.target);
-        else if (!record.target.closest(excluded)) translateValue(record.target, record.attributeName);
-      } else if (record.type === "characterData") scan(record.target);
-      else for (const node of record.addedNodes) {
-        scan(node);
-        scanLinks(node);
-      }
+      if (record.type === "attributes") enqueue(record.target, record.attributeName);
+      else if (record.type === "characterData") enqueue(record.target);
+      else for (const node of record.addedNodes) enqueue(node);
     }
   }).observe(document.documentElement, {
     childList: true, subtree: true, characterData: true, attributes: true,
