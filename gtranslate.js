@@ -70,10 +70,10 @@
   if (!g) return;
   /* 구글이 틀리는 시장 용어는 번역 전에 뜻이 분명한 한국어로 바꿔 둔다
    * (속보 → 'Trab·말 걸음', 시세 → 'Zitat·인용', '뉴스 속보' → 'Blitz·섬광'으로 나오던 문제, 11/21 확인) */
-  const FIX = [[/속보(?! 뉴스)/g, "속보 뉴스"], [/(?<!시장 )시세/g, "시장 시세"], [/넥장/g, "넥스트레이드"], [/물타기/g, "추가 매수"]];
+  const FIX = [[/속보(?! 뉴스)/g, "속보 뉴스"], [/(?<!시장 )시세/g, "시장 시세"], [/넥장/g, "넥스트레이드"], [/물타기/g, "추가 매수"], [/조영근/g, "Cho Young-geun"]];
   const skip = "script, style, noscript, textarea, input, select, .notranslate, [translate=no]";
   const fixNode = (n) => {
-    if (!/[속시넥물]/.test(n.data) || !n.parentElement || n.parentElement.closest(skip)) return;
+    if (!/[속시넥물조]/.test(n.data) || !n.parentElement || n.parentElement.closest(skip)) return;
     let t = n.data; for (const [re, to] of FIX) t = t.replace(re, to);
     if (t !== n.data) n.data = t;
   };

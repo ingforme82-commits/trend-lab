@@ -35,6 +35,7 @@
     <select id="trlLanguage" aria-label="언어 선택"></select>
     <div id="trlGoogleTranslate" class="trl-gt notranslate" hidden></div>
     <a class="btn btn-kakao btn-sm" href="https://invite.kakao.com/tc/p7OX5rMjd0" target="_blank" rel="noopener">오픈채팅</a>
+    <a class="btn btn-ghost btn-sm nav-blog" href="https://blog.naver.com/ingforme" target="_blank" rel="noopener">블로그</a>
   </div>
 </header>
 <p id="trlLanguageNote" class="wrap fine" hidden></p>
@@ -54,12 +55,13 @@
 <footer class="foot">
   <div class="wrap">
     <p><b>조영근 추세추종 리서치 랩 | Trend Research Lab</b></p>
+    <p class="foot-links"><a href="https://blog.naver.com/ingforme" target="_blank" rel="noopener">블로그</a><a href="https://invite.kakao.com/tc/p7OX5rMjd0" target="_blank" rel="noopener">오픈채팅</a></p>
     <p>본 그룹 스터디는 교육 목적이며, 특정 종목을 추천하지 않고 수익을 보장하지 않습니다. 사진 게시를 원하지 않으시면 오픈채팅으로 알려 주세요. 바로 내리겠습니다.</p>
   </div>
 </footer>
 
 <script src="count.js"></script>
-<script src="news.js?v=20261121-breakout-gt" defer></script>
+<script src="news.js?v=20261121-cho" defer></script>
 <script>
 "use strict";
 const $ = (s) => document.querySelector(s);
@@ -173,7 +175,7 @@ let tx = null;
 $("#lb").addEventListener("touchstart", (e) => { tx = e.touches[0].clientX; }, { passive: true });
 $("#lb").addEventListener("touchend", (e) => { if (tx === null) return; const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 50) openLb(cur + (dx < 0 ? 1 : -1)); tx = null; });
 </script>
-<script src="localize.js?v=20261121-breakout-gt" defer></script>
-<script src="gtranslate.js?v=20261121-en2" defer></script>
+<script src="localize.js?v=20261121-cho" defer></script>
+<script src="gtranslate.js?v=20261121-cho" defer></script>
 </body>
 </html>

@@ -458,7 +458,7 @@
   }
 
   // 시장 용어: 기계번역이 엉뚱하게 옮기는 낱말을 보내기 전에 영어로 바꿔 둔다(긴 말부터)
-  const TERMS = [["장대양봉", "long bullish candle"], ["장대음봉", "long bearish candle"], ["프리마켓", "premarket"], ["애프터마켓", "after-hours"],
+  const TERMS = [["조영근", "Cho Young-geun"], ["장대양봉", "long bullish candle"], ["장대음봉", "long bearish candle"], ["프리마켓", "premarket"], ["애프터마켓", "after-hours"],
     ["정규장", "regular session"], ["시간외", "extended hours"], ["넥스트레이드", "Nextrade"], ["넥장", "NXT"], ["분봉", "-minute candles"],
     ["일선", "-day MA"], ["양봉", "bullish candle"], ["음봉", "bearish candle"], ["선물", "futures"], ["체결", "trades"], ["기준가", "reference price"],
     ["채널 상단", "channel ceiling"], ["채널 하단", "channel floor"], ["수평 저항", "horizontal resistance"], ["수평 지지", "horizontal support"],
