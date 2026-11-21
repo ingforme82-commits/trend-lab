@@ -74,6 +74,7 @@
     window.trlNewsHealth = {direct:true, checked:Date.now(), roundTripMs:performance.now()-started};
     return keep(data);
   }
+  const isRecent = (ts, now, hours) => Number.isFinite(ts) && ts <= now && now - ts < hours * 3600e3;
   async function loadNews(preloaded = null) {
     try {
       const j = preloaded || await fetchNews();
@@ -86,6 +87,7 @@
           if (response.ok) nhSnapshot = await response.json();
         } catch { /* 최근 발행본을 유지하고 마지막 성공 시각을 표시 */ }
       }
+      if (!j || !Array.isArray(j.items) || !Number.isFinite(j.updated) || j.updated < (window.trlUpdated || 0)) return;
       for (const row of (j.lev && j.lev.items) || []) {
         const quote = nhSnapshot?.items?.find((item) => item.sym === row.sym);
         if (!quote || !Number.isFinite(quote.px) || !Number.isFinite(quote.base) || quote.px <= 0 || quote.base <= 0) continue;
@@ -100,7 +102,8 @@
         if (!fresh && r && r.px > 0 && r.base > 0) row.ext = { ...r, source: r.src === "NH" ? "NH투자증권" : "야후", board: true };
       }
       const commit = () => {
-      news = j.items || []; moves = j.moves || []; series = j.series || {}; health = j.health || null;
+      if (j.updated < (window.trlUpdated || 0)) return;
+      news = [...j.items].sort((a, b) => b.ts - a.ts); moves = j.moves || []; series = j.series || {}; health = j.health || null;
       tgsum = j.tgsum || null; window.trlAuto = j.auto_issues || []; world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
       window.trlSrcScore = j.srcscore || null; if (typeof window.paintSrcScore === "function") window.paintSrcScore();
       window.trlRtUrl = /^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/.test(j.rt_url || "") ? j.rt_url : null; window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlUst = j.ust || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; flows = j.flows || null; s7 = normalizeS7(j); leaders = j.leaders || null; watch = j.watch || null; lev = j.lev || null; window.trlBrief = brief || {}; window.trlFlows = flows || {}; window.trlS7 = s7 || {}; window.trlLev = lev || {}; window.trlUpdated = j.updated || Date.now(); if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } if (typeof window.loadBand === "function" && !window.__pinNotice) window.loadBand(); window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true; window.trlChan = j.chan || null;
@@ -212,18 +215,18 @@
   }
   function drawTicker() {
     const box = q("#ticker"); if (!box) return;
-    // 최근 1시간 안의 주요 뉴스 위주(중요도 순으로 고른 뒤 시간 순으로 흘림). 1시간 안에 5건이 안 되면 3시간까지 넓힌다
+    // 최근 1시간 안의 주요 뉴스만 표시한다.
     const score = (n) => (n.pivot ? 8 : 0) + (n.hot ? 4 : 0) + (n.kind === "섹터 시세" ? 3 : 0)
       + ((n.tags || []).some((t) => ["중동·유가", "연준·금리", "반도체", "AI·빅테크", "한국", "지수"].includes(t)) ? 1 : 0)
       - (n.kind === "증권사 시황" || n.kind === "시황 분석" ? 2 : 0) - (/입찰|낙찰|응찰|Bid-to-Cover|\$거시경제/.test(n.text) ? 2 : 0);
-    let span = 1;
-    let recent = news.filter((n) => Date.now() - n.ts < 3600e3);
-    if (recent.length < 5) { span = 3; recent = news.filter((n) => Date.now() - n.ts < 3 * 3600e3); }
+    const now = Date.now();
+    const recent = news.filter((n) => isRecent(n.ts, now, 1));
     const pick = dedupe(recent.map((n) => [score(n), n]).sort((a, b) => b[0] - a[0] || b[1].ts - a[1].ts).map((x) => x[1])).slice(0, 12).sort((a, b) => b.ts - a.ts);
-    const key = span + ":" + pick.map((n) => n.ts + (n.pivot ? "p" : "")).join(",");
-    if (!pick.length || key === tickerKey) return;
+    const key = pick.map((n) => n.ts + (n.pivot ? "p" : "")).join(",");
+    if (!pick.length) { box.hidden = true; box.innerHTML = ""; tickerKey = ""; tickPending = null; return; }
+    if (key === tickerKey) return;
     tickerKey = key;
-    const lab = `📡<span class="tk-lt"> 주요 시황</span> <small>${span === 1 ? "최근 1시간" : "최근 3시간"}<span class="tk-lt"> · ${pick.length}건 · 중복 없이</span></small>`;
+    const lab = `📡<span class="tk-lt"> 주요 시황</span> <small>최근 1시간<span class="tk-lt"> · ${pick.length}건 · 중복 없이</span></small>`;
     const tr = box.querySelector(".tk-track");
     if (!tr) {                                             // 처음: 바로 흘리기 시작
       box.innerHTML = `<span class="tk-label">${lab}</span><div class="tk-view"><div class="tk-track tk-flow"></div></div>`;
@@ -235,8 +238,8 @@
       });
     } else {
       pick.lab = lab;
-      // 흐르는 중에는 끊지 않고 다음 바퀴부터. 단, 지금 흐르는 목록이 10분 넘게 묵었으면(백그라운드 탭·폰 화면 꺼짐으로 바퀴가 안 끝난 경우) 바로 바꾼다
-      const stale = !tickPick.shownAt || Date.now() - tickPick.shownAt > 10 * 60000 || document.hidden;
+      // 새 속보가 있거나 기존 항목이 만료되면 바로 반영한다.
+      const stale = !tickPick.shownAt || now - tickPick.shownAt >= 60000 || document.hidden || pick[0]?.ts !== tickPick[0]?.ts || tickPick.some((n) => !isRecent(n.ts, now, 1));
       if (stale) { tickPending = null; tickShow(pick); const l = box.querySelector(".tk-label"); if (l) l.innerHTML = lab; }
       else tickPending = pick;
     }
@@ -287,7 +290,7 @@
   function drawMoveReact(recent) {
     const box = q("#moveReact"); if (!box) return;
     const seen = new Set(), rows = [];
-    for (const m of [...recent].sort((a, b) => b.start - a.start)) {
+    for (const m of [...recent].sort((a, b) => b.end - a.end)) {
       const k = m.grp || m.id; if (seen.has(k)) continue; seen.add(k);
       const g = recent.filter((x) => (x.grp || x.id) === k).sort((a, b) => b.ratio - a.ratio)[0];
       const n = (g.items || (g.news || []).map((ts) => news.find((y) => y.ts === ts)).filter(Boolean))[0];
@@ -303,7 +306,7 @@
       return m.name === name ? `<td class="mvr-self">${t}</td>` : `<td>${t}</td>`;
     };
     box.hidden = false;
-    box.innerHTML = `<p class="fl-gh">📊 변곡점 지수 반응표 <small>최근 24시간 중 최신 3개 · 변곡점 구간 동안 각 자산의 변화 · 굵은 칸이 변곡점 자산 · 시각이 겹친 뉴스이며 인과관계를 단정하지 않습니다</small></p>
+    box.innerHTML = `<p class="fl-gh">📊 변곡점 지수 반응표 <small>최근 1시간 중 최신 3개 · 변곡점 구간 동안 각 자산의 변화 · 굵은 칸이 변곡점 자산 · 시각이 겹친 뉴스이며 인과관계를 단정하지 않습니다</small></p>
       <div class="fl-scroll"><table class="fl-t"><tr><th>구간</th>${REACT_COLS.map(([, h]) => `<th>${h}</th>`).join("")}<th style="text-align:left">같은 시각 뉴스</th></tr>
       ${rows.map(({ m, n }) => `<tr><td class="fl-n">${hm(m.start)}–${hm(m.end)} <small class="dim">${esc(m.name)}${m.kind === "cumulative" ? " 누적" : m.kind === "level" ? " 가격대" : ""}</small></td>${REACT_COLS.map(([k]) => cell(m, k)).join("")}<td class="mvr-n">${n ? `${hm(n.ts)} ${esc(newsText(n).slice(0, 60))}${newsText(n).length > 60 ? "…" : ""}` : `<span class="dim">연결된 뉴스 없음</span>`}</td></tr>`).join("")}
       </table></div>`;
@@ -312,7 +315,8 @@
   /* ── 시장을 움직인 순간(변곡점 카드) ── */
   function drawMoves() {
     const box = q("#moveList"); if (!box) return;
-    const recent = moves.filter((m) => Date.now() - m.start < 24 * 3600e3);
+    const now = Date.now();
+    const recent = moves.filter((m) => isRecent(m.end, now, 1));
     drawMoveReact(recent);
     // 같은 순간(시작 6분 안)은 카드 하나로: 평소 대비 배수가 가장 큰 자산이 제목, 나머지는 '함께 움직임'
     const groups = [];
@@ -320,8 +324,8 @@
       const g = groups.find((x) => x.grp && x.grp === m.grp);
       if (g) g.list.push(m); else groups.push({ grp: m.grp, list: [m] });
     }
-    const list = groups.sort((a, b) => Math.max(...b.list.map((m) => m.start)) - Math.max(...a.list.map((m) => m.start))).slice(0, 3);
-    if (!list.length) { box.innerHTML = `<p class="empty">최근 24시간 동안 평소보다 크게 움직인 구간이 없습니다.</p>`; return; }
+    const list = groups.sort((a, b) => Math.max(...b.list.map((m) => m.end)) - Math.max(...a.list.map((m) => m.end))).slice(0, 3);
+    if (!list.length) { box.innerHTML = `<p class="empty">최근 1시간 데이터에서 새 변곡점이 확인되지 않았습니다.</p>`; return; }
     const px = (m) => m.unit === "bp" ? `${(+m.from).toFixed(3)}% → ${(+m.to).toFixed(3)}%` : `${(+m.from).toLocaleString("ko-KR", { maximumFractionDigits: 2 })} → ${(+m.to).toLocaleString("ko-KR", { maximumFractionDigits: 2 })}`;
     box.innerHTML = list.map(({ list: ms }) => {
       ms.sort((a, b) => b.ratio - a.ratio);
@@ -331,7 +335,7 @@
       for (const x of ms) for (const n of (x.items || (x.news || []).map((ts) => news.find((y) => y.ts === ts)).filter(Boolean))) {
         if (!seenTs.has(n.ts + n.text)) { seenTs.add(n.ts + n.text); ns.push({ ...n, _a: x.name }); }
       }
-      ns.sort((a, b) => a.ts - b.ts);
+      ns.sort((a, b) => b.ts - a.ts);
       const inGrp = new Set(ms.map((x) => x.name));
       // 11/20 운영자: 같은 구간 반응은 자산별 평소 기준 대비 크기 순(m.rx) — 금리·달러·유가 반응이 묻히지 않게. 1배 이상이면 '동반'
       const rxList = m.rx ? m.rx.filter(([k]) => !inGrp.has(k)).slice(0, 4) : Object.entries(m.others || {}).filter(([k]) => !inGrp.has(k)).slice(0, 4);
@@ -1249,13 +1253,13 @@
   const normT = (t) => String(t || "").replace(/^\[[^\]]*\]\s*/, "").replace(/[^0-9A-Za-z가-힣]/g, "").slice(0, 18);
   function mainNews() {
     const now = Date.now();
-    const pool = news.filter((n) => n.text && now - n.ts < 6 * 3600e3 && !isStrat(n) && impScore(n) >= 55)
+    const pool = news.filter((n) => n.text && isRecent(n.ts, now, 1) && !isStrat(n) && impScore(n) >= 55)
       .sort((a, b) => impScore(b) - impScore(a) || b.ts - a.ts);
     const top = dedupe(pool, false).slice(0, 6);
-    // 중요 속보가 적은 시간대(11/18 운영자 "앞단은 뉴스 위주로"): 최근 3시간 최신 속보로 8건까지 채운다
+    // 중요 속보가 적은 시간대(11/18 운영자 "앞단은 뉴스 위주로"): 같은 1시간 범위의 최신 속보를 더 보여 준다
     if (top.length < 8) {
       const seen = new Set(top.map((n) => n.ts));
-      const fill = dedupe(news.filter((n) => n.text && now - n.ts < 3 * 3600e3 && !isStrat(n) && !seen.has(n.ts)).sort((a, b) => b.ts - a.ts));
+      const fill = dedupe(news.filter((n) => n.text && isRecent(n.ts, now, 1) && !isStrat(n) && !seen.has(n.ts)).sort((a, b) => b.ts - a.ts));
       for (const n of fill) { if (top.length >= 8) break; if (!top.some((o) => simTxt(o._g || bigr(o.text), n._g) >= 0.45)) top.push(n); }
     }
     return top.sort((a, b) => b.ts - a.ts);
@@ -1366,7 +1370,7 @@
     const byTag = (n) => tag === "전체" || (tag === PIV ? n.pivot : tag === STRAT ? isStrat(n) : n.tags.includes(tag));
     const byKw = (n) => !kwFilter || kwFilter.rx.test(n.text + " " + (n.orig || "") + " " + (n.sub || ""));
     const now = Date.now();
-    const byF = (n) => (flt.imp === "all" || isMajor(n)) && (!flt.hrs || now - n.ts < flt.hrs * 3600e3)
+    const byF = (n) => (flt.imp === "all" || isMajor(n)) && (!flt.hrs || isRecent(n.ts, now, flt.hrs))
       && (flt.ver === "all" || (flt.ver === "ok" ? ["multi", "official"].includes(n.verify) : flt.ver === "noun" ? n.verify !== "unconfirmed" : n.verify === "unconfirmed"));
     const base = news.filter((n) => byKw(n) && byF(n) && bySearch(n));
     drawViews(base.filter(byTag));
