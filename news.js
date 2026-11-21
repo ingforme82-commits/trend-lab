@@ -32,7 +32,7 @@
   const englishNews = new URLSearchParams(location.search).get("lang")?.toLowerCase() === "en";
   const newsText = (item) => englishNews && item.lang === "en" && typeof item.orig === "string" && item.orig.trim()
     ? item.orig : item.text;
-  let news = [], moves = [], series = {}, notes = [], candles = {}, candles1 = {}, sel = null, tag = "전체", shown = 10, health = null;
+  let news = [], moves = [], series = {}, notes = [], candles = {}, candles1 = {}, sel = null, tag = "전체", shown = 10;
   // 속보 필터: 중요도·시간·검증·정렬(분류는 tag 칩)
   const flt = { imp: "all", hrs: 0, ver: "all", sort: "new" };
   // 시황 구분·검색(2026-11-21 UX): 분류는 태그·출처 종류·문장 속 단어로만 나눈다(새 중요도 계산 없음)
@@ -103,18 +103,18 @@
       }
       const commit = () => {
       if (j.updated < (window.trlUpdated || 0)) return;
-      news = [...j.items].sort((a, b) => b.ts - a.ts); moves = j.moves || []; series = j.series || {}; health = j.health || null;
+      news = [...j.items].sort((a, b) => b.ts - a.ts); moves = j.moves || []; series = j.series || {};
       tgsum = j.tgsum || null; window.trlAuto = j.auto_issues || []; world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
       window.trlSrcScore = j.srcscore || null; if (typeof window.paintSrcScore === "function") window.paintSrcScore();
       window.trlRtUrl = /^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/.test(j.rt_url || "") ? j.rt_url : null; window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlUst = j.ust || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; flows = j.flows || null; s7 = normalizeS7(j); leaders = j.leaders || null; watch = j.watch || null; lev = j.lev || null; window.trlBrief = brief || {}; window.trlFlows = flows || {}; window.trlS7 = s7 || {}; window.trlLev = lev || {}; window.trlUpdated = j.updated || Date.now(); if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } if (typeof window.loadBand === "function" && !window.__pinNotice) window.loadBand(); window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true; window.trlChan = j.chan || null;
       window.trlMoves = moves; window.trlSeries = series; window.trlNews = news;
       if (typeof window.renderHeadline === "function") window.renderHeadline();
       window.dispatchEvent(new Event('trl:news'));
-      drawHealth(j.updated);
+      const status = q("#newsStamp"); if (status) status.hidden = true;
       drawTicker();
       };
       if(window.trlViewport)window.trlViewport.update(commit);else commit();
-    } catch { setText("#newsStamp", "속보를 불러오지 못했습니다."); }
+    } catch { const status = q("#newsStamp"); if (status && !window.trlUpdated) status.hidden = false; }
   }
   async function loadNotes() {
     try { notes = await (await fetch(`data/notes.json?t=${Math.floor(Date.now() / 600000)}`)).json(); window.trlNotes = notes; } catch { /* 없음 */ }
@@ -1223,15 +1223,10 @@
   function drawTgSum() {
     const box = q("#tgSum"); if (!box) return;
     const t = tgsum; if (!t || !(t.topics || []).length) { box.hidden = true; return; }
-    const ch = t.channels || [], now = Date.now();
-    const fresh = ch.filter((c) => c.got && now - c.got < 36 * 3600e3).length;
     const lines = (ln) => `<li${ln.hot ? ' class="hot"' : ""}><span class="tg-t">${esc(gist(ln.text, 110))}</span>`
       + `<span class="tg-m">${hm(ln.last)} · ${ln.srcs.map(esc).join(" · ")}${ln.srcs.length > 1 ? ` <b>${ln.srcs.length}곳 같은 내용</b>` : ""}${ln.n > ln.srcs.length ? ` · ${ln.n}건` : ""}</span></li>`;
-    box.innerHTML = `<div class="tg-head"><h3>📡 텔레그램·뉴스 통합 정리</h3><p>텔레그램 ${t.tg_ch}개 채널 ${t.tg_n}건 + 국내외 뉴스 ${t.news_ch}곳 ${t.news_n}건을 주제별로 묶었습니다`
-      + ` (뉴스·속보 채널 최근 ${t.win_fast}시간, 리서치·시황 방 최근 ${t.win_slow}시간). 여러 곳에 같은 내용이 나오면 한 줄로 합치고, 많이 나온 순서로 놓습니다. 종목 추천·목표주가 글은 싣지 않습니다.</p></div>`
-      + `<div class="tg-grid">` + t.topics.map((tp) => `<div class="tg-card"><p class="tg-name">${esc(tp.name)} <span>${tp.ch}채널 · ${tp.n}건</span></p><ul>${tp.lines.map(lines).join("")}</ul></div>`).join("") + `</div>`
-      + `<details class="tg-ch"><summary>텔레그램 수집 상태 · 채널 ${ch.length}개 1분마다 확인${t.polled ? ` (마지막 확인 ${hm(t.polled)})` : ""} · 36시간 안에 새 글 ${fresh}개</summary>`
-      + `<p>${ch.map((c) => `<span${c.post && now - c.post > 72 * 3600e3 ? ' class="old"' : ""}>${esc(c.name)} <i>${c.post ? ago(c.post) : "-"}</i></span>`).join("")}</p></details>`;
+    box.innerHTML = `<div class="tg-head"><h3>📡 텔레그램·뉴스 통합 정리</h3></div>`
+      + `<div class="tg-grid">` + t.topics.map((tp) => `<div class="tg-card"><p class="tg-name">${esc(tp.name)} <span>${tp.ch}채널 · ${tp.n}건</span></p><ul>${tp.lines.map(lines).join("")}</ul></div>`).join("") + `</div>`;
     box.hidden = false;
   }
   function drawTrend() {
@@ -1315,19 +1310,6 @@
     box.dataset.ready = "1";
     box.addEventListener("change", (e) => { const f = e.target.dataset.f; if (!f) return; flt[f] = f === "hrs" ? +e.target.value : e.target.value; shown = 10; drawList(); });
   }
-  function drawHealth(updated) {
-    const el = q("#newsStamp"); if (!el) return;
-    const now = Date.now(), parts = [`속보 갱신 ${hm(updated)} KST · ${ago(updated)}`];
-    const warn = (t) => `<b class="h-warn">${t}</b>`;
-    if (now - updated > 10 * 60000) parts.push(warn("갱신 지연"));
-    const h = health;
-    if (h) {
-      if (h.tg) { const late = h.tg.last && now - h.tg.last > 60 * 60000; parts.push(`텔레 최신 ${h.tg.last ? hm(h.tg.last) : "-"}${h.tg.refresh === false ? " " + warn("수집 실패") : late ? " " + warn("1시간 넘게 새 글 없음") : ""}`); }
-      if (h.rss && h.rss.total) parts.push(`RSS ${h.rss.ok}/${h.rss.total}${h.rss.fail && h.rss.fail.length ? " " + warn(`누락: ${h.rss.fail.map(esc).join("·")}`) : ""}`);
-      if (h.tr && (h.tr.auto || h.tr.fail)) parts.push(`해외 기사 자동 번역 ${h.tr.auto}건${h.tr.fail ? " " + warn(`자동 번역 대기 ${h.tr.fail}건(원문 보존·재시도)`) : ""}`);
-    }
-    el.innerHTML = parts.join(" · ");
-  }
   const VIEWS = [["all", "전체", "모든 속보"], ["morning", "아침 시황", "증권사 시황·시황 분석 중 05~10시(한국 시간)에 올라온 글"],
     ["kr", "국내장", "'한국' 태그 또는 코스피·코스닥·외국인·한국거래소 등 국내 시장 단어가 든 글"],
     ["us", "미국장", "해외 뉴스·영문 기사, 'AI·빅테크' 태그, 나스닥·S&P·뉴욕증시 등 미국 시장 단어가 든 글"],
@@ -1385,7 +1367,7 @@
       const lag = n.got && n.got - n.ts >= 2 * 60000 ? ` · 수집 ${hm(n.got)}<small>(+${Math.round((n.got - n.ts) / 60000)}분)</small>` : "";
       const lvb = n.lv === "상" ? `<span class="nw-v v-imp" title="중요도 ${n.imp}">🔥 중요</span>` : n.lv === "중" ? `<span class="nw-v v-one" title="중요도 ${n.imp}">중요도 중</span>` : "";
       const v = VER[n.verify] ? `<span class="nw-v ${VER[n.verify][1]}">${VER[n.verify][0]}${n.nsrc > 1 ? ` ${n.nsrc}곳` : ""}</span>` : "";
-      const tr = n.tr === "auto" ? `<span class="nw-v v-tr" title="${esc(n.orig || "")}">🌐 자동 번역</span>` : n.tr === "fail" ? `<span class="nw-v v-warn">🌐 자동 번역 대기·원문</span>` : "";
+      const tr = n.tr === "auto" ? `<span class="nw-v v-tr" title="${esc(n.orig || "")}">🌐 자동 번역</span>` : "";
       const XC = { ok: ["🌐 외신 확인", "v-ok"], ref: ["🌐 해외 보도", "v-one"], diff: ["⚠ 외신과 수치 다름", "v-warn"] };
       const xc = n.xc && XC[n.xc.st] ? `<span class="nw-v ${XC[n.xc.st][1]}">${XC[n.xc.st][0]} · ${n.xc.src.map(esc).join("·")}</span>` : "";
       const xcl = n.xc && XC[n.xc.st] ? `<p class="nw-xc"><b>원문</b> ${esc(n.xc.en)} <small class="dim">— ${esc(n.xc.src[0])}${n.xc.ko ? ` · 번역: ${esc(n.xc.ko)}` : ""}</small></p>` : "";
