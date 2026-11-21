@@ -20,7 +20,10 @@
   const pctTxt = (v) => `${v > 0 ? "+" : ""}${v.toFixed(2)}%`;
   const cls = (v) => (v > 0.005 ? "c-up" : v < -0.005 ? "c-dn" : "c-fl");
 
-  let st = { coin: COINS[0].k, range: 180, sel: null, news: [], data: [], timer: null, hover: null, interval: 1 };
+  let st = { coin: COINS[0].k, range: 180, sel: null, bk: null, news: [], data: [], timer: null, hover: null, interval: 1 };
+  // 11/21 운영자 "속보와 내용이 연결이 안 보인다 · 나스닥·유가·달러·채권·금 모두 연결": 선택한 속보 이후 다른 자산 반응을 한 줄로
+  const LINKED = [["xyz:XYZ100", "나스닥100"], ["xyz:SP500", "S&P500"], ["xyz:KR200", "코스피200"], ["xyz:CL", "WTI"], ["xyz:GOLD", "금"], ["xyz:KRW", "원/달러"], ["srv:DXY", "달러인덱스"], ["srv:US10Y", "미 10년물"]];
+  const linked = { sel: null, at: 0, rows: {} };
   let root = null;
   let loadId = 0;
 
@@ -32,6 +35,7 @@
       <div class="cm-tabs" id="cmCoins"></div>
       <div class="cm-tabs sm" id="cmRanges"></div>
       <p class="cm-info" id="cmInfo"></p>
+      <div class="cm-linked" id="cmLinked"></div>
       <div class="cm-chart" id="cmChart"><p class="fine" style="padding:20px">불러오는 중…</p></div>
       <div class="cm-tip" id="cmTip" hidden></div>
       <div class="cm-news" id="cmNews"></div>
@@ -42,7 +46,9 @@
       if (e.target === root || e.target.id === "cmX") return close();
       const c = e.target.closest("[data-coin]"); if (c) { st.coin = c.dataset.coin; load(); }
       const r = e.target.closest("[data-range]"); if (r) { st.range = +r.dataset.range; load(); }
-      const n = e.target.closest("[data-sel]"); if (n) { st.sel = +n.dataset.sel; fitRange(); load(); }
+      const b = e.target.closest("[data-bk]");
+      if (b) { const [f, t, sel] = b.dataset.bk.split(",").map(Number); st.bk = [f, t]; st.sel = sel; draw(); loadLinked(); return; }
+      const n = e.target.closest("[data-sel]"); if (n) { st.sel = +n.dataset.sel; st.bk = null; fitRange(); load(); }
     });
     document.addEventListener("keydown", (e) => { if (!root.hidden && e.key === "Escape") close(); });
     window.addEventListener("resize", () => { if (!root.hidden) draw(); });
@@ -70,6 +76,7 @@
       st.interval = 5;
       return draw();
     };
+    loadLinked();
     if (coin.startsWith("srv:")) return usePublished();
     try {
       const r = await fetch("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" },
@@ -83,6 +90,38 @@
       st.interval = 1;
     } catch { if (id === loadId) usePublished(); return; }
     draw();
+  }
+
+  async function loadLinked() {
+    const sel = st.sel;
+    if (!sel || Date.now() - sel > 24 * 3600e3) return;
+    if (linked.sel === sel && Date.now() - linked.at < 25000) return;
+    if (linked.sel !== sel) linked.rows = {};
+    linked.sel = sel; linked.at = Date.now();
+    const from = sel - 10 * 60000, end = Date.now();
+    await Promise.all(LINKED.map(async ([k]) => {
+      if (k.startsWith("srv:")) { linked.rows[k] = (window.trlSeries?.[k.slice(4)] || []).filter(([t]) => t >= from - 10 * 60000); return; }
+      try {
+        const r = await fetch("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(8000),
+          body: JSON.stringify({ type: "candleSnapshot", req: { coin: k, interval: sel < end - 12 * 3600e3 ? "5m" : "1m", startTime: from, endTime: end } }) });
+        if (r.ok) linked.rows[k] = (await r.json()).map((c) => [c.t, +c.c]).filter(([t, v]) => t > 0 && v > 0);
+      } catch { /* 이전 값 유지 */ }
+    }));
+    if (linked.sel === sel && root && !root.hidden) drawLinked();
+  }
+  function drawLinked() {
+    const box = root && root.querySelector("#cmLinked"); if (!box) return;
+    if (!st.sel || linked.sel !== st.sel) { box.innerHTML = ""; return; }
+    const cells = LINKED.map(([k, n]) => {
+      const rows = linked.rows[k] || [];
+      let base = null; for (const [t, v] of rows) { if (t <= st.sel) base = v; else break; }
+      if (base == null && rows.length && rows[0][0] - st.sel < 15 * 60000) base = rows[0][1];
+      const last = rows.length ? rows[rows.length - 1][1] : null;
+      if (!base || !last) return `<button class="chip cm-lk" data-coin="${k}">${n} <small>자료 없음</small></button>`;
+      const bp = k === "srv:US10Y", v = bp ? (last - base) * 100 : (last / base - 1) * 100;
+      return `<button class="chip cm-lk${k === st.coin ? " on" : ""}" data-coin="${k}">${n} <b class="${cls(v)}">${bp ? `${v > 0 ? "+" : ""}${v.toFixed(1)}bp` : pctTxt(v)}</b></button>`;
+    }).join("");
+    box.innerHTML = `<p class="cm-nh">속보 ${hm(st.sel)} 이후 지금까지 · 자산별 변화 <small>누르면 그 자산 차트</small></p><div class="cm-tabs">${cells}</div>`;
   }
 
   function drawTabs() {
@@ -103,7 +142,7 @@
       return;
     }
     const W = Math.max(300, box.clientWidth), H = window.innerWidth < 640 ? 300 : 420;
-    const pad = { l: 8, r: 62, t: 22, b: 26 }, volH = H * 0.16;
+    const pad = { l: 8, r: 62, t: 46, b: 26 }, volH = H * 0.16;   // 위 46px = 속보 줄(크게 눌리게)
     const pw = W - pad.l - pad.r, ph = H - pad.t - pad.b - volH;
     const lo = Math.min(...D.map((x) => x.l)), hi = Math.max(...D.map((x) => x.h)), rg = hi - lo || 1;
     const t0 = D[0].t, t1 = D[D.length - 1].t, step = pw / D.length;
@@ -136,9 +175,23 @@
     const myMoves = (window.trlMoves || []).filter((m) => m.asset === CODE[st.coin] && m.end >= t0 && m.start <= t1);
     const piv = new Set(myMoves.flatMap((m) => m.news || []));
     myMoves.forEach((m) => { const x0 = X(Math.max(m.start, t0)), x1 = X(Math.min(m.end, t1)); s += `<rect x="${x0}" y="${pad.t - 2}" width="${Math.max(3, x1 - x0)}" height="${ph + 4}" class="cm-zone ${m.move > 0 ? "up" : "dn"}"/>`; });
-    const gray = st.range <= 60 || inWin.length <= 30 ? inWin.filter((n) => !piv.has(n.ts)) : [];
-    gray.forEach((n) => { s += `<circle cx="${X(Math.min(n.ts, t1))}" cy="${pad.t - 10}" r="2.4" class="cm-dot" data-sel="${n.ts}"><title>${esc(hm(n.ts) + " " + n.text)}</title></circle>`; });
-    inWin.filter((n) => piv.has(n.ts)).forEach((n) => { s += `<circle cx="${X(Math.min(n.ts, t1))}" cy="${pad.t - 10}" r="5" class="cm-dot hot" data-sel="${n.ts}"><title>${esc("🔴 " + hm(n.ts) + " " + n.text)}</title></circle>`; });
+    // 속보 줄: 가까운 시각(18px 안)은 한 묶음 — 숫자로 건수, 🔴 변곡점 뉴스가 있으면 빨강. 묶음마다 가격선까지 점선으로 이어 '그때 가격'을 보인다
+    const lane = pad.t - 22, gap = 18, bks = [];
+    [...inWin].sort((a, b) => a.ts - b.ts).forEach((n) => {
+      const x = X(Math.min(n.ts, t1)), last = bks[bks.length - 1];
+      if (last && x - last.x0 < gap) { last.items.push(n); last.x1 = x; } else bks.push({ x0: x, x1: x, items: [n] });
+    });
+    const pxAt = (ts) => { let v = D[0].c; for (const x of D) { if (x.t <= ts) v = x.c; else break; } return v; };
+    bks.forEach((b) => {
+      const its = b.items, hot = its.some((n) => piv.has(n.ts)), imp = its.some((n) => n.hot);
+      const best = its.find((n) => piv.has(n.ts)) || its.find((n) => n.hot) || its[its.length - 1];
+      const cx = (b.x0 + b.x1) / 2, from = its[0].ts, to = its[its.length - 1].ts, on = st.bk ? st.bk[0] === from : its.some((n) => n.ts === st.sel);
+      const py = Y(pxAt(best.ts)), r = its.length > 1 ? 9 : 7;
+      s += `<line x1="${cx}" x2="${cx}" y1="${lane + r}" y2="${py}" class="cm-link${hot ? " hot" : ""}${on ? " on" : ""}"/><circle cx="${cx}" cy="${py}" r="3" class="cm-pt${hot ? " hot" : ""}"/>`;
+      s += `<g class="cm-bk${hot ? " hot" : imp ? " imp" : ""}${on ? " on" : ""}" data-bk="${from},${to},${best.ts}"><rect x="${cx - gap / 2}" y="2" width="${gap}" height="${pad.t - 2}" fill="transparent"/>`
+        + `<circle cx="${cx}" cy="${lane}" r="${r}"/>${its.length > 1 ? `<text x="${cx}" y="${lane + 4}" text-anchor="middle">${its.length > 9 ? "9+" : its.length}</text>` : ""}`
+        + `<title>${esc(its.slice(0, 6).map((n) => `${piv.has(n.ts) ? "🔴 " : ""}${hm(n.ts)} ${n.text}`).join("\n") + (its.length > 6 ? `\n외 ${its.length - 6}건` : ""))}</title></g>`;
+    });
     let info = "";
     const last = D[D.length - 1].c, first = D[0].o, chg = chgOf(first, last);
     if (st.sel && st.sel >= t0 - 60000) {                           // 선택한 속보: 세로선 + 기준 가격선 + 이후 변화
@@ -163,9 +216,12 @@
     root.querySelector("#cmInfo").innerHTML = info;
     box.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${s}<g id="cmHover"></g></svg>`;
     // 차트 구간의 속보 목록(누르면 선택)
-    const ordered = [...inWin.filter((n) => piv.has(n.ts)), ...inWin.filter((n) => !piv.has(n.ts))];
-    root.querySelector("#cmNews").innerHTML = inWin.length ? `<p class="cm-nh">이 구간의 속보 ${inWin.length}건${piv.size ? ` · 🔴 변곡점 관련 뉴스 ${inWin.filter((n) => piv.has(n.ts)).length}건` : ""}</p>` + ordered.slice(0, 30).map((n) =>
+    const inBk = st.bk ? inWin.filter((n) => n.ts >= st.bk[0] && n.ts <= st.bk[1]) : [];
+    const rest = inWin.filter((n) => !inBk.includes(n)).sort((a, b) => b.ts - a.ts);
+    const ordered = [...inBk, ...rest.filter((n) => piv.has(n.ts)), ...rest.filter((n) => !piv.has(n.ts))];
+    root.querySelector("#cmNews").innerHTML = inWin.length ? `<p class="cm-nh">${inBk.length ? `선택한 ${hm(st.bk[0])}${hm(st.bk[1]) !== hm(st.bk[0]) ? "–" + hm(st.bk[1]) : ""} 속보 ${inBk.length}건 먼저 · ` : ""}이 구간의 속보 ${inWin.length}건${piv.size ? ` · 🔴 변곡점 관련 뉴스 ${inWin.filter((n) => piv.has(n.ts)).length}건` : ""} <small>위 점(숫자 = 같은 시각대 건수)을 누르면 그 시각 속보가 맨 위로</small></p>` + ordered.slice(0, 60).map((n) =>
       `<button class="cm-ni${n.ts === st.sel ? " on" : ""}${piv.has(n.ts) ? " hot" : ""}" data-sel="${n.ts}"><b>${piv.has(n.ts) ? "🔴 " : ""}${hm(n.ts)}</b> ${esc(n.text)} <small>${esc(n.src || "")}</small></button>`).join("") : "";
+    drawLinked();
     drawHover();
   }
 
@@ -190,7 +246,7 @@
   function open(o) {
     if (!root) build();
     if (o.coin && !COINS.find((c) => c.k === o.coin)) COINS.push({ k: o.coin, n: o.name || o.coin.replace("xyz:", ""), d: 2, u: "$" });   // 화제 종목 등
-    st.coin = o.coin || st.coin; st.sel = o.sel || null; st.news = o.news || st.news;
+    st.coin = o.coin || st.coin; st.sel = o.sel || null; st.bk = null; st.news = o.news || st.news;
     if (st.sel) fitRange(); else st.range = 180;
     root.hidden = false; document.body.style.overflow = "hidden";
     load();

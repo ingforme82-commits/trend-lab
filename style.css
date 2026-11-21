@@ -1001,3 +1001,11 @@ html.trl-live-update,html.trl-live-update body{overflow-anchor:none!important;sc
 /* 11/20 상장 초기 카드(ANT) */
 .ch-chart .ch-ipo-p{stroke:var(--ink);stroke-width:1.8}
 .ch-ipo .ch-nm small{font-weight:400;color:var(--sub);font-size:12px}
+
+/* 11/21 속보 차트: 큰 속보 점(묶음 건수)·가격까지 점선·자산별 반응 */
+.cm-bk{cursor:pointer}.cm-bk circle{fill:#c3c8d2;stroke:#fff;stroke-width:1.5}.cm-bk.imp circle{fill:var(--gold)}.cm-bk.hot circle{fill:var(--up)}
+.cm-bk.on circle{stroke:var(--navy);stroke-width:3}.cm-bk text{font-size:10px;font-weight:700;fill:#fff;pointer-events:none}
+.cm-bk:hover circle{stroke:var(--navy);stroke-width:2}
+.cm-link{stroke:#9aa3b2;stroke-width:1;stroke-dasharray:2 3;opacity:.45}.cm-link.hot{stroke:var(--up);opacity:.6}.cm-link.on{stroke:var(--navy);opacity:1;stroke-width:1.5}
+.cm-pt{fill:#9aa3b2}.cm-pt.hot{fill:var(--up)}
+.cm-linked .cm-tabs{flex-wrap:wrap}.cm-lk b{margin-left:4px}
