@@ -856,7 +856,8 @@
     const rows = it.rows || [], n = rows.length, px = it.px;
     if (!n || !(px > 0)) return "";
     const L = chLevels(rows, px), okCh = it.channel_valid !== false && it.channel_width_valid !== false;
-    const lv = [["5일선", it.ma5], okCh && ["채널 상단", it.up_now], okCh && ["채널 하단", it.lo_now], L.res && ["수평 저항", L.res.v], L.sup && ["수평 지지", L.sup.v]]
+    const lv = [["5일선", it.ma5], okCh && ["채널 상단", it.up_now], okCh && ["채널 하단", it.lo_now], L.res && ["수평 저항", L.res.v], L.sup && ["수평 지지", L.sup.v],
+      (() => { const v = Math.max(...rows.slice(-20).map((r) => r[2])); return v > px && !(L.res && L.res.v <= v) && ["최근 고점", v]; })()]   // 11/21 돌파 뒤 새 저항(차트의 '돌파 뒤 고점'과 같은 값)
       .filter((x) => x && x[1] > 0);
     const horizontalLabel = horizontal ? `<span>수평 하단 <b>${chFmt(cc, horizontal.floor)}–${chFmt(cc, horizontal.ceiling)}</b> <small>${rows[horizontal.first][0]} · ${rows[horizontal.second][0]} 저점 · ${px < horizontal.floor ? "하단 이탈" : px > horizontal.ceiling ? "하단 위" : "구간 안"}</small></span>` : "";
     const [, , h, l] = rows[n - 1];
@@ -921,22 +922,39 @@
     s += `<text x="${X(n - 1)}" y="${H - 5}" class="ch-ax" text-anchor="middle">${rows[n - 1][0]}</text><g clip-path="url(#${cid})">`;
     const upperStart = it.upper_start ?? it.hi[0], lowerStart = it.lower_start ?? it.lo[0];
     const a0 = Math.max(upperStart, lowerStart);
+    // 11/21 운영자 "상단 저항 채널 돌파했는데도 선이 그대로": 종가가 상단 +1% 위로 마감한 첫 봉(bk)부터는
+    // 상단선을 '돌파한 상단 → 지지'(회색 점선)로 바꾸고, 새 저항은 돌파 뒤 최고가 수평선으로 그린다
+    const clB = chCl(it), hiLast = Math.max(...(it.hi || [upperStart]));
+    let bk = null;
+    if (it.channel_valid !== false) for (let i = hiLast + 1; i < n; i++) {
+      const c = i === n - 1 && it.live ? it.px : clB[i];   // 마감 봉은 정규장 종가로 판단
+      if (c > up(i) * 1.01) { bk = i; break; }
+    }
+    const upEnd = bk == null ? n : bk;
     if (it.channel_valid !== false) {
       const bottom = [a0, ...(it.lower_path || []).map(p => p[0]).filter(i => i > a0 && i < n), n].reverse();
       s += `<polygon class="ch-band" points="${X(a0)},${Y(up(a0))} ${X(n)},${Y(up(n))} ${bottom.map(i => `${X(i)},${Y(lo(i))}`).join(" ")}"/>`;
+      if (bk != null) s += `<polygon class="ch-band-old" points="${X(bk)},${Y(up(bk))} ${X(n)},${Y(up(n))} ${X(n)},${Y(lo(n))} ${X(bk)},${Y(lo(bk))}"/>`;
     }
     const cw = Math.max(2, st * 0.6);
     rows.forEach((r, i) => { const [, o, h, l, c] = r, col = c >= o ? "var(--up)" : "var(--down)";
       s += `<line x1="${X(i)}" x2="${X(i)}" y1="${Y(h)}" y2="${Y(l)}" stroke="${col}"/><rect x="${X(i) - cw / 2}" y="${Y(Math.max(o, c))}" width="${cw}" height="${Math.max(1, Math.abs(Y(o) - Y(c)))}" fill="${col}" rx="1"${i === n - 1 && it.live ? ' class="ch-live"' : ""}/>`; });
     const cl5 = chCl(it), ma = rows.map((_, i) => i >= 4 ? cl5.slice(i - 4, i + 1).reduce((a, b) => a + b, 0) / 5 : null);   // 5일선 = 정규장 종가 기준
     s += `<polyline class="ch-ma" points="${ma.map((v, i) => v == null ? "" : `${X(i)},${Y(v)}`).join(" ").trim()}"/>`;
-    s += `<line x1="${X(upperStart)}" y1="${Y(up(upperStart))}" x2="${X(n - 1)}" y2="${Y(up(n - 1))}" class="ch-res${it.upper_verified === false ? " ch-unverified" : ""}"/><line x1="${X(n - 1)}" y1="${Y(up(n - 1))}" x2="${X(n)}" y2="${Y(up(n))}" class="ch-res ch-dash${it.upper_verified === false ? " ch-unverified" : ""}"/>`;
+    if (bk == null) s += `<line x1="${X(upperStart)}" y1="${Y(up(upperStart))}" x2="${X(n - 1)}" y2="${Y(up(n - 1))}" class="ch-res${it.upper_verified === false ? " ch-unverified" : ""}"/><line x1="${X(n - 1)}" y1="${Y(up(n - 1))}" x2="${X(n)}" y2="${Y(up(n))}" class="ch-res ch-dash${it.upper_verified === false ? " ch-unverified" : ""}"/>`;
+    else {
+      s += `<line x1="${X(upperStart)}" y1="${Y(up(upperStart))}" x2="${X(bk)}" y2="${Y(up(bk))}" class="ch-res${it.upper_verified === false ? " ch-unverified" : ""}"/>`
+        + `<line x1="${X(bk)}" y1="${Y(up(bk))}" x2="${X(n)}" y2="${Y(up(n))}" class="ch-res-old"><title>돌파한 상단 → 지지 ${chFmt(cc, up(n - 1))}</title></line>`;
+    }
     const supportPoints = [lowerStart, ...(it.lower_path || []).map(p => p[0]).filter(i => i > lowerStart && i < n - 1), n - 1];
     s += `<polyline points="${supportPoints.map(i => `${X(i)},${Y(lo(i))}`).join(" ")}" fill="none" class="ch-sup${it.lower_verified === false ? " ch-unverified" : ""}"/><line x1="${X(n - 1)}" y1="${Y(lo(n - 1))}" x2="${X(n)}" y2="${Y(lo(n))}" class="ch-sup ch-dash${it.lower_verified === false ? " ch-unverified" : ""}"/></g>`;
     it.hi.forEach((i) => s += `<circle cx="${X(i)}" cy="${Y(rows[i][2])}" r="3.5" class="ch-dot-r"/>`);
     it.lo.forEach((i) => s += `<circle cx="${X(i)}" cy="${Y(rows[i][3])}" r="3.5" class="ch-dot-s"/>`);
     const L = chLevels(rows, it.px), okCh = it.channel_valid !== false && it.channel_width_valid !== false;
     const inY = (v) => v != null && v <= ymax && v >= ymin;
+    let nh = null;
+    if (bk != null) { for (let i = bk; i < n; i++) if (!nh || rows[i][2] > nh.v) nh = {i, v: rows[i][2]}; if (nh && !(nh.v > it.px)) nh = null; }
+    if (nh && inY(nh.v)) s += `<line x1="${X(nh.i)}" x2="${W - M.r}" y1="${Y(nh.v)}" y2="${Y(nh.v)}" class="ch-res-new"><title>돌파 뒤 고점(새 저항) ${chFmt(cc, nh.v)}</title></line>`;
     [[L.res, "ch-hr"], [L.sup, "ch-hs"]].forEach(([lv, k]) => { if (lv && inY(lv.v)) s += `<line x1="${X(lv.i)}" x2="${W - M.r}" y1="${Y(lv.v)}" y2="${Y(lv.v)}" class="${k}"/>`; });
     if (horizontal && inY(horizontal.value)) {
       s += `<line x1="${X(horizontal.first)}" x2="${W - M.r}" y1="${Y(horizontal.value)}" y2="${Y(horizontal.value)}" stroke="#d6a348" stroke-width="2" stroke-dasharray="5 3"><title>수평 하단 기준 ${chFmt(cc, horizontal.value)}</title></line>`;
@@ -944,7 +962,7 @@
     }
     if (inY(it.px)) s += `<line x1="${M.l}" x2="${W - M.r}" y1="${Y(it.px)}" y2="${Y(it.px)}" class="ch-pxl"/>`;
     // 오른쪽 가격표: 값이 그대로 보이게(겹치면 위아래로 벌림)
-    const tags = [[it.px, "t-px"], okCh && [it.up_now, "t-res"], okCh && [it.lo_now, "t-sup"], L.res && [L.res.v, "t-hr"], L.sup && [L.sup.v, "t-hs"]]
+    const tags = [[it.px, "t-px"], okCh && [it.up_now, bk != null ? "t-old" : "t-res"], nh && [nh.v, "t-res"], okCh && [it.lo_now, "t-sup"], L.res && [L.res.v, "t-hr"], L.sup && [L.sup.v, "t-hs"]]
       .filter((t) => t && inY(t[0])).map(([v, k]) => ({v, k, y: Y(v)})).sort((a, b) => a.y - b.y);
     for (let i = 1; i < tags.length; i++) if (tags[i].y - tags[i - 1].y < 15) tags[i].y = tags[i - 1].y + 15;
     for (let i = tags.length - 1; i >= 0; i--) { const lim = i === tags.length - 1 ? H - M.b + 6 : tags[i + 1].y - 15; if (tags[i].y > lim) tags[i].y = lim; }
@@ -956,7 +974,7 @@
       s += `<g class="ch-mk ${sg.tone}"><text x="${x}" y="${y}" text-anchor="middle">${({up: "▲", dn: "▼", wk: "△"})[sg.tone]}</text></g>`;
     }
     return `<svg class="ch-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(it.name)} 일봉·하락 채널·5일선">${s}</svg>
-      <p class="ch-leg"><i class="lr"></i>채널 상단 <i class="ls"></i>채널 하단 <i class="lh"></i>수평 저항·지지 <i class="lp"></i>현재가 <i class="lm"></i>5일선${it.live ? " · 진행 중" : ""}</p>`;
+      <p class="ch-leg">${bk != null ? `<i class="lo"></i>돌파한 상단(지지) <i class="lr"></i>돌파 뒤 고점(저항)` : `<i class="lr"></i>채널 상단`} <i class="ls"></i>채널 하단 <i class="lh"></i>수평 저항·지지 <i class="lp"></i>현재가 <i class="lm"></i>5일선${it.live ? " · 진행 중" : ""}</p>`;
   }
   function chDisplay(regular) {
     if (!regular.display) return regular;
@@ -1100,7 +1118,7 @@
         const horizontal = g.cc === "us" ? chHorizontalLower(it.rows || []) : null;
         const sgNow = chSigNow(it);
         const rank = index + 1;
-        const mdl = many && rankable(item) ? `<span class="ch-md m${Math.min(rank, 4)}">${(/^(?:|ko)$/i.test(new URLSearchParams(location.search).get("lang") || "") ? ["금", "은", "동"][index] : "") || rank}</span>` : "";
+        const mdl = many && rankable(item) ? `<span class="ch-md m${Math.min(rank, 4)} notranslate" translate="no">${(/^(?:|ko)$/i.test(new URLSearchParams(location.search).get("lang") || "") && !/googtrans=\/ko\/(?!ko)/.test(document.cookie) ? ["금", "은", "동"][index] : "") || rank}</span>` : "";
         html += `<article class="ch-card${sgNow ? " t-" + sgNow.tone : ""}" data-viewport-key="channel:${esc(it.code)}">
           <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b>${(() => { const k = it.chg == null || !isFinite(it.chg) ? "dim" : it.chg > 0.005 ? "up" : it.chg < -0.005 ? "down" : "dim";   // 11/19 운영자: 현재가도 전일 종가 대비 색·굵게(상승 빨강·하락 파랑·보합 회색)
             const ses = regular.display && it.session !== "정규장" ? [String(it.session).replace("마켓", "").replace("선물 24시간", "선물"), "ext"] : it.live ? ["정규장", "live"] : ["종가", "cls"];

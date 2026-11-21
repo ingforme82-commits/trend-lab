@@ -23,7 +23,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261121-close-cells">
+<link rel="stylesheet" href="style.css?v=20261121-breakout-gt">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0f1b2d">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
@@ -67,6 +67,7 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
       <option value="zh-hans" lang="zh-Hans">简体中文</option>
       <option value="fr" lang="fr">Français</option>
     </select>
+    <div id="trlGoogleTranslate" class="trl-gt notranslate" title="Google 번역 · 100+ languages" hidden></div>
     <a class="btn btn-ghost btn-sm" href="/en/" lang="en" hreflang="en">English overview</a>
     <button class="btn btn-gold btn-sm" id="installBtn" type="button" hidden>📲 앱 설치</button>
     <button class="btn btn-ghost btn-sm" id="pushBtn" type="button" hidden>🔔 알림 받기</button>
@@ -1107,14 +1108,15 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
   }).observe(result, { childList: true });
 })();
 </script>
-<script src="localize.js?v=20261121-market-locales" defer></script>
+<script src="localize.js?v=20261121-breakout-gt" defer></script>
+<script src="gtranslate.js?v=20261121-gt" defer></script>
 <script src="count.js?v=20261116-visitors"></script>
 <script src="presence.js?v=20261116-visitors"></script>
 <script src="flow-core.js?v=20261116-flow"></script>
 <script src="viewport.js?v=20261120-steady-pin"></script>
 <script src="app.js?v=20261118-scoped-anchor"></script>
 <script src="chart.js?v=20261121-news-chart-gold2"></script>
-<script src="news.js?v=20261121-english-chan"></script>
+<script src="news.js?v=20261121-breakout-gt"></script>
 <script src="fold.js?v=20261118-stable-scroll"></script>
 <script src="tint.js?v=20261118-stable-scroll"></script>
 <!-- 11/17 운영자: 지수 흐름·분할 칸(flow.js)은 내림 — 추세 판단 채널 그래프가 대신 맨 위 -->

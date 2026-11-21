@@ -321,6 +321,32 @@
   "수평 하단 기준": "Horizontal floor level",
   "수평 저항·지지": "Horizontal resistance · support",
   "오늘 고가가 닿고 밀린 선": "Today's high was rejected at",
+  "돌파한 상단(지지)": "Broken ceiling (now support)",
+  "돌파 뒤 고점(저항)": "Post-breakout high (resistance)",
+  "돌파한 상단 → 지지 {0}": "Broken ceiling → support {0}",
+  "돌파 뒤 고점(새 저항) {0}": "Post-breakout high (new resistance) {0}",
+  "최근 고점": "Recent high",
+  "종가 대비 · ⏱ {0}": "vs. close · ⏱ {0}",
+  "KRX 종가 대비 · ⏱ {0}": "vs. KRX close · ⏱ {0}",
+  "종가 대비 · ⏱ {0}/{1} {2}": "vs. close · ⏱ {0}/{1} {2}",
+  "KRX 종가 대비 · ⏱ {0}/{1} {2}": "vs. KRX close · ⏱ {0}/{1} {2}",
+  "전일 종가 대비 · ⏱ {0}": "vs. prior close · ⏱ {0}",
+  "KRX 정규장 진행 중": "KRX regular session live",
+  "목표까지 +": "to target +",
+  "목표까지": "to target",
+  "섹터 동반 돌파 대기 · 조건 충족": "Sector breakout pending · conditions met",
+  "전체": "All",
+  "주요만": "Key only",
+  "{0}시간": "{0}h",
+  "공식·복수 출처만": "Official / multi-source only",
+  "미확인 제외": "Exclude unverified",
+  "미확인만": "Unverified only",
+  "최신순": "Newest",
+  "중요도순": "By importance",
+  "시장 반응순": "By market reaction",
+  "{0}일선 이탈": "{0}-day MA breakdown",
+  "하락 시그널": "Sell signal",
+  "채널 하단 이탈": "Channel floor breakdown",
   "오늘 저가를 받친 선": "Today's low held at",
   "양봉": "Bullish candle",
   "음봉": "Bearish candle",
@@ -434,11 +460,14 @@
   // 시장 용어: 기계번역이 엉뚱하게 옮기는 낱말을 보내기 전에 영어로 바꿔 둔다(긴 말부터)
   const TERMS = [["장대양봉", "long bullish candle"], ["장대음봉", "long bearish candle"], ["프리마켓", "premarket"], ["애프터마켓", "after-hours"],
     ["정규장", "regular session"], ["시간외", "extended hours"], ["넥스트레이드", "Nextrade"], ["넥장", "NXT"], ["분봉", "-minute candles"],
-    ["일선", "-day MA"], ["양봉", "bullish candle"], ["음봉", "bearish candle"], ["선물", "futures"], ["체결", "trades"], ["기준가", "reference price"]];
+    ["일선", "-day MA"], ["양봉", "bullish candle"], ["음봉", "bearish candle"], ["선물", "futures"], ["체결", "trades"], ["기준가", "reference price"],
+    ["채널 상단", "channel ceiling"], ["채널 하단", "channel floor"], ["수평 저항", "horizontal resistance"], ["수평 지지", "horizontal support"],
+    ["수평 하단", "horizontal floor"], ["최근 고점", "recent high"], ["전고점", "prior high"], ["이탈", "breakdown"], ["돌파", "breakout"]];
   function preTerms(text) {
     if (language !== "en") return text;
     let out = text;
     for (const [ko, en] of TERMS) out = out.split(ko).join(" " + en + " ");
+    out = out.replace(/(\d)\s*원(?![가-힣])/g, "$1 won").replace(/(\d)\s*엔(?![가-힣])/g, "$1 yen");   // 665,000원 → won (예전: circle)
     return out.replace(/(\d) -/g, "$1-").replace(/\s+/g, " ").trim();
   }
 
@@ -477,8 +506,10 @@
       numbers.push(number);
       return "{" + (numbers.length - 1) + "}";
     });
-    const label = language === "en" && Object.hasOwn(ENGLISH_UI, template)
-      ? ENGLISH_UI[template] : MARKET_UI.get(template)?.[language];
+    const lead = (template.match(/^[▲▼△⬆⬇⚡•·]\s*/) || [""])[0], body = template.slice(lead.length);
+    const label = language === "en" && Object.hasOwn(ENGLISH_UI, template) ? ENGLISH_UI[template]
+      : language === "en" && lead && Object.hasOwn(ENGLISH_UI, body) ? lead + ENGLISH_UI[body]
+      : MARKET_UI.get(template)?.[language];
     const fixed = label ? fill(label, numbers) : null;
     if (fixed) {
       const value = original.replace(original.trim(), () => fixed);
@@ -529,9 +560,11 @@
     if (!timer) timer = setTimeout(flush, 0);
   }
 
+  // 11/21: 속보 필터·정렬 드롭다운(<select>)의 옵션 글도 번역한다 — 언어 메뉴·번역 금지 칸만 뺀다
+  const blocked = (el) => el.closest(excluded) && !(el.closest("select") && !el.closest("#trlLanguage, #trlGoogleTranslate, [translate=no]"));
   function visit(node, attribute) {
     const element = node.nodeType === 3 ? node.parentElement : node;
-    if (!element || element.closest(excluded)) return;
+    if (!element || blocked(element)) return;
     if (node.nodeType === 3) translateValue(node);
     else {
       if ((!attribute || attribute === "href") && node.matches("a[href]")) preserveLanguage(node);
@@ -551,7 +584,7 @@
         work.delete(next.node);
         if (!next.node.isConnected) continue;
         visit(next.node, next.attribute);
-        if (!next.attribute && next.node.nodeType === 1 && !next.node.closest(excluded)) {
+        if (!next.attribute && next.node.nodeType === 1 && !blocked(next.node)) {
           active = document.createTreeWalker(next.node, NodeFilter.SHOW_ELEMENT | NodeFilter.SHOW_TEXT);
         }
         continue;

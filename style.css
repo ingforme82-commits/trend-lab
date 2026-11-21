@@ -1018,3 +1018,21 @@ html.trl-live-update,html.trl-live-update body{overflow-anchor:none!important;sc
 .cx-cls{border-left-color:#9aa3b2}.cx-ext{border-left-color:#7c5cd6;background:#faf8ff}.cx-live{border-left-color:#2e9e5b;background:#f6fcf8}.cx-off{border-left-color:#d5d9e0;opacity:.8}
 .cx-l{font-size:11.5px;color:var(--sub);font-weight:600}.cx-v{font-size:17px;font-variant-numeric:tabular-nums;line-height:1.25}.cx-s{font-size:11.5px;color:var(--sub)}
 .cx-ma{margin:0 0 4px;font-size:12px;color:var(--sub)}
+
+/* 11/21 채널 상단 돌파 뒤: 옛 상단 = 회색 점선(지지 전환), 새 저항 = 돌파 뒤 고점 */
+.ch-chart .ch-res-old{stroke:#8a93a3;stroke-width:1.8;stroke-dasharray:4 3}
+.ch-chart .ch-res-new{stroke:#b7791f;stroke-width:2;stroke-dasharray:7 3}
+.ch-chart .ch-band-old{fill:#fff;opacity:.6}
+.ch-chart .t-old rect{fill:#8a93a3}
+.ch-leg i.lo{display:inline-block;width:14px;height:0;border-top:2px dashed #8a93a3;vertical-align:middle;margin:0 3px 0 6px}
+
+/* 11/21 구글 사이트 번역 드롭다운(100+ 언어) */
+.trl-gt{display:inline-flex;align-items:center;font-size:12.5px;line-height:1}
+.trl-gt[hidden]{display:none}
+.trl-gt .goog-te-gadget{font-size:0!important;color:transparent!important}
+.trl-gt .goog-te-gadget>span{display:none}
+.trl-gt select.goog-te-combo{font-size:13px;padding:4px 6px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink,#0f1b2d);margin:0;max-width:150px}
+body{top:0!important}
+iframe.skiptranslate,.goog-te-banner-frame,#goog-gt-tt,.goog-te-balloon-frame,.VIpgJd-ZVi9od-ORHb-OEVmcd{display:none!important}
+.goog-text-highlight{background:none!important;box-shadow:none!important}
+.trl-gt::before{content:"🌐 Google";font-size:12px;font-weight:700;color:#cfd6e3;margin-right:5px;white-space:nowrap}
