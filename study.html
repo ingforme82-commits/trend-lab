@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <script src="langauto.js?v=20261121-renew"></script>
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>스터디 아카이브 | Trend Research Lab</title>
 <meta name="description" content="조영근 추세추종 리서치 랩 — 매달 오프라인 정기 스터디와 독서 토론의 사진과 내용">
 <meta property="og:title" content="스터디 아카이브 | Trend Research Lab">
@@ -12,7 +12,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261121-renew">
+<link rel="stylesheet" href="style.css?v=20261121-ux-axes">
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0f1b2d">
 <link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
@@ -34,7 +34,7 @@
     </nav>
     <select id="trlLanguage" aria-label="언어 선택"></select>
     <div id="trlGoogleTranslate" class="trl-gt notranslate" hidden></div>
-    <a class="btn btn-kakao btn-sm" href="https://invite.kakao.com/tc/p7OX5rMjd0" target="_blank" rel="noopener">오픈채팅</a>
+    <a class="btn btn-kakao btn-sm" href="https://invite.kakao.com/tc/p7OX5rMjd0" target="_blank" rel="noopener" aria-label="카카오톡 오픈채팅 (새 창)">오픈채팅</a>
     <a class="btn btn-ghost btn-sm nav-blog" href="https://blog.naver.com/ingforme" target="_blank" rel="noopener">블로그</a>
   </div>
 </header>
@@ -52,6 +52,12 @@
   <button class="lb-nav lb-next" id="lbNext" aria-label="다음">›</button>
 </div>
 
+<nav class="bnav" aria-label="모바일 주요 메뉴">
+  <a href="index.html#today"><span class="bn-i" aria-hidden="true">📰</span><span>시황</span></a>
+  <a href="index.html#market"><span class="bn-i" aria-hidden="true">📈</span><span>시세</span></a>
+  <a href="index.html#research"><span class="bn-i" aria-hidden="true">📐</span><span>리서치</span></a>
+  <a href="index.html#lab" aria-current="true"><span class="bn-i" aria-hidden="true">🧭</span><span>스터디</span></a>
+</nav>
 <footer class="foot">
   <div class="wrap">
     <p><b>조영근 추세추종 리서치 랩 | Trend Research Lab</b></p>
@@ -61,7 +67,7 @@
 </footer>
 
 <script src="count.js"></script>
-<script src="news.js?v=20261121-renew" defer></script>
+<script src="news.js?v=20261121-ux-axes" defer></script>
 <script>
 "use strict";
 const $ = (s) => document.querySelector(s);

@@ -1086,3 +1086,132 @@ html:not([lang="ko"]) .ko-hide,html.translated-ltr .ko-hide,html.translated-rtl 
 /* 휴대폰: 블로그는 ⋯ 메뉴 안으로(머리 한 줄 유지) */
 .nav-more-menu .more-blog{display:none}
 @media (max-width:520px){.nav-in .nav-blog{display:none!important}.nav-more-menu .more-blog{display:flex}}
+
+/* ══════════ 2026-11-21 UX 개편: TODAY/RESEARCH/LAB · 모바일 하단 메뉴 · Market Pulse · 속보 검색 ══════════ */
+.sr-only{position:absolute!important;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,summary:focus-visible,[tabindex]:focus-visible{outline:3px solid #f6c773;outline-offset:2px;border-radius:6px}
+.sec a:focus-visible,.sec button:focus-visible,.sec input:focus-visible{outline-color:var(--gold-d)}
+
+/* 축 머리글 */
+.axis{background:var(--bg);border-top:1px solid var(--line);padding:30px 0 4px}
+.axis-in{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px 14px}
+.axis-k{margin:0;font-size:12px;font-weight:900;letter-spacing:2.5px;color:var(--gold-d)}
+.axis-t{margin:0;font-size:22px;font-weight:900;color:var(--navy);letter-spacing:-.3px}
+.axis-sub{margin:0;flex-basis:100%;font-size:14px;color:var(--sub)}
+.axis,.sec,.hl-sec{scroll-margin-top:var(--trl-header-height,110px)}
+.hl-h-sub{font-size:14px;font-weight:500;color:var(--sub);margin-left:6px}
+
+/* Hero */
+.hero-side{display:grid;gap:16px;align-content:start;min-width:0}
+.hero-btns{margin:0 0 22px}
+.hero-btns .btn{min-height:48px}
+.pulse{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.16);border-radius:18px;padding:16px 18px;min-height:206px;color:#e8edf5}
+.pulse-h{display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin:0 0 8px}
+.pulse-k{font-size:12px;font-weight:900;letter-spacing:2.5px;color:var(--gold)}
+.pulse-at{font-size:12.5px;color:#aab6c8;font-variant-numeric:tabular-nums}
+.pulse-at.is-stale,.tick-stamp .is-stale{color:#ffb020;font-weight:700}
+.pulse-sess{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.pulse-sess li{font-size:12.5px;padding:3px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.2);white-space:nowrap}
+.pulse-sess li b{font-weight:800}
+.pulse-sess li.on{border-color:var(--gold);color:#fff}.pulse-sess li.on::before{content:"● ";color:#4ade80}
+.pulse-grid{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px 14px}
+.pulse-grid li{display:flex;flex-direction:column;min-width:0;min-height:44px;padding:6px 0;border-top:1px solid rgba(255,255,255,.1)}
+.pulse-grid .pg-n{font-size:12.5px;color:#aab6c8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pulse-grid .pg-v{font-size:16px;font-weight:800;font-variant-numeric:tabular-nums;color:#fff}
+.pulse-grid .pg-c{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.pulse .c-up{color:var(--market-up-light,#ff8a92)}.pulse .c-dn{color:var(--market-down-light,#8fb6ff)}.pulse .c-fl{color:#aab6c8}
+.pulse-more{display:inline-flex;align-items:center;min-height:44px;margin-top:4px;color:var(--gold);font-weight:700;font-size:14px;text-decoration:none}
+
+/* 시세: 현재 시장 요약 · 그룹 · 마지막 업데이트 */
+.mkt-now{border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin:0 0 18px;background:var(--bg2);min-height:118px}
+.mkt-now-h{margin:0 0 8px;font-size:14px;font-weight:900;color:var(--navy)}
+.mkt-now .pulse-sess li{border-color:var(--line);color:var(--ink)}
+.mkt-now .pulse-sess li.on{border-color:var(--gold-d)}
+.mkt-now-grid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}
+.mkt-now-grid li{border-top-color:var(--line)}
+.mkt-now-grid .pg-n{color:var(--sub)}.mkt-now-grid .pg-v{color:var(--ink)}
+.tick-stamp{display:inline-flex;flex-wrap:wrap;align-items:center;gap:4px 8px;font-size:13.5px}
+.tick-stamp .ts-dot{width:8px;height:8px;border-radius:50%;background:#16a34a;display:inline-block}
+.tick-stamp .ts-dot.is-stale{background:#f59e0b}
+.tick-stamp b{color:var(--ink);font-variant-numeric:tabular-nums}
+.tick-group{display:flex;align-items:center;gap:8px;margin:18px 0 0;padding:8px 12px;border-left:4px solid var(--gold);background:var(--bg2);border-radius:0 8px 8px 0;font-size:15px;color:var(--navy)}
+.tick-group:first-child{margin-top:0}
+.tick-group small{font-weight:500;color:var(--sub);font-size:12.5px}
+
+/* 속보: 검색 · 구분 */
+.news-tools{display:grid;gap:10px;margin:0 0 12px}
+.nw-search input{width:100%;box-sizing:border-box;min-height:46px;padding:10px 14px 10px 40px;border:1px solid var(--line);border-radius:12px;font:inherit;font-size:16px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='18' height='18' viewBox='0 0 24 24' fill='none' stroke='%235b6474' stroke-width='2'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='m20 20-3.5-3.5'/%3E%3C/svg%3E") no-repeat 13px 50%}
+.nw-search input:focus{border-color:var(--gold-d)}
+.nw-views{display:flex;gap:8px;flex-wrap:wrap}
+.nw-views .chip{min-height:40px;font-weight:700}
+.nw-views .chip[aria-pressed="true"]{background:var(--navy);color:#fff;border-color:var(--navy)}
+.nw-views .chip small{font-weight:500;opacity:.75;margin-left:3px}
+.nw-count{margin:0;font-size:13px;color:var(--sub)}
+mark.nw-hit{background:#fde68a;color:inherit;padding:0 1px;border-radius:2px}
+
+/* 모바일 하단 메뉴 */
+.bnav{display:none}
+@media (max-width:760px){
+  .nav .nav-links{display:none!important}
+  .nav .nav-in{flex-wrap:nowrap;column-gap:6px;row-gap:0}
+  .nav-in .trl-language{margin-left:auto}
+  .nav-in .btn-kakao{padding:7px 10px}
+  .nav-in .trl-language{max-width:6.5rem}
+  .bnav{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;left:0;right:0;bottom:0;z-index:30;
+    background:rgba(15,27,45,.97);backdrop-filter:blur(8px);border-top:1px solid #22324d;
+    padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+  .bnav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:56px;color:#c7d0dd;text-decoration:none;font-size:12.5px;font-weight:700}
+  .bnav .bn-i{font-size:18px;line-height:1}
+  .bnav a[aria-current="true"]{color:var(--gold)}
+  .bnav a[aria-current="true"] span:last-child{text-decoration:underline;text-underline-offset:4px}
+  body{padding-bottom:calc(56px + env(safe-area-inset-bottom))}
+  #trlUpdateButton{bottom:calc(68px + env(safe-area-inset-bottom))}
+  /* 첫 화면: 정체성 한 줄 + 버튼, 소개문은 숨김(11/18 '뉴스 먼저' 유지) */
+  .hero .eyebrow{display:block;font-size:12.5px;margin-bottom:4px}
+  .hero h1{display:block;font-size:24px;line-height:1.3;margin:0 0 12px;letter-spacing:-.4px}
+  .hero h1 br{display:none}
+  .hero h1 .gold{margin-left:.25em}
+  .hero-btns{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}
+  .hero-btns .btn{padding:12px 10px;font-size:15px}
+  .pulse{min-height:196px;padding:14px}
+  .axis{padding:24px 0 2px}.axis-t{font-size:20px}
+  /* 칩은 한 줄로 밀어서 */
+  #newsChips,.nw-views{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+  #newsChips::-webkit-scrollbar,.nw-views::-webkit-scrollbar{display:none}
+  #newsChips .chip,.nw-views .chip{flex:none}
+  /* 속보 카드: 시간·제목·요약 위주 */
+  .nws .nw-txt{font-size:15.5px;line-height:1.5;font-weight:600}
+  .nws .nw-sub{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:13.5px}
+  .nws .nw-xc,.nws .nw-m:has(.nw-also),.nws .nw-v.v-one,.nws .nw-v.v-tr{display:none}
+}
+@media (pointer:coarse){
+  .chip,.btn-sm,.btn-fold,.trl-language{min-height:44px}
+  .nav-links a{min-height:44px}
+}
+@media (prefers-reduced-motion:reduce){.btn:hover{transform:none}}
+@media (min-width:861px){.hero-in{align-items:start}.hero-side{padding-top:8px}}
+/* CLS: 처음 몇 초 동안 곧 채워질 시황 띠·속보 띠·메인 뉴스 자리를 미리 잡아 둔다(6초 뒤에도 비어 있으면 접음, 11/21) */
+html.trl-reserve .nav .notice[hidden],html.trl-reserve .nav .ticker[hidden],html.trl-reserve #heroLive[hidden]{display:block;visibility:hidden}
+html.trl-reserve .nav .notice[hidden]{height:51px;padding:0}
+html.trl-reserve .nav .ticker[hidden]{height:38px}
+html.trl-reserve #heroLive[hidden]{min-height:700px}
+@media (max-width:760px){html.trl-reserve .nav .notice[hidden]{height:65px}html.trl-reserve #heroLive[hidden]{min-height:589px}}
+@media (max-width:600px){html.trl-reserve .nav .ticker[hidden]{height:34px}}
+/* 11/21 UX 다듬기: 축 머리글·Pulse 강조 */
+.axis-k{display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;background:var(--gold-bg);border:1px solid rgba(201,150,58,.35)}
+.axis-t{position:relative}
+.axis-in::after{content:"";flex-basis:100%;height:3px;max-width:56px;margin-top:10px;border-radius:3px;background:var(--gold)}
+.pulse{position:relative;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.pulse::before{content:"";position:absolute;inset:0 0 auto 0;height:3px;background:linear-gradient(90deg,var(--gold),transparent)}
+.mkt-now{position:relative;overflow:hidden}
+.mkt-now::before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:var(--gold)}
+.tick{transition:background .6s,box-shadow .2s,border-color .2s}
+@media (hover:hover){.tick:hover{border-color:#d6dae3;box-shadow:0 4px 14px rgba(15,27,45,.06)}}
+@media (max-width:600px){
+  .tick-grid{gap:8px}
+  .tick{padding:10px 12px;border-radius:10px}
+  .tick .t-px{font-size:18px}
+  .tick .t-ch{font-size:13px}
+  .tick .fine,.tick .t-meta{font-size:11.5px;line-height:1.45}
+}
+@media (max-width:760px){.nav .notice:not([hidden]){min-height:65px;box-sizing:border-box}}

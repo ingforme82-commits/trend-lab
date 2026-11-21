@@ -18,7 +18,7 @@ function skhyMeta(px) {
 }
 
 const TICKS = [
-  { g: "한국 프록시" },
+  { g: "🇰🇷 한국", sub: "코스피·대형주·한국 ETF(24시간 프록시 포함)" },
   { k: "KOSPI", n: "코스피", d: 2, krOnly: true },
   { k: "KR200", n: "코스피200", d: 2 },
   { k: "SMSN", n: "삼성전자", d: 2, u: "$", won: true },
@@ -26,8 +26,7 @@ const TICKS = [
   { k: "SKSQ", n: "SK스퀘어", rt: true },                // 하이퍼리퀴드에 없음 → 실시간 체결(loadRt)만, 11/18 운영자
   { k: "EWY", n: "EWY (한국 ETF)", d: 2, u: "$" },
   { k: "KORU", n: "KORU (한국 3배)", d: 2, u: "$" },
-  { k: "KRW", n: "원/달러", d: 1, suf: "원", fx: "원/달러" },
-  { g: "미국 지수·반도체" },
+  { g: "🇺🇸 미국", sub: "지수·반도체" },
   { k: "SP500", n: "S&P500", d: 1 },
   { k: "XYZ100", n: "나스닥100", d: 0 },
   { k: "DOW", n: "다우존스", d: 0, srv: true },
@@ -35,7 +34,8 @@ const TICKS = [
   { k: "DRAM", n: "DRAM (메모리 ETF)", d: 2, u: "$", lev: true },
   { k: "SKHY", n: "SKHY (SK하이닉스 ADR)", d: 2, u: "$", lev: true },
   { k: "MU", n: "MU (마이크론)", d: 2, u: "$", lev: true },
-  { g: "원자재·채권" },
+  { g: "🌐 Macro", sub: "환율·원자재·금리" },
+  { k: "KRW", n: "원/달러", d: 1, suf: "원", fx: "원/달러" },
   { k: "CL", n: "WTI 원유", d: 2, u: "$" },
   { k: "BRENTOIL", n: "브렌트유", d: 2, u: "$" },
   { k: "GOLD", n: "금", d: 1, u: "$" },
@@ -59,7 +59,7 @@ async function loadTicks() {
     meta.universe.forEach((a, i) => { map[a.name.replace("xyz:", "")] = ctx[i]; });
     const krw = map.KRW ? +map.KRW.markPx : null;
     const html = TICKS.map((t) => {
-      if (t.g) return `<p class="tick-group">${t.g}</p>`;
+      if (t.g) return `<p class="tick-group" role="heading" aria-level="3">${t.g}${t.sub ? ` <small>${t.sub}</small>` : ""}</p>`;
       if (t.srv === "tnx") {                              // 미 국채 2·10·30년 금리(CNBC, 없으면 야후): 수준은 %, 변화는 bp
         const U = window.trlUst || {};
         const r = U[t.t] || (t.t === "10Y" ? window.trlTnx || {} : {});
@@ -132,11 +132,76 @@ async function loadTicks() {
     putHTML($("#tickGrid"), html);
     setTimeout(() => document.querySelectorAll(".tick.flash").forEach((e) => e.classList.remove("flash")), 900);
     const k = KST();
-    $("#tickStamp").textContent = `${k.getMonth() + 1}/${k.getDate()}(${DOW[k.getDay()]}) ${hhmm(k)}:${String(k.getSeconds()).padStart(2, "0")} KST 수신 · 하이퍼리퀴드 24시간 선물 실시간`;
+    window.trlTickAt = Date.now();
+    $("#tickStamp").innerHTML = `<span class="ts-dot" aria-hidden="true"></span>마지막 업데이트 <b>${k.getMonth() + 1}/${k.getDate()}(${DOW[k.getDay()]}) ${hhmm(k)}:${String(k.getSeconds()).padStart(2, "0")} KST</b> <span data-tick-ago></span> · 하이퍼리퀴드 24시간 선물 실시간`;
+    renderPulse();
   } catch (e) {
-    $("#tickStamp").textContent = "시세를 불러오지 못했습니다. 잠시 후 다시 시도합니다.";
+    $("#tickStamp").innerHTML = window.trlTickAt
+      ? `<span class="ts-dot is-stale" aria-hidden="true"></span><span class="is-stale">시세를 새로 받지 못했습니다</span> · 마지막 업데이트 <span data-tick-ago></span> 값 표시 중`
+      : "시세를 불러오지 못했습니다. 잠시 후 다시 시도합니다.";
+    renderPulse();
+  }
+  tickAgo();
+}
+
+/* ── Market Pulse · 현재 시장(2026-11-21 UX) ──
+ * 숫자는 아래 시세 칸(#tickGrid)에 이미 그려진 값을 그대로 옮긴다 — 같은 출처·같은 기준, 새 계산·추정 없음.
+ * 칸이 아직 없으면 '-'(불러오는 중)로 둔다. 장 상태는 한국 시간·뉴욕 시간 기준 시간표(휴장일은 한국거래소 응답이 있으면 그 값). */
+const PULSE = [["KOSPI", "코스피", "KR200"], ["XYZ100", "나스닥100"], ["SP500", "S&P500"], ["KRW", "원/달러"], ["CL", "WTI 원유"], ["US10Y", "미 10년물"]];
+function marketSessions(now = Date.now()) {
+  const k = KST(new Date(now)), kd = k.getDay(), km = k.getHours() * 60 + k.getMinutes();
+  const kr = (window.trlKr || {}).KOSPI || (window.trlKr || {}).KR200;
+  let krS, krOn = false;
+  if (kd === 0 || kd === 6) krS = "주말 휴장";
+  else if (km >= 540 && km < 930) { krOn = kr && kr.open === false ? false : true; krS = krOn ? "정규장 장중" : "휴장"; }
+  else if (km >= 480 && km < 530) { krS = "NXT 프리마켓"; krOn = true; }
+  else if (km >= 930 && km < 1200) { krS = "정규장 마감 · NXT 애프터"; krOn = true; }
+  else krS = km < 480 ? "장 시작 전" : "장 마감";
+  const ny = new Date(new Date(now).toLocaleString("en-US", { timeZone: "America/New_York" })), nd = ny.getDay(), nm = ny.getHours() * 60 + ny.getMinutes();
+  let usS, usOn = false;
+  if (nd === 0 || nd === 6) usS = "주말 휴장";
+  else if (nm >= 240 && nm < 570) { usS = "프리마켓"; usOn = true; }
+  else if (nm >= 570 && nm < 960) { usS = "정규장 장중"; usOn = true; }
+  else if (nm >= 960 && nm < 1200) { usS = "애프터마켓"; usOn = true; }
+  else usS = "장 마감";
+  return [["🇰🇷 한국", krS, krOn], ["🇺🇸 미국", usS, usOn]];
+}
+function pulseItems() {
+  const grid = $("#tickGrid");
+  const tile = (k) => grid && grid.querySelector(`.tick[data-k="${k}"]`);
+  return PULSE.map(([k, n, alt]) => {
+    const el = tile(k) || (alt && tile(alt));
+    const name = el && alt && !tile(k) ? (el.querySelector(".t-name")?.textContent || n) : n;
+    const v = el?.querySelector(".t-px")?.textContent.trim();
+    const chEl = el?.querySelector(".t-ch");
+    const cls = chEl ? (chEl.classList.contains("c-up") ? "c-up" : chEl.classList.contains("c-dn") ? "c-dn" : "c-fl") : "c-fl";
+    const ch = chEl ? (chEl.childNodes[0]?.textContent || chEl.textContent).replace(/\s+/g, " ").trim() : "";
+    const basis = chEl?.querySelector("small")?.textContent || "";
+    return { name, v: v && v !== "-" ? v : null, ch, cls, basis };
+  });
+}
+function renderPulse() {
+  const items = pulseItems(), sess = marketSessions();
+  const sessHtml = sess.map(([m, t, on]) => `<li class="${on ? "on" : ""}"><b>${m}</b> ${t}</li>`).join("");
+  const li = (x) => `<li><span class="pg-n">${esc(x.name)}</span><span class="pg-v">${x.v ? esc(x.v) : "-"}</span><span class="pg-c ${x.v ? x.cls : "c-fl"}">${x.v ? esc(x.ch) + (x.basis ? ` <small>${esc(x.basis)}</small>` : "") : "불러오는 중"}</span></li>`;
+  for (const [s, g] of [["#heroPulseSess", "#heroPulseGrid"], ["#mktNowSess", "#mktNowGrid"]]) {
+    const se = $(s), ge = $(g); if (!se || !ge) continue;
+    if (se.innerHTML !== sessHtml) se.innerHTML = sessHtml;
+    const html = items.map(li).join("");
+    if (ge.innerHTML !== html) ge.innerHTML = html;
   }
 }
+function tickAgo() {
+  const at = window.trlTickAt;
+  const old = at && Date.now() - at > 120000;
+  const txt = at ? (() => { const s = Math.max(0, Math.round((Date.now() - at) / 1000)); return s < 60 ? `${s}초 전` : `${Math.floor(s / 60)}분 전`; })() : "";
+  document.querySelectorAll("[data-tick-ago]").forEach((e) => { e.textContent = txt ? `(${txt})` : ""; e.classList.toggle("is-stale", !!old); });
+  const dot = document.querySelector("#tickStamp .ts-dot"); if (dot) dot.classList.toggle("is-stale", !!old);
+  const pa = $("#heroPulseAt");
+  if (pa) { const k = at ? KST(new Date(at)) : null; pa.textContent = k ? `${hhmm(k)} KST 기준 · ${txt}` : "시세 불러오는 중"; pa.classList.toggle("is-stale", !!old); }
+}
+setInterval(tickAgo, 1000);
+setInterval(() => { const s = marketSessions(); const h = s.map(([m, t, on]) => `<li class="${on ? "on" : ""}"><b>${m}</b> ${t}</li>`).join(""); for (const id of ["#heroPulseSess", "#mktNowSess"]) { const e = $(id); if (e && e.innerHTML !== h) e.innerHTML = h; } }, 60000);
 
 const fmtVol = (v) => (v >= 1e9 ? (v / 1e9).toFixed(1) + "B" : v >= 1e6 ? (v / 1e6).toFixed(1) + "M" : v >= 1e3 ? (v / 1e3).toFixed(0) + "K" : Math.round(v || 0) + "");
 const KSTof = (ms) => new Date(ms + (new Date().getTimezoneOffset() + 540) * 60000);
@@ -852,7 +917,7 @@ async function loadRt() {
       putHTML(el, `<p class="t-name">${RT_NAMES[k] || k}</p><p class="t-px">${nf(r.px)}</p><p class="t-ch ${c}">${r.chg > 0 ? "▲" : r.chg < 0 ? "▼" : ""} ${r.chg > 0 ? "+" : ""}${(+r.chg).toFixed(2)}% <small>${r.mk === "NXT" ? "넥스트레이드 체결" : "실시간 체결"}</small></p><p class="fine" style="margin:2px 0 0">기준 전일 종가 ${nf(r.ref)}${r.mk ? ` · ${r.mk === "NXT" ? "넥스트레이드(NXT)" : "통합(KRX+NXT)"}` : ""}</p>${k === "SKHY" ? skhyMeta(r.px) : ""}<p class="t-meta">KIS 웹소켓 · ${hhmm(KSTof(r.at))}:${String(KSTof(r.at).getSeconds()).padStart(2, "0")}</p>`);
     });
   } catch { window.trlRtHealth = { checked: Date.now(), ok: false }; }
-  finally { rtBusy = false; window.dispatchEvent(new Event('trl:quotes')); }
+  finally { rtBusy = false; if (typeof renderPulse === "function") renderPulse(); window.dispatchEvent(new Event('trl:quotes')); }
 }
 setInterval(loadRt, 2000);
 
@@ -874,3 +939,25 @@ loadHeadline(); loadTicks(); loadChecks(); loadEarnings(); loadStudies(); loadEd
 setInterval(loadHeadline, 60000);   // 11/19 운영자: 주요 이슈도 1분마다(새 카드·관련 속보)
 setInterval(loadChecks, 60000);   // 체크포인트: 시각이 지나면 1분 안에 내림   // 블로그 분석 글 피드는 2026-10-28 운영자 결정으로 뺌
 setInterval(loadTicks, 30000);
+
+/* ── 모바일 하단 메뉴: 지금 보고 있는 칸 표시(2026-11-21 UX) ── */
+(() => {
+  const nav = document.getElementById("bnav"); if (!nav) return;
+  const links = [...nav.querySelectorAll("a[data-sec]")];
+  let raf = 0;
+  const pick = () => {
+    raf = 0;
+    const y = innerHeight * 0.35;
+    const top = (id) => { const e = document.getElementById(id); return e ? e.getBoundingClientRect().top : Infinity; };
+    const mk = document.getElementById("market"), mr = mk && mk.getBoundingClientRect();
+    let cur = "today";
+    if (top("research") <= y) cur = "research";
+    if (top("lab") <= y) cur = "lab";
+    if (cur === "today" && mr && mr.top <= y && mr.bottom > y) cur = "market";
+    if (top("today") > innerHeight) cur = "";                         // 맨 위(첫 화면)에서는 표시 없음
+    links.forEach((a) => a.dataset.sec === cur ? a.setAttribute("aria-current", "true") : a.removeAttribute("aria-current"));
+  };
+  addEventListener("scroll", () => { if (!raf) raf = requestAnimationFrame(pick); }, { passive: true });
+  addEventListener("resize", () => { if (!raf) raf = requestAnimationFrame(pick); });
+  pick();
+})();

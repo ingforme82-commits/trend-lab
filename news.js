@@ -35,6 +35,8 @@
   let news = [], moves = [], series = {}, notes = [], candles = {}, candles1 = {}, sel = null, tag = "전체", shown = 10, health = null;
   // 속보 필터: 중요도·시간·검증·정렬(분류는 tag 칩)
   const flt = { imp: "all", hrs: 0, ver: "all", sort: "new" };
+  // 시황 구분·검색(2026-11-21 UX): 분류는 태그·출처 종류·문장 속 단어로만 나눈다(새 중요도 계산 없음)
+  let view = "all", query = "";
   let tgsum = null, world = [], spot = [], trend = [], sectors = [], brief = null, kwFilter = null, momentum = null, watch = null, lev = null, flows = null, flowOpen = null;   // kwFilter: {label, rx}
 
   /* ── 데이터 ── */
@@ -121,16 +123,19 @@
       if (r.ok) sessionQuotes = await r.json();
     } catch { /* 확인한 캡처 유지 */ }
   }
+  // NH 발행 시각 꼬리표 — levHtml·sessionQuotesHtml 공용(예전엔 sessionQuotesHtml 안에서만 정의돼 levHtml 이 ReferenceError, 2026-11-21)
+  function nhStatusText() {
+    const published = nhSnapshot?.updated;
+    const age = Date.now() - published;
+    return Number.isFinite(age) && age >= -60000
+      ? ` · NH 발행 ${hm(published)}${age > 3 * 60000 ? " (3분 이상 미갱신)" : ""}`
+      : " · NH 발행 확인 중";
+  }
   function sessionQuotesHtml() {
     const s = sessionQuotes;
     if (!s || !s.until || Date.now() > Date.parse(s.until)) return "";
     const items = (s.items || []).filter((x) => Number.isFinite(x.px) && x.px > 0 && Number.isFinite(x.base) && x.base > 0 && Number.isFinite(Date.parse(x.at)));
     if (!items.length) return "";
-    const published = nhSnapshot?.updated;
-    const age = Date.now() - published;
-    const nhStatus = Number.isFinite(age) && age >= -60000
-      ? ` · NH 발행 ${hm(published)}${age > 3 * 60000 ? " (3분 이상 미갱신)" : ""}`
-      : " · NH 발행 확인 중";
     return `<div class="lvbox"><p class="mm-h">☀️ ${esc(s.session)} · NH HTS 확인 <small>수동 캡처 · 실시간 자동 갱신 아님</small></p><div class="lc-g">${items.map((x) => {
       const delta = x.px - x.base, chg = delta / x.base * 100, sign = delta > 0 ? "+" : delta < 0 ? "-" : "";
       return `<div class="lc"><p class="lc-h"><b>${esc(x.sym)}</b> <small>${esc(s.session)}</small></p><p class="lc-p"><b class="lc-px">$${x.px.toFixed(2)}</b> <b class="${cls(chg)}">${sign}${Math.abs(chg).toFixed(2)}%</b></p><p class="lc-f">정규장 종가 $${x.base.toFixed(2)} 대비 <b class="${cls(chg)}">${sign}$${Math.abs(delta).toFixed(2)}</b></p><p class="lc-f">${md2(Date.parse(x.at))} ${hm(Date.parse(x.at))} KST 화면 확인</p></div>`;
@@ -465,7 +470,7 @@
     const ORD = ["SOXL", "KORU", "DRAM", "SKHY", "MU", "SOXS"], rk = (s) => { const i = ORD.indexOf(s); return i < 0 ? ORD.length - 1 : i; };
     const its = ((L && L.items) || []).slice().sort((a, b) => rk(a.sym) - rk(b.sym));
     if (!its.length) return "";
-    return `<div class="lvbox"><p class="mm-h">🔬 SOXL · KORU 한눈에 <small>${hm(L.at)} 한국 시간 조회${nhStatus}</small></p><div class="lc-g">${its.map((x) => levCard(x, undefined, L.at)).join("")}</div>
+    return `<div class="lvbox"><p class="mm-h">🔬 SOXL · KORU 한눈에 <small>${hm(L.at)} 한국 시간 조회${nhStatusText()}</small></p><div class="lc-g">${its.map((x) => levCard(x, undefined, L.at)).join("")}</div>
       ${compact ? "" : `<p class="mm-f">NH 현재가 우선 · 시간외 등락률은 정규장 종가 대비 · 1분마다 자동 조회(지연 가능) · 조회 시각은 한국 시간 · 지표·막대는 정규장 기준 · 3배 ETF는 하루 단위로 3배 추종 · 매수·매도 권유 아님</p>`}</div>`;
   }
   /* ── ⏱ 시간대별 강세: 매시(KST) '이번 시간 상승률' 상위 종목·업종 — 한국·미국 구분 ── */
@@ -1318,6 +1323,40 @@
     }
     el.innerHTML = parts.join(" · ");
   }
+  const VIEWS = [["all", "전체", "모든 속보"], ["morning", "아침 시황", "증권사 시황·시황 분석 중 05~10시(한국 시간)에 올라온 글"],
+    ["kr", "국내장", "'한국' 태그 또는 코스피·코스닥·외국인·한국거래소 등 국내 시장 단어가 든 글"],
+    ["us", "미국장", "해외 뉴스·영문 기사, 'AI·빅테크' 태그, 나스닥·S&P·뉴욕증시 등 미국 시장 단어가 든 글"],
+    ["macro", "매크로", "'연준·금리'·'중동·유가'·'환율'·'러·우' 태그 또는 금리·물가·환율·유가 단어가 든 글"],
+    ["research", "증권사 리서치", "증권사 시황·시황 분석 채널 글"]];
+  const KR_RX = /코스피|코스닥|KOSPI|KOSDAQ|외국인|기관 순매|한국거래소|KRX|넥스트레이드|NXT|국내 증시|국내증시|삼성전자|SK하이닉스|원\/달러 환율/;
+  const US_RX = /나스닥|S&P|다우|뉴욕증시|뉴욕 증시|미국 증시|미 증시|월가|엔비디아|테슬라|애플|마이크로소프트|아마존|알파벳|메타|Nasdaq|Wall St/i;
+  const MAC_RX = /금리|국채|연준|FOMC|CPI|PCE|고용지표|비농업|물가|환율|달러인덱스|유가|WTI|브렌트|OPEC|Fed\b|Treasury|yield|inflation/i;
+  const MAC_T = new Set(["연준·금리", "중동·유가", "환율", "러·우"]);
+  const hayOf = (n) => `${n.text || ""} ${n.orig || ""} ${n.sub || ""}`;
+  const byView = (n, v = view) => {
+    if (v === "all") return true;
+    const t = n.tags || [], h = hayOf(n);
+    if (v === "research") return isStrat(n);
+    if (v === "morning") { const k = kst(n.ts).getHours(); return isStrat(n) && k >= 5 && k < 10; }
+    if (v === "macro") return t.some((x) => MAC_T.has(x)) || MAC_RX.test(h);
+    if (v === "kr") return t.includes("한국") || ["조선", "원전", "2차전지"].some((x) => t.includes(x)) || KR_RX.test(h);
+    if (v === "us") return n.kind === "해외 뉴스" || n.lang === "en" || t.includes("AI·빅테크") || US_RX.test(h);
+    return true;
+  };
+  const qNorm = (x) => String(x || "").toLowerCase().replace(/\s+/g, " ").trim();
+  const bySearch = (n) => !query || qNorm(`${hayOf(n)} ${n.src || ""} ${n.osrc || ""} ${(n.tags || []).join(" ")} ${n.kind || ""}`).includes(query);
+  const hit = (html) => {
+    if (!query) return html;
+    const rx = new RegExp(esc(query).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
+    return html.replace(/(^|>)([^<]+)/g, (m, a, t) => a + t.replace(rx, (x) => `<mark class="nw-hit">${x}</mark>`));
+  };
+  function drawViews(base) {
+    const box = q("#newsViews"); if (!box) return;
+    box.innerHTML = VIEWS.map(([k, label, rule]) => {
+      const c = base.filter((n) => byView(n, k)).length;
+      return `<button type="button" class="chip" data-view="${k}" aria-pressed="${k === view}" title="${esc(rule)}">${esc(label)} <small>${c}</small></button>`;
+    }).join("");
+  }
   function drawList() {
     drawFilters();
     const PIV = "🔴 변곡점 뉴스", STRAT = "📊 시황·전략";
@@ -1328,7 +1367,9 @@
     const now = Date.now();
     const byF = (n) => (flt.imp === "all" || isMajor(n)) && (!flt.hrs || now - n.ts < flt.hrs * 3600e3)
       && (flt.ver === "all" || (flt.ver === "ok" ? ["multi", "official"].includes(n.verify) : flt.ver === "noun" ? n.verify !== "unconfirmed" : n.verify === "unconfirmed"));
-    let list = news.filter((n) => byTag(n) && byKw(n) && byF(n));
+    const base = news.filter((n) => byKw(n) && byF(n) && bySearch(n));
+    drawViews(base.filter(byTag));
+    let list = base.filter((n) => byTag(n) && byView(n));
     if (flt.sort === "imp") list = list.slice().sort((a, b) => impScore(b) - impScore(a) || b.ts - a.ts);
     if (flt.sort === "mkt") list = list.slice().sort((a, b) => mktScore(b) - mktScore(a) || b.ts - a.ts);
     if (kwFilter) q("#newsChips").insertAdjacentHTML("afterbegin", `<button class="chip on kw-chip" data-clear-kw="1">🔎 ${esc(kwFilter.label)} ✕</button>`);
@@ -1346,12 +1387,17 @@
       const also = (n.also || []).length ? `<span class="nw-also">후속: ${n.also.map((a) => `${esc(a.osrc ? a.osrc + "·" + a.src : a.src)} ${hm(a.ts)}`).join(", ")}</span>` : "";
       return `<li class="nw${n.pivot ? " piv" : ""}${sel === n.ts ? " sel" : ""}${n.verify === "unconfirmed" ? " unv" : ""}" data-ts="${n.ts}">
         <div class="nw-t"><b>${hm(n.ts)}</b><span>${ago(n.ts)}</span></div>
-        <div class="nw-b"><p class="nw-txt${n.kind === "섹터 시세" ? " sector" : ""}">${n.pivot ? "🔴 " : ""}${esc(newsText(n))}</p>${n.sub ? `<p class="nw-sub">${esc(n.sub)}</p>` : ""}${pv}
+        <div class="nw-b"><p class="nw-txt${n.kind === "섹터 시세" ? " sector" : ""}">${n.pivot ? "🔴 " : ""}${hit(esc(newsText(n)))}</p>${n.sub ? `<p class="nw-sub">${hit(esc(n.sub))}</p>` : ""}${pv}
           <p class="nw-m">${n.tags.map((t) => `<span class="nw-tag">${esc(t)}</span>`).join("")}${isStrat(n) ? `<span class="nw-tag strat">${esc(n.kind)}</span>` : ""}${lvb}${v}${xc}${tr}
           <span class="nw-src">${n.verify ? "최초 " : ""}${n.osrc ? `${esc(n.osrc)} · ${esc(n.src)} 경유` : esc(n.src)} ${hm(n.ts)}${lag}</span></p>
           ${xcl}${also ? `<p class="nw-m">${also}</p>` : ""}${n.series_n > 1 ? `<details class="nw-ser" data-ser="${n.ts}"${serOpen.has(String(n.ts)) ? " open" : ""}><summary>🧹 같은 ${esc(n.series_key)} 발언·발표 ${n.series_n - 1}건 더(2시간 안 연속, 한 줄로 묶음)</summary><ul>${(n.series || []).map((x) => `<li><b>${hm(x.ts)}</b> ${esc(x.text)}</li>`).join("")}</ul></details>` : ""}${rs ? `<p class="nw-m">${rs}</p>` : ""}</div></li>`;
     }).join("") || `<li class="empty">조건에 맞는 속보가 없습니다.</li>`;
     q("#newsMore").hidden = list.length <= shown;
+    const cnt = q("#newsCount");
+    if (cnt) {
+      const vl = (VIEWS.find((x) => x[0] === view) || VIEWS[0])[1];
+      cnt.textContent = `${query ? `'${query}' 검색 · ` : ""}${view !== "all" ? vl + " · " : ""}${list.length}건${list.length > shown ? ` 중 ${shown}건 표시` : ""}`;
+    }
   }
 
   const open = (coin, ts) => window.trlChart && window.trlChart.open({ coin, sel: ts, news });
@@ -1368,6 +1414,14 @@
       open(coin, ts);
     });
     q("#newsMore").addEventListener("click", () => { shown += 10; drawList(); });
+    const vb = q("#newsViews");
+    if (vb) vb.addEventListener("click", (e) => { const b = e.target.closest("[data-view]"); if (!b) return; view = b.dataset.view; shown = 10; drawList(); });
+    const si = q("#newsSearch");
+    if (si) {
+      let t = 0;
+      si.addEventListener("input", () => { clearTimeout(t); t = setTimeout(() => { query = qNorm(si.value); shown = 10; drawList(); }, 160); });
+      si.addEventListener("keydown", (e) => { if (e.key === "Escape" && si.value) { si.value = ""; query = ""; shown = 10; drawList(); } });
+    }
     const openCard = (e) => { const c = e.target.closest(".nc[data-coin]"); if (c) open(c.dataset.coin, sel); };
     q("#newsCharts").addEventListener("click", openCard);
     q("#newsCharts").addEventListener("keydown", (e) => { if (e.key === "Enter") openCard(e); });
