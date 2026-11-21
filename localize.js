@@ -275,7 +275,106 @@
   "{0}일선 위": "Above the {0}-day MA",
   "{0}일선 아래": "Below the {0}-day MA",
   "원화": "KRW",
-  "달러": "USD"
+  "달러": "USD",
+  // 11/21 운영자 "추세 추종 차트도 영어로 바꾸었을 때 표시 문제 없나": 기계번역이 틀리던 카드 문구(선물→gift, 프리→free, 5일선→front line, 넥장→Neck length 등)
+  "애프터": "After-hours",
+  "프리": "Pre-market",
+  "선물": "Futures",
+  "선물 {0}시간": "Futures {0}h",
+  "현재 세션 등락률 높은 순": "Sorted by current-session change",
+  "시간외 · 애프터마켓": "Extended · After hours",
+  "시간외 · 프리마켓": "Extended · Premarket",
+  "시간외 · 애프터마켓 · 마지막 · {0}": "Extended · After hours · last · {0}",
+  "시간외 · 프리마켓 · 마지막 · {0}": "Extended · Premarket · last · {0}",
+  "시간외 · 애프터마켓 · {0}": "Extended · After hours · {0}",
+  "시간외 · 프리마켓 · {0}": "Extended · Premarket · {0}",
+  "정규장 · {0}": "Regular session · {0}",
+  "정규장 · 마지막 · {0}": "Regular session · last · {0}",
+  "마감 · 마지막 · {0}": "Closed · last · {0}",
+  "마감 · 마지막": "Closed · last",
+  "KRX 종가 · 기준가": "KRX close · reference",
+  "통합 종가 · 넥장 {0}시": "Combined close · NXT {0}:00",
+  "KRX 정규장 진행 중": "KRX regular session live",
+  "넥장 애프터마켓 · 지금": "NXT after-hours · now",
+  "넥장 프리마켓 · 지금": "NXT premarket · now",
+  "넥장 시간외": "NXT extended hours",
+  "오늘 체결 없음": "No trades today",
+  "애프터마켓 · 지금": "After hours · now",
+  "프리마켓 · 지금": "Premarket · now",
+  "시세 확인 중": "Checking quotes",
+  "전일 정규장 종가": "Prior regular-session close",
+  "종가 대비": "vs. close",
+  "KRX 종가 대비": "vs. KRX close",
+  "{0}일선 통합": "{0}-day MA combined",
+  "KRX": "KRX",
+  "{0}/{1}": "{0}/{1}",
+  "없음(최근 고점 위)": "None (above recent high)",
+  "없음": "None",
+  "오늘 고가가 닿고 밀린 선:": "Today's high was rejected at:",
+  "오늘 저가를 받친 선:": "Today's low held at:",
+  "{0}/{1} · {2}/{3} 저점 · 하단 위": "{0}/{1} · {2}/{3} lows · above floor",
+  "{0}/{1} · {2}/{3} 저점 · 하단 이탈": "{0}/{1} · {2}/{3} lows · below floor",
+  "{0}/{1} · {2}/{3} 저점 · 구간 안": "{0}/{1} · {2}/{3} lows · inside band",
+  "최근 고점 위": "Above recent high",
+  "일봉·하락 채널·{0}일선": "Daily · downtrend channel · {0}-day MA",
+  "오늘 봉에 돌파": "Broke out on today's bar",
+  "수평 하단 기준": "Horizontal floor level",
+  "수평 저항·지지": "Horizontal resistance · support",
+  "오늘 고가가 닿고 밀린 선": "Today's high was rejected at",
+  "오늘 저가를 받친 선": "Today's low held at",
+  "양봉": "Bullish candle",
+  "음봉": "Bearish candle",
+  "장대양봉": "Long bullish candle",
+  "장대음봉": "Long bearish candle",
+  "도지 — 방향 탐색": "Doji — indecision",
+  "망치형 — 아래꼬리(저가 매수 유입)": "Hammer — long lower wick (dip buying)",
+  "윗꼬리 — 위에서 매도": "Upper wick — selling from above",
+  "돌파 관찰": "Breakout watch",
+  "돌파 전": "Before breakout",
+  "돌파 시그널": "Breakout signal",
+  "돌파 확정": "Breakout confirmed",
+  "돌파 시그널·확정": "Breakout signal · confirmed",
+  "돌파 시도(세션 참고)": "Breakout attempt (session-based)",
+  "{0}일선 돌파 실패(채널 상단과 겹침)": "Failed at {0}-day MA (overlaps channel ceiling)",
+  "{0}일선 위로(돌파 전)": "Back above {0}-day MA (pre-breakout)",
+  "{0}일선 저항": "{0}-day MA resistance",
+  "{0}일선 저항(채널 상단과 겹침)": "{0}-day MA resistance (overlaps channel ceiling)",
+  "채널 상단 돌파 실패": "Failed at channel ceiling",
+  "채널 상단 저항": "Channel ceiling resistance",
+  "하락 시그널 · {0}일선 이탈": "Sell signal · lost {0}-day MA",
+  "하락 시그널 · 채널 하단 이탈": "Sell signal · broke channel floor",
+  "⚡ 돌파·저항 시그널": "⚡ Breakout · resistance signals",
+  "돌파 관찰: {0}일선 위·채널 상단 {1}% 이내 · 종가와 이후 지지 확인": "Breakout watch: above {0}-day MA, within {1}% of channel ceiling · confirm on close and follow-through support",
+  "{0}분봉 시세 대기": "Awaiting {0}-minute quotes",
+  "공모가 위 · 첫 시가 아래": "Above IPO price · below first open",
+  "인버스 · 숏": "Inverse · Short",
+  "지수 선물": "Index futures",
+  "메모리": "Memory",
+  "메모리 반도체": "Memory chips",
+  "반도체 · 레버리지": "Semiconductors · Leveraged",
+  "파운드리": "Foundry",
+  "AI 대장": "AI leaders",
+  "코스피·코스닥 지수": "KOSPI · KOSDAQ",
+  "전자부품 · MLCC·기판": "Electronic parts · MLCC · substrates",
+  "SK스퀘어": "SK Square",
+  "삼성전기": "Samsung Electro-Mechanics",
+  "SK하이닉스 ADR": "SK hynix ADR",
+  "NVDQ 엔비디아 인버스 {0}배": "NVDQ NVIDIA inverse {0}x",
+  "SQQQ 나스닥{0} 인버스 {1}배": "SQQQ Nasdaq-{0} inverse {1}x",
+  "SKDD SK하이닉스 인버스 {0}배": "SKDD SK hynix inverse {0}x",
+  "SOXL 반도체 {0}배": "SOXL semiconductors {0}x",
+  "KORU 한국 {0}배": "KORU Korea {0}x",
+  "나스닥{0} 선물": "Nasdaq-{0} futures",
+  "S&P{0} 선물": "S&P {0} futures",
+  "TSMC ADR": "TSMC ADR",
+  "키옥시아": "Kioxia",
+  "무라타제작소": "Murata Manufacturing",
+  "다이요유덴": "Taiyo Yuden",
+  "이비덴": "Ibiden",
+  "금 선물": "Gold futures",
+  "한국": "Korea",
+  "미국": "U.S.",
+  "일본": "Japan"
 };
   const SLOT = /[{｛]\s*(\d+)\s*[}｝]/g;
 
@@ -307,7 +406,20 @@
     return text;
   }
 
-  async function translate(source) {
+  // 시장 용어: 기계번역이 엉뚱하게 옮기는 낱말을 보내기 전에 영어로 바꿔 둔다(긴 말부터)
+  const TERMS = [["장대양봉", "long bullish candle"], ["장대음봉", "long bearish candle"], ["프리마켓", "premarket"], ["애프터마켓", "after-hours"],
+    ["정규장", "regular session"], ["시간외", "extended hours"], ["넥스트레이드", "Nextrade"], ["넥장", "NXT"], ["분봉", "-minute candles"],
+    ["일선", "-day MA"], ["양봉", "bullish candle"], ["음봉", "bearish candle"], ["선물", "futures"], ["체결", "trades"], ["기준가", "reference price"]];
+  function preTerms(text) {
+    if (language !== "en") return text;
+    let out = text;
+    for (const [ko, en] of TERMS) out = out.split(ko).join(" " + en + " ");
+    return out.replace(/(\d) -/g, "$1-").replace(/\s+/g, " ").trim();
+  }
+
+  async function translate(raw) {
+    const source = preTerms(raw);
+    if (!/[가-힣]/.test(source)) return source;
     const numbers = [];
     const template = source.replace(NUMBER, (match) => { numbers.push(match); return "{" + (numbers.length - 1) + "}"; });
     if (!numbers.length) return request(source);

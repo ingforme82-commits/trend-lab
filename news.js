@@ -863,7 +863,7 @@
     const up = lv.filter((x) => x[1] > px).sort((a, b) => a[1] - b[1])[0], dn = lv.filter((x) => x[1] <= px).sort((a, b) => b[1] - a[1])[0];
     const pushed = lv.filter((x) => h >= x[1] && x[1] > px).map((x) => x[0]), held = lv.filter((x) => l <= x[1] && x[1] < px).map((x) => x[0]);
     const g = (x) => `<b>${x[0]} ${chFmt(cc, x[1])}</b> <small>${(x[1] / px - 1) * 100 > 0 ? "+" : ""}${((x[1] / px - 1) * 100).toFixed(1)}%</small>`;
-    return `<p class="ch-lv"><span>⬆ 위 저항 ${up ? g(up) : "<b>없음(최근 고점 위)</b>"}</span><span>⬇ 아래 지지 ${dn ? g(dn) : "<b>없음</b>"}</span>${horizontalLabel}${pushed.length ? `<span class="ch-lv-dn">오늘 고가가 닿고 밀린 선: ${pushed.join("·")}</span>` : ""}${held.length ? `<span class="ch-lv-up">오늘 저가를 받친 선: ${held.join("·")}</span>` : ""}</p>`;
+    return `<p class="ch-lv"><span>⬆ 위 저항 ${up ? g(up) : "<b>없음(최근 고점 위)</b>"}</span><span>⬇ 아래 지지 ${dn ? g(dn) : "<b>없음</b>"}</span>${horizontalLabel}${pushed.length ? `<span class="ch-lv-dn"><span>오늘 고가가 닿고 밀린 선</span>: <b>${pushed.join("·")}</b></span>` : ""}${held.length ? `<span class="ch-lv-up"><span>오늘 저가를 받친 선</span>: <b>${held.join("·")}</b></span>` : ""}</p>`;
   }
   // 11/20 운영자 "통합 종가로 하자 · KRX 종가도 따로 표시해 체크(종가가 지금은 기준가)": 5일선 = 통합(KRX+넥장 20시), 등락률 기준가 = KRX 종가
   // 11/21 운영자 "각 종목들 종가와 시간외 현재 시각 금액을 별도로 표시": 정규장 종가 줄 + 시간외(프리·애프터·넥장) 현재가·시각·종가 대비 따로
@@ -1100,7 +1100,7 @@
         const horizontal = g.cc === "us" ? chHorizontalLower(it.rows || []) : null;
         const sgNow = chSigNow(it);
         const rank = index + 1;
-        const mdl = many && rankable(item) ? `<span class="ch-md m${Math.min(rank, 4)}">${["금", "은", "동"][index] || rank}</span>` : "";
+        const mdl = many && rankable(item) ? `<span class="ch-md m${Math.min(rank, 4)}">${(/^(?:|ko)$/i.test(new URLSearchParams(location.search).get("lang") || "") ? ["금", "은", "동"][index] : "") || rank}</span>` : "";
         html += `<article class="ch-card${sgNow ? " t-" + sgNow.tone : ""}" data-viewport-key="channel:${esc(it.code)}">
           <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b>${(() => { const k = it.chg == null || !isFinite(it.chg) ? "dim" : it.chg > 0.005 ? "up" : it.chg < -0.005 ? "down" : "dim";   // 11/19 운영자: 현재가도 전일 종가 대비 색·굵게(상승 빨강·하락 파랑·보합 회색)
             const ses = regular.display && it.session !== "정규장" ? [String(it.session).replace("마켓", "").replace("선물 24시간", "선물"), "ext"] : it.live ? ["정규장", "live"] : ["종가", "cls"];
