@@ -171,10 +171,6 @@ let tx = null;
 $("#lb").addEventListener("touchstart", (e) => { tx = e.touches[0].clientX; }, { passive: true });
 $("#lb").addEventListener("touchend", (e) => { if (tx === null) return; const dx = e.changedTouches[0].clientX - tx; if (Math.abs(dx) > 50) openLb(cur + (dx < 0 ? 1 : -1)); tx = null; });
 </script>
-<<<<<<< Updated upstream
-<script src="localize.js?v=20261121-responsive" defer></script>
-=======
-<script src="localize.js?v=20261121-english-chan" defer></script>
->>>>>>> Stashed changes
+<script src="localize.js?v=20261121-english-chan2" defer></script>
 </body>
 </html>
