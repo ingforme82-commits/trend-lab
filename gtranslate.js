@@ -47,6 +47,9 @@
   window.addEventListener("change", (e) => {
     if (e.target !== menu) return;
     const v = menu.value;
+    // 고른 언어 기억(langauto.js 가 다음 방문에 사용, 기본은 영어)
+    document.cookie = "trl_lang=" + encodeURIComponent(v) + "; max-age=31536000; path=/; samesite=lax";
+    try { localStorage.setItem("trl:lang", v); } catch { /* 저장소 없음 */ }
     if (!v.startsWith("g:")) {
       setGoogle("");
       if (v === "ko" && g) { e.stopImmediatePropagation(); location.replace(location.pathname + location.search.replace(/([?&])lang=[^&]*&?/, "$1").replace(/[?&]$/, "")); }
