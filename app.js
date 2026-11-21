@@ -219,10 +219,29 @@ const KSTof = (ms) => new Date(ms + (new Date().getTimezoneOffset() + 540) * 600
 const mdhm = (ms) => { const d = KSTof(ms); return `${d.getMonth() + 1}/${d.getDate()} ${hhmm(d)}`; };
 
 /* ───────── 2. 체크포인트 ───────── */
+async function fetchCheckpoints() {
+  const validate = async (response) => {
+    if (!response.ok) throw Error("Checkpoint feed unavailable");
+    const rows = await response.json();
+    if (!Array.isArray(rows) || !rows.length || rows.some((row) =>
+      !row || !/^\d{4}-\d{2}-\d{2}$/.test(row.date) || typeof row.title !== "string")) {
+      throw Error("Invalid checkpoint feed");
+    }
+    return rows;
+  };
+  const query = "?t=" + Math.floor(Date.now() / 60000);
+  try {
+    const live = "https://raw.githubusercontent.com/ingforme82-commits/trend-lab/main/data/checkpoints.json";
+    return await validate(await fetch(live + query, { signal: AbortSignal.timeout(3500) }));
+  } catch {
+    return validate(await fetch("data/checkpoints.json" + query));
+  }
+}
+
 async function loadChecks() {
   const putHTML = globalThis.trlViewport?.html || ((el, html) => { el.innerHTML = html; });
   try {
-    const list = await (await fetch(`data/checkpoints.json?t=${Date.now()}`)).json();
+    const list = await fetchCheckpoints();
     const today = ymd(KST());
     // 오늘 일정 중 시각이 지난 것은 내린다(11/18 운영자 "시간 지난 건 지나고 최신화로") — 시각 없는 오늘 일정은 하루 동안 둔다
     const k = KST(), nowHM = String(k.getHours()).padStart(2, "0") + ":" + String(k.getMinutes()).padStart(2, "0");
