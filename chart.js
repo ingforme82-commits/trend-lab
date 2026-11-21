@@ -100,7 +100,7 @@
     linked.sel = sel; linked.at = Date.now();
     const from = sel - 10 * 60000, end = Date.now();
     await Promise.all(LINKED.map(async ([k]) => {
-      if (k.startsWith("srv:")) { linked.rows[k] = (window.trlSeries?.[k.slice(4)] || []).filter(([t]) => t >= from - 10 * 60000); return; }
+      if (k.startsWith("srv:")) { linked.rows[k] = window.trlSeries?.[k.slice(4)] || []; return; }
       try {
         const r = await fetch("https://api.hyperliquid.xyz/info", { method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(8000),
           body: JSON.stringify({ type: "candleSnapshot", req: { coin: k, interval: sel < end - 12 * 3600e3 ? "5m" : "1m", startTime: from, endTime: end } }) });
@@ -117,6 +117,7 @@
       let base = null; for (const [t, v] of rows) { if (t <= st.sel) base = v; else break; }
       if (base == null && rows.length && rows[0][0] - st.sel < 15 * 60000) base = rows[0][1];
       const last = rows.length ? rows[rows.length - 1][1] : null;
+      if (base && rows[rows.length - 1][0] <= st.sel) return `<button class="chip cm-lk" data-coin="${k}">${n} <small>장 마감 · 이후 거래 없음</small></button>`;
       if (!base || !last) return `<button class="chip cm-lk" data-coin="${k}">${n} <small>자료 없음</small></button>`;
       const bp = k === "srv:US10Y", v = bp ? (last - base) * 100 : (last / base - 1) * 100;
       return `<button class="chip cm-lk${k === st.coin ? " on" : ""}" data-coin="${k}">${n} <b class="${cls(v)}">${bp ? `${v > 0 ? "+" : ""}${v.toFixed(1)}bp` : pctTxt(v)}</b></button>`;
