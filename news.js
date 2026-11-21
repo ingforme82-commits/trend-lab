@@ -353,7 +353,7 @@
   /* ── 해외 지수 ── */
   function drawWorld() {
     const box = q("#worldGrid"); if (!box) return;
-    box.innerHTML = world.map((w) => {
+    box.innerHTML = world.filter((w) => w.sym !== "GC=F").map((w) => {
       const old = Date.now() - w.at > 3 * 3600e3;
       return `<div class="tick"><p class="t-name">${esc(w.region)} · ${esc(w.name)}</p><p class="t-px">${w.px.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}</p>
         <p class="t-ch ${cls(w.chg)}">${w.chg > 0 ? "▲" : w.chg < 0 ? "▼" : ""} ${w.chg > 0 ? "+" : ""}${w.chg.toFixed(2)}%</p>
