@@ -67,7 +67,7 @@
 </footer>
 
 <script src="count.js"></script>
-<script src="news.js?v=20261122-compact-copy" defer></script>
+<script src="news.js?v=20261122-nxt-archive" defer></script>
 <script>
 "use strict";
 const $ = (s) => document.querySelector(s);
@@ -157,7 +157,7 @@ async function growthView() {
     <h1 class="sv-title">${esc(g.title)}</h1>
     <p class="sv-theme">${esc(g.intro || "")}</p>
     <ul class="sv-meta"><li>🗓️ ${fmt(first)} ~ ${fmt(last)}</li><li>📷 사진 ${photos.length}장</li></ul>
-    ${years.map((y) => `<h2 class="sv-h">${y}년</h2><div class="gal">${photos.map((p, k2) => p.date.startsWith(y) ? `<button class="gal-i" data-k="${k2}"><img src="${esc(p.thumb)}" alt="${esc(g.title)} ${esc(p.date)}" loading="lazy"><span class="gal-t">${+p.date.slice(5, 7)}/${+p.date.slice(8, 10)}</span></button>` : "").join("")}</div>`).join("")}`;
+    ${years.map((y) => `<h2 class="sv-h">${y}년</h2><div class="gal">${photos.map((p, k2) => p.date.startsWith(y) ? `<button class="gal-i" data-k="${k2}"><img src="${esc(p.thumb)}" alt="${esc(g.title)} ${esc(p.date)}" loading="lazy"><span class="gal-t">${esc(fmt(p.date))}</span></button>` : "").join("")}</div>`).join("")}`;
   const p = +new URLSearchParams(location.search).get("p");
   const displayed = photos.findIndex((photo) => photo.originalIndex === p);
   if (new URLSearchParams(location.search).has("p") && displayed >= 0) openLb(displayed);
