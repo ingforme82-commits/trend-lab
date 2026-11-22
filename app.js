@@ -666,23 +666,32 @@ async function loadStudies() {
     ].map(([v, l]) => `<div><b>${v}</b><span>${l}</span></div>`).join("");
     let growth = null;                                    // 📒 가치 투자 성장 스토리(운영자 개인 공부 기록, 운영자 외 얼굴 모자이크)
     try { growth = await fetch(`data/growth.json?t=${Date.now()}`).then((r) => (r.ok ? r.json() : null)); } catch { growth = null; }
-    const hasG = growth && (growth.photos || []).length;
+    const growthPhotos = (growth?.photos || []).map((photo, originalIndex) => ({ ...photo, originalIndex }))
+      .sort((a, b) => b.date.localeCompare(a.date));
+    const hasG = growthPhotos.length > 0;
+    const growthCard = (p) => {
+      return `<a class="arc" href="study.html?id=growth&p=${p.originalIndex}">
+        <div class="arc-img"><img src="${esc(p.thumb)}" alt="${esc(growth.title)} ${esc(p.date)} 사진" loading="lazy"></div>
+        <div class="arc-body"><p class="arc-date">📒 ${fmtD(p.date, true)}</p><h3 class="arc-title">${esc(growth.title)}</h3></div></a>`;
+    };
     $("#archChips").innerHTML = [["all", "전체"], ["regular", "📈 정기 스터디"], ["book", "📚 독서 토론"], ...(hasG ? [["growth", "📒 " + growth.title]] : [])].map(([k, l]) => `<button class="chip${k === archCat ? " on" : ""}" data-k="${k}">${l}</button>`).join("");
     const draw = () => {
       if (archCat === "growth" && hasG) {
-        $("#archList").innerHTML = `<p class="arc-intro">${esc(growth.intro || "")}</p>` + growth.photos.map((p, i) => ({ ...p, originalIndex: i })).sort((a, b) => b.date.localeCompare(a.date)).map((p) => {
-          return `<a class="arc" href="study.html?id=growth&p=${p.originalIndex}">
-            <div class="arc-img"><img src="${esc(p.thumb)}" alt="${esc(growth.title)} ${esc(p.date)} 사진" loading="lazy"></div>
-            <div class="arc-body"><p class="arc-date">📒 ${fmtD(p.date, true)}</p><h3 class="arc-title">${esc(growth.title)}</h3></div></a>`;
-        }).join("");
+        $("#archList").innerHTML = `<p class="arc-intro">${esc(growth.intro || "")}</p>` + growthPhotos.map(growthCard).join("");
         return;
       }
       const pick = (s) => archCat === "all" || s.series === archCat;
-      $("#archList").innerHTML = ups.filter(pick).map((s) => archCard(s, true, label)).join("") + past.filter(pick).map((s) => archCard(s, false, label)).join("");
+      const history = past.filter(pick).map((s) => ({ date: s.date, render: () => archCard(s, false, label) }));
+      if (archCat === "all") {
+        history.push(...growthPhotos.map((p) => ({ date: p.date, render: () => growthCard(p) })));
+        history.sort((a, b) => b.date.localeCompare(a.date));
+      }
+      $("#archList").innerHTML = ups.filter(pick).map((s) => archCard(s, true, label)).join("") + history.map((row) => row.render()).join("");
     };
     $("#archChips").onclick = (e) => { const b = e.target.closest(".chip"); if (!b) return; archCat = b.dataset.k; $("#archChips").querySelectorAll(".chip").forEach((c) => c.classList.toggle("on", c === b)); draw(); };
     draw();
-    $("#archStamp").textContent = past[0] ? `마지막 기록 ${fmtD(past[0].date)}` : "";
+    const latestRecord = [past[0]?.date, growthPhotos[0]?.date].filter(Boolean).sort().at(-1);
+    $("#archStamp").textContent = latestRecord ? `마지막 기록 ${fmtD(latestRecord, true)}` : "";
 
     $("#curSub").textContent = `${cur.rule} · ${cur.flow}`;
     $("#curNote").textContent = `${cur.why} ${cur.note}`;
