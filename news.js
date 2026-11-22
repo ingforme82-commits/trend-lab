@@ -1195,9 +1195,7 @@
         <div><span>코스피 투자자 <small>${k.flow_day ? md(k.flow_day.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")) : ""}</small></span>개인 ${ek(k.ind)} · 외국인 ${ek(k.frgn)} · 기관 ${ek(k.org)}</div>
         <div><span>프로그램 매매</span>차익 ${ek(k.arb)} · 비차익 ${ek(k.nonarb)} · 합계 ${ek(k.prog)}</div>
       </div>
-      <div class="fl-scroll"><table class="fl-t"><tr>${sth("s7", "name", "종목")}${sth("s7", "chg", "등락")}${sth("s7", "pts", "지수 기여", "포인트")}${sth("s7", "w", "코스피 비중", "전일 시총")}${sth("s7", "val", "거래대금", "통합")}${sth("s7", "win", "외국계 창구", "오늘")}${sth("s7", "frgn", "외국인", invSub(s7.rows, invDay ? md(invDay.day) : ""))}${sth("s7", "org", "기관", invSub(s7.rows, invDay ? md(invDay.day) : ""))}${sth("s7", "s5", "외국인·기관", "5일 합계")}${sth("s7", "prog", "프로그램", "오늘 통합")}</tr>${body}</table></div>
-      <p class="mm-f">지수 기여 = 코스피 전일 종가 × 종목 비중(전일 시가총액 ÷ 코스피 보통주 시가총액 합계) × 등락률 — 근사치 · 코스피는 보통주로만 계산해 삼성전자우는 지수에 들어가지 않음<br>
-      ${partial ? `S7 기여도와 비중은 종목별 시세 확인 후 업데이트합니다.<br>` : "S7 제외 코스피 = 코스피 변화 − S7 기여 · "}투자자·프로그램은 코스피 전체(억 원, 장중 잠정) · 외국계 창구는 외국계 증권사 창구 합계로 외국인 수급과 다름 · 사실 집계이며 매수·매도 권유가 아닙니다</p>`;
+      <div class="fl-scroll"><table class="fl-t"><tr>${sth("s7", "name", "종목")}${sth("s7", "chg", "등락")}${sth("s7", "pts", "지수 기여", "추정 포인트")}${sth("s7", "w", "코스피 비중", "전일 시총")}${sth("s7", "val", "거래대금", "통합")}${sth("s7", "win", "외국계 창구", "오늘")}${sth("s7", "frgn", "외국인", invSub(s7.rows, invDay ? md(invDay.day) : ""))}${sth("s7", "org", "기관", invSub(s7.rows, invDay ? md(invDay.day) : ""))}${sth("s7", "s5", "외국인·기관", "5일 합계")}${sth("s7", "prog", "프로그램", "오늘 통합")}</tr>${body}</table></div>`;
   }
   function drawFlows() {
     const box = q("#flowBox"); if (!box) return;
