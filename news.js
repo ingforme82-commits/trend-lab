@@ -1393,8 +1393,6 @@
     if (flt.sort === "mkt") list = list.slice().sort((a, b) => mktScore(b) - mktScore(a) || b.ts - a.ts);
     if (kwFilter) q("#newsChips").insertAdjacentHTML("afterbegin", `<button class="chip on kw-chip" data-clear-kw="1">🔎 ${esc(kwFilter.label)} ✕</button>`);
     q("#newsList").innerHTML = list.slice(0, shown).map((n) => {
-      const R = reactKey(n), w = n.kind === "섹터 시세" ? null : windows(R.k, n.ts);
-      const rs = w ? `<span class="nw-r">${esc(R.n)} <small>보도 5분 전 대비</small> ${w.map((x) => `<span class="rw">+${x.n}분 ${x.v == null ? `<i class="dim">계산 중</i>` : pct(x.v)}</span>`).join("")}</span>` : "";
       const pv = n.pivot ? `<p class="nw-pv">🔴 변곡점 관련 뉴스 — ${movesOfNews(n.ts).map((m) => `${esc(m.name)} ${fmtMove(m)} (${hm(m.start)}–${hm(m.end)})`).join(", ") || (n.pv || []).map(esc).join(", ")}</p>` : "";
 
       const v = VER[n.verify] ? `<span class="nw-v ${VER[n.verify][1]}">${VER[n.verify][0]}${n.nsrc > 1 ? ` ${n.nsrc}곳` : ""}</span>` : "";
@@ -1408,7 +1406,7 @@
         <div class="nw-b"><p class="nw-txt${n.kind === "섹터 시세" ? " sector" : ""}">${n.pivot ? "🔴 " : ""}${hit(esc(newsText(n)))}</p>${n.sub ? `<p class="nw-sub">${hit(esc(n.sub))}</p>` : ""}${pv}
           <p class="nw-m">${n.tags.map((t) => `<span class="nw-tag">${esc(t)}</span>`).join("")}${isStrat(n) ? `<span class="nw-tag strat">${esc(n.kind)}</span>` : ""}${v}${xc}${tr}
           <span class="nw-src">${esc(sourceName(n))}</span></p>
-          ${xcl}${also}${n.series_n > 1 ? `<details class="nw-ser" data-ser="${n.ts}"${serOpen.has(String(n.ts)) ? " open" : ""}><summary>🧹 같은 ${esc(n.series_key)} 발언·발표 ${n.series_n - 1}건 더(2시간 안 연속, 한 줄로 묶음)</summary><ul>${(n.series || []).map((x) => `<li><b>${hm(x.ts)}</b> ${esc(x.text)}</li>`).join("")}</ul></details>` : ""}${rs ? `<p class="nw-m">${rs}</p>` : ""}</div></li>`;
+          ${xcl}${also}${n.series_n > 1 ? `<details class="nw-ser" data-ser="${n.ts}"${serOpen.has(String(n.ts)) ? " open" : ""}><summary>🧹 같은 ${esc(n.series_key)} 발언·발표 ${n.series_n - 1}건 더(2시간 안 연속, 한 줄로 묶음)</summary><ul>${(n.series || []).map((x) => `<li><b>${hm(x.ts)}</b> ${esc(x.text)}</li>`).join("")}</ul></details>` : ""}</div></li>`;
     }).join("") || `<li class="empty">조건에 맞는 속보가 없습니다.</li>`;
     q("#newsMore").hidden = list.length <= shown;
     const cnt = q("#newsCount");
