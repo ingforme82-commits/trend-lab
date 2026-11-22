@@ -335,9 +335,11 @@ function hlMkt(x) {
   const t = `${x.tag || ""} ${x.title || ""}`;
   return HL_US.test(x.tag || "") ? "us" : HL_KR.test(x.tag || "") ? "kr" : HL_US.test(t) && !HL_KR.test(t) ? "us" : HL_KR.test(t) && !HL_US.test(t) ? "kr" : "g";
 }
-// 11/22 UX(기한 지난 문구 자동 내림): '장중' 카드(태그·when 에 '장중')는 그 장의 정규장이 끝나면 내린다.
-//  장 시간은 marketSessions 와 같은 시간표(한국 정규장 15:30, 미국 정규장 뉴욕 16:00) — 새 수치 없음.
-//  작성 시각은 카드 when(예: "11/19 23:35 KST", "11/10(화) 10시 42분 기준")에서 읽고, 못 읽으면 지금 그 장이 정규장 중일 때만 둔다.
+// 11/22 UX(기한 지난 문구 자동 내림): '장중' 카드(태그·when 에 '장중')는 그 장이 끝나면 내린다.
+//  11/23 운영자(decisions/trading.md): 국내 장중 = 08:00~20:00(NXT 프리·KRX 정규장·NXT 애프터) → 국내 카드는 20:00(NXT 마감)에 내림.
+//  미국은 그대로 정규장 마감(뉴욕 16:00). marketSessions 와 같은 시간표 — 새 수치 없음.
+//  작성 시각은 카드 when(예: "11/19 23:35 KST", "11/10(화) 10시 42분 기준")에서 읽고, 못 읽으면 지금 그 장이 장중일 때만 둔다
+//  (국내 = 평일 08:00~20:00·휴장 아님, 미국 = 정규장 중).
 //  시장을 정할 수 없는 카드(g)는 until 날짜만 따른다.
 function hlWhenAt(when, now = Date.now()) {
   const m = String(when || "").match(/(\d{1,2})(?:\/|월\s*)(\d{1,2})일?\s*(?:\([^)]*\))?\s*(\d{1,2})(?::|시\s*)(\d{2})?/);
@@ -348,7 +350,7 @@ function hlWhenAt(when, now = Date.now()) {
   return Date.UTC(y, mo - 1, d, hh, mi) - 9 * 3600e3;
 }
 function sessCloseAfter(mkt, t) {
-  if (mkt === "kr") { const k = KST(new Date(t)); return Math.max(t, Date.UTC(k.getFullYear(), k.getMonth(), k.getDate(), 15, 30) - 9 * 3600e3); }
+  if (mkt === "kr") { const k = KST(new Date(t)); return Math.max(t, Date.UTC(k.getFullYear(), k.getMonth(), k.getDate(), 20, 0) - 9 * 3600e3); }
   const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
     .formatToParts(new Date(t)).map((x) => [x.type, x.value]));
   const off = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute) - Math.floor(t / 60000) * 60000;   // 뉴욕 − UTC
@@ -359,7 +361,9 @@ function hlStale(x, now = Date.now()) {
   const mk = hlMkt(x); if (mk !== "kr" && mk !== "us") return false;
   const t = hlWhenAt(x.when, now);
   if (t != null) return now >= sessCloseAfter(mk, t);
-  return marketSessions(now)[mk === "kr" ? 0 : 1][1] !== "정규장 장중";
+  if (mk === "us") return marketSessions(now)[1][1] !== "정규장 장중";
+  const k = KST(new Date(now)), km = k.getHours() * 60 + k.getMinutes(), d = k.getDay();
+  return d === 0 || d === 6 || km < 480 || km >= 1200 || marketSessions(now)[0][1] === "휴장";
 }
 window.trlHlStale = hlStale;
 function hlOrder(items) {
@@ -865,14 +869,31 @@ function liveBand() {
 }
 // 11/20 운영자(TSMC): 띠에는 '지금도 유효한' 5일선 돌파만 — 그 종목 장이 열려 있고 현재가가 아직 5일선(정규장 종가 기준) 위일 때.
 // 장중 잠깐 넘었다가 다시 밀렸거나 장이 끝난 시그널은 띠에서 내린다(추세 판단 기록에는 남음).
-function bandSignal() {
+function bandSignal(now = Date.now()) {
   const c = window.trlChan || {}, by = {};
-  (c.groups || []).forEach((g) => (g.items || []).forEach((it) => { by[it.code] = {...it, ...(it.display || {})}; }));
-  return (c.signals || []).find((s) => {
+  (c.groups || []).forEach((g) => (g.items || []).forEach((it) => { by[it.code] = {...it, ...(it.display || {}), cc: g.cc}; }));
+  const s = (c.signals || []).find((s) => {
     const it = by[s.code];
     if (!it || !it.live || it.stale || !(it.ma5 > 0) || !(it.px > 0)) return false;
-    return it.px > it.ma5 && Date.now() - s.ts < 8 * 3600e3;
+    if (!bandPhase(it, now)) return false;                         // 국내 20시 뒤 등 장중이 아니면 띠에 안 올림
+    return it.px > it.ma5 && now - s.ts < 8 * 3600e3;
   });
+  return s && {...s, text: bandSigText(s.text, bandPhase(by[s.code], now))};
+}
+// dev-20261122-2300: 띠 시점 — 국내 = '장중(정규장)'·'장중(NXT 프리·애프터)'(11/23 운영자: 평일 08:00~20:00 장중),
+//  미국·일본 = 정규장 '장중', 시간외 = 세션명(프리마켓·애프터마켓·선물 24시간). live 가 아니면 null(띠에 안 나옴).
+function bandPhase(it, now = Date.now()) {
+  if (!it || !it.live) return null;
+  const ses = it.session && it.session !== "정규장" ? String(it.session) : "";
+  if (it.cc === "kr" || it.cc === "kr_index") {
+    const k = new Date(now + 9 * 3600e3), d = k.getUTCDay(), m = k.getUTCHours() * 60 + k.getUTCMinutes();
+    return d > 0 && d < 6 && m >= 480 && m < 1200 ? `장중(${ses || "정규장"})` : null;
+  }
+  return ses || "장중";
+}
+// chan.py 기록 원문 '📐 5일선 돌파 시그널 — …' 은 그대로 두고 화면 띠에서만 '📐 <시점> 5일선 상향 관측 — …' 으로 바꾼다.
+function bandSigText(text, phase) {
+  return String(text || "").replace(/^📐 5일선 돌파 시그널/, "📐 " + phase + " 5일선 상향 관측");
 }
 async function loadBand() {
   const putHTML = globalThis.trlViewport?.html || ((el, html) => { el.innerHTML = html; });

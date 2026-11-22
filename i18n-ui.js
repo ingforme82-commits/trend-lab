@@ -2108,6 +2108,195 @@ window.TRL_UI = {
 "zh-hans": "突破确认 = 收盘价高于上沿线+{0}%且高于{1}日均线",
 "zh-hant": "突破確認 = 收盤價高於上沿線+{0}%且高於{1}日均線",
 "fr": "Cassure confirmée = clôture au moins {0} % au-dessus de la ligne haute et au-dessus de la MM {1} jours"
+},
+"장중": {
+"en": "Intraday",
+"ja": "ザラ場",
+"zh-hans": "盘中",
+"zh-hant": "盤中",
+"fr": "En séance"
+},
+"장중(정규장)": {
+"en": "Intraday (regular session)",
+"ja": "ザラ場(通常取引)",
+"zh-hans": "盘中(常规时段)",
+"zh-hant": "盤中(正常交易時段)",
+"fr": "En séance (régulière)"
+},
+"장중(NXT 프리)": {
+"en": "Intraday (NXT pre-market)",
+"ja": "ザラ場(NXTプレ)",
+"zh-hans": "盘中(NXT盘前)",
+"zh-hant": "盤中(NXT盤前)",
+"fr": "En séance (préouverture NXT)"
+},
+"장중(NXT 애프터)": {
+"en": "Intraday (NXT after-hours)",
+"ja": "ザラ場(NXTアフター)",
+"zh-hans": "盘中(NXT盘后)",
+"zh-hant": "盤中(NXT盤後)",
+"fr": "En séance (après-Bourse NXT)"
+},
+"종가": {
+"en": "Close",
+"ja": "終値",
+"zh-hans": "收盘价",
+"zh-hant": "收盤價",
+"fr": "Clôture"
+},
+"프리": {
+"en": "Pre-market",
+"ja": "プレ",
+"zh-hans": "盘前",
+"zh-hant": "盤前",
+"fr": "Préouverture"
+},
+"애프터": {
+"en": "After-hours",
+"ja": "アフター",
+"zh-hans": "盘后",
+"zh-hant": "盤後",
+"fr": "Après-Bourse"
+},
+"선물": {
+"en": "Futures",
+"ja": "先物",
+"zh-hans": "期货",
+"zh-hant": "期貨",
+"fr": "Contrats à terme"
+},
+"NXT 프리 마지막 체결": {
+"en": "NXT pre-market last trade",
+"ja": "NXTプレ最終約定",
+"zh-hans": "NXT盘前最后成交",
+"zh-hant": "NXT盤前最後成交",
+"fr": "Dernière transaction en préouverture NXT"
+},
+"NXT 애프터 마지막 체결": {
+"en": "NXT after-hours last trade",
+"ja": "NXTアフター最終約定",
+"zh-hans": "NXT盘后最后成交",
+"zh-hant": "NXT盤後最後成交",
+"fr": "Dernière transaction après-Bourse NXT"
+},
+"프리 마지막 체결": {
+"en": "Pre-market last trade",
+"ja": "プレ最終約定",
+"zh-hans": "盘前最后成交",
+"zh-hant": "盤前最後成交",
+"fr": "Dernière transaction en préouverture"
+},
+"애프터 마지막 체결": {
+"en": "After-hours last trade",
+"ja": "アフター最終約定",
+"zh-hans": "盘后最后成交",
+"zh-hant": "盤後最後成交",
+"fr": "Dernière transaction après-Bourse"
+},
+"선물 마지막 체결": {
+"en": "Futures last trade",
+"ja": "先物最終約定",
+"zh-hans": "期货最后成交",
+"zh-hant": "期貨最後成交",
+"fr": "Dernière transaction sur contrats à terme"
+},
+"돌파 확정": {
+"en": "Breakout confirmed",
+"ja": "ブレイク確定",
+"zh-hans": "突破确认",
+"zh-hant": "突破確認",
+"fr": "Cassure confirmée"
+},
+"돌파 시도(종가 확인 전)": {
+"en": "Breakout attempt (before close confirmation)",
+"ja": "ブレイク試行(終値確認前)",
+"zh-hans": "突破尝试(收盘确认前)",
+"zh-hant": "突破嘗試(收盤確認前)",
+"fr": "Tentative de cassure (avant confirmation à la clôture)"
+},
+"하락 시그널": {
+"en": "Sell signal",
+"ja": "下落シグナル",
+"zh-hans": "下跌信号",
+"zh-hant": "下跌訊號",
+"fr": "Signal de baisse"
+},
+"채널 하단 이탈": {
+"en": "Channel floor breakdown",
+"ja": "チャネル下限割れ",
+"zh-hans": "跌破通道下沿",
+"zh-hant": "跌破通道下緣",
+"fr": "Cassure du bas du canal"
+},
+"채널 상단 돌파 실패": {
+"en": "Failed at channel ceiling",
+"ja": "チャネル上限ブレイク失敗",
+"zh-hans": "通道上沿突破失败",
+"zh-hant": "通道上緣突破失敗",
+"fr": "Échec de cassure du haut du canal"
+},
+"{0}일선 돌파 실패(채널 상단과 겹침)": {
+"en": "Failed at {0}-day MA (overlaps channel ceiling)",
+"ja": "{0}日線ブレイク失敗(チャネル上限と重なる)",
+"zh-hans": "{0}日均线突破失败(与通道上沿重叠)",
+"zh-hant": "{0}日均線突破失敗(與通道上緣重疊)",
+"fr": "Échec de cassure de la MM {0} jours (proche du haut du canal)"
+},
+"채널 상단 저항": {
+"en": "Channel ceiling resistance",
+"ja": "チャネル上限の抵抗",
+"zh-hans": "通道上沿阻力",
+"zh-hant": "通道上緣壓力",
+"fr": "Résistance en haut du canal"
+},
+"{0}일선 저항(채널 상단과 겹침)": {
+"en": "{0}-day MA resistance (overlaps channel ceiling)",
+"ja": "{0}日線の抵抗(チャネル上限と重なる)",
+"zh-hans": "{0}日均线阻力(与通道上沿重叠)",
+"zh-hant": "{0}日均線壓力(與通道上緣重疊)",
+"fr": "Résistance de la MM {0} jours (proche du haut du canal)"
+},
+"{0}일선 저항": {
+"en": "{0}-day MA resistance",
+"ja": "{0}日線の抵抗",
+"zh-hans": "{0}日均线阻力",
+"zh-hant": "{0}日均線壓力",
+"fr": "Résistance de la MM {0} jours"
+},
+"{0}일선 이탈": {
+"en": "{0}-day MA breakdown",
+"ja": "{0}日線割れ",
+"zh-hans": "跌破{0}日均线",
+"zh-hant": "跌破{0}日均線",
+"fr": "Cassure de la MM {0} jours"
+},
+"시가부터 {0}일선 아래": {
+"en": "Below {0}-day MA since the open",
+"ja": "寄り付きから{0}日線の下",
+"zh-hans": "开盘起低于{0}日均线",
+"zh-hant": "開盤起低於{0}日均線",
+"fr": "Sous la MM {0} jours depuis l’ouverture"
+},
+"{0}일선 위로(돌파 전)": {
+"en": "Back above {0}-day MA (pre-breakout)",
+"ja": "{0}日線の上へ(ブレイク前)",
+"zh-hans": "回到{0}日均线上方(突破前)",
+"zh-hant": "回到{0}日均線上方(突破前)",
+"fr": "Repasse au-dessus de la MM {0} jours (avant cassure)"
+},
+"시가부터 {0}일선 위(돌파 전)": {
+"en": "Above {0}-day MA since the open (pre-breakout)",
+"ja": "寄り付きから{0}日線の上(ブレイク前)",
+"zh-hans": "开盘起高于{0}日均线(突破前)",
+"zh-hant": "開盤起高於{0}日均線(突破前)",
+"fr": "Au-dessus de la MM {0} jours depuis l’ouverture (avant cassure)"
+},
+"돌파 시도·확정": {
+"en": "Breakout attempt · confirmed",
+"ja": "ブレイク試行・確定",
+"zh-hans": "突破尝试·确认",
+"zh-hant": "突破嘗試·確認",
+"fr": "Tentative · cassure confirmée"
 }
 };
 window.TRL_WEEK = {"월": {"en": "Mon", "ja": "月", "zh-hans": "周一", "zh-hant": "週一", "fr": "lun."}, "화": {"en": "Tue", "ja": "火", "zh-hans": "周二", "zh-hant": "週二", "fr": "mar."}, "수": {"en": "Wed", "ja": "水", "zh-hans": "周三", "zh-hant": "週三", "fr": "mer."}, "목": {"en": "Thu", "ja": "木", "zh-hans": "周四", "zh-hant": "週四", "fr": "jeu."}, "금": {"en": "Fri", "ja": "金", "zh-hans": "周五", "zh-hant": "週五", "fr": "ven."}, "토": {"en": "Sat", "ja": "土", "zh-hans": "周六", "zh-hant": "週六", "fr": "sam."}, "일": {"en": "Sun", "ja": "日", "zh-hans": "周日", "zh-hant": "週日", "fr": "dim."}};

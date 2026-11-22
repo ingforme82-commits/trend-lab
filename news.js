@@ -1073,25 +1073,44 @@
     o.state = chState(o, q.px);
     return o;
   }
+  // 신호 앞 시점 P(dev-20261122-2300, 11/22 운영자 "추천대로" · 11/23 운영자 '장중' 정의 decisions/trading.md)
+  //  국내: 장중 = 평일 08:00~20:00(NXT 프리·KRX 정규장·NXT 애프터) — live 일 때 '장중(정규장)'·'장중(NXT 프리)'·'장중(NXT 애프터)'처럼 세션을 같이 적는다.
+  //        20시 뒤·live 아님 → '종가'(정규장) 또는 '<세션> 마지막 체결'(시간외 값을 보여 줄 때).
+  //  미국·일본: live 정규장 → '장중', live 시간외 → 세션명(카드 ch-ptag 와 같은 짧은 표기), 마감 → '종가' 또는 '<세션> 마지막 체결'.
+  //  지연(stale) 값은 chSigNow 가 아예 신호를 내지 않는다 — 마감 뒤·지연에 '장중'이 붙는 경우는 없다(tests/test_chan_labels.cjs).
+  const chSesShort = (s) => s && s !== "정규장" ? String(s).replace("마켓", "").replace("선물 24시간", "선물") : "";
+  function chKrOpen(now) {                                     // 국내 장중 시간(평일 08:00~20:00 KST)
+    const k = new Date((now ?? Date.now()) + 9 * 3600e3), d = k.getUTCDay(), m = k.getUTCHours() * 60 + k.getUTCMinutes();
+    return d > 0 && d < 6 && m >= 480 && m < 1200;
+  }
+  function chPhase(it, cc, now) {
+    const sh = chSesShort(it.session);
+    if (cc === "kr" || cc === "kr_index") return it.live && chKrOpen(now) ? `장중(${sh || "정규장"})` : sh ? sh + " 마지막 체결" : "종가";
+    return it.live ? sh || "장중" : sh ? sh + " 마지막 체결" : "종가";
+  }
   // 11/19 운영자: 시그널도 실시간 값으로 다시 판단 — 돌파 쪽은 빨강(up), 저항·하락 쪽은 파랑(dn)
-  function chSigNow(it) {
+  //  신호 종류·순서·색은 그대로, 글자 앞에 시점 P 만 붙인다("P · 신호"). base = P 없는 신호 글자.
+  function chSigNow(it, cc, now) {
     const rows = it.rows || [], n = rows.length;
     if (it.stale || n < 6 || !(it.px > 0)) return null;
-    if (it.state === "돌파 확인") return {tone: "up", label: "돌파 확정"};
-    if (it.state === "돌파 시도(장중)") return {tone: "up", label: "돌파 시그널"};
-    if (it.state === "하단 이탈") return {tone: "dn", label: "하락 시그널 · 채널 하단 이탈"};
+    const phase = chPhase(it, cc, now), sig = (tone, base) => ({tone, base, phase, label: phase + " · " + base});
+    if (it.state === "돌파 확인") return sig("up", "돌파 확정");
+    if (it.state === "돌파 시도(장중)") return sig("up", "돌파 시도(종가 확인 전)");   // 확정과 합치지 않음(진짜 반등 = 종가 +1% 돌파)
+    if (it.state === "하단 이탈") return sig("dn", "하락 시그널 · 채널 하단 이탈");
     if (it.channel_valid === false || !(it.ma5 > 0)) return null;
-    const cl = chCl(it), ma5p = cl.slice(-6, -1).reduce((a, b) => a + b, 0) / 5, pc = cl[n - 2], h = rows[n - 1][2];
+    const cl = chCl(it), ma5p = cl.slice(-6, -1).reduce((a, b) => a + b, 0) / 5, pc = cl[n - 2], h = rows[n - 1][2], open = rows[n - 1][1];
     // 11/20 운영자(마이크론): 채널 상단을 넘었다가 밀린 것과 5일선에 막힌 것을 구분
     if (it.up_now > 0 && it.channel_width_valid !== false) {
       // 11/20 운영자(엔비디아): 5일선과 채널 상단이 0.5% 안으로 겹치면 5일선 저항으로 부른다(채널 상단과 겹침 표시)
       const ma5h = it.ma5 + (h - it.px) / 5, near = Math.abs(ma5h / it.up_now - 1) <= 0.005;   // 고가 때의 5일선(오늘 값이 고가였을 때)
-      if (h >= it.up_now * 1.01 && it.px < it.up_now) return {tone: "dn", label: near ? "5일선 돌파 실패(채널 상단과 겹침)" : "채널 상단 돌파 실패"};
-      if (h >= it.up_now && it.px < it.up_now * 0.997) return {tone: "dn", label: near ? "5일선 저항(채널 상단과 겹침)" : "채널 상단 저항"};
+      if (h >= it.up_now * 1.01 && it.px < it.up_now) return sig("dn", near ? "5일선 돌파 실패(채널 상단과 겹침)" : "채널 상단 돌파 실패");
+      if (h >= it.up_now && it.px < it.up_now * 0.997) return sig("dn", near ? "5일선 저항(채널 상단과 겹침)" : "채널 상단 저항");
     }
-    if (pc <= ma5p && h >= it.ma5 && it.px < it.ma5 * 0.997) return {tone: "dn", label: "5일선 저항"};   // chan.py 저항 규칙과 같음
-    if (pc > ma5p && it.px < it.ma5) return {tone: "dn", label: "하락 시그널 · 5일선 이탈"};
-    if (pc <= ma5p && it.px > it.ma5) return {tone: "wk", label: "5일선 위로(돌파 전)"};   // 11/19 운영자: 빨강은 진짜 돌파(채널 상단+1%·5일선·전고점)만
+    if (pc <= ma5p && h >= it.ma5 && it.px < it.ma5 * 0.997) return sig("dn", "5일선 저항");   // chan.py 저항 규칙과 같음
+    // 정규장 값일 때만 '시가부터' 구분: 시가 때 5일선 = ma5 + (시가 − 현재가)/5
+    const regular = !it.session || it.session === "정규장", openMa5 = it.ma5 + (open - it.px) / 5;
+    if (pc > ma5p && it.px < it.ma5) return sig("dn", regular && open > 0 && open < openMa5 ? "시가부터 5일선 아래" : "하락 시그널 · 5일선 이탈");
+    if (pc <= ma5p && it.px > it.ma5) return sig("wk", regular && open > 0 && open > openMa5 ? "시가부터 5일선 위(돌파 전)" : "5일선 위로(돌파 전)");   // 11/19 운영자: 빨강은 진짜 돌파(채널 상단+1%·5일선·전고점)만
     return null;
   }
   const chEvTone = (s) => s.kind === "resist" || /저항|이탈|하락/.test(s.text || "") ? "dn" : "up";
@@ -1104,7 +1123,7 @@
     const seen = new Set(), by = [];
     live.forEach(({g, it}) => {
       if (seen.has(it.code)) return; seen.add(it.code);
-      const now = chSigNow(it), ev = (evs[it.code] || []).sort((a, b) => b.ts - a.ts);
+      const now = chSigNow(it, g.cc), ev = (evs[it.code] || []).sort((a, b) => b.ts - a.ts);
       if (!now && !ev.length) return;
       let ctry = by.find((x) => x.country === g.country);
       if (!ctry) by.push(ctry = {country: g.country, cc: g.cc, rows: []});
@@ -1112,10 +1131,10 @@
     });
     if (!by.length) return "";
     const pxCls = (v) => v == null || !isFinite(v) ? "dim" : v > 0.005 ? "up" : v < -0.005 ? "down" : "dim";
-    return `<p class="ch-sg-h">⚡ 돌파·저항 시그널 <small><i class="ch-dot up"></i>돌파 시그널·확정 <i class="ch-dot dn"></i>저항·하락 시그널 · 실시간 값으로 다시 판단</small></p>` +
+    return `<p class="ch-sg-h">⚡ 돌파·저항 시그널 <small><i class="ch-dot up"></i>돌파 시도·확정 <i class="ch-dot dn"></i>저항·하락 시그널 · 실시간 값으로 다시 판단</small></p>` +
       by.map((x) => `<div class="ch-sgc"><p class="ch-sgc-h">${CH_FLAG[x.cc] || ""} ${esc(x.country)}</p><ul>${x.rows.map(({g, it, now, ev}) =>
         `<li><b class="ch-nm">${esc(it.name)}</b> <b class="mn ${pxCls(it.chg)}">${chFmt(g.cc, it.px)}</b> <small class="${pxCls(it.chg)}">${it.chg == null ? "" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</small>
-          ${now ? `<span class="ch-sg ${now.tone}">${esc(now.label)}${it.live ? "" : " · 마지막"}</span>` : ""}
+          ${now ? `<span class="ch-sg ${now.tone}">${esc(now.label)}</span>` : ""}
           ${ev.map((s) => `<p class="ch-evl ${chEvTone(s)}"><time>⏱ ${hm(s.ts)}</time> ${esc(chEvText(s.text))}</p>`).join("")}</li>`).join("")}</ul></div>`).join("");
   }
   let chanRtSig = "";
@@ -1155,7 +1174,7 @@
         if (it.ipo) { html += chIpoCard(it, g.cc); return; }      // 상장 초기 종목은 5분봉 흐름을 표시
         liveItems.push({g, it});
         const horizontal = g.cc === "us" ? chHorizontalLower(it.rows || []) : null;
-        const sgNow = chSigNow(it);
+        const sgNow = chSigNow(it, g.cc);
         const rank = index + 1;
         const mdl = many && rankable(item) ? `<span class="ch-md m${Math.min(rank, 4)} notranslate" translate="no">${(/^(?:|ko)$/i.test(new URLSearchParams(location.search).get("lang") || "") && !/googtrans=\/ko\/(?!ko)/.test(document.cookie) ? ["금", "은", "동"][index] : "") || rank}</span>` : "";
         html += `<article class="ch-card${sgNow ? " t-" + sgNow.tone : ""}" data-viewport-key="channel:${esc(it.code)}">

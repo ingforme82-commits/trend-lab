@@ -23,8 +23,10 @@ assert.equal(hlWhenAt("10/30(금) 정리", now), null);        // 시각 없음
 assert.equal(hlWhenAt("11/16~20 주간 확인 계획", now), null);
 assert.equal(hlWhenAt("12/31 09:00", at("2027-01-02T09:00:00+09:00")), at("2026-12-31T09:00:00+09:00")); // 해 넘김
 
-// 마감 시각: 한국 15:30 KST, 미국 뉴욕 16:00(겨울 = KST 다음 날 06:00, 여름 = 05:00)
-assert.equal(sessCloseAfter("kr", at("2026-11-10T10:42:00+09:00")), at("2026-11-10T15:30:00+09:00"));
+// 마감 시각: 한국 20:00 KST(11/23 운영자: 국내 장중 08:00~20:00, NXT 애프터 마감), 미국 뉴욕 16:00(겨울 = KST 다음 날 06:00, 여름 = 05:00)
+assert.equal(sessCloseAfter("kr", at("2026-11-10T10:42:00+09:00")), at("2026-11-10T20:00:00+09:00"));
+assert.equal(sessCloseAfter("kr", at("2026-11-10T17:10:00+09:00")), at("2026-11-10T20:00:00+09:00"));   // 애프터 중 작성
+assert.equal(sessCloseAfter("kr", at("2026-11-10T20:30:00+09:00")), at("2026-11-10T20:30:00+09:00"));   // 20시 뒤 작성 → 바로 지남
 assert.equal(sessCloseAfter("us", at("2026-11-19T23:35:00+09:00")), at("2026-11-20T06:00:00+09:00"));
 assert.equal(sessCloseAfter("us", at("2026-07-15T23:00:00+09:00")), at("2026-07-16T05:00:00+09:00"));
 
@@ -32,14 +34,23 @@ assert.equal(sessCloseAfter("us", at("2026-07-15T23:00:00+09:00")), at("2026-07-
 const us = { tag: "🇺🇸 미국장 장중", when: "11/19 23:35 KST (미 동부 09:35) · 정규장 개장 초반", until: "2026-11-21" };
 assert.equal(hlStale(us, at("2026-11-20T05:59:00+09:00")), false);
 assert.equal(hlStale(us, at("2026-11-20T06:00:00+09:00")), true);
-// 한국 장중(when 에 '장중', 시장 mkt=kr): 15:30 전/후
+// 한국 장중(when 에 '장중', 시장 mkt=kr): 정규장 마감 15:30 에는 아직 둠, 20:00(NXT 마감) 전/후
 const kr = { tag: "🏁 주도 섹터·종목", when: "11/10(화) 10시 42분 기준 · 장중 잠정", mkt: "kr", until: "2026-11-11" };
-assert.equal(hlStale(kr, at("2026-11-10T15:29:00+09:00")), false);
-assert.equal(hlStale(kr, at("2026-11-10T15:30:00+09:00")), true);
-// 시각을 못 읽으면 지금 정규장 중일 때만(평일 한국 11시 = 둠, 16시 = 내림)
+assert.equal(hlStale(kr, at("2026-11-10T15:30:00+09:00")), false);
+assert.equal(hlStale(kr, at("2026-11-10T19:59:00+09:00")), false);
+assert.equal(hlStale(kr, at("2026-11-10T20:00:00+09:00")), true);
+// 시각을 못 읽으면 지금 국내 장중(평일 08:00~20:00)일 때만: 07:59 내림 · 08:00 둠 · 11시 둠 · 16시(애프터) 둠 · 20시 내림 · 주말 내림
 const krNoTime = { tag: "🇰🇷 한국장 장중", when: "장중 정리", mkt: "kr" };
+assert.equal(hlStale(krNoTime, at("2026-11-20T07:59:00+09:00")), true);
+assert.equal(hlStale(krNoTime, at("2026-11-20T08:00:00+09:00")), false);
 assert.equal(hlStale(krNoTime, at("2026-11-20T11:00:00+09:00")), false);
-assert.equal(hlStale(krNoTime, at("2026-11-20T16:00:00+09:00")), true);
+assert.equal(hlStale(krNoTime, at("2026-11-20T16:00:00+09:00")), false);
+assert.equal(hlStale(krNoTime, at("2026-11-20T20:00:00+09:00")), true);
+assert.equal(hlStale(krNoTime, at("2026-11-21T11:00:00+09:00")), true);
+// 미국은 그대로: 시각 없는 미국 장중 카드는 정규장 중에만(뉴욕 11시 = KST 다음 날 01시 둠, 뉴욕 17시 애프터 = 내림)
+const usNoTime = { tag: "🇺🇸 미국장 장중", when: "장중 정리", mkt: "us" };
+assert.equal(hlStale(usNoTime, at("2026-11-20T01:00:00+09:00")), false);
+assert.equal(hlStale(usNoTime, at("2026-11-20T07:00:00+09:00")), true);
 // '장중'이 없는 카드·시장 미상(g) 카드는 건드리지 않는다(until 만)
 assert.equal(hlStale({ tag: "📊 오늘 시황(자동)", title: "마감 — 장중 고점 대비 -2.0%", when: "11/20 15시 35분 자동 갱신 · 마감" }, now), false);
 assert.equal(hlStale({ tag: "🗞️ 오늘 주목", when: "11/10 10시 장중", mkt: "g" }, now), false);
