@@ -1222,8 +1222,9 @@
     const t = tgsum; if (!t || !(t.topics || []).length) { box.hidden = true; return; }
     const lines = (ln) => `<li${ln.hot ? ' class="hot"' : ""}><span class="tg-t">${esc(gist(ln.text, 110))}</span>`
       + `<span class="tg-m">${hm(ln.last)} · ${ln.srcs.map(esc).join(" · ")}</span></li>`;
-    box.innerHTML = `<div class="tg-head"><h3>📰 주제별 뉴스</h3></div>`
-      + `<div class="tg-grid">` + t.topics.map((tp) => `<div class="tg-card"><p class="tg-name">${esc(tp.name)}</p><ul>${tp.lines.map(lines).join("")}</ul></div>`).join("") + `</div>`;
+    const open = box.querySelector("details")?.open ? " open" : "";
+    box.innerHTML = `<details${open}><summary class="tg-head">📰 주제별 뉴스</summary>`
+      + `<div class="tg-grid">` + t.topics.map((tp) => `<div class="tg-card"><p class="tg-name">${esc(tp.name)}</p><ul>${tp.lines.map(lines).join("")}</ul></div>`).join("") + `</div></details>`;
     box.hidden = false;
   }
   function drawTrend() {
@@ -1243,16 +1244,17 @@
     } catch { /* 없음 */ }
   }
   const normT = (t) => String(t || "").replace(/^\[[^\]]*\]\s*/, "").replace(/[^0-9A-Za-z가-힣]/g, "").slice(0, 18);
-  function mainNews() {
+  function mainNews(limit, featured) {
     const now = Date.now();
     const pool = news.filter((n) => n.text && isRecent(n.ts, now, 1) && !isStrat(n) && impScore(n) >= 55)
       .sort((a, b) => impScore(b) - impScore(a) || b.ts - a.ts);
-    const top = dedupe(pool, false).slice(0, 6);
+    const differs = (n) => !featured || simTxt(bigr(featured), bigr(n.text)) < 0.45;
+    const top = dedupe(pool.filter(differs), false).slice(0, limit);
     // 중요 속보가 적은 시간대(11/18 운영자 "앞단은 뉴스 위주로"): 같은 1시간 범위의 최신 속보를 더 보여 준다
-    if (top.length < 8) {
+    if (top.length < limit) {
       const seen = new Set(top.map((n) => n.ts));
-      const fill = dedupe(news.filter((n) => n.text && isRecent(n.ts, now, 1) && !isStrat(n) && !seen.has(n.ts)).sort((a, b) => b.ts - a.ts));
-      for (const n of fill) { if (top.length >= 8) break; if (!top.some((o) => simTxt(o._g || bigr(o.text), n._g) >= 0.45)) top.push(n); }
+      const fill = dedupe(news.filter((n) => n.text && isRecent(n.ts, now, 1) && !isStrat(n) && !seen.has(n.ts) && differs(n)).sort((a, b) => b.ts - a.ts));
+      for (const n of fill) { if (top.length >= limit) break; if (!top.some((o) => simTxt(o._g || bigr(o.text), n._g) >= 0.45)) top.push(n); }
     }
     return top.sort((a, b) => b.ts - a.ts);
   }
@@ -1276,8 +1278,9 @@
     const autoC = (window.trlAuto || []).filter((x) => !x.until || x.until >= kstDay(Date.now())), autoT = new Set(autoC.map((x) => x.tag));
     const hl = [...autoC, ...headline.filter((x) => !autoT.has(x.tag))];
     const L = window.trlHlLang || ((y) => y);
-    const pins = [...hl.filter((x) => x.main), ...hl.filter((x) => !x.main)].map((x0) => { const x = L(x0); return `<li class="mn-pin${x.main ? " mn-main" : ""}"><a href="#headline"${x._fixed ? ' translate="no"' : ""}><span class="mn-t">${x.main ? "🔴" : "📌"} ${esc(x.tag || "주요 이슈")}</span> <b>${esc(x.title)}</b>${x.when ? ` <small>${esc(x.when)}</small>` : ""}</a></li>`; });
-    const live = mainNews().map((n) => {
+    const featured = hl.find((x) => x.main) || hl[0];
+    const pins = (featured ? [featured] : []).map((x0) => { const x = L(x0); return `<li class="mn-pin${x.main ? " mn-main" : ""}"><a href="#headline"${x._fixed ? ' translate="no"' : ""}><span class="mn-t">${x.main ? "🔴" : "📌"} ${esc(x.tag || "주요 이슈")}</span> <b>${esc(x.title)}</b>${x.when ? ` <small>${esc(x.when)}</small>` : ""}</a></li>`; });
+    const live = mainNews(3 - pins.length, featured?.title).map((n) => {
       const g = gist(newsText(n)), full = newsText(n).replace(/…$/, "");
       const t = g !== full ? `<span class="mn-x" data-open="0" title="눌러서 전체 보기">${esc(g)}</span><span class="mn-full" hidden>${esc(full)}</span>` : esc(g);
       const v = n.verify === "official" ? " · 🏛 공식" : n.verify === "multi" ? " · ✔ 복수 출처" : n.verify === "unconfirmed" ? " · ⚠ 미확인" : "";
@@ -1285,12 +1288,18 @@
     });
     if (!pins.length && !live.length) { box.hidden = true; return; }
     box.hidden = false;
-    box.innerHTML = `<p class="mn-h"><span class="hl-dot"></span><b>📰 메인 뉴스</b> <small>중요 속보 + 최신 속보 · 1분마다 갱신</small><a href="#news">속보 전체 →</a></p><ul class="mn-list">${pins.join("")}${live.join("")}</ul>`;
+    box.innerHTML = `<p class="mn-h"><span class="hl-dot"></span><b>📰 메인 뉴스</b> <small>핵심 뉴스 최대 3개</small><a href="#news">속보 전체 →</a></p><ul class="mn-list">${pins.join("")}${live.join("")}</ul>`;
   }
 
   /* ── 속보 목록 ── */
-  const serOpen = new Set();
+  const serOpen = new Set(), followOpen = new Set();
   document.addEventListener("toggle", (e) => { const d = e.target; if (d && d.matches && d.matches(".nw-ser")) { if (d.open) serOpen.add(d.dataset.ser); else serOpen.delete(d.dataset.ser); } }, true);
+  document.addEventListener("toggle", (e) => {
+    const d = e.target;
+    if (!d.matches?.(".nw-follow")) return;
+    if (d.open) followOpen.add(d.dataset.follow);
+    else followOpen.delete(d.dataset.follow);
+  }, true);
   const VER = { official: ["🏛 공식 발표", "v-ok"], multi: ["✔ 복수 출처", "v-ok"], single: ["단일 출처", "v-one"], unconfirmed: ["⚠ 미확인·보도 인용", "v-warn"] };
   const isStrat = (n) => n.kind === "증권사 시황" || n.kind === "시황 분석";
   // 중요도: 서버가 매긴 imp(0~100, 상 60↑·중 35↑) — 없으면 예전 계산
@@ -1362,19 +1371,18 @@
       const rs = w ? `<span class="nw-r">${esc(R.n)} <small>보도 5분 전 대비</small> ${w.map((x) => `<span class="rw">+${x.n}분 ${x.v == null ? `<i class="dim">계산 중</i>` : pct(x.v)}</span>`).join("")}</span>` : "";
       const pv = n.pivot ? `<p class="nw-pv">🔴 변곡점 관련 뉴스 — ${movesOfNews(n.ts).map((m) => `${esc(m.name)} ${fmtMove(m)} (${hm(m.start)}–${hm(m.end)})`).join(", ") || (n.pv || []).map(esc).join(", ")}</p>` : "";
 
-      const lvb = n.lv === "상" ? `<span class="nw-v v-imp" title="중요도 ${n.imp}">🔥 중요</span>` : n.lv === "중" ? `<span class="nw-v v-one" title="중요도 ${n.imp}">중요도 중</span>` : "";
       const v = VER[n.verify] ? `<span class="nw-v ${VER[n.verify][1]}">${VER[n.verify][0]}${n.nsrc > 1 ? ` ${n.nsrc}곳` : ""}</span>` : "";
       const tr = n.tr === "auto" ? `<span class="nw-v v-tr" title="${esc(n.orig || "")}">🌐 자동 번역</span>` : "";
       const XC = { ok: ["🌐 외신 확인", "v-ok"], ref: ["🌐 해외 보도", "v-one"], diff: ["⚠ 외신과 수치 다름", "v-warn"] };
       const xc = n.xc && XC[n.xc.st] ? `<span class="nw-v ${XC[n.xc.st][1]}">${XC[n.xc.st][0]} · ${n.xc.src.map(esc).join("·")}</span>` : "";
       const xcl = n.xc && XC[n.xc.st] ? `<p class="nw-xc"><b>원문</b> ${esc(n.xc.en)} <small class="dim">— ${esc(n.xc.src[0])}${n.xc.ko ? ` · 번역: ${esc(n.xc.ko)}` : ""}</small></p>` : "";
-      const also = (n.also || []).length ? `<span class="nw-also">후속: ${n.also.map((a) => `${esc(sourceName(a))} ${hm(a.ts)}`).join(", ")}</span>` : "";
+      const also = (n.also || []).length ? `<details class="nw-follow" data-follow="${n.ts}"${followOpen.has(String(n.ts)) ? " open" : ""}><summary>후속 보도 ${n.also.length}건</summary><p class="nw-m">${n.also.map((a) => `${esc(sourceName(a))} ${hm(a.ts)}`).join(", ")}</p></details>` : "";
       return `<li class="nw${n.pivot ? " piv" : ""}${sel === n.ts ? " sel" : ""}${n.verify === "unconfirmed" ? " unv" : ""}" data-ts="${n.ts}">
         <div class="nw-t"><b>${hm(n.ts)}</b><span>${ago(n.ts)}</span></div>
         <div class="nw-b"><p class="nw-txt${n.kind === "섹터 시세" ? " sector" : ""}">${n.pivot ? "🔴 " : ""}${hit(esc(newsText(n)))}</p>${n.sub ? `<p class="nw-sub">${hit(esc(n.sub))}</p>` : ""}${pv}
-          <p class="nw-m">${n.tags.map((t) => `<span class="nw-tag">${esc(t)}</span>`).join("")}${isStrat(n) ? `<span class="nw-tag strat">${esc(n.kind)}</span>` : ""}${lvb}${v}${xc}${tr}
+          <p class="nw-m">${n.tags.map((t) => `<span class="nw-tag">${esc(t)}</span>`).join("")}${isStrat(n) ? `<span class="nw-tag strat">${esc(n.kind)}</span>` : ""}${v}${xc}${tr}
           <span class="nw-src">${esc(sourceName(n))}</span></p>
-          ${xcl}${also ? `<p class="nw-m">${also}</p>` : ""}${n.series_n > 1 ? `<details class="nw-ser" data-ser="${n.ts}"${serOpen.has(String(n.ts)) ? " open" : ""}><summary>🧹 같은 ${esc(n.series_key)} 발언·발표 ${n.series_n - 1}건 더(2시간 안 연속, 한 줄로 묶음)</summary><ul>${(n.series || []).map((x) => `<li><b>${hm(x.ts)}</b> ${esc(x.text)}</li>`).join("")}</ul></details>` : ""}${rs ? `<p class="nw-m">${rs}</p>` : ""}</div></li>`;
+          ${xcl}${also}${n.series_n > 1 ? `<details class="nw-ser" data-ser="${n.ts}"${serOpen.has(String(n.ts)) ? " open" : ""}><summary>🧹 같은 ${esc(n.series_key)} 발언·발표 ${n.series_n - 1}건 더(2시간 안 연속, 한 줄로 묶음)</summary><ul>${(n.series || []).map((x) => `<li><b>${hm(x.ts)}</b> ${esc(x.text)}</li>`).join("")}</ul></details>` : ""}${rs ? `<p class="nw-m">${rs}</p>` : ""}</div></li>`;
     }).join("") || `<li class="empty">조건에 맞는 속보가 없습니다.</li>`;
     q("#newsMore").hidden = list.length <= shown;
     const cnt = q("#newsCount");
@@ -1389,7 +1397,7 @@
   if (full) {
     q("#newsChips").addEventListener("click", (e) => { const b = e.target.closest(".chip"); if (!b) return; tag = b.dataset.t; shown = 10; drawList(); });
     q("#newsList").addEventListener("click", (e) => {
-      if (e.target.closest("a")) return;
+      if (e.target.closest("a, details")) return;
       const li = e.target.closest(".nw"); if (!li) return;
       const ts = +li.dataset.ts; sel = ts; if (window.trlCount) window.trlCount("news");
       drawCharts(); drawList();
