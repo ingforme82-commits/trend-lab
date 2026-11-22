@@ -103,7 +103,17 @@ async function loadTicks() {
           const c = r.chg > 0.005 ? "c-up" : r.chg < -0.005 ? "c-dn" : "c-fl";
           return `<div class="tick" data-k="${t.k}" data-rt-at="${r.at}"><p class="t-name">${t.n}</p><p class="t-px">${Math.round(r.px).toLocaleString("ko-KR")}원</p><p class="t-ch ${c}">${r.chg > 0 ? "▲" : r.chg < 0 ? "▼" : ""} ${r.chg > 0 ? "+" : ""}${(+r.chg).toFixed(2)}% <small>${r.mk === "NXT" ? "넥스트레이드 체결" : "실시간 체결"}</small></p><p class="fine" style="margin:2px 0 0">기준 전일 종가 ${Math.round(r.ref).toLocaleString("ko-KR")}원</p></div>`;
         }
-        return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">-</p><p class="fine">넥스트레이드 시간(08~09시·15:30~20시) 실시간 체결</p></div>`;
+        const item = (window.trlChan?.groups || []).flatMap((group) => group.items || []).find((row) => row.code === "402340");
+        const nx = item?.nxt;
+        const age = Date.now() - nx?.at;
+        const hasNxt = Number.isFinite(nx?.px) && nx.px > 0 && age >= -60000 && age < 7 * 86400e3;
+        const stamp = hasNxt ? `${mdhm(nx.at)} KST` : "";
+        const basis = hasNxt && nx.session === "애프터" && Number.isFinite(item.krx_close) && item.krx_close > 0 && mdhm(nx.at).split(" ")[0] === String(item.krx_close_day || "").replace(/\b0(?=\d)/g, "") ? item.krx_close : null;
+        const chg = basis ? 100 * (nx.px / basis - 1) : null;
+        const tone = chg > 0.005 ? "c-up" : chg < -0.005 ? "c-dn" : "c-fl";
+        const label = hasNxt ? "NXT 마지막 체결" : "NXT 시세 없음";
+        return `<div class="tick" data-k="${t.k}"><p class="t-name">${t.n}</p><p class="t-px">${hasNxt ? Math.round(nx.px).toLocaleString("ko-KR") + "원" : "—"}</p>${chg === null ? "" : `<p class="t-ch ${tone}">${chg > 0 ? "+" : ""}${chg.toFixed(2)}% <small>KRX 종가 대비</small></p>`}<p class="fine">${label}${stamp ? " · " + stamp : ""}</p></div>`;
+
       }
       if (t.srv) {                                        // 다우존스: 사이트 속보 데이터(야후)에서 — 미국장엔 지수, 그 외엔 선물
         const dw = window.trlDow || {};
@@ -660,11 +670,10 @@ async function loadStudies() {
     $("#archChips").innerHTML = [["all", "전체"], ["regular", "📈 정기 스터디"], ["book", "📚 독서 토론"], ...(hasG ? [["growth", "📒 " + growth.title]] : [])].map(([k, l]) => `<button class="chip${k === archCat ? " on" : ""}" data-k="${k}">${l}</button>`).join("");
     const draw = () => {
       if (archCat === "growth" && hasG) {
-        $("#archList").innerHTML = `<p class="arc-intro">${esc(growth.intro || "")}</p>` + growth.photos.map((p, i) => {
-          const d = new Date(p.date + "T00:00:00");
-          return `<a class="arc" href="study.html?id=growth&p=${i}">
-            <div class="arc-img"><img src="${esc(p.thumb)}" alt="${esc(growth.title)} ${esc(p.date)} 사진" loading="lazy"><span class="arc-month">${d.getFullYear() % 100}년 ${d.getMonth() + 1}월</span></div>
-            <div class="arc-body"><p class="arc-date">📒 ${d.getMonth() + 1}/${d.getDate()}(${DOW[d.getDay()]})</p><h3 class="arc-title">${esc(growth.title)}</h3></div></a>`;
+        $("#archList").innerHTML = `<p class="arc-intro">${esc(growth.intro || "")}</p>` + growth.photos.map((p, i) => ({ ...p, originalIndex: i })).sort((a, b) => b.date.localeCompare(a.date)).map((p) => {
+          return `<a class="arc" href="study.html?id=growth&p=${p.originalIndex}">
+            <div class="arc-img"><img src="${esc(p.thumb)}" alt="${esc(growth.title)} ${esc(p.date)} 사진" loading="lazy"></div>
+            <div class="arc-body"><p class="arc-date">📒 ${fmtD(p.date, true)}</p><h3 class="arc-title">${esc(growth.title)}</h3></div></a>`;
         }).join("");
         return;
       }
