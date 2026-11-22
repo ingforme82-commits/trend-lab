@@ -42,3 +42,4 @@ tools/quote_xcheck.txt
 
 # 개발 잠금(PC 로컬, 11/22): 있으면 market-site failover/sync.py 가 자동 커밋·push 안 함
 .dev-lock
+tools/media_text.sqlite3

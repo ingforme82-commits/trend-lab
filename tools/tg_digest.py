@@ -5,6 +5,8 @@
 - 주제(tags 첫 번째)별로 나누고, 같은 내용(글자 2개씩 겹침 비율)이 여러 매체·채널에 나오면 한 줄로 묶는다.
 - 주제 순서: 언급한 채널 수 → 글 수. 줄 순서: 채널 수 → 중요도 → 최근.
 - 채널 상태: 채널별 마지막 글 시각·수집 시각(수집이 멈췄는지 바로 보이게).
+  주말(토·일, 한국 시각)에 마지막 글이 직전 거래일 장 마감(15:30) 이후면 rest='주말 쉼' — 멈춤과 구분(11/22).
+  한국 휴장일 판정 코드는 이 저장소에 없어 토·일만 본다(공휴일은 표시 안 함).
 """
 
 from __future__ import annotations
@@ -17,6 +19,8 @@ TG_KINDS = ("텔레그램", "시황 분석", "증권사 시황")
 NEWS_KINDS = ("뉴스", "해외 뉴스")              # 국내외 모든 매체(RSS)
 FAST_SRC = {"김치터미널", "실시간 주식뉴스"}     # 속보 채널(김치터미널 포함 — 운영자 11/13: 항상 같이 본다)
 WIN_FAST, WIN_SLOW = 3, 18
+KST = timezone(timedelta(hours=9))
+KR_CLOSE = (15, 30)                              # 한국 정규장 마감(KST)
 CHAT = re.compile(r"ㅋㅋ|ㅎㅎ|ㅠㅠ|^.{0,30}[?？]\s*$")   # 잡담 한 줄은 빼기
 TOPICS_MAX, LINES_MAX = 10, 4
 
@@ -58,8 +62,25 @@ def _clusters(items: list[dict]) -> list[dict]:
     return res
 
 
-def channel_status(db_path, names: dict[str, str]) -> list[dict]:
-    """채널별 마지막 글·수집 시각(ms). 사이트에 '멈춘 채널'이 바로 보이게."""
+def last_close_ms(now_ms: int) -> int | None:
+    """지금이 주말(토·일, KST)이면 직전 거래일(금) 장 마감 시각(ms), 평일이면 None."""
+    now = datetime.fromtimestamp(now_ms / 1000, KST)
+    if now.weekday() < 5:
+        return None
+    fri = (now - timedelta(days=now.weekday() - 4)).replace(hour=KR_CLOSE[0], minute=KR_CLOSE[1], second=0, microsecond=0)
+    return int(fri.timestamp() * 1000)
+
+
+def rest_label(post_ms: int | None, now_ms: int) -> str | None:
+    """'주말 쉼' — 주말이고 마지막 글이 직전 거래일 장 마감 이후이며 오늘(KST)은 아직 글이 없을 때.
+    장 마감 전에 끊겼으면 표시 안 함(멈춤 의심 그대로), 오늘 글이 있으면 정상 수집 중이라 표시 안 함."""
+    close = last_close_ms(now_ms)
+    today = datetime.fromtimestamp(now_ms / 1000, KST).replace(hour=0, minute=0, second=0, microsecond=0)
+    return "주말 쉼" if close and post_ms and close <= post_ms < today.timestamp() * 1000 else None
+
+
+def channel_status(db_path, names: dict[str, str], now_ms: int | None = None) -> list[dict]:
+    """채널별 마지막 글·수집 시각(ms). 사이트에 '멈춘 채널'이 바로 보이게. 주말이면 rest='주말 쉼'."""
     try:
         con = sqlite3.connect(f"file:{db_path}?mode=ro", uri=True, timeout=5)
         rows = con.execute(
@@ -69,6 +90,10 @@ def channel_status(db_path, names: dict[str, str]) -> list[dict]:
         return []
     ms = lambda s: int(datetime.fromisoformat(s).astimezone(timezone.utc).timestamp() * 1000) if s else None  # noqa: E731
     out = [{"name": names.get(u, u), "post": ms(p), "got": ms(c)} for u, p, c in rows if u in names]
+    now_ms = now_ms or int(datetime.now(timezone.utc).timestamp() * 1000)
+    for r in out:
+        if lab := rest_label(r["post"], now_ms):
+            r["rest"] = lab
     return sorted(out, key=lambda r: -(r["post"] or 0))
 
 
@@ -100,7 +125,7 @@ def build(items: list[dict], now_ms: int, db_path=None, names: dict[str, str] | 
     if polled_ms:
         out["polled"] = polled_ms
     if db_path and names:
-        out["channels"] = channel_status(db_path, names)
+        out["channels"] = channel_status(db_path, names, now_ms)
     return out
 
 
@@ -117,3 +142,6 @@ if __name__ == "__main__":
         print(f"■ {t['name']} 글 {t['n']} · 출처 {t['ch']}")
         for ln in t["lines"]:
             print(f"   - [{len(ln['srcs'])}곳 {ln['n']}건] {ln['text'][:80]}  ({', '.join(ln['srcs'][:5])})")
+    rest = [c["name"] for c in d.get("channels", []) if c.get("rest")]
+    if rest:
+        print(f"주말 쉼 {len(rest)}채널: {', '.join(rest)}")

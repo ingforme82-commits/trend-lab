@@ -24,6 +24,7 @@ import re
 import sqlite3
 import subprocess
 import sys
+import time
 import urllib.request
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta, timezone
@@ -158,16 +159,24 @@ JUNK = re.compile(r"광고|이벤트|구독|무료\s?리딩|수익\s?보장|가�
                   r"|채널\s*(?:을|를)?\s*(?:새로\s*)?오픈|오픈했습니다|저희\s?(?:채널|팀)|저희가\s*이번에|관심\s*부탁|많관부|입장\s*(?:하기|링크|방법)|문의\s*주세요", re.I)
 # 국내 종합 피드(이데일리·조선비즈·뉴시스 등)의 시장 밖 기사 — 스포츠·연예·사건사고 (2026-11-13)
 NONMKT = re.compile(r"야구|축구|농구|배구|골프|KBO|APBC|K리그|프로야구|올림픽|월드컵|감독|투수|타자|홈런|마운드|국가대표|"
-                    r"e스포츠|연예|드라마|배우|가수|아이돌|예능|콘서트|결혼|열애|사망|숨진|살인|화재|교통사고|날씨|미세먼지")
+                    r"e스포츠|연예|드라마|배우|가수|아이돌|예능|콘서트|결혼|열애|사망|숨진|살인|화재|교통사고|날씨|미세먼지|"
+                    r"화보|미모|공주|컴백|뮤직\s?비디오|뮤비|걸그룹|보이그룹|팬미팅|팬사인회|월드\s?투어|레드\s?카펫|비주얼|패션\s?위크|시사회")
+# 연예 기사 단서(11/22, 그룹명은 넣지 않음) — 텔레 글은 NONMKT 로 빼지 않고 주제 분류만 하지 않는다('블랙핑크 지수' → '지수' 아님)
+ENTERTAIN = re.compile(r"화보|미모|공주|컴백|뮤직\s?비디오|뮤비|걸그룹|보이그룹|팬미팅|팬사인회|월드\s?투어|레드\s?카펫|비주얼|패션\s?위크|시사회|"
+                       r"아이돌|예능|드라마|열애")
 KR_MKT = re.compile(r"코스피|코스닥|증시|주가|주식|환율|원/달러|원화|금리|국채|외국인|기관|공매도|상장|실적|수출|한은|금통위|무역|반도체")
 TAGS = [
     ("중동·유가", r"이란|이스라엘|호르무즈|후티|사우디|카타르|레바논|헤즈볼라|유가|원유|WTI|브렌트|OPEC|오펙|천연가스|LNG|정유|핵무기|핵 활동|NPT|우라늄|"
                 r"\bIran|Israel|Hormuz|Houthi|Saudi|\boil\b|crude|Brent|OPEC|natural gas"),
     ("연준·금리", r"연준|Fed\b|FOMC|파월|금리|국채|채권|CPI|PCE|물가|고용지표|비농업|실업|재무부|바이백|달러|Treasury|yield|inflation|payroll|Powell|rate cut|rate hike"),
-    ("AI·빅테크", r"앤스로픽|앤트로픽|Anthropic|OpenAI|오픈AI|엔비디아|NVIDIA|Nvidia|마이크로소프트|Microsoft|MSFT|알파벳|Alphabet|구글|Google|메타|Meta\b|"
-                 r"아마존|Amazon|애플|Apple|테슬라|Tesla|스페이스X|SpaceX|xAI|\bAI\b|데이터센터|data center|GPU|IPO|상장"),
+    ("AI·빅테크", r"앤스로픽|앤트로픽|Anthropic|OpenAI|오픈AI|엔비디아|NVIDIA|Nvidia|마이크로소프트|Microsoft|MSFT|알파벳|Alphabet|구글|Google|메타\s?플랫폼|Meta\b|"
+                 r"아마존|Amazon|애플|Apple|테슬라|Tesla|스페이스X|SpaceX|xAI|\bAI\b|데이터센터|data center|GPU"),
+    # ↑ 11/22: 단독 '메타'(메타버스 등)·'상장'·'IPO' 제거 — 빅테크 상장 소식은 회사 이름(OpenAI·스페이스X 등)으로 이미 잡힌다
     ("반도체", r"반도체|하이닉스|삼성전자|이오테크닉스|디아이티|제주반도체|코미코|하나마이크론|SK스퀘어|마이크론|Micron|TSMC|HBM|메모리|D램|DRAM|낸드|NAND|SOX|램리서치|ASML|chip|semiconductor"),
-    ("사이버보안", r"해킹|해커|유출|사이버|보안|랜섬|hack|breach|cyber|ransomware|security|시스코|Cisco|크라우드스트라이크|CrowdStrike|"
+    # 사이버보안(11/22): 단독 '사이버'('사이버 객장')·'보안'·'유출'(자금 유출)·'security' 제외, 결합형만
+    ("사이버보안", r"해킹|해커|(?:개인\s?)?정보\s?유출|데이터\s?유출|사이버\s?(?:공격|보안|테러|위협|범죄|전쟁|안보)|"
+                 r"(?:정보|네트워크|클라우드|데이터|엔드포인트)\s?보안|보안\s?(?:업체|기업|취약점|사고|침해|위협|솔루션)|랜섬|"
+                 r"hack|breach|cyber\s?attack|cyber\s?security|cybersecurity|ransomware|시스코|Cisco|크라우드스트라이크|CrowdStrike|"
                  r"팔로알토|Palo Alto|지스케일러|Zscaler|옥타|Okta|클라우드플레어|Cloudflare|포티넷|Fortinet|데이터도그|Datadog|센티넬원|SentinelOne|"
                  r"루브릭|Rubrik|세일포인트|SailPoint"),
     ("코인", r"비트코인|이더리움|코인|암호화폐|가상자산|Coinbase|코인베이스|월렛|bitcoin|crypto|ether"),
@@ -179,7 +188,10 @@ TAGS = [
     ("조선", r"조선|선박|LNG선|컨테이너선|수주|HD현대중공업|한화오션|삼성중공업|HD한국조선|케이프|한국카본|동성화인텍|세진중공업|성광벤드|보냉재|기자재|선박엔진|shipbuild|MASGA|마스가"),
     ("2차전지", r"2차전지|이차전지|배터리|양극재|음극재|리튬|ESS|LG에너지|삼성SDI|에코프로|포스코퓨처엠|POSCO홀딩스|포스코홀딩스|엔켐|코스모신소재|대주전자재료|천보|battery|lithium"),
     ("바이오", r"바이오|제약|신약|임상|FDA|비만|GLP-1|위고비|마운자로|치매|알츠하이머|ADC|알테오젠|한미약품|biotech|pharma|obesity|Alzheimer"),
-    ("지수", r"나스닥|S&P|다우|선물|지수|VIX|Nasdaq|Dow\b|S&P 500|futures|stocks|Wall Street"),
+    # 지수(11/22): 단독 '지수'(블랙핑크 지수)·'선물'(선물 세트) 제외 — 결합형만
+    ("지수", r"나스닥|S&P|다우|VIX|Nasdaq|Dow\b|S&P 500|futures|stocks|Wall Street|"
+           r"(?:코스피|코스닥|니케이|닛케이|항셍|주가|종합|반도체|변동성|달러|증시|필라델피아|상하이|선전|대만|유로\s?스톡스|[가-힣A-Z0-9]{1,6}200)\s?지수|"
+           r"지수\s?(?:선물|옵션|상승|하락|급등|급락|반등|마감|사상)|(?:야간|미\s?증시|주가\s?지수|지수|미니)\s?선물|선물\s?(?:지수|시장|만기|옵션)"),
 ]
 HOT = re.compile(r"속보|긴급|Breaking|사상 최고|사상최고|급등|급락|폭락|폭등|공격|미사일|공습|휴전|합의|핵무기|해킹|IPO|파산|"
                  r"금리 (?:인상|인하)|서킷|사이드카|최고치|최저치|record high|plunge|soar|surge|tumble|ceasefire|missile|attack|"
@@ -279,6 +291,8 @@ def clean_line(text: str, with_sub: bool = False) -> tuple[str, str, str]:
 
 def tags_of(text: str) -> list[str]:
     from newsgroup import SEMICONDUCTOR, select_tags
+    if ENTERTAIN.search(text[:500]) and not KR_MKT.search(text[:500]):
+        return []                                  # 연예 기사('블랙핑크 지수 … 미모')는 시장 주제로 묶지 않는다(11/22)
     tags = [n for n, pat in TAGS if re.search(pat, text[:500])]
     if SEMICONDUCTOR.search(text[:500]):
         tags.append("반도체")
@@ -297,13 +311,90 @@ def link_title(url: str):
         return None
 
 
+URL_ANY = re.compile(r"https?://\S+")
+DOMAIN_ONLY = re.compile(r"[\w.\-]+\.(?:com|co\.kr|kr|net|io)", re.I)
+# 2단계(11/22 운영자 A안): 사진 글자(무료 Tesseract)는 '요약하는 고잉'·시황 채널, PDF 는 시황·전략 채널만(증권사 리포트 채널 제외)
+OCR_CHANNELS = {"one_going"} | BROKER_STRAT | ANALYSIS
+PDF_CHANNELS = set(BROKER_STRAT)
+MEDIA_STATS: dict = {}
+RUN_T0 = time.monotonic()        # 이번 1분 회차 시작(사진·PDF 처리 시간 예산 계산용)
+RUN_LIMIT_S = 45                 # 회차 시작 뒤 이만큼 지났으면 사진·PDF 처리는 다음 회차로(1분 갱신이 55초를 넘지 않게)
+
+
+def media_kind(ch: str, mtype: str | None) -> str | None:
+    """이 글의 첨부에서 글자를 꺼낼 대상인가 → 'ocr' | 'pdf' | None"""
+    if mtype == "photo" and ch in OCR_CHANNELS:
+        return "ocr"
+    if mtype in ("pdf", "pdf_text_only") and ch in PDF_CHANNELS:
+        return "pdf"
+    return None
+
+
+def _thin(text: str) -> bool:
+    """본문만으로는 제목·요약 한 줄이 안 나오는 글(본문 없음·짧음·요약 줄 없음) → 첨부 글자를 쓴다"""
+    if not text:
+        return True
+    h, sub, _ = clean_line(text, with_sub=True)
+    return len(h) < 12 or not sub
+
+
+def _tg_rows(con: sqlite3.Connection, since: str) -> list[tuple]:
+    cols = {r[1] for r in con.execute("pragma table_info(messages)")}
+    media = "media_type, media_path" if {"media_type", "media_path"} <= cols else "null, null"
+    q = (f"select channel_username, posted_at, text, collected_at, {media} from messages "
+         f"where posted_at >= ? and channel_username in ({','.join('?' * len(CHANNELS))}) order by posted_at desc")
+    return con.execute(q, (since, *CHANNELS)).fetchall()
+
+
+def prep_media() -> None:
+    """이미 받아 둔 사진·PDF 중 글자가 필요한 것만 회차 한도 안에서 처리(결과는 media_text 캐시). 실패해도 속보는 그대로."""
+    MEDIA_STATS.clear()
+    if not DB.exists():
+        return
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import media_text
+        con = sqlite3.connect(f"file:{DB}?mode=ro", uri=True, timeout=5)
+        try:
+            rows = _tg_rows(con, (datetime.now(timezone.utc) - timedelta(hours=KEEP_H_STRAT)).isoformat())
+        finally:
+            con.close()
+        cands = []
+        for ch, _, text, _, mtype, path in rows:          # 최신 글 먼저
+            k = media_kind(ch, mtype) if path else None
+            if k and _thin(text or ""):
+                cands.append((k, path))
+        left = RUN_LIMIT_S - (time.monotonic() - RUN_T0)
+        if left <= 1:
+            MEDIA_STATS.update({"skip": "회차 시간 부족", "cands": len(cands)})
+            return
+        MEDIA_STATS.update(media_text.process(cands, left), cands=len(cands))
+    except Exception as e:  # noqa: BLE001
+        MEDIA_STATS["error"] = type(e).__name__
+        log(f"사진·PDF 글자 건너뜀: {type(e).__name__}: {e}")
+
+
+def _media_texts(rows: list[tuple]) -> dict[str, str]:
+    """캐시에 있는 첨부 글자 {media_path: 글자}(읽기만)."""
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        from media_text import lookup
+        paths = [r[5] for r in rows if r[5] and media_kind(r[0], r[4])]
+        return {p: v["text"] for p, v in lookup(paths).items() if v["ok"]}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
 def from_telegram() -> list[dict]:
     if not DB.exists():
         return []
     con = sqlite3.connect(str(DB))
-    since = (datetime.now(timezone.utc) - timedelta(hours=KEEP_H_STRAT)).isoformat()
+    try:
+        rows = _tg_rows(con, (datetime.now(timezone.utc) - timedelta(hours=KEEP_H_STRAT)).isoformat())
+    finally:
+        con.close()                                    # 닫지 않으면 Windows 에서 DB 파일이 잠긴 채 남는다
     cut = datetime.now(timezone.utc) - timedelta(hours=KEEP_H)
-    q = f"select channel_username, posted_at, text, collected_at from messages where posted_at >= ? and channel_username in ({','.join('?' * len(CHANNELS))})"
+    mtexts = _media_texts(rows)
     out = []
     TG_STATS.clear()
 
@@ -311,32 +402,38 @@ def from_telegram() -> list[dict]:
         s = TG_STATS.setdefault(CHANNELS[ch], {"read": 0, "kept": 0})
         s[why] = s.get(why, 0) + 1
 
-    for ch, posted, text, collected in con.execute(q, (since, *CHANNELS)):
+    for ch, posted, text, collected, mtype, mpath in sorted(rows, key=lambda r: r[1]):
         if ch not in BROKER_STRAT and ch not in ANALYSIS and datetime.fromisoformat(posted) < cut:
             continue                                   # 시황·전략 글만 48시간, 나머지는 30시간
         TG_STATS.setdefault(CHANNELS[ch], {"read": 0, "kept": 0})["read"] += 1
-        if not text:
-            drop(ch, "empty")                          # 사진·PDF만 있는 글
+        text = text or ""
+        mk = media_kind(ch, mtype) if mpath else None
+        mt = mtexts.get(mpath, "") if mk and _thin(text) else ""
+        if not text and not mt:
+            drop(ch, "media_wait" if mk else "empty")  # 사진·PDF만 있는 글(글자 꺼내기 대상이면 처리 대기·미설치)
             continue
-        if STOCKREC.search(text):
-            drop(ch, "stockrec")
+        if STOCKREC.search(text) or (mt and STOCKREC.search(mt)):
+            drop(ch, "stockrec")                       # 첨부 글자에 목표가·투자의견이 있어도 뺀다(리포트)
             continue
-        if JUNK.search(text):
+        if text and JUNK.search(text):
             drop(ch, "junk")
             continue
         strat, analysis = ch in BROKER_STRAT, ch in ANALYSIS
         if not (strat or analysis):
             # 일반 채널: 증권사 리포트 머리말·링크 모음·보고서 모음 글은 뺀다(섹터 애널리스트 채널은 머리말 검사 제외)
-            if ch not in SECTOR_ANALYST and BROKER.search(text):
+            # 첨부 글자(요약하는 고잉 사진)에 리포트 머리말이 있어도 뺀다(증권사 리포트 당분간 제외, 11/21)
+            if ch not in SECTOR_ANALYST and (BROKER.search(text) or (mt and BROKER.search(mt))):
                 drop(ch, "broker")
                 continue
             # 링크 모음 글은 뺀다. 섹터 애널리스트 채널의 '데일리 섹터 News & Comments'는 기사마다 link 줄이 붙어
             # 3개를 넘기 일쑤라(11/20 유안타 리서치 5건 모두) 제외 — 링크는 clean_line 이 떼어 낸다(2026-11-21)
-            if (ch not in SECTOR_ANALYST and len(re.findall(r"https?://", text)) >= 3) or text.lstrip().startswith("<"):
+            if (ch not in SECTOR_ANALYST and len(URL_ANY.findall(text)) >= 3) or text.lstrip().startswith("<"):
                 drop(ch, "links")
                 continue
         sector = ch in SECTOR_ANALYST
         h, sub, orig = clean_line(text, with_sub=strat or analysis or sector)
+        via = ""
+        short = len(h) < 12 or bool(DOMAIN_ONLY.fullmatch(h))
         lm = URL_ONLY.match(text)
         if lm:                                          # 링크만 올린 글 → 기사 제목·언론사(링크는 싣지 않음)
             got_t = link_title(lm.group(1))
@@ -344,11 +441,34 @@ def from_telegram() -> list[dict]:
                 drop(ch, "link_only")
                 continue
             h, orig = got_t
-        if len(h) < 12 or re.fullmatch(r"[\w.\-]+\.(?:com|co\.kr|kr|net|io)", h, re.I):   # 사이트 주소만 있는 글
+        elif short and URL_ANY.search(text):            # '속보 https://…' 처럼 링크 + 짧은 말 → 첫 링크의 기사 제목(11/22)
+            got_t = link_title(URL_ANY.search(text).group(0))
+            if not got_t:
+                drop(ch, "link_fail")                   # 제목 못 받음(다음 회차 재시도 — linktitle 캐시 규칙)
+                continue
+            h, orig = got_t
+            rest = re.sub(r"\s+", " ", URL_ANY.sub(" ", text)).strip(" -—:•▶►·|")
+            if rest and rest not in h:
+                sub = rest[:120]                        # 남은 짧은 말은 요약 칸으로
+        elif mt:
+            import media_text
+            mh, msub = media_text.headline(mt)
+            if short and mh:                            # 본문이 없거나 짧음 → 사진·PDF 글자의 제목·한 줄
+                h, sub, via = mh, msub, mk
+            elif not short and not sub:                 # 본문 제목은 있고 요약 줄이 없음 → 첨부 글자 한 줄을 요약으로
+                cand = mh if mh and mh not in h else msub
+                if cand:
+                    sub, via = cand[:120], mk
+        if len(h) < 12 or DOMAIN_ONLY.fullmatch(h):     # 너무 짧은 글 · 사이트 주소만 있는 글
             drop(ch, "short")
             continue
+        if via and (STOCKREC.search(f"{h} {sub}") or JUNK.search(f"{h} {sub}")):
+            drop(ch, "stockrec" if STOCKREC.search(f"{h} {sub}") else "junk")
+            continue
         TG_STATS[CHANNELS[ch]]["kept"] += 1
-        tg = tags_of(text)
+        if via:
+            TG_STATS[CHANNELS[ch]]["media_" + via] = TG_STATS[CHANNELS[ch]].get("media_" + via, 0) + 1
+        tg = tags_of(text if text and not via and len(text) > len(h) else f"{h} {sub}")
         # 시장 키워드가 없는 글도 싣는다('기타', 중요도 낮게) — 2026-10-28 운영자 요청
         ts = datetime.fromisoformat(posted).astimezone(timezone.utc)
         try:
@@ -362,6 +482,8 @@ def from_telegram() -> list[dict]:
             it["sub"] = sub
         if orig:
             it["osrc"] = orig                          # 원출처(예: Fox News) — 화면에 '○○ · 김치터미널 경유'로 표시
+        if via:
+            it["via"] = via                            # 'ocr'(사진 글자) · 'pdf'(PDF 앞쪽) — 제목·한 줄만, 본문 전문은 싣지 않음
         out.append(it)
     return out
 
@@ -602,6 +724,7 @@ def build() -> dict:
             log(h["text"][:100])
     except Exception as e:  # noqa: BLE001
         log(f"오늘 주도 섹터 건너뜀: {type(e).__name__}: {e}")
+    prep_media()                                          # 🖼 사진·PDF 글자(회차 한도 안에서만, 11/22)
     tg_items = from_telegram()
     kis_items = fetch_kis()
     translate(rss + tg_items + kis_items)
@@ -638,7 +761,8 @@ def build() -> dict:
     en = [i for i in items if i.get("tr") in ("auto", "fail")]
     out = {"updated": now_ms, "items": items, "moves": [], "series": {}, "sectors": sector_cards, "leaders": leaders,
            "health": {"tg": {"last": tg_last, "got": tg_got, "refresh": REFRESH.get("ok"), "n": len(tg_items),
-                             "all_at": REFRESH.get("all_at"), "by_src": dict(TG_STATS)},
+                             "all_at": REFRESH.get("all_at"), "by_src": dict(TG_STATS),
+                             "media": dict(MEDIA_STATS)},
                       "rss": dict(RSS_HEALTH), "tr": {"auto": sum(1 for i in en if i.get("tr") == "auto"), "fail": sum(1 for i in en if i.get("tr") == "fail"), "details": dict(TRANSLATION_HEALTH)},
                       "groups": sum(1 for i in items if i.get("also"))}}
     try:                                                  # 변곡점 감지 + 직전 뉴스 연결(실패해도 속보는 그대로)
