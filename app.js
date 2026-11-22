@@ -268,9 +268,17 @@ async function loadEarnings() {
     const until = ymd(new Date(KST().getTime() + 21 * 864e5)), from = ymd(new Date(KST().getTime() - 2 * 864e5));
     const ipos = (Array.isArray(checkpoints) ? checkpoints : []).filter((x) => x.kind === "ipo" && x.date >= today && x.date <= until)
       .map((x) => ({...x, event_type: "ipo", priority: x.priority || 0}));
-    const items = [...ipos, ...(j.items || []).filter((x) => x.date >= from && x.date <= until)]
+    // 11/22 UX: 발표 시각(kst_date + kst 의 마지막 'n시', 시각 미정이면 그날 끝)이 지났는데 실제치가 없으면
+    //  '예상'만 남은 대기 항목이므로 내린다. 실제치가 있는 항목은 지난 2일 창 그대로 결과를 보여 준다.
+    const relAt = (x) => {
+      const d = x.kst_date || x.date; if (!d) return Infinity;
+      const hs = String(x.kst || "").match(/(\d{1,2})시/g);
+      return hs ? Date.parse(`${d}T${hs[hs.length - 1].replace("시", "").padStart(2, "0")}:00:00+09:00`) : Date.parse(`${d}T00:00:00+09:00`) + 864e5;
+    };
+    const waiting = (x) => x.eps_act == null && x.rev_act == null && Date.now() >= relAt(x);
+    const items = [...ipos, ...(j.items || []).filter((x) => x.date >= from && x.date <= until && !waiting(x))]
       .sort((a, b) => (b.priority || 0) - (a.priority || 0) || a.date.localeCompare(b.date)).slice(0, 24);
-    if (!items.length) return;
+    if (!items.length) { $("#earnings").hidden = true; return; }
     const bn = (v) => v == null ? "" : v >= 1e9 ? `$${(v / 1e9).toFixed(1)}B` : `$${(v / 1e6).toFixed(0)}M`;
     const pct = (v) => v == null ? "" : ` <b class="${v >= 0 ? "eu" : "ed"}">${v > 0 ? "+" : ""}${v}%</b>`;
     const html = items.map((x) => {
@@ -317,6 +325,33 @@ function hlMkt(x) {
   const t = `${x.tag || ""} ${x.title || ""}`;
   return HL_US.test(x.tag || "") ? "us" : HL_KR.test(x.tag || "") ? "kr" : HL_US.test(t) && !HL_KR.test(t) ? "us" : HL_KR.test(t) && !HL_US.test(t) ? "kr" : "g";
 }
+// 11/22 UX(기한 지난 문구 자동 내림): '장중' 카드(태그·when 에 '장중')는 그 장의 정규장이 끝나면 내린다.
+//  장 시간은 marketSessions 와 같은 시간표(한국 정규장 15:30, 미국 정규장 뉴욕 16:00) — 새 수치 없음.
+//  작성 시각은 카드 when(예: "11/19 23:35 KST", "11/10(화) 10시 42분 기준")에서 읽고, 못 읽으면 지금 그 장이 정규장 중일 때만 둔다.
+//  시장을 정할 수 없는 카드(g)는 until 날짜만 따른다.
+function hlWhenAt(when, now = Date.now()) {
+  const m = String(when || "").match(/(\d{1,2})(?:\/|월\s*)(\d{1,2})일?\s*(?:\([^)]*\))?\s*(\d{1,2})(?::|시\s*)(\d{2})?/);
+  if (!m) return null;
+  const k = KST(new Date(now)), mo = +m[1], d = +m[2], hh = +m[3], mi = +(m[4] || 0);
+  if (mo < 1 || mo > 12 || d < 1 || d > 31 || hh > 23 || mi > 59) return null;
+  const y = k.getFullYear() - (mo > k.getMonth() + 1 ? 1 : 0);
+  return Date.UTC(y, mo - 1, d, hh, mi) - 9 * 3600e3;
+}
+function sessCloseAfter(mkt, t) {
+  if (mkt === "kr") { const k = KST(new Date(t)); return Math.max(t, Date.UTC(k.getFullYear(), k.getMonth(), k.getDate(), 15, 30) - 9 * 3600e3); }
+  const p = Object.fromEntries(new Intl.DateTimeFormat("en-US", { timeZone: "America/New_York", year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", hourCycle: "h23" })
+    .formatToParts(new Date(t)).map((x) => [x.type, x.value]));
+  const off = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute) - Math.floor(t / 60000) * 60000;   // 뉴욕 − UTC
+  return Math.max(t, Date.UTC(+p.year, +p.month - 1, +p.day, 16, 0) - off);
+}
+function hlStale(x, now = Date.now()) {
+  if (!x || !/장중/.test(`${x.tag || ""} ${x.when || ""}`)) return false;
+  const mk = hlMkt(x); if (mk !== "kr" && mk !== "us") return false;
+  const t = hlWhenAt(x.when, now);
+  if (t != null) return now >= sessCloseAfter(mk, t);
+  return marketSessions(now)[mk === "kr" ? 0 : 1][1] !== "정규장 장중";
+}
+window.trlHlStale = hlStale;
 function hlOrder(items) {
   const hr = KST().getHours();
   const slot = hr >= 8 && hr < 16 ? ["kr", "g", "us"] : hr >= 16 && hr < 20 ? ["kr", "us", "g"] : ["us", "g", "kr"];
@@ -357,10 +392,10 @@ function renderHeadlineRaw() {
   try {
     const h = hlData || {};
     const today = ymd(KST());
-    const auto = (window.trlAuto || []).filter((x) => !x.until || x.until >= today);
+    const auto = (window.trlAuto || []).filter((x) => (!x.until || x.until >= today) && !hlStale(x));
     const tags = new Set(auto.map((x) => x.tag));
-    const items = hlOrder([...auto, ...(h.items || []).filter((x) => (!x.until || x.until >= today) && !tags.has(x.tag))]);
-    if (!items.length) return;
+    const items = hlOrder([...auto, ...(h.items || []).filter((x) => (!x.until || x.until >= today) && !hlStale(x) && !tags.has(x.tag))]);
+    if (!items.length) { $("#headline").hidden = true; return; }   // 11/22: 전부 기한이 지나면 지난 카드를 남기지 않고 칸을 내린다
     $("#hlList").innerHTML = items.map((x0) => { const x = hlLang(x0), nt = x._fixed ? ' translate="no"' : ""; return `<article class="hl-card${x.main ? ` hl-main ${hlTone(hlMkt(x))}` : ""}" data-viewport-key="headline:${esc(x0.tag || x0.title)}">
       <p class="hl-tag">${x.main ? '<span class="hl-badge">메인</span>' : ""}<span${nt}>${esc(x.tag || "")}${x.when ? ` <small>${esc(x.when)}</small>` : ""}</span></p>
       <h3 class="hl-title"${nt}>${esc(x.title)}</h3>

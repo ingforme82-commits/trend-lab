@@ -54,9 +54,9 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
     <nav class="nav-links" aria-label="섹션 바로가기">
       <a href="#headline">오늘 핵심</a>
       <a href="#market">시세</a>
+      <a href="#chan">추세 판단</a>
       <a href="#brief" hidden>브리핑</a>
       <a href="#news">속보</a>
-      <a href="#chan">추세 판단</a>
       <a href="#about">소개</a>
       <a href="#quiz">성향 테스트</a>
       <a href="#study">그룹 스터디</a>
@@ -154,6 +154,21 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
   </div>
 </section>
 
+<section class="sec chan-sec" id="chan" hidden>
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <h2>📐 추세 판단</h2>
+        <p class="sec-sub" id="chanRule"></p>
+      </div>
+      <p class="stamp" id="chanStamp"></p>
+    </div>
+    <div class="ch-sigbox" id="chanSig" hidden></div>
+    <div id="chanBoard"></div>
+    <p class="ch-foot">채널 = 직전 고점 2개를 이은 상단선과 직전 저점 2개를 이은 하단선 · 돌파 확인 = 종가가 상단선 +1% 위이면서 5일선 위 · 수평 저항·지지 = 현재가 바로 위·아래의 스윙 고점·저점(좌우 3봉 기준) · 그래프는 1분마다 갱신(진행 중인 봉 포함) · 사실과 숫자를 정리한 자료이며 매수·매도 권유가 아닙니다.</p>
+  </div>
+</section>
+
 <section class="sec" id="brief" hidden>
   <div class="wrap">
     <div class="sec-head">
@@ -200,21 +215,6 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
 <div class="axis" id="research">
   <div class="wrap axis-in"><p class="axis-k">RESEARCH</p><h2 class="axis-t">리서치 · 추세 판단</h2><p class="axis-sub">추세 판단 차트, 이번 주 일정, 실적·IPO, 우리가 보는 기준.</p></div>
 </div>
-
-<section class="sec chan-sec" id="chan" hidden>
-  <div class="wrap">
-    <div class="sec-head">
-      <div>
-        <h2>📐 추세 판단</h2>
-        <p class="sec-sub" id="chanRule"></p>
-      </div>
-      <p class="stamp" id="chanStamp"></p>
-    </div>
-    <div class="ch-sigbox" id="chanSig" hidden></div>
-    <div id="chanBoard"></div>
-    <p class="ch-foot">채널 = 직전 고점 2개를 이은 상단선과 직전 저점 2개를 이은 하단선 · 돌파 확인 = 종가가 상단선 +1% 위이면서 5일선 위 · 수평 저항·지지 = 현재가 바로 위·아래의 스윙 고점·저점(좌우 3봉 기준) · 그래프는 1분마다 갱신(진행 중인 봉 포함) · 사실과 숫자를 정리한 자료이며 매수·매도 권유가 아닙니다.</p>
-  </div>
-</section>
 
 <section class="sec sec-alt" id="checks">
   <div class="wrap">
@@ -1227,9 +1227,9 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
 <script src="presence.js?v=20261116-visitors"></script>
 <script src="flow-core.js?v=20261116-flow"></script>
 <script src="viewport.js?v=20261120-steady-pin"></script>
-<script src="app.js?v=20261122-public-news"></script>
+<script src="app.js?v=20261122-ux-expiry"></script>
 <script src="chart.js?v=20261122-clean-chart"></script>
-<script src="news.js?v=20261122-simple-s7-notes"></script>
+<script src="news.js?v=20261122-ux-expiry"></script>
 <script src="fold.js?v=20261121-ux-axes"></script>
 <script src="tint.js?v=20261118-stable-scroll"></script>
 <!-- 11/17 운영자: 지수 흐름·분할 칸(flow.js)은 내림 — 추세 판단 채널 그래프가 대신 맨 위 -->

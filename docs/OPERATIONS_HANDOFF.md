@@ -317,3 +317,15 @@
 - 이 세션은 **파일 읽기·쓰기만 가능하고 명령 실행이 불가능**했다. `git pull --rebase`, `node --check`, 커밋, push, PC 1280px·모바일 390px 확인을 **하나도 수행하지 못했다.**
 - 따라서 **코드 검증 없음 · 배포 확인 없음.** 이 문서 수정분의 커밋·push도 운영자가 직접 실행한다.
 - 다음 작업자는 AGENTS.md 8번대로 `git pull --rebase` 를 먼저 받고 시작한다. 메인 PC 자동 작업이 같은 `main`에 계속 올라온다.
+
+### 11/22 저녁 — 1번·2번 완료(Claude trl-developer, CTO 티켓 `trl-company/inbox/dev-20261122-1720-메인UX2건.md`)
+- **공동 파일(index.html·sw.js)은 Codex 가 이 저장소 읽기 전용이라 Claude 가 수정했다.** 버전 문자열은 올리기만.
+- 1번 ✅ 섹션 순서: `#headline` → `#market` → `#chan`(📐 추세 판단) → `#brief` → `#news` → (RESEARCH) `#checks`·`#earnings`. `#chan` 블록 이동만(id·문구·로직 그대로), 상단 메뉴도 시세→추세 판단→브리핑→속보. 하단 메뉴(#today·#market·#research·#lab)는 순서가 이미 맞아 그대로. 배경은 `chan-sec`(bg2)·`#brief`(bg)·`#news`(sec-alt) 로 번갈아 맞아 클래스 변경 없음.
+- 1번 ✅ 속보 접기: 기존 `newsMore`(news.js, 10개씩) 하나로 통일 — `fold.js` 에 `newsList` 를 넣지 않음(손대지 않음). 화면 확인: `#news` 안 더 보기 버튼 1개.
+- 2번 ✅ 기한 지난 문구 자동 내림(전수표는 티켓 인수인계에). 새로 넣은 것만:
+  - 오늘 핵심·첫 화면 메인 뉴스: '장중' 카드(태그·when 에 '장중')는 그 장 정규장이 끝나면 내림 — 작성 시각은 `when`, 마감은 `marketSessions` 와 같은 시간표(한국 15:30, 미국 뉴욕 16:00). 시장 미상(g) 카드는 until 만.
+  - 오늘 핵심 카드가 전부 지나면 `#headline` 을 숨김(예전엔 마지막으로 그린 옛 카드가 남았음).
+  - 미국 실적: 발표 시각(`kst_date`+`kst` 의 마지막 'n시', 시각 미정은 그날 끝)이 지났는데 실제치가 없는 대기 항목은 내림. 남는 게 없으면 `#earnings` 숨김.
+- 테스트: `node tests/test_ux_expiry.cjs`(신규). `tests/test_ipo_calendar.cjs` 는 시계를 발표 전으로 고정(새 규칙 반영).
+- Oracle 반영 불필요(화면 파일만, data·tools 형식 변경 없음).
+- 남은 문제: RESEARCH 축 문구 "추세 판단 차트, 이번 주 일정…"·TODAY 축 "오늘 핵심 이슈 → 실시간 시세 → 속보"는 새 순서와 어긋남(티켓이 문구 변경 금지라 그대로 — 바꾸려면 i18n-ui.js 5개 언어 함께). 헤드라인 '발표 대기' 카드(조선기자재 `awaiting_announcement`)는 발표 시각 필드가 없어 until 만 적용.

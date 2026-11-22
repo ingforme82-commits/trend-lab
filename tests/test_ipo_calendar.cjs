@@ -13,7 +13,9 @@ assert.ok(ant.points.some(p=>p.includes("83달러")&&p.includes("확정"))); // 
 assert.ok(ant.points.some(p=>p.includes("첫 체결")||(p.includes("선물 계약")&&p.includes("시초가와 다를 수")))); // 상장 전: 선물 ≠ 주식 / 11/19 상장 뒤: 실제 첫 체결가
 async function check(fail){
  const els=new Map();const q=k=>{if(!els.has(k))els.set(k,{});return els.get(k);};
- const context={console,Promise,Date,DOW:["일","월","화","수","목","금","토"],
+ // 11/22: 발표 시각 지난 대기 항목은 내림(app.js) → 시계를 NVDA 발표(11/18 06시 KST) 전으로 고정
+ const FixedDate=class extends Date{static now(){return Date.parse("2026-11-17T20:00:00Z");}};
+ const context={console,Promise,Date:FixedDate,DOW:["일","월","화","수","목","금","토"],
   KST:()=>new Date("2026-11-18T20:00:00Z"),ymd:d=>d.toISOString().slice(0,10),$:q,
   esc:s=>String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;"),
   fetch:async url=>({ok:!(fail&&url.includes(fail)),json:async()=>url.includes("checkpoints")?cps:

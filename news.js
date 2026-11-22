@@ -1299,8 +1299,10 @@
   }
   function drawHeroLive() {
     const box = q("#heroLive"); if (!box) return;
-    const autoC = (window.trlAuto || []).filter((x) => !x.until || x.until >= kstDay(Date.now())), autoT = new Set(autoC.map((x) => x.tag));
-    const hl = [...autoC, ...headline.filter((x) => !autoT.has(x.tag))];
+    // 11/22 UX: 기한(until)·'장중' 카드 마감(app.js trlHlStale)을 그릴 때마다 다시 확인 — 지난 카드가 첫 화면에 남지 않게
+    const live_ = (x) => (!x.until || x.until >= kstDay(Date.now())) && !(window.trlHlStale && window.trlHlStale(x));
+    const autoC = (window.trlAuto || []).filter(live_), autoT = new Set(autoC.map((x) => x.tag));
+    const hl = [...autoC, ...headline.filter((x) => live_(x) && !autoT.has(x.tag))];
     const L = window.trlHlLang || ((y) => y);
     const featured = hl.find((x) => x.main) || hl[0];
     const pins = (featured ? [featured] : []).map((x0) => { const x = L(x0); return `<li class="mn-pin${x.main ? " mn-main" : ""}"><a href="#headline"${x._fixed ? ' translate="no"' : ""}><span class="mn-t">${x.main ? "🔴" : "📌"} ${esc(x.tag || "주요 이슈")}</span> <b>${esc(x.title)}</b>${x.when ? ` <small>${esc(x.when)}</small>` : ""}</a></li>`; });
