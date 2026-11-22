@@ -211,7 +211,7 @@
     if (!tr) return;
     tickPick = pick; pick.shownAt = Date.now();
     tr.innerHTML = tickRow(pick);
-    tr.style.animationDuration = `${Math.max(30, pick.reduce((a, n) => a + Math.min(110, n.text.length), 0) * 0.28)}s`;   // 글 길이에 맞춘 일정한 속도
+    tr.style.animationDuration = `${Math.max(30, pick.reduce((a, n) => a + Math.min(110, n.text.length), 0) * 0.28) / 1.5}s`;   // 글 길이에 맞춰 기존보다 1.5배 빠르게
   }
   function drawTicker() {
     const box = q("#ticker"); if (!box) return;
