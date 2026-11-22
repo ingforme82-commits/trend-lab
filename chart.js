@@ -46,7 +46,6 @@
       <div class="cm-chart" id="cmChart"><p class="fine" style="padding:20px">불러오는 중…</p></div>
       <div class="cm-tip" id="cmTip" hidden></div>
       <div class="cm-news" id="cmNews"></div>
-      <p class="fine cm-src">Hyperliquid 24시간 선물 1분봉·Yahoo(금리·달러) 참고용 · 색칠=변곡점, 🔴=관련 뉴스(시각이 겹친다는 뜻이며 인과관계를 단정하지 않음) · 매매 권유가 아닙니다.</p>
     </div>`;
     document.body.appendChild(root);
     root.addEventListener("click", (e) => {
