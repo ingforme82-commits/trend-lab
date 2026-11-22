@@ -333,7 +333,7 @@
       return m.name === name ? `<td class="mvr-self">${t}</td>` : `<td>${t}</td>`;
     };
     box.hidden = false;
-    box.innerHTML = `<p class="fl-gh">📊 변곡점 지수 반응표 <small>최근 1시간 중 최신 3개 · 변곡점 구간 동안 각 자산의 변화 · 굵은 칸이 변곡점 자산 · 시각이 겹친 뉴스이며 인과관계를 단정하지 않습니다</small></p>
+    box.innerHTML = `<p class="fl-gh">📊 변곡점 지수 반응표 <small>최근 1시간</small></p>
       <div class="fl-scroll"><table class="fl-t"><tr><th>구간</th>${REACT_COLS.map(([, h]) => `<th>${h}</th>`).join("")}<th style="text-align:left">같은 시각 뉴스</th></tr>
       ${rows.map(({ m, n }) => `<tr><td class="fl-n">${hm(m.start)}–${hm(m.end)} <small class="dim">${esc(m.name)}${m.kind === "cumulative" ? " 누적" : m.kind === "level" ? " 가격대" : ""}</small></td>${REACT_COLS.map(([k]) => cell(m, k)).join("")}<td class="mvr-n">${n ? `${hm(n.ts)} ${esc(newsText(n).slice(0, 60))}${newsText(n).length > 60 ? "…" : ""}` : `<span class="dim">연결된 뉴스 없음</span>`}</td></tr>`).join("")}
       </table></div>`;
