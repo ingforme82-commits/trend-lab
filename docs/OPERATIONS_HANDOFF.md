@@ -49,7 +49,7 @@
 | KB 조회 | **PC만** | KB가 해외 IP 차단(KB 공지) — Oracle 불가 |
 
 서버 처음 설치·다시 설치: `bash scripts/oracle_rt_setup.sh`(cloudflared·서비스 3개). 저장소 경로 `~/projects/trend-lab-site`, `~/projects/market-site`.
-서버 관리(sudo) 작업은 **관리 사용자**로 접속해서(실행 사용자 `ubuntu` 는 `scripts/oracle_harden.sh --apply` 뒤 재시작 한 줄만 sudo). 권한 점검 `sudo bash scripts/oracle_harden.sh --check --user ubuntu`, 되돌리기 `--rollback`. 서버 주소·사용자는 공개 저장소에 적지 않음(비공개 trl-company `infra/servers.md`).
+서버 관리(sudo) 작업은 **관리 사용자**로 접속해서(실행 사용자 `ubuntu` 는 `scripts/oracle_harden.sh --apply` 뒤 재시작 한 줄만 sudo). 권한 점검 `sudo bash scripts/oracle_harden.sh --check --user ubuntu`, 되돌리기 `--rollback`. 서버가 받은 커밋은 공개 `live` 브랜치 news.json `runtime.source_revision`(속보 매분 갱신)으로 확인 — push 뒤 10분 안에 바뀌지 않으면 autopull 점검. 서버 주소·사용자는 공개 저장소에 적지 않음(비공개 trl-company `infra/servers.md`).
 
 ## 증권사·출처(조회 전용 — 주문 경로는 모듈에서 막음)
 - 키 찾는 순서: 환경변수 → `~/.config/trendlab/keys.env` → Windows 레지스트리(`tools/keystore.py`). 키 값은 출력·커밋 금지.
