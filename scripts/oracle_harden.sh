@@ -169,6 +169,8 @@ install_sudoers_file() {   # $1=대상, 내용은 표준 입력. visudo 통과�
 
 do_apply() {
   preflight
+  # 이미 적용된 상태에서 다시 적용하면 '적용 뒤 상태'가 최신 백업이 되어 되돌리기가 불완전해짐 → 먼저 되돌리기
+  if [ -e "$R/root/trl-backup-latest" ]; then die "이미 적용 기록이 있음($(cat "$R/root/trl-backup-latest")) — 다시 적용하려면 먼저 --rollback"; fi
   local ts B g removed="" f
   ts=$(date +%Y%m%d-%H%M%S)
   B="/root/trl-backup-$ts"
@@ -238,6 +240,7 @@ do_rollback() {
   find "$SYSD" -mindepth 1 -maxdepth 1 -type d -name '*.service.d' -empty -delete
   visudo -c >/dev/null || warn "sudoers 검사 실패 — 백업 $B 에서 손으로 확인"
   systemctl daemon-reload
+  mv -f "$R/root/trl-backup-latest" "$R/root/trl-backup-latest.rolledback-$(date +%Y%m%d-%H%M%S)"
   echo "되돌림 완료(백업 $B). 상시 서비스는 재시작해야 이전 상태: sudo systemctl restart trl-rt_kis trl-rt_serve"
 }
 

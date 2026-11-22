@@ -298,6 +298,18 @@ esac""",
         calls = (self.tmp / "calls.log").read_text(encoding="utf-8")
         self.assertIn("usermod -aG sudo ubuntu", calls)
         self.assertIn("usermod -aG lxd ubuntu", calls)
+        self.assertFalse((root / "root/trl-backup-latest").exists())   # 되돌린 기록은 치움
+
+    def test_8c_reapply_refused_until_rollback(self):
+        """이미 적용된 상태에서 다시 적용하면 최신 백업이 '적용 뒤'가 되어 되돌리기가 불완전 → 거부(CTO 검증 11/22)."""
+        root = self.fake_root()
+        r = self.apply(root, self.fake_bin(), "trladmin")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        first = (root / "root/trl-backup-latest").read_text(encoding="utf-8")
+        r = self.apply(root, self.fake_bin(), "trladmin")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("--rollback", r.stderr)
+        self.assertEqual((root / "root/trl-backup-latest").read_text(encoding="utf-8"), first)
 
 
 class TestStatic(unittest.TestCase):

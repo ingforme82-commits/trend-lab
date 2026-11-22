@@ -10,7 +10,8 @@
 #   (재시작 명령은 아래 고정 한 줄 — /etc/sudoers.d/trl-autopull 줄의 명령 부분과 글자까지 같아야 sudo 가 허용)
 # - 속보·브리핑(live_news)은 실행할 때마다 최신 파일을 읽으므로 pull 만으로 반영된다
 set -u
-PATH=/usr/sbin:/usr/bin:/sbin:/bin
+# systemd 기본 PATH 와 같은 root 소유 폴더만(사용자 폴더 없음) — gh 자격 도우미가 /usr/local/bin·/snap/bin 에 있어도 pull 이 되게
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/snap/bin
 export PATH
 GIT=/usr/bin/git
 # @@TRL-CONFIG-BEGIN — 설치 스크립트가 이 블록을 고정 값(실행 사용자·저장소 절대경로)으로 바꿔 넣는다.

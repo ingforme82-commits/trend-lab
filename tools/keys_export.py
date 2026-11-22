@@ -3,13 +3,13 @@ r"""PC에 있는 증권사·DART 키를 Oracle 비공개 키 파일 형식으로
 - 담는 키: 키움·한투·KB·NH 앱키/시크릿, OpenDART. NH 는 앱키·시크릿만(계좌·PIN 등 나머지 설정은 담지 않음).
 - 일부만: python tools\keys_export.py NHPLUG   ← 이름에 NHPLUG 가 든 키만
 - 이 파일은 저장소 밖(사용자 폴더)에만 만든다. GitHub·카톡·메일로 보내지 않는다(scp 는 암호화 전송).
-- 서버 주소·사용자는 이 공개 저장소에 적지 않는다 → PC 환경변수 TRL_ORACLE_HOST(값: 비공개 trl-company infra\servers.md).
+- 서버 주소·사용자는 이 공개 저장소에 적지 않는다 → PC 환경변수 TRL_ORACLE_HOST·TRL_ORACLE_KEY(키 파일 경로, 값: 비공개 trl-company infra\servers.md).
 
 [1] PC PowerShell (Windows PowerShell 5.1, 한 줄씩. cmd 문법(퍼센트 환경변수·del)과 앰퍼샌드 두 개 연결은 쓰지 않는다 — 대신 ; 와 if ($?))
   cd C:\projects\trend-lab-site
   python tools\keys_export.py
-  if (-not $env:TRL_ORACLE_HOST) { Write-Host "TRL_ORACLE_HOST 없음 - trl-company infra\servers.md 의 설정 줄을 먼저 실행" }
-  $key = "$env:USERPROFILE\.ssh\oracle_trl.key"
+  if (-not ($env:TRL_ORACLE_HOST -and $env:TRL_ORACLE_KEY)) { Write-Host "TRL_ORACLE_HOST/TRL_ORACLE_KEY 없음 - trl-company infra\servers.md 의 설정 줄을 먼저 실행" }
+  $key = $env:TRL_ORACLE_KEY
   scp -i $key "$env:USERPROFILE\trl_keys_for_oracle.env" "${env:TRL_ORACLE_HOST}:trl_keys_new.env"
   if ($?) { Remove-Item "$env:USERPROFILE\trl_keys_for_oracle.env"; Write-Host "PC 사본 삭제" }
   ssh -i $key $env:TRL_ORACLE_HOST
@@ -54,8 +54,8 @@ def main() -> None:
         return
     keystore.write_private(OUT, "\n".join(lines) + "\n")
     print(f"만듦: {OUT} ({len(have)}개: {', '.join(have)}) — 값은 출력하지 않음")
-    if not os.environ.get("TRL_ORACLE_HOST"):
-        print(r"주의: PC 환경변수 TRL_ORACLE_HOST 가 없음 — trl-company infra\servers.md 의 설정 줄을 먼저 실행")
+    if not (os.environ.get("TRL_ORACLE_HOST") and os.environ.get("TRL_ORACLE_KEY")):
+        print(r"주의: PC 환경변수 TRL_ORACLE_HOST·TRL_ORACLE_KEY 가 없음 — trl-company infra\servers.md 의 설정 줄을 먼저 실행")
     print("다음 절차:\n")
     print(next_steps())
 
