@@ -30,7 +30,32 @@
   const pct = (v) => v == null ? "-" : `<b class="${cls(v)}">${v > 0 ? "+" : ""}${v.toFixed(2)}%</b>`;
 
   const englishNews = new URLSearchParams(location.search).get("lang")?.toLowerCase() === "en";
-  const sourceName = (item) => String(item.osrc || item.src || "").trim();
+  const sourceName = (item) => String(item.osrc || "").trim() || String(item.src || "").trim();
+  function publicNews(snapshot) {
+    const channels = new Set([
+      ...Object.keys(snapshot.health?.tg?.by_src || {}),
+      ...(snapshot.tgsum?.channels || []).map((entry) => entry.name),
+    ].filter(Boolean).map((name) => String(name).trim().toLowerCase()));
+    const channel = (name) => /^(telegram|텔레그램)$/i.test(name) || channels.has(name.toLowerCase());
+    const visible = (item) => {
+      const source = sourceName(item);
+      if (channel(source)) return false;
+      return Boolean(source || item.verify === "official") && (item.kind !== "텔레그램" || Boolean(String(item.osrc || "").trim()));
+    };
+    const items = snapshot.items.filter(visible).map((item) => ({
+      ...item, also: item.also?.filter(visible),
+    }));
+    const moves = (snapshot.moves || []).map((move) => ({
+      ...move, items: move.items?.filter(visible),
+    }));
+    const topics = (snapshot.tgsum?.topics || []).map((topic) => ({
+      ...topic,
+      lines: (topic.lines || []).map((line) => ({
+        ...line, srcs: (line.srcs || []).filter((name) => typeof name === "string" && name.trim() && !channel(name.trim())),
+      })).filter((line) => line.srcs.length),
+    })).filter((topic) => topic.lines.length);
+    return { items, moves, topics };
+  }
   const newsText = (item) => englishNews && item.lang === "en" && typeof item.orig === "string" && item.orig.trim()
     ? item.orig : item.text;
   let news = [], moves = [], series = {}, notes = [], candles = {}, candles1 = {}, sel = null, tag = "전체", shown = 10;
@@ -104,9 +129,10 @@
       }
       const commit = () => {
       if (j.updated < (window.trlUpdated || 0)) return;
-      news = [...j.items].sort((a, b) => b.ts - a.ts); moves = j.moves || []; series = j.series || {};
-      tgsum = j.tgsum || null; window.trlAuto = j.auto_issues || []; world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
-      window.trlSrcScore = j.srcscore || null; if (typeof window.paintSrcScore === "function") window.paintSrcScore();
+      const visible = publicNews(j);
+      news = visible.items.sort((a, b) => b.ts - a.ts); moves = visible.moves; series = j.series || {};
+      tgsum = { topics: visible.topics }; window.trlAuto = j.auto_issues || []; world = j.world || []; spot = j.spot || []; trend = j.trending || []; sectors = j.sectors || []; brief = j.brief || null;
+
       window.trlRtUrl = /^https:\/\/[a-z0-9-]+\.trycloudflare\.com$/.test(j.rt_url || "") ? j.rt_url : null; window.trlDow = j.dow || {}; window.trlTnx = j.us10y || {}; window.trlUst = j.ust || {}; window.trlKr = j.kr || {}; window.trlReg = j.reg || {}; momentum = j.momentum || null; flows = j.flows || null; s7 = normalizeS7(j); leaders = j.leaders || null; watch = j.watch || null; lev = j.lev || null; window.trlBrief = brief || {}; window.trlFlows = flows || {}; window.trlS7 = s7 || {}; window.trlLev = lev || {}; window.trlUpdated = j.updated || Date.now(); if (typeof window.loadTicks === "function" && !window.__tickRefreshed) { window.__tickRefreshed = true; window.loadTicks(); } if (typeof window.loadBand === "function" && !window.__pinNotice) window.loadBand(); window.trlSectors = sectors; window.trlWorld = world; window.trlSpot = spot; window.trlTrend = trend; window.trlNotesReady = true; window.trlChan = j.chan || null;
       window.trlMoves = moves; window.trlSeries = series; window.trlNews = news;
       if (typeof window.renderHeadline === "function") window.renderHeadline();
@@ -1337,7 +1363,7 @@
     return true;
   };
   const qNorm = (x) => String(x || "").toLowerCase().replace(/\s+/g, " ").trim();
-  const bySearch = (n) => !query || qNorm(`${hayOf(n)} ${n.src || ""} ${n.osrc || ""} ${(n.tags || []).join(" ")} ${n.kind || ""}`).includes(query);
+  const bySearch = (n) => !query || qNorm(`${hayOf(n)} ${sourceName(n)} ${(n.tags || []).join(" ")} ${n.kind || ""}`).includes(query);
   const hit = (html) => {
     if (!query) return html;
     const rx = new RegExp(esc(query).replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "gi");
