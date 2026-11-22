@@ -44,11 +44,12 @@
 |---|---|---|
 | 속보 매분·정시 브리핑(06:10·07:20·12:00·14:00·15:30·20:05·22:15) | **Oracle 서버**(일본 리전, 129.203.145.164) | market-site `oracle/site_executor.json` owner=oracle. PC의 live_news는 gate가 건너뜀 |
 | 실시간 체결(KIS 웹소켓) → 사이트 2초 | Oracle systemd `trl-rt_kis`·`trl-rt_serve` | Cloudflare 무료 빠른 터널, 주소는 news.json `rt_url`(재시작 때 바뀌어도 자동) |
-| 서버 자동 업데이트 | Oracle systemd `trl-autopull.timer`(5분) | `scripts/oracle_autopull.sh` — ff-only pull, 실시간 코드 바뀌면 서비스 재시작 |
+| 서버 자동 업데이트 | Oracle systemd `trl-autopull.timer`(5분) | root 소유 고정 사본 `/usr/local/lib/trl-autopull/autopull.sh`(원본 `scripts/oracle_autopull.sh`, 설치 `scripts/oracle_autopull_install.sh` — 저장소 push 로는 안 바뀜, 11/22 보안) — ff-only pull, 실시간 코드 바뀌면 서비스 재시작(sudo 는 이 한 줄만) |
 | NH 모의매매(한국·미국) | **LG PC** 예약 작업 | market-site `feature/trader-nh-mock` trader/ |
 | KB 조회 | **PC만** | KB가 해외 IP 차단(KB 공지) — Oracle 불가 |
 
 서버 처음 설치·다시 설치: `bash scripts/oracle_rt_setup.sh`(cloudflared·서비스 3개). 저장소 경로 `~/projects/trend-lab-site`, `~/projects/market-site`.
+서버 관리(sudo) 작업은 **관리 사용자**로 접속해서(실행 사용자 `ubuntu` 는 `scripts/oracle_harden.sh --apply` 뒤 재시작 한 줄만 sudo). 권한 점검 `sudo bash scripts/oracle_harden.sh --check --user ubuntu`, 되돌리기 `--rollback`. 서버 주소·사용자는 공개 저장소에 적지 않음(비공개 trl-company `infra/servers.md`).
 
 ## 증권사·출처(조회 전용 — 주문 경로는 모듈에서 막음)
 - 키 찾는 순서: 환경변수 → `~/.config/trendlab/keys.env` → Windows 레지스트리(`tools/keystore.py`). 키 값은 출력·커밋 금지.
