@@ -1186,7 +1186,7 @@
       <td>${r.val ? eok(r.val) : "-"}</td><td>${r.win ? eokS(r.win.amt) : "-"}</td><td>${invCell(r, "frgn")}</td><td>${invCell(r, "org")}</td>
       <td class="fl-5">${r.inv ? `${eokS(r.inv.frgn5)} / ${eokS(r.inv.org5)}` : "-"}</td><td>${progCell(r)}</td></tr>`).join("");
     const invDay = (s7.rows.find((r) => r.inv) || {}).inv;
-    box.innerHTML = `<p class="spot-h">🏛️ S7 · 코스피 영향 큰 7종목 <small>${st} · 삼성전자·삼성전자우·SK하이닉스·SK스퀘어·삼성전기·삼성생명·삼성물산</small></p>
+    box.innerHTML = `<p class="spot-h">🏛️ S7 · 코스피 영향 큰 7종목 <small>${st}</small></p>
       <div class="s7-sum">
         <div><span>코스피</span><b>${(+k.px).toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b> ${pct(k.chg)} ${pt(k.pts)}</div>
         <div><span>S7 기여</span>${partial ? '<b class="dim">재검증 중</b>' : `${pt(s.pts)} <small>${s.share != null ? `지수 변화의 ${s.share}%` : ""} · 비중 ${s.w}%</small>`}</div>
