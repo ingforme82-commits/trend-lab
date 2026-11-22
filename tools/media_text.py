@@ -104,7 +104,8 @@ def ocr_image(path: str, timeout: float) -> str:
     return done.stdout.decode("utf-8", "replace")
 
 
-def pdf_text(path: str) -> str:
+def pdf_text(path: str, deadline: float | None = None) -> str:
+    """앞 PDF_PAGES 쪽 글자. deadline(time.monotonic 기준)을 넘기면 다음 쪽은 읽지 않는다(이상한 PDF 하나가 회차를 붙잡지 않게)."""
     p = Path(path)
     if p.suffix.lower() == ".txt":                     # 수집기가 큰 PDF 대신 남긴 글자 파일
         return p.read_text(encoding="utf-8", errors="replace")[:5000]
@@ -114,7 +115,12 @@ def pdf_text(path: str) -> str:
     reader = PdfReader(str(p))
     if reader.is_encrypted:
         raise RuntimeError("암호 PDF")
-    return "\n".join((pg.extract_text() or "") for pg in reader.pages[:PDF_PAGES])
+    out = []
+    for pg in reader.pages[:PDF_PAGES]:
+        out.append(pg.extract_text() or "")
+        if deadline is not None and time.monotonic() > deadline:
+            break
+    return "\n".join(out)
 
 
 def process(cands: list[tuple[str, str]], budget_s: float | None = None) -> dict:
@@ -147,7 +153,7 @@ def process(cands: list[tuple[str, str]], budget_s: float | None = None) -> dict
                 continue
             n[kind] += 1
             try:
-                raw = ocr_image(path, min(OCR_TIMEOUT_S, left)) if kind == "ocr" else pdf_text(path)
+                raw = ocr_image(path, min(OCR_TIMEOUT_S, left)) if kind == "ocr" else pdf_text(path, t0 + budget)
                 text = re.sub(r"[ \t]+", " ", raw).strip()[:KEEP_CHARS]
                 ok = 1 if text else 0
             except Exception:  # noqa: BLE001

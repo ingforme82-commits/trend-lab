@@ -88,8 +88,46 @@ class Tags(unittest.TestCase):
         self.assertNotIn("AI·빅테크", ln.tags_of("메타버스 테마 약세"))
         self.assertNotIn("지수", ln.tags_of("추석 선물 세트 매출 증가"))
 
+    # ── CTO 검증 보완(11/22): 실데이터 리허설에서 빠졌던 실제 기사 → 원래 주제 유지 ──
+    def test_real_index_headlines_kept(self):
+        for t in ["대만 벤치마크 지수 6% 이상 폭락", "독일 DAX 지수 2% 하락한 24,954.40 기록",
+                  "일본 조기 거래: 10년물 국채(JGB) 선물 0.15포인트 상승; 니케이 225 선물 3.63% 하락",
+                  '골드만삭스 "공포 지수 9점 육박"', "CATL, 항셍 테크 지수 편입 예정", "● 주요 지수 SSE 3,577.62pt (-0.3%)",
+                  "CSI 300 지수 1% 상승", "영국 FTSE 100 반등", "유로 STOXX 50 약세", "대만 가권지수 급락",
+                  "중국 베이징 50 지수, 거래 중 3% 급락.", "필리핀 증시 하락세 지속, 지수 5,360.19 터치",
+                  "12월 KOSPI200·KOSDAQ150 정기변경 발표"]:
+            with self.subTest(t=t):
+                self.assertIn("지수", ln.tags_of(t))
+
+    def test_economic_indicators_not_index(self):
+        for t in ["CBS, 네덜란드 11월 소비자 신뢰지수 -32로 개선(10월 -34 대비)", "프랑스 기업 환경 지수(FRENCH BUSINESS CLIMATE) 실제치 95",
+                  "캐나다 생산자물가지수(PPI) 전월 대비 0.3% 상승", "소비자 신뢰지수 상승", "미국 경기선행지수 하락", "경기종합지수 발표",
+                  "프랑스 11월 기업 신뢰지수 95로 하락; 예상치 96 하회",
+                  "PMI 지수 52.1", "상하이 주석 선물 하락세 지속",
+                  "한소희, 금발의 韓 마릴린 먼로···흑발 블랙핑크 지수와 대비되는 화보"]:
+            with self.subTest(t=t):
+                self.assertNotIn("지수", ln.tags_of(t))
+
+    def test_personal_data_leak_is_security(self):
+        for t in ["한전, 고객 등 개인정보 150여만건 유출…", "한전, 개인정보 152만명분 유출", "사이버 취약점 경보 발령"]:
+            with self.subTest(t=t):
+                self.assertIn("사이버보안", ln.tags_of(t))
+        for t in ["라이트 미국 에너지부 장관: 어제는 호르무즈 해협을 통한 유출 규모가 역대 최대였음",
+                  "시리아 내부보안군, 레바논 밀수 목적의 무기 화물 압수"]:
+            with self.subTest(t=t):
+                self.assertNotIn("사이버보안", ln.tags_of(t))
+
 
 class LinkPosts(Base):
+    def test_link_title_post_topic_from_title(self):
+        self.make_db([("realtime_stock_news", NAVER, "photo", None),
+                      ("realtime_stock_news", f"속보 {NAVER}/2", "photo", None)])
+        titles = {NAVER: ("독일 DAX 지수 2% 하락", "연합뉴스"), NAVER + "/2": ("한전, 개인정보 152만명분 유출", "뉴스1")}
+        with patch.object(ln, "link_title", lambda u: titles[u]):
+            out = ln.from_telegram()
+        self.assertEqual({i["text"]: i["tags"][0] for i in out},
+                         {"독일 DAX 지수 2% 하락": "지수", "한전, 개인정보 152만명분 유출": "사이버보안"})
+
     def test_short_words_plus_link_uses_article_title(self):
         self.make_db([("realtime_stock_news", f"속보 {NAVER}", "photo", None)])
         with patch.object(ln, "link_title", lambda u: ("코스피 장중 2% 급락, 외국인 1조 매도", "연합뉴스")):
@@ -190,6 +228,27 @@ class Media(Base):
 
 
 class Pdf(Base):
+    def test_deadline_stops_after_page(self):
+        class Page:
+            def __init__(self, t):
+                self.t = t
+
+            def extract_text(self):
+                return self.t
+
+        class Reader:
+            is_encrypted = False
+
+            def __init__(self, _):
+                self.pages = [Page("first page"), Page("second page")]
+        p = self.dir / "d.pdf"
+        p.write_bytes(b"%PDF-1.4")
+        fake = type(sys)("pypdf")
+        fake.PdfReader = Reader
+        with patch.dict(sys.modules, {"pypdf": fake}):
+            self.assertEqual(mt.pdf_text(str(p), deadline=0), "first page")          # 이미 지난 마감 → 첫 쪽만
+            self.assertEqual(mt.pdf_text(str(p)), "first page\nsecond page")
+
     def test_strategy_pdf_first_pages(self):
         p = self.dir / "s.pdf"
         fake_pdf(p, ["Weekly Strategy: KOSPI rebound after foreign selling eases", "Semiconductor exports rose for a third month in November"])

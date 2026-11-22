@@ -165,6 +165,13 @@ NONMKT = re.compile(r"야구|축구|농구|배구|골프|KBO|APBC|K리그|프로
 ENTERTAIN = re.compile(r"화보|미모|공주|컴백|뮤직\s?비디오|뮤비|걸그룹|보이그룹|팬미팅|팬사인회|월드\s?투어|레드\s?카펫|비주얼|패션\s?위크|시사회|"
                        r"아이돌|예능|드라마|열애")
 KR_MKT = re.compile(r"코스피|코스닥|증시|주가|주식|환율|원/달러|원화|금리|국채|외국인|기관|공매도|상장|실적|수출|한은|금통위|무역|반도체")
+# 지수 이름(뒤에 숫자·'지수'·'선물'이 붙을 때 지수로 본다) — 경제지표 낱말(신뢰·물가·환경·경기…)은 넣지 않는다
+IDX_NAMES = (r"코스피|코스닥|KOSPI|KOSDAQ|니케이|닛케이|항셍(?:\s?테크)?|H\s?지수|DAX|CAC|FTSE|STOXX|유로\s?스톡스|CSI|SSE|"
+             r"상하이(?:\s?종합)?|선전(?:\s?성분)?|가권|대만|벤치마크|대표|주요|공포(?:\s?탐욕)?|탐욕|변동성|주가|"
+             r"(?<!경기)(?<!경기 )종합|반도체|달러|증시|필라델피아|러셀|나스닥|S&P|다우|니프티|센섹스|[가-힣A-Z]{1,6}\s?200")
+# '지수 상승' 같은 꼴은 바로 앞이 경제지표 낱말이면 지수로 보지 않는다(소비자 신뢰지수 상승 등)
+NOT_ECON = "".join(f"(?<!{w})(?<!{w} )" for w in ("신뢰", "물가", "심리", "경기", "환경", "체감", "선행", "동행", "후행", "제조업",
+                                                  "서비스업", "PMI", "BSI", "생산자물가", "소비자물가", "가격", "주택가격", "임금"))
 TAGS = [
     ("중동·유가", r"이란|이스라엘|호르무즈|후티|사우디|카타르|레바논|헤즈볼라|유가|원유|WTI|브렌트|OPEC|오펙|천연가스|LNG|정유|핵무기|핵 활동|NPT|우라늄|"
                 r"\bIran|Israel|Hormuz|Houthi|Saudi|\boil\b|crude|Brent|OPEC|natural gas"),
@@ -174,7 +181,7 @@ TAGS = [
     # ↑ 11/22: 단독 '메타'(메타버스 등)·'상장'·'IPO' 제거 — 빅테크 상장 소식은 회사 이름(OpenAI·스페이스X 등)으로 이미 잡힌다
     ("반도체", r"반도체|하이닉스|삼성전자|이오테크닉스|디아이티|제주반도체|코미코|하나마이크론|SK스퀘어|마이크론|Micron|TSMC|HBM|메모리|D램|DRAM|낸드|NAND|SOX|램리서치|ASML|chip|semiconductor"),
     # 사이버보안(11/22): 단독 '사이버'('사이버 객장')·'보안'·'유출'(자금 유출)·'security' 제외, 결합형만
-    ("사이버보안", r"해킹|해커|(?:개인\s?)?정보\s?유출|데이터\s?유출|사이버\s?(?:공격|보안|테러|위협|범죄|전쟁|안보)|"
+    ("사이버보안", r"해킹|해커|(?:개인|고객|회원)\s?정보[^.\n]{0,20}유출|정보\s?유출|데이터\s?유출|사이버\s?(?:공격|보안|테러|위협|범죄|전쟁|안보|취약점)|"
                  r"(?:정보|네트워크|클라우드|데이터|엔드포인트)\s?보안|보안\s?(?:업체|기업|취약점|사고|침해|위협|솔루션)|랜섬|"
                  r"hack|breach|cyber\s?attack|cyber\s?security|cybersecurity|ransomware|시스코|Cisco|크라우드스트라이크|CrowdStrike|"
                  r"팔로알토|Palo Alto|지스케일러|Zscaler|옥타|Okta|클라우드플레어|Cloudflare|포티넷|Fortinet|데이터도그|Datadog|센티넬원|SentinelOne|"
@@ -188,10 +195,13 @@ TAGS = [
     ("조선", r"조선|선박|LNG선|컨테이너선|수주|HD현대중공업|한화오션|삼성중공업|HD한국조선|케이프|한국카본|동성화인텍|세진중공업|성광벤드|보냉재|기자재|선박엔진|shipbuild|MASGA|마스가"),
     ("2차전지", r"2차전지|이차전지|배터리|양극재|음극재|리튬|ESS|LG에너지|삼성SDI|에코프로|포스코퓨처엠|POSCO홀딩스|포스코홀딩스|엔켐|코스모신소재|대주전자재료|천보|battery|lithium"),
     ("바이오", r"바이오|제약|신약|임상|FDA|비만|GLP-1|위고비|마운자로|치매|알츠하이머|ADC|알테오젠|한미약품|biotech|pharma|obesity|Alzheimer"),
-    # 지수(11/22): 단독 '지수'(블랙핑크 지수)·'선물'(선물 세트) 제외 — 결합형만
-    ("지수", r"나스닥|S&P|다우|VIX|Nasdaq|Dow\b|S&P 500|futures|stocks|Wall Street|"
-           r"(?:코스피|코스닥|니케이|닛케이|항셍|주가|종합|반도체|변동성|달러|증시|필라델피아|상하이|선전|대만|유로\s?스톡스|[가-힣A-Z0-9]{1,6}200)\s?지수|"
-           r"지수\s?(?:선물|옵션|상승|하락|급등|급락|반등|마감|사상)|(?:야간|미\s?증시|주가\s?지수|지수|미니)\s?선물|선물\s?(?:지수|시장|만기|옵션)"),
+    # 지수(11/22, CTO 보완): 단독 '지수'(블랙핑크 지수)·'선물'(선물 세트)·경제지표('신뢰지수·물가지수·기업 환경 지수') 제외,
+    # '지수 이름(+숫자) + 지수/선물' 결합형과 이름만으로 지수인 것(DAX·FTSE·STOXX·니케이 225·CSI 300·항셍)만
+    ("지수", r"나스닥|S&P|다우|VIX|Nasdaq|Dow\b|S&P 500|futures|stocks|Wall Street|\bDAX\b|\bFTSE\b|STOXX|"
+           r"니케이\s?225|닛케이\s?225|\bCSI\s?300|항셍|KOSPI\s?200|코스피\s?200|KOSDAQ\s?150|코스닥\s?150|"
+           rf"(?:{IDX_NAMES})\s?\d{{0,4}}\s?지수|[가-힣A-Z]{{2,6}}\s?\d{{2,4}}\s?지수|{NOT_ECON}지수\s?\d|"
+           rf"(?:{IDX_NAMES}|야간|미니|미\s?증시|주가\s?지수)\s?\d{{0,4}}\s?선물|"
+           rf"{NOT_ECON}지수\s?(?:선물|옵션|상승|하락|급등|급락|반등|마감|사상)|선물\s?(?:지수|시장|만기|옵션)"),
 ]
 HOT = re.compile(r"속보|긴급|Breaking|사상 최고|사상최고|급등|급락|폭락|폭등|공격|미사일|공습|휴전|합의|핵무기|해킹|IPO|파산|"
                  r"금리 (?:인상|인하)|서킷|사이드카|최고치|최저치|record high|plunge|soar|surge|tumble|ceasefire|missile|attack|"
@@ -432,7 +442,7 @@ def from_telegram() -> list[dict]:
                 continue
         sector = ch in SECTOR_ANALYST
         h, sub, orig = clean_line(text, with_sub=strat or analysis or sector)
-        via = ""
+        via, linked = "", False
         short = len(h) < 12 or bool(DOMAIN_ONLY.fullmatch(h))
         lm = URL_ONLY.match(text)
         if lm:                                          # 링크만 올린 글 → 기사 제목·언론사(링크는 싣지 않음)
@@ -440,13 +450,13 @@ def from_telegram() -> list[dict]:
             if not got_t:
                 drop(ch, "link_only")
                 continue
-            h, orig = got_t
+            h, orig, linked = got_t[0], got_t[1], True
         elif short and URL_ANY.search(text):            # '속보 https://…' 처럼 링크 + 짧은 말 → 첫 링크의 기사 제목(11/22)
             got_t = link_title(URL_ANY.search(text).group(0))
             if not got_t:
                 drop(ch, "link_fail")                   # 제목 못 받음(다음 회차 재시도 — linktitle 캐시 규칙)
                 continue
-            h, orig = got_t
+            h, orig, linked = got_t[0], got_t[1], True
             rest = re.sub(r"\s+", " ", URL_ANY.sub(" ", text)).strip(" -—:•▶►·|")
             if rest and rest not in h:
                 sub = rest[:120]                        # 남은 짧은 말은 요약 칸으로
@@ -468,7 +478,8 @@ def from_telegram() -> list[dict]:
         TG_STATS[CHANNELS[ch]]["kept"] += 1
         if via:
             TG_STATS[CHANNELS[ch]]["media_" + via] = TG_STATS[CHANNELS[ch]].get("media_" + via, 0) + 1
-        tg = tags_of(text if text and not via and len(text) > len(h) else f"{h} {sub}")
+        # 링크 제목·첨부 글자를 쓴 글은 그 제목+요약으로 주제를 판정(본문은 URL 문자열뿐이라 '기타'로 가던 것, 11/22 CTO 보완)
+        tg = tags_of(f"{h} {sub}" if via or linked or not text or len(text) <= len(h) else text)
         # 시장 키워드가 없는 글도 싣는다('기타', 중요도 낮게) — 2026-10-28 운영자 요청
         ts = datetime.fromisoformat(posted).astimezone(timezone.utc)
         try:
