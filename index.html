@@ -148,7 +148,7 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
     <div class="sector-box" id="sectorBox" hidden></div>
     <div class="flow-box" id="flowBox" hidden></div>
     <div class="tick-grid" id="tickGrid"></div>
-    <details class="src-score" id="srcScore" hidden><summary>📊 출처 점수판 <small>— 어디 값을 먼저 쓰는지(성공률·일치율·응답 시간·신선도로 자동 조정)</small></summary><div id="srcScoreBody"></div></details>
+
     <p class="tick-group world-h">해외 지수 <small>정규장 시세(5분 갱신) · 대만은 24시간 ETF</small></p>
     <div class="tick-grid" id="worldGrid"></div>
   </div>
@@ -408,7 +408,7 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
     "공시·보도에 나온 사실과 수치만 정리했습니다. 투자 권유가 아닙니다.": "Facts and figures from disclosures and reporting. For information only.",
     "실시간 시세": "Live quotes",
     "칸마다 기준(전일 종가·24시간 전 등)을 숫자로 적습니다. 실시간 체결은 2초, 나머지는 30초마다 갱신.": "Each card shows its comparison basis. Trades refresh every two seconds and other quotes every 30 seconds.",
-    "📊 출처 점수판": "Data source scores",
+
     "— 어디 값을 먼저 쓰는지(성공률·일치율·응답 시간·신선도로 자동 조정)": "Sources are ranked by success rate, agreement, response time and freshness.",
     "해외 지수": "Global indices",
     "정규장 시세(5분 갱신) · 대만은 24시간 ETF": "Regular-session quotes refresh every five minutes. Taiwan uses a 24-hour ETF quote.",
@@ -508,7 +508,7 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
     "공시·보도에 나온 사실과 수치만 정리했습니다. 투자 권유가 아닙니다.": "開示資料や報道に基づく事実と数値です。投資勧誘は行いません。",
     "실시간 시세": "リアルタイム相場",
     "칸마다 기준(전일 종가·24시간 전 등)을 숫자로 적습니다. 실시간 체결은 2초, 나머지는 30초마다 갱신.": "各欄に比較基準を表示します。約定は2秒ごと、その他は30秒ごとに更新します。",
-    "📊 출처 점수판": "データソースの評価",
+
     "— 어디 값을 먼저 쓰는지(성공률·일치율·응답 시간·신선도로 자동 조정)": "取得成功率、一致率、応答時間、鮮度で優先順位を調整します。",
     "해외 지수": "海外株価指数",
     "정규장 시세(5분 갱신) · 대만은 24시간 ETF": "通常取引の相場は5分ごとに更新。台湾は24時間取引のETFを参照します。",
@@ -608,7 +608,7 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
     "공시·보도에 나온 사실과 수치만 정리했습니다. 투자 권유가 아닙니다.": "根据公开披露和报道整理事实与数据，仅供参考。",
     "실시간 시세": "实时行情",
     "칸마다 기준(전일 종가·24시간 전 등)을 숫자로 적습니다. 실시간 체결은 2초, 나머지는 30초마다 갱신.": "各栏标明比较基准。成交每两秒更新，其他报价每30秒更新。",
-    "📊 출처 점수판": "数据源评分",
+
     "— 어디 값을 먼저 쓰는지(성공률·일치율·응답 시간·신선도로 자동 조정)": "根据成功率、一致性、响应时间和数据时效排序。",
     "해외 지수": "海外股指",
     "정규장 시세(5분 갱신) · 대만은 24시간 ETF": "常规交易时段行情每5分钟更新，台湾市场参考24小时ETF行情。",
@@ -708,7 +708,7 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
     "공시·보도에 나온 사실과 수치만 정리했습니다. 투자 권유가 아닙니다.": "Faits et chiffres issus des publications officielles et de la presse. À titre informatif.",
     "실시간 시세": "Cotations en temps réel",
     "칸마다 기준(전일 종가·24시간 전 등)을 숫자로 적습니다. 실시간 체결은 2초, 나머지는 30초마다 갱신.": "Chaque encadré indique sa base de comparaison. Les transactions sont actualisées toutes les deux secondes et les autres cotations toutes les 30 secondes.",
-    "📊 출처 점수판": "Évaluation des sources",
+
     "— 어디 값을 먼저 쓰는지(성공률·일치율·응답 시간·신선도로 자동 조정)": "Le classement tient compte du taux de réussite, de la concordance, du temps de réponse et de la fraîcheur des données.",
     "해외 지수": "Indices internationaux",
     "정규장 시세(5분 갱신) · 대만은 24시간 ETF": "Cotations de séance toutes les cinq minutes. Taïwan est suivi via un ETF coté sur 24 heures.",
@@ -1231,9 +1231,9 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
 <script src="presence.js?v=20261116-visitors"></script>
 <script src="flow-core.js?v=20261116-flow"></script>
 <script src="viewport.js?v=20261120-steady-pin"></script>
-<script src="app.js?v=20261122-confirmed-study"></script>
+<script src="app.js?v=20261122-public-news"></script>
 <script src="chart.js?v=20261121-market-style"></script>
-<script src="news.js?v=20261122-news-focus"></script>
+<script src="news.js?v=20261122-public-news"></script>
 <script src="fold.js?v=20261121-ux-axes"></script>
 <script src="tint.js?v=20261118-stable-scroll"></script>
 <!-- 11/17 운영자: 지수 흐름·분할 칸(flow.js)은 내림 — 추세 판단 채널 그래프가 대신 맨 위 -->
