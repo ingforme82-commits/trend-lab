@@ -291,7 +291,7 @@ async function loadEarnings() {
         + `<p class="c-title">${esc(x.name)} <small>${esc(x.sym)} · ${esc(x.sector)}</small></p><p class="c-note">${est}${act}</p>${warn}</li>`;
     }).join("");
     putHTML($("#earnList"), html);
-    $("#earnStamp").textContent = (j.updated ? `· 실적 ${j.updated} 기준` : "") + (ipos.length ? " · IPO는 회사·거래소 공식 일정" : "");
+    $("#earnStamp").textContent = j.updated ? `${j.updated} 기준` : "";
     $("#earnings").hidden = false;
   } catch { /* 개별 출처 실패는 다른 일정까지 숨기지 않는다 */ }
 }
@@ -313,7 +313,7 @@ function hlLive(x) {
     .sort((a, b) => b.ts - a.ts).filter((n) => { const k = String(n.text).replace(/[^0-9A-Za-z가-힣]/g, "").slice(0, 24); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, 5);
   if (!rows.length) return "";
   const t = (ms) => { const d = KSTof(ms); return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
-  return `<div class="hl-live"><p class="hl-live-h">⚡ 실시간 관련 속보 <small>1분마다 · 정리 이후 새 소식은 확인 전일 수 있음</small></p><ul>${rows.map((n) =>
+  return `<div class="hl-live"><p class="hl-live-h">관련 속보</p><ul>${rows.map((n) =>
     `<li><time>${t(n.ts)}</time> <span class="hl-live-src">${esc(n.src)}${(n.nsrc || 1) > 1 ? ` 외 ${n.nsrc - 1}곳` : " · 1곳"}</span> ${esc(n.text)}</li>`).join("")}</ul></div>`;
 }
 // 11/20 운영자: 주요 이슈도 추세 판단과 같은 시간대 순서 — 08~16시 한국 먼저, 16~20시 한국·미국, 20~08시 미국 먼저.
