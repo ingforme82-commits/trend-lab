@@ -267,28 +267,52 @@ def nxt_window(now: datetime) -> bool:
 
 
 def _nxt_quotes(codes: list[str], now: datetime) -> dict:
-    """{code: {px, chg, at, status}} — 네이버 NXT 실시간, 55초 캐시. 오늘 체결이 없는 종목은 뺀다."""
-    if not codes or not nxt_window(now):
+    """네이버 NXT 체결. 이전 체결은 시각과 함께 마지막 값으로만 보존한다."""
+    if not codes:
         return {}
-    lc = _load(LIVE); c = lc.get("_nxt") or {}
-    if time.time() - c.get("t", 0) < 55 and set(codes) <= set(c.get("codes", [])):
-        return c.get("q") or {}
-    from krx import BASE, _parse
-    q = {}
-    try:
-        u = f"{BASE}/NXT/stock/{','.join(codes)}"
-        for d in json.loads(urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=8).read()).get("datas", []):
-            if str(d.get("localTradedAt", ""))[:10] != now.strftime("%Y-%m-%d"):
-                continue                                   # 오늘 넥장 체결 없음 → 어제 값을 현재처럼 쓰지 않는다
-            r = _parse(d)
-            if r and r.get("px"):
-                q[d["itemCode"]] = {"px": r["px"], "chg": r.get("chg"), "at": r.get("at"), "status": d.get("marketStatus", "")}
-    except Exception as x:  # noqa: BLE001
-        ERRS.append(f"넥장 시세 {type(x).__name__}")
-        return c.get("q") or {} if time.time() - c.get("t", 0) < 300 else {}
-    lc["_nxt"] = {"t": time.time(), "codes": codes, "q": q}
-    _save(LIVE, lc)
-    return q
+    lc = _load(LIVE)
+    cached = lc.get("_nxt") or {}
+    quotes = cached.get("q") or {}
+    now_ms = int(now.timestamp() * 1000)
+    active = nxt_window(now) and now.hour < 20
+    delay = 55 if active else 300
+    if time.time() - cached.get("t", 0) >= delay or not set(codes) <= set(cached.get("codes", [])):
+        from krx import BASE, _parse
+
+        try:
+            u = f"{BASE}/NXT/stock/{','.join(codes)}"
+            rows = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=8).read()).get("datas", [])
+            quotes = {**quotes}
+            for row in rows:
+                stamp = str(row.get("localTradedAt") or "")
+                code = row.get("itemCode")
+                clock = stamp[11:16]
+                if code not in codes or not ("08:00" <= clock <= "08:50" or "15:40" <= clock <= "20:00"):
+                    continue
+                try:
+                    traded = datetime.fromisoformat(stamp)
+                except ValueError:
+                    continue
+                if traded.tzinfo is None:
+                    traded = traded.replace(tzinfo=now.tzinfo)
+                parsed = _parse(row)
+                if not parsed or not 0 < traded.timestamp() * 1000 <= now_ms + 60000:
+                    continue
+                at = int(traded.timestamp() * 1000)
+                if at < (quotes.get(code) or {}).get("at", 0):
+                    continue
+                quotes[code] = {"px": parsed["px"], "chg": parsed.get("chg"), "at": at,
+                                "status": row.get("marketStatus", ""), "day": stamp[:10],
+                                "session": "프리" if stamp[11:16] < "09:00" else "애프터"}
+        except Exception as error:  # noqa: BLE001
+            ERRS.append(f"넥장 시세 {type(error).__name__}")
+        lc["_nxt"] = {"t": time.time(), "codes": codes, "q": quotes}
+        _save(LIVE, lc)
+    return {code: {**quote, "last_only": (not active or quote.get("day") != now.date().isoformat()
+                                         or quote.get("status") != "OPEN"
+                                         or now_ms - quote["at"] > 120000)}
+            for code, quote in quotes.items()
+            if code in codes and -60000 <= now_ms - (quote.get("at") or 0) < 7 * 86400_000}
 
 
 def nxt_view(rows: list[list], ch: dict, px: float, today: str) -> dict:
@@ -584,6 +608,8 @@ def build(now: datetime | None = None) -> dict:
                           krx_missing=kb["miss_k"])
             if g["cc"] == "kr" and code in nxq:
                 nq = nxq[code]
+                it["nxt"] = nq
+            if g["cc"] == "kr" and code in nxq and not nxq[code].get("last_only"):
                 it["nxt"] = {**nq, "vs_krx": round((nq["px"] / px - 1) * 100, 2) if rows[-1][0] == now.strftime("%m/%d") else None,
                              **nxt_view([r[:4] + [v] for r, v in zip(rows, kb["u"])] if kb else rows, ch, nq["px"], now.strftime("%m/%d"))}
             if g["cc"] in ("kr", "us"):
