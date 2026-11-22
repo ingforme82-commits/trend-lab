@@ -30,6 +30,7 @@
   const pct = (v) => v == null ? "-" : `<b class="${cls(v)}">${v > 0 ? "+" : ""}${v.toFixed(2)}%</b>`;
 
   const englishNews = new URLSearchParams(location.search).get("lang")?.toLowerCase() === "en";
+  const sourceName = (item) => String(item.osrc || item.src || "").trim();
   const newsText = (item) => englishNews && item.lang === "en" && typeof item.orig === "string" && item.orig.trim()
     ? item.orig : item.text;
   let news = [], moves = [], series = {}, notes = [], candles = {}, candles1 = {}, sel = null, tag = "전체", shown = 10;
@@ -347,7 +348,7 @@
           <span class="mv-t">${hm(m.start)}–${hm(m.end)}${m.session ? ` · ${esc(m.session)}` : ""}</span></div>
         <p class="mv-o">${px(m)}${co.length ? ` · <b>함께 움직임</b> ${co.map((x) => `${x.kind === "level" ? "🎯 " : x.kind === "cumulative" ? "⏱ 누적 " : ""}${esc(x.name)}${x.kind === "level" ? ` ${(+x.level).toLocaleString("ko-KR")} ${x.move > 0 ? "위로" : "아래로"}` : ` <b class="${cls(x.move)}">${fmtMove(x)}</b>`} <small>(${hm(x.start)}–${hm(x.end)}${x.session ? ", " + esc(x.session) : ""})</small>`).join(" · ")}` : ""}</p>
         ${others || a30 ? `<p class="mv-o">${others ? `같은 구간 ${others}` : ""}${others ? a30 : a30.replace(/^ · /, "")}</p>` : ""}
-        ${ns.length ? `<ul class="mv-n">${ns.slice(0, 4).map((n) => `<li><span class="mv-dot"></span><b>${hm(n.ts)}</b> ${n.lang === "en" ? "🌐 " : ""}${esc(newsText(n))} <small>${n.osrc ? `${esc(n.osrc)} · ${esc(n.src)} 경유` : esc(n.src)}${co.length ? ` · ${esc(n._a)} 쪽` : ""}${n.lag != null ? ` · <b class="mv-lag">${n.lag < 0 ? `움직임 ${-n.lag}분 전` : n.lag === 0 ? "움직임과 같은 분" : `가격이 먼저 움직이고 ${n.lag}분 뒤`}</b>` : ""}</small></li>`).join("")}</ul>`
+        ${ns.length ? `<ul class="mv-n">${ns.slice(0, 4).map((n) => `<li><span class="mv-dot"></span><b>${hm(n.ts)}</b> ${n.lang === "en" ? "🌐 " : ""}${esc(newsText(n))} <small>${esc(sourceName(n))}${co.length ? ` · ${esc(n._a)} 쪽` : ""}${n.lag != null ? ` · <b class="mv-lag">${n.lag < 0 ? `움직임 ${-n.lag}분 전` : n.lag === 0 ? "움직임과 같은 분" : `가격이 먼저 움직이고 ${n.lag}분 뒤`}</b>` : ""}</small></li>`).join("")}</ul>`
           : `<p class="mv-none">시작 전 15분부터 확인한 구간에 연결할 관련 뉴스가 없습니다. 원인은 확인되지 않았습니다.</p>`}
         ${nt ? `<div class="mv-note"><b>💡 ${esc(nt.title)}</b><p>${esc(nt.text)}</p></div>` : ""}
       </article>`;
@@ -406,7 +407,7 @@
           <span class="mem-px">${money(open)}</span>
           <b class="${cls(open.chg)}">${open.chg > 0 ? "+" : ""}${open.chg.toFixed(2)}%</b>${open.stale ? `<em class="stale">전일 종가 기준</em>` : ""}
           ${open.to3m != null ? `<span class="dim">3개월 고점 대비 ${open.to3m > 0 ? "+" : ""}${open.to3m}%</span>` : ""}</div>
-        ${rel.length ? `<ul class="spot-news">${rel.map((n) => `<li><b>${hm(n.ts)}</b> ${n.pivot ? "🔴 " : ""}${esc(newsText(n))} <small class="dim">${esc(n.osrc ? n.osrc + " · " + n.src + " 경유" : n.src)}</small></li>`).join("")}</ul>` : `<p class="dim" style="margin:4px 0">최근 관련 속보가 없습니다.</p>`}
+        ${rel.length ? `<ul class="spot-news">${rel.map((n) => `<li><b>${hm(n.ts)}</b> ${n.pivot ? "🔴 " : ""}${esc(newsText(n))} <small class="dim">${esc(sourceName(n))}</small></li>`).join("")}</ul>` : `<p class="dim" style="margin:4px 0">최근 관련 속보가 없습니다.</p>`}
         <div class="spot-btns">${HL_SYMS.has(open.sym) ? `<button class="btn btn-gold btn-sm" data-spot-chart="xyz:${esc(open.sym)}" data-spot-name="${esc(open.name)}">${esc(open.name)} 1분봉</button>` : ""}
           <button class="btn btn-ghost-dark btn-sm" data-mem="${esc(key(open))}">접기</button></div>
       </div>`;
@@ -1220,9 +1221,9 @@
     const box = q("#tgSum"); if (!box) return;
     const t = tgsum; if (!t || !(t.topics || []).length) { box.hidden = true; return; }
     const lines = (ln) => `<li${ln.hot ? ' class="hot"' : ""}><span class="tg-t">${esc(gist(ln.text, 110))}</span>`
-      + `<span class="tg-m">${hm(ln.last)} · ${ln.srcs.map(esc).join(" · ")}${ln.srcs.length > 1 ? ` <b>${ln.srcs.length}곳 같은 내용</b>` : ""}${ln.n > ln.srcs.length ? ` · ${ln.n}건` : ""}</span></li>`;
-    box.innerHTML = `<div class="tg-head"><h3>📡 텔레그램·뉴스 통합 정리</h3></div>`
-      + `<div class="tg-grid">` + t.topics.map((tp) => `<div class="tg-card"><p class="tg-name">${esc(tp.name)} <span>${tp.ch}채널 · ${tp.n}건</span></p><ul>${tp.lines.map(lines).join("")}</ul></div>`).join("") + `</div>`;
+      + `<span class="tg-m">${hm(ln.last)} · ${ln.srcs.map(esc).join(" · ")}</span></li>`;
+    box.innerHTML = `<div class="tg-head"><h3>📰 주제별 뉴스</h3></div>`
+      + `<div class="tg-grid">` + t.topics.map((tp) => `<div class="tg-card"><p class="tg-name">${esc(tp.name)}</p><ul>${tp.lines.map(lines).join("")}</ul></div>`).join("") + `</div>`;
     box.hidden = false;
   }
   function drawTrend() {
@@ -1280,7 +1281,7 @@
       const g = gist(newsText(n)), full = newsText(n).replace(/…$/, "");
       const t = g !== full ? `<span class="mn-x" data-open="0" title="눌러서 전체 보기">${esc(g)}</span><span class="mn-full" hidden>${esc(full)}</span>` : esc(g);
       const v = n.verify === "official" ? " · 🏛 공식" : n.verify === "multi" ? " · ✔ 복수 출처" : n.verify === "unconfirmed" ? " · ⚠ 미확인" : "";
-      return `<li class="mn-nw"><span class="mn-t">${hm(n.ts)}</span> <span class="mn-b">${t}${n.series_n > 1 ? ` <small>· 같은 발언 외 ${n.series_n - 1}건</small>` : ""} <small>${esc(n.src || "")}${v}</small></span></li>`;
+      return `<li class="mn-nw"><span class="mn-t">${hm(n.ts)}</span> <span class="mn-b">${t}${n.series_n > 1 ? ` <small>· 같은 발언 외 ${n.series_n - 1}건</small>` : ""} <small>${esc(sourceName(n))}${v}</small></span></li>`;
     });
     if (!pins.length && !live.length) { box.hidden = true; return; }
     box.hidden = false;
@@ -1360,19 +1361,19 @@
       const R = reactKey(n), w = n.kind === "섹터 시세" ? null : windows(R.k, n.ts);
       const rs = w ? `<span class="nw-r">${esc(R.n)} <small>보도 5분 전 대비</small> ${w.map((x) => `<span class="rw">+${x.n}분 ${x.v == null ? `<i class="dim">계산 중</i>` : pct(x.v)}</span>`).join("")}</span>` : "";
       const pv = n.pivot ? `<p class="nw-pv">🔴 변곡점 관련 뉴스 — ${movesOfNews(n.ts).map((m) => `${esc(m.name)} ${fmtMove(m)} (${hm(m.start)}–${hm(m.end)})`).join(", ") || (n.pv || []).map(esc).join(", ")}</p>` : "";
-      const lag = n.got && n.got - n.ts >= 2 * 60000 ? ` · 수집 ${hm(n.got)}<small>(+${Math.round((n.got - n.ts) / 60000)}분)</small>` : "";
+
       const lvb = n.lv === "상" ? `<span class="nw-v v-imp" title="중요도 ${n.imp}">🔥 중요</span>` : n.lv === "중" ? `<span class="nw-v v-one" title="중요도 ${n.imp}">중요도 중</span>` : "";
       const v = VER[n.verify] ? `<span class="nw-v ${VER[n.verify][1]}">${VER[n.verify][0]}${n.nsrc > 1 ? ` ${n.nsrc}곳` : ""}</span>` : "";
       const tr = n.tr === "auto" ? `<span class="nw-v v-tr" title="${esc(n.orig || "")}">🌐 자동 번역</span>` : "";
       const XC = { ok: ["🌐 외신 확인", "v-ok"], ref: ["🌐 해외 보도", "v-one"], diff: ["⚠ 외신과 수치 다름", "v-warn"] };
       const xc = n.xc && XC[n.xc.st] ? `<span class="nw-v ${XC[n.xc.st][1]}">${XC[n.xc.st][0]} · ${n.xc.src.map(esc).join("·")}</span>` : "";
       const xcl = n.xc && XC[n.xc.st] ? `<p class="nw-xc"><b>원문</b> ${esc(n.xc.en)} <small class="dim">— ${esc(n.xc.src[0])}${n.xc.ko ? ` · 번역: ${esc(n.xc.ko)}` : ""}</small></p>` : "";
-      const also = (n.also || []).length ? `<span class="nw-also">후속: ${n.also.map((a) => `${esc(a.osrc ? a.osrc + "·" + a.src : a.src)} ${hm(a.ts)}`).join(", ")}</span>` : "";
+      const also = (n.also || []).length ? `<span class="nw-also">후속: ${n.also.map((a) => `${esc(sourceName(a))} ${hm(a.ts)}`).join(", ")}</span>` : "";
       return `<li class="nw${n.pivot ? " piv" : ""}${sel === n.ts ? " sel" : ""}${n.verify === "unconfirmed" ? " unv" : ""}" data-ts="${n.ts}">
         <div class="nw-t"><b>${hm(n.ts)}</b><span>${ago(n.ts)}</span></div>
         <div class="nw-b"><p class="nw-txt${n.kind === "섹터 시세" ? " sector" : ""}">${n.pivot ? "🔴 " : ""}${hit(esc(newsText(n)))}</p>${n.sub ? `<p class="nw-sub">${hit(esc(n.sub))}</p>` : ""}${pv}
           <p class="nw-m">${n.tags.map((t) => `<span class="nw-tag">${esc(t)}</span>`).join("")}${isStrat(n) ? `<span class="nw-tag strat">${esc(n.kind)}</span>` : ""}${lvb}${v}${xc}${tr}
-          <span class="nw-src">${n.verify ? "최초 " : ""}${n.osrc ? `${esc(n.osrc)} · ${esc(n.src)} 경유` : esc(n.src)} ${hm(n.ts)}${lag}</span></p>
+          <span class="nw-src">${esc(sourceName(n))}</span></p>
           ${xcl}${also ? `<p class="nw-m">${also}</p>` : ""}${n.series_n > 1 ? `<details class="nw-ser" data-ser="${n.ts}"${serOpen.has(String(n.ts)) ? " open" : ""}><summary>🧹 같은 ${esc(n.series_key)} 발언·발표 ${n.series_n - 1}건 더(2시간 안 연속, 한 줄로 묶음)</summary><ul>${(n.series || []).map((x) => `<li><b>${hm(x.ts)}</b> ${esc(x.text)}</li>`).join("")}</ul></details>` : ""}${rs ? `<p class="nw-m">${rs}</p>` : ""}</div></li>`;
     }).join("") || `<li class="empty">조건에 맞는 속보가 없습니다.</li>`;
     q("#newsMore").hidden = list.length <= shown;
