@@ -118,7 +118,7 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
 </section>
 
 <div class="axis" id="today">
-  <div class="wrap axis-in"><p class="axis-k">TODAY</p><h2 class="axis-t">오늘 시장 · 시황</h2><p class="axis-sub">오늘 핵심 이슈 → 실시간 시세 → 속보 순서로 확인합니다.</p></div>
+  <div class="wrap axis-in"><p class="axis-k">TODAY</p><h2 class="axis-t">오늘 시장 · 시황</h2></div>
 </div>
 
 <section class="hl-sec" id="headline" hidden>
@@ -134,7 +134,6 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
     <div class="sec-head">
       <div>
         <h2>실시간 시세</h2>
-        <p class="sec-sub">칸마다 기준(전일 종가·24시간 전 등)을 숫자로 적습니다. 실시간 체결은 2초, 나머지는 30초마다 갱신.</p>
       </div>
       <p class="stamp tick-stamp" id="tickStamp" role="status" aria-live="polite">불러오는 중…</p>
     </div>
@@ -159,13 +158,12 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
     <div class="sec-head">
       <div>
         <h2>📐 추세 판단</h2>
-        <p class="sec-sub" id="chanRule"></p>
       </div>
       <p class="stamp" id="chanStamp"></p>
     </div>
     <div class="ch-sigbox" id="chanSig" hidden></div>
     <div id="chanBoard"></div>
-    <p class="ch-foot">채널 = 직전 고점 2개를 이은 상단선과 직전 저점 2개를 이은 하단선 · 돌파 확인 = 종가가 상단선 +1% 위이면서 5일선 위 · 수평 저항·지지 = 현재가 바로 위·아래의 스윙 고점·저점(좌우 3봉 기준) · 그래프는 1분마다 갱신(진행 중인 봉 포함) · 사실과 숫자를 정리한 자료이며 매수·매도 권유가 아닙니다.</p>
+    <details class="ch-foot"><summary>차트 기준 보기</summary><p id="chanRule"></p><p>채널은 최근 고점과 저점을 이은 선입니다. 수평 지지·저항은 최근 스윙 저점·고점을 기준으로 표시합니다.</p></details>
   </div>
 </section>
 
@@ -185,7 +183,6 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
     <div class="sec-head">
       <div>
         <h2>실시간 속보 · 지수 반응</h2>
-        <p class="sec-sub">1분마다 갱신 · 속보를 누르면 1분봉 차트가 열립니다.</p>
       </div>
       <p class="stamp" id="newsStamp" hidden>속보를 불러오지 못했습니다.</p>
     </div>
@@ -205,7 +202,6 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
     <div class="trend" id="trendBox"></div>
     <div class="nfilt" id="newsFilt"></div>
     <div class="chips" id="newsChips"></div>
-    <p class="fine nw-note">지수 반응은 보도 5분 전 가격 대비 변화로, 시간상 전후 관계일 뿐 인과관계를 뜻하지 않습니다.</p>
     <ol class="nws" id="newsList"></ol>
     <button class="btn btn-ghost-dark btn-more" id="newsMore" hidden>더 보기</button>
     <p class="fine">매매 권유가 아닙니다.</p>
@@ -213,26 +209,26 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
 </section>
 
 <div class="axis" id="research">
-  <div class="wrap axis-in"><p class="axis-k">RESEARCH</p><h2 class="axis-t">리서치 · 추세 판단</h2><p class="axis-sub">추세 판단 차트, 이번 주 일정, 실적·IPO, 우리가 보는 기준.</p></div>
+  <div class="wrap axis-in"><p class="axis-k">RESEARCH</p><h2 class="axis-t">리서치 · 추세 판단</h2></div>
 </div>
 
 <section class="sec sec-alt" id="checks">
   <div class="wrap">
-    <div class="sec-head"><div><h2>이번 주 체크포인트</h2><p class="sec-sub">시황 글에서 반복해서 확인하는 일정입니다.</p></div></div>
+    <div class="sec-head"><div><h2>이번 주 체크포인트</h2></div></div>
     <ol class="checks" id="checkList"></ol>
   </div>
 </section>
 
 <section class="sec" id="earnings" hidden>
   <div class="wrap">
-    <div class="sec-head"><div><h2>미국 주요 실적·IPO 일정</h2><p class="sec-sub">실적은 Finnhub·야후 교차 확인 · 주요 IPO는 회사·거래소 공식 일정 · 확정 시각과 미정 구분 <span id="earnStamp"></span></p></div></div>
+    <div class="sec-head"><div><h2>미국 주요 실적·IPO 일정</h2><p class="stamp" id="earnStamp"></p></div></div>
     <ol class="checks earn" id="earnList"></ol>
   </div>
 </section>
 
 <section class="sec" id="about">
   <div class="wrap">
-    <div class="sec-head"><div><h2>우리가 보는 것</h2><p class="sec-sub">매일 같은 기준으로, 같은 순서로 확인합니다.</p></div></div>
+    <div class="sec-head"><div><h2>우리가 보는 것</h2></div></div>
     <div class="about-me">
       <div class="am-txt">
         <p class="eyebrow">운영자</p>
@@ -254,7 +250,7 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
 </section>
 
 <div class="axis" id="lab">
-  <div class="wrap axis-in"><p class="axis-k">LAB</p><h2 class="axis-t">테스트 · 그룹 스터디 · 아카이브</h2><p class="axis-sub">나의 투자 스타일을 점검하고, 오프라인 그룹 스터디 기록을 봅니다.</p></div>
+  <div class="wrap axis-in"><p class="axis-k">LAB</p><h2 class="axis-t">테스트 · 그룹 스터디 · 아카이브</h2></div>
 </div>
 
 <!-- 블로그 분석 글·시황 리포트 칸은 2026-10-28 운영자 결정으로 뺌 -->
@@ -283,7 +279,7 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
 
 <section class="sec sec-gold" id="study">
   <div class="wrap">
-    <div class="sec-head"><div><p class="eyebrow dark">오프라인 그룹 스터디 · 서울 양재<span class="ko-hide">한국어 진행</span></p><h2>다가오는 그룹 스터디</h2><p class="sec-sub dark">강의만 듣고 끝나는 모임이 아니라, 각자 차트와 매매 기록을 가져와 발표하고 서로 피드백하는 그룹 스터디입니다. 매달 두 번 — 차트로 배우는 정기 스터디, 책으로 생각을 넓히는 독서 토론.</p></div></div>
+    <div class="sec-head"><div><p class="eyebrow dark">오프라인 그룹 스터디 · 서울 양재<span class="ko-hide">한국어 진행</span></p><h2>다가오는 그룹 스터디</h2><p class="sec-sub dark">정기 차트 스터디와 독서 토론</p></div></div>
     <div class="up-grid" id="upList"></div>
     <div class="howto">
       <h3>그룹 스터디는 이렇게 진행합니다</h3>
@@ -305,13 +301,12 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
     <div class="sec-head">
       <div>
         <h2>스터디 아카이브</h2>
-        <p class="sec-sub">2026년 5월부터 이어온 그룹 스터디의 기록입니다. 카드를 누르면 그날의 사진과 내용을 볼 수 있습니다.</p>
       </div>
       <p class="stamp" id="archStamp"></p>
     </div>
     <div class="edu-board">
       <div class="edu-head">
-        <div><p class="eyebrow">교육용 멘트 게시판</p><h3>매매 원칙을 돌아보는 글</h3><p class="sec-sub">투자 과정과 계좌 관리를 돕는 교육 문구를 기록합니다.</p></div>
+        <div><p class="eyebrow">교육용 멘트 게시판</p><h3>매매 원칙을 돌아보는 글</h3></div>
         <p class="stamp" id="eduStamp"></p>
       </div>
       <div class="edu-list" id="eduList"><p class="empty">교육용 멘트를 불러오는 중…</p></div>
@@ -1227,9 +1222,9 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
 <script src="presence.js?v=20261116-visitors"></script>
 <script src="flow-core.js?v=20261116-flow"></script>
 <script src="viewport.js?v=20261120-steady-pin"></script>
-<script src="app.js?v=20261122-ux-expiry"></script>
+<script src="app.js?v=20261122-compact-copy"></script>
 <script src="chart.js?v=20261122-clean-chart"></script>
-<script src="news.js?v=20261122-ux-expiry"></script>
+<script src="news.js?v=20261122-compact-copy"></script>
 <script src="fold.js?v=20261121-ux-axes"></script>
 <script src="tint.js?v=20261118-stable-scroll"></script>
 <!-- 11/17 운영자: 지수 흐름·분할 칸(flow.js)은 내림 — 추세 판단 채널 그래프가 대신 맨 위 -->
