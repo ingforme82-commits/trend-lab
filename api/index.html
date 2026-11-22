@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TRL Market Intelligence API | Free Korea Market Data</title>
+<meta name="description" content="Use the free TRL Market Intelligence API to discover TRL sector baskets and check the release status of research indicators.">
+<link rel="canonical" href="https://trlab.net/api/">
+<style>
+body { max-width: 48rem; margin: auto; padding: 1.5rem; font: 1rem/1.65 system-ui, sans-serif; }
+code { overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<header><a href="/en/">Trend Research Lab</a></header>
+<main>
+<h1>TRL Market Intelligence API</h1>
+<p>Free public beta. Use direct HTTPS GET requests without an account or API key.</p>
+<h2>Available datasets</h2>
+<ul>
+<li><a href="/api/v1/index.json">API manifest (JSON)</a> lists endpoints and indicator publication status.</li>
+<li>TRL sector baskets <a href="/api/v1/sectors.json">JSON</a> · <a href="/api/v1/sectors.csv">CSV</a>. Each row contains a TRL basket ID, English name, market and number of configured members. These are TRL research baskets. Membership counts describe the linked source revision.</li>
+</ul>
+<h2>Example</h2>
+<pre><code>curl -fsS https://trlab.net/api/v1/sectors.json</code></pre>
+<h2>Market indicators</h2>
+<p>Sector strength, trend score and capital-flow change are pending publication review. Their methodology and availability are listed in the manifest. The beta serves a versioned catalogue snapshot.</p>
+</main>
+</body>
+</html>

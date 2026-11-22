@@ -1,0 +1,27 @@
+{
+  "api_version": "1.0.0",
+  "access": "free",
+  "authentication": "none",
+  "release": "beta",
+  "datasets": {
+    "sectors": {
+      "status": "available",
+      "json": "/api/v1/sectors.json",
+      "csv": "/api/v1/sectors.csv"
+    }
+  },
+  "metrics": {
+    "sector_strength": {
+      "status": "pending_publication_review",
+      "methodology": "Existing TRL leadership score: 50% return rank, 30% turnover rank, 20% advancing share. Calculated within the source candidate group."
+    },
+    "trend_score": {
+      "status": "pending_publication_review",
+      "methodology": "Existing TRL leadership method combines turnover acceleration, index-relative return, position versus the five-day moving average and proximity to a three-month high."
+    },
+    "capital_flow_change": {
+      "status": "pending_publication_review",
+      "methodology": "Planned comparison of foreign and institutional net buying across comparable completed Korean sessions, with coverage reported separately."
+    }
+  }
+}

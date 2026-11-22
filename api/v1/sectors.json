@@ -1,0 +1,65 @@
+{
+  "api_version": "1.0.0",
+  "dataset": "trl_sector_baskets",
+  "source": {
+    "repository": "ingforme82-commits/trend-lab",
+    "path": "data/sectors.json",
+    "revision": "a828cd416c0ea5930d82966785358396a52962c4"
+  },
+  "sectors": [
+    {
+      "id": "cybersecurity",
+      "name": "Cybersecurity",
+      "market": "US",
+      "member_count": 14
+    },
+    {
+      "id": "kr_batteries",
+      "name": "Korean batteries",
+      "market": "KR",
+      "member_count": 14
+    },
+    {
+      "id": "kr_biotech",
+      "name": "Korean biotechnology",
+      "market": "KR",
+      "member_count": 13
+    },
+    {
+      "id": "kr_defense",
+      "name": "Korean defense",
+      "market": "KR",
+      "member_count": 6
+    },
+    {
+      "id": "kr_nuclear",
+      "name": "Korean nuclear power",
+      "market": "KR",
+      "member_count": 8
+    },
+    {
+      "id": "kr_semiconductors",
+      "name": "Korean semiconductors",
+      "market": "KR",
+      "member_count": 15
+    },
+    {
+      "id": "kr_shipbuilding",
+      "name": "Korean shipbuilding",
+      "market": "KR",
+      "member_count": 15
+    },
+    {
+      "id": "us_nuclear_smr",
+      "name": "U.S. nuclear power and SMRs",
+      "market": "US",
+      "member_count": 8
+    },
+    {
+      "id": "us_semiconductors",
+      "name": "U.S. semiconductors",
+      "market": "US",
+      "member_count": 13
+    }
+  ]
+}
