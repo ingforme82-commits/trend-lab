@@ -959,20 +959,6 @@ async function loadRt() {
 }
 setInterval(loadRt, 2000);
 
-// 📊 출처 점수판(11/16 운영자) — news.json 'srcscore'. 점수 = 성공률 × 일치율 ÷ 응답 시간·신선도
-window.paintSrcScore = () => {
-  const putHTML = globalThis.trlViewport?.html || ((el, html) => { el.innerHTML = html; });
-  const s = window.trlSrcScore, box = document.getElementById("srcScore");
-  if (!box || !s || !s.length) return;
-  const pct = (v) => Math.round(v * 100) + "%";
-  const html = s.map((g) => `<p class="tick-group">${g.name}</p><table class="src-t"><tr><th>순위</th><th>출처</th><th>점수</th><th>성공</th><th>일치</th><th>응답</th><th>신선도</th><th>횟수</th></tr>${
-    g.rows.map((r, i) => `<tr${r.rest ? ' class="dim"' : ""}><td>${i + 1}</td><td>${r.src}${r.rest ? " (쉬는 중)" : ""}</td><td><b>${r.score.toFixed(2)}</b></td><td>${pct(r.ok)}</td><td>${pct(r.agree)}</td><td>${r.secs}초</td><td>${r.age}분</td><td>${r.n}</td></tr>`).join("")}</table>`).join("")
-    + `<p class="fine">점수가 높은 출처를 먼저 씁니다. 3번 연속 실패하면 10분 쉬고 다시 시도합니다. 기록이 10번 넘어야 순서가 바뀝니다.</p>`;
-  putHTML(document.getElementById("srcScoreBody"), html);
-  box.hidden = false;
-};
-window.paintSrcScore();                               // news.js 가 먼저 받아 둔 점수판이 있으면 바로 그림
-
 loadHeadline(); loadTicks(); loadChecks(); loadEarnings(); loadStudies(); loadEducation();
 setInterval(loadHeadline, 60000);   // 11/19 운영자: 주요 이슈도 1분마다(새 카드·관련 속보)
 setInterval(loadChecks, 60000);   // 체크포인트: 시각이 지나면 1분 안에 내림   // 블로그 분석 글 피드는 2026-10-28 운영자 결정으로 뺌
