@@ -906,9 +906,8 @@
     const horizontalLabel = horizontal ? `<span>수평 하단 <b>${chFmt(cc, horizontal.floor)}–${chFmt(cc, horizontal.ceiling)}</b> <small>${rows[horizontal.first][0]} · ${rows[horizontal.second][0]} 저점 · ${px < horizontal.floor ? "하단 이탈" : px > horizontal.ceiling ? "하단 위" : "구간 안"}</small></span>` : "";
     const [, , h, l] = rows[n - 1];
     const up = lv.filter((x) => x[1] > px).sort((a, b) => a[1] - b[1])[0], dn = lv.filter((x) => x[1] <= px).sort((a, b) => b[1] - a[1])[0];
-    const pushed = lv.filter((x) => h >= x[1] && x[1] > px).map((x) => x[0]), held = lv.filter((x) => l <= x[1] && x[1] < px).map((x) => x[0]);
     const g = (x) => `<b>${x[0]} ${chFmt(cc, x[1])}</b> <small>${(x[1] / px - 1) * 100 > 0 ? "+" : ""}${((x[1] / px - 1) * 100).toFixed(1)}%</small>`;
-    return `<p class="ch-lv"><span>⬆ 위 저항 ${up ? g(up) : "<b>없음(최근 고점 위)</b>"}</span><span>⬇ 아래 지지 ${dn ? g(dn) : "<b>없음</b>"}</span>${horizontalLabel}${pushed.length ? `<span class="ch-lv-dn"><span>오늘 고가가 닿고 밀린 선</span>: <b>${pushed.join("·")}</b></span>` : ""}${held.length ? `<span class="ch-lv-up"><span>오늘 저가를 받친 선</span>: <b>${held.join("·")}</b></span>` : ""}</p>`;
+    return `<p class="ch-lv"><span>⬆ 위 저항 ${up ? g(up) : "<b>없음(최근 고점 위)</b>"}</span><span>⬇ 아래 지지 ${dn ? g(dn) : "<b>없음</b>"}</span>${horizontalLabel}</p>`;
   }
   // 11/20 운영자 "통합 종가로 하자 · KRX 종가도 따로 표시해 체크(종가가 지금은 기준가)": 5일선 = 통합(KRX+넥장 20시), 등락률 기준가 = KRX 종가
   // 11/21 운영자 "각 종목들 종가와 시간외 현재 시각 금액을 별도로 표시": 정규장 종가 줄 + 시간외(프리·애프터·넥장) 현재가·시각·종가 대비 따로
