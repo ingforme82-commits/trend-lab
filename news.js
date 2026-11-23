@@ -1160,9 +1160,9 @@
     const rtOn = Object.values(CH_RT).some((k) => { const r = ((window.trlRt || {}).q || {})[k]; return r && Date.now() - r.at < 15000; });
     q("#chanStamp").textContent = `${hm(c.at)} KST${live ? " · 진행 중인 봉 포함" : ""}${rtOn ? " · 일부 실시간 체결" : ""}`;
     let html = "", lastC = null;
-    // 11/19 운영자: 08~16시 한국·일본·미국 / 16~20시 한국·미국·일본 / 20~08시 미국·한국·일본 — 같은 나라 안 순서는 그대로
+    // 한국 거래시간에는 한국과 미국을 연속 배치한다.
     const hrK = (new Date().getUTCHours() + 9) % 24;
-    const slot = hrK >= 8 && hrK < 16 ? ["kr", "jp", "tw", "cn", "us"] : hrK >= 16 && hrK < 20 ? ["kr", "us", "jp", "tw", "cn"] : ["us", "kr", "jp", "tw", "cn"];
+    const slot = hrK >= 8 && hrK < 20 ? ["kr", "us", "jp", "tw", "cn"] : ["us", "kr", "jp", "tw", "cn"];
     const cOrd = (cc) => slot.indexOf(cc === "kr_index" ? "kr" : cc);
     const groups = c.groups.map((g, i) => ({g, i})).sort((a, b) => cOrd(a.g.cc) - cOrd(b.g.cc) || a.i - b.i).map((x) => x.g);
     groups.forEach((g) => {
