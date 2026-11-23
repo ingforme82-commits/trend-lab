@@ -20,6 +20,32 @@
  "free": "커피 · 와이파이 · 사무실 이용 모두 무료",
  "spotlight": [
   {
+   "id": "NVDA",
+   "name": "엔비디아",
+   "market": "미국",
+   "yf": "NVDA",
+   "kw": "엔비디아|NVIDIA|\\bNVDA\\b",
+   "kind": "⚡ 급등 대형주",
+   "reason": "11/23(월) 정규장 개장 후 30분 +33.73% · 시가총액 약 40,457억 달러 · 업종 반도체",
+   "hl": "xyz:NVDA",
+   "on": true,
+   "auto": true,
+   "since": "2026-11-24"
+  },
+  {
+   "id": "DELL",
+   "name": "델테크놀로지",
+   "market": "미국",
+   "yf": "DELL",
+   "kw": "델테크놀로지|Dell|\\bDELL\\b",
+   "kind": "⚡ 급등 대형주",
+   "reason": "11/23(월) 정규장 개장 후 30분 +23.47% · 시가총액 약 2,183억 달러 · 업종 컴퓨터 하드웨어",
+   "hl": "xyz:DELL",
+   "on": true,
+   "auto": true,
+   "since": "2026-11-24"
+  },
+  {
    "id": "TEAM",
    "name": "아틀라시안",
    "market": "미국",
@@ -32,6 +58,61 @@
    "since": "2026-11-21"
   },
   {
+   "id": "NEOCLOUD",
+   "name": "코어위브·네오클라우드",
+   "market": "미국",
+   "hl": "xyz:CRWV",
+   "on": true,
+   "since": "2026-10-27",
+   "kw": "코어위브|CoreWeave|CRWV|네오클라우드|neocloud|네비우스|Nebius|NBIS|IREN|아이렌",
+   "reason": "미국 개장(23:30) 후 30분 · 평균 +23.55%(전일 종가 대비) · 개장 후 -2.60% · 4종목 중 4종목 상승 · 최고 IREN +31.05% · 관련 속보 1건(12시간)",
+   "members": {
+    "CRWV": "코어위브",
+    "NBIS": "네비우스",
+    "IREN": "IREN",
+    "CORZ": "코어사이언티픽"
+   },
+   "auto": true
+  },
+  {
+   "id": "MEMORY",
+   "name": "메모리·스토리지",
+   "market": "미국",
+   "kw": "마이크론|Micron|샌디스크|SanDisk|웨스턴디지털|Western Digital|시게이트|Seagate|메모리|D램|DRAM|낸드|NAND|HBM",
+   "members": {
+    "MU": "마이크론",
+    "SNDK": "샌디스크",
+    "WDC": "웨스턴디지털",
+    "STX": "시게이트"
+   },
+   "reason": "미국 개장(23:30) 후 30분 · 평균 +16.00%(전일 종가 대비) · 개장 후 -2.81% · 4종목 중 4종목 상승 · 최고 마이크론 +17.09% · 관련 속보 6건(12시간)",
+   "on": true,
+   "auto": true,
+   "hl": "xyz:MU",
+   "since": "2026-11-03"
+  },
+  {
+   "id": "OPTICAL",
+   "name": "광통신·네트워크",
+   "market": "미국",
+   "hl": "xyz:LITE",
+   "on": true,
+   "since": "2026-10-27",
+   "kw": "루멘텀|Lumentum|광통신|광트랜시버|광모듈|코히런트|Coherent|Ciena|시에나|AAOI|패브리넷|Fabrinet|크레도|Credo|코닝|Corning|CPO|아리스타|Arista",
+   "reason": "미국 개장(23:30) 후 30분 · 평균 +16.09%(전일 종가 대비) · 개장 후 -2.94% · 8종목 중 8종목 상승 · 최고 AAOI +21.93%",
+   "members": {
+    "LITE": "루멘텀",
+    "COHR": "코히런트",
+    "CIEN": "시에나",
+    "AAOI": "AAOI",
+    "FN": "패브리넷",
+    "CRDO": "크레도",
+    "GLW": "코닝",
+    "ANET": "아리스타"
+   },
+   "auto": true
+  },
+  {
    "id": "PDD",
    "name": "핀둬둬 ADR",
    "market": "미국",
@@ -39,9 +120,10 @@
    "kw": "핀둬둬|PDD|\\bPDD\\b",
    "kind": "⚡ 급등 대형주",
    "reason": "11/19(목) 정규장 개장 후 30분 +11.48% · 시가총액 약 1,229억 달러 · 업종 온라인 서비스",
-   "on": true,
+   "on": false,
    "auto": true,
-   "since": "2026-11-20"
+   "since": "2026-11-20",
+   "until": "2026-11-24"
   },
   {
    "id": "P",
@@ -51,9 +133,10 @@
    "kw": "에버퓨어|Everpure|\\bP\\b",
    "kind": "⚡ 급등 대형주",
    "reason": "11/19(목) 정규장 개장 후 30분 +11.14% · 시가총액 약 373억 달러 · 업종 컴퓨터 하드웨어",
-   "on": true,
+   "on": false,
    "auto": true,
-   "since": "2026-11-20"
+   "since": "2026-11-20",
+   "until": "2026-11-24"
   },
   {
    "id": "TJX",
@@ -63,9 +146,10 @@
    "kw": "TJX|The|\\bTJX\\b",
    "kind": "⚡ 급등 대형주",
    "reason": "11/18(수) 정규장 개장 후 30분 +9.28% · 시가총액 약 1,561억 달러 · 업종 할인점",
-   "on": true,
+   "on": false,
    "auto": true,
-   "since": "2026-11-19"
+   "since": "2026-11-19",
+   "until": "2026-11-24"
   },
   {
    "id": "TTWO",
@@ -76,9 +160,10 @@
    "kind": "⚡ 급등 대형주",
    "reason": "11/18(수) 정규장 개장 후 30분 +7.31% · 시가총액 약 410억 달러 · 업종 소프트웨어",
    "hl": "xyz:TTWO",
-   "on": true,
+   "on": false,
    "auto": true,
-   "since": "2026-11-19"
+   "since": "2026-11-19",
+   "until": "2026-11-24"
   },
   {
    "id": "BIO",
@@ -93,10 +178,11 @@
     "VKTX": "바이킹"
    },
    "reason": "미국 개장(23:30) 후 30분 · 평균 +1.41%(전일 종가 대비) · 개장 후 +2.34% · 5종목 중 4종목 상승 · 최고 모더나 +4.36% · 관련 속보 2건(12시간)",
-   "on": true,
+   "on": false,
    "auto": true,
    "hl": "xyz:LLY",
-   "since": "2026-11-05"
+   "since": "2026-11-05",
+   "until": "2026-11-24"
   },
   {
    "id": "ENERGY",
@@ -111,10 +197,11 @@
     "SLB": "SLB"
    },
    "reason": "미국 개장(23:30) 후 30분 · 평균 +0.88%(전일 종가 대비) · 개장 후 +1.20% · 5종목 중 5종목 상승 · 최고 코노코필립스 +1.33% · 관련 속보 9건(12시간)",
-   "on": true,
+   "on": false,
    "auto": true,
    "hl": "xyz:XLE",
-   "since": "2026-10-31"
+   "since": "2026-10-31",
+   "until": "2026-11-24"
   },
   {
    "id": "MAG7",
@@ -131,10 +218,11 @@
     "TSLA": "테슬라"
    },
    "reason": "미국 개장(23:30) 후 30분 · 평균 +0.16%(전일 종가 대비) · 개장 후 +1.54% · 7종목 중 4종목 상승 · 최고 알파벳 +3.58% · 관련 속보 10건(12시간)",
-   "on": true,
+   "on": false,
    "auto": true,
    "hl": "xyz:MAGS",
-   "since": "2026-11-21"
+   "since": "2026-11-21",
+   "until": "2026-11-24"
   },
   {
    "id": "ESLT",
@@ -168,46 +256,6 @@
    "auto": true,
    "hl": "xyz:CRWD",
    "since": "2026-11-03",
-   "until": "2026-11-21"
-  },
-  {
-   "id": "MEMORY",
-   "name": "메모리·스토리지",
-   "market": "미국",
-   "kw": "마이크론|Micron|샌디스크|SanDisk|웨스턴디지털|Western Digital|시게이트|Seagate|메모리|D램|DRAM|낸드|NAND|HBM",
-   "members": {
-    "MU": "마이크론",
-    "SNDK": "샌디스크",
-    "WDC": "웨스턴디지털",
-    "STX": "시게이트"
-   },
-   "reason": "미국 개장(23:30) 후 30분 · 평균 +7.07%(전일 종가 대비) · 개장 후 +1.43% · 4종목 중 4종목 상승 · 최고 시게이트 +8.22% · 관련 속보 7건(12시간) · 평균 2일 연속 상승",
-   "on": false,
-   "auto": true,
-   "hl": "xyz:MU",
-   "since": "2026-11-03",
-   "until": "2026-11-21"
-  },
-  {
-   "id": "OPTICAL",
-   "name": "광통신·네트워크",
-   "market": "미국",
-   "hl": "xyz:LITE",
-   "on": false,
-   "since": "2026-10-27",
-   "kw": "루멘텀|Lumentum|광통신|광트랜시버|광모듈|코히런트|Coherent|Ciena|시에나|AAOI|패브리넷|Fabrinet|크레도|Credo|코닝|Corning|CPO|아리스타|Arista",
-   "reason": "미국 개장(23:30) 후 30분 · 평균 +5.18%(전일 종가 대비) · 개장 후 +0.65% · 8종목 중 8종목 상승 · 최고 코히런트 +10.91% · 관련 속보 1건(12시간)",
-   "members": {
-    "LITE": "루멘텀",
-    "COHR": "코히런트",
-    "CIEN": "시에나",
-    "AAOI": "AAOI",
-    "FN": "패브리넷",
-    "CRDO": "크레도",
-    "GLW": "코닝",
-    "ANET": "아리스타"
-   },
-   "auto": true,
    "until": "2026-11-21"
   },
   {
@@ -381,24 +429,6 @@
    "on": false,
    "auto": true,
    "since": "2026-11-14",
-   "until": "2026-11-18"
-  },
-  {
-   "id": "NEOCLOUD",
-   "name": "코어위브·네오클라우드",
-   "market": "미국",
-   "hl": "xyz:CRWV",
-   "on": false,
-   "since": "2026-10-27",
-   "kw": "코어위브|CoreWeave|CRWV|네오클라우드|neocloud|네비우스|Nebius|NBIS|IREN|아이렌",
-   "reason": "미국 개장(23:30) 후 30분 · 평균 -6.54%(전일 종가 대비) · 개장 후 -0.02% · 4종목 중 4종목 하락 · 최저 IREN -9.55% · 관련 속보 1건(12시간)",
-   "members": {
-    "CRWV": "코어위브",
-    "NBIS": "네비우스",
-    "IREN": "IREN",
-    "CORZ": "코어사이언티픽"
-   },
-   "auto": true,
    "until": "2026-11-18"
   },
   {
