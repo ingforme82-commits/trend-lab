@@ -2,7 +2,7 @@
  * 시세·속보가 1분마다 바뀌는 사이트라 '네트워크 먼저': 항상 최신을 받고, 인터넷이 끊겼을 때만 마지막으로 본 화면을 보여 준다.
  * 다른 사이트(시세 API·폰트 등) 요청은 건드리지 않는다. 화면 파일을 바꾸면 VERSION 을 올린다.
  */
-const VERSION = "trl-app-v82-four-tabs-quotes-core-layout-desktop-nav-market-notices-country-notices-tw-five-core-nav-archive-record-archive-overview-archive-only-scroll-stability";
+const VERSION = "trl-app-v82-four-tabs-quotes-core-layout-desktop-nav-market-notices-country-notices-tw-five-core-nav-archive-record-archive-overview-archive-only-scroll-stability-ant-locale-colors";
 const SHELL = ["./", "index.html", "study.html", "localize.js", "i18n-ui.js", "gtranslate.js", "langauto.js", "style.css", "app.js", "news.js", "viewport.js", "chart.js", "count.js", "fold.js", "tint.js",
   "manifest.webmanifest", "pwa.js", "presence.js", "flow-core.js", "flow.js", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"];
 

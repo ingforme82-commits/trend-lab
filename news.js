@@ -868,7 +868,7 @@
       const signed = (value) => `${value > 0 ? "+" : value < 0 ? "−" : ""}${Math.abs(value).toFixed(2)}`;
       const tick = delta == null ? "등락 기준가 확인 중"
         : `<b class="${cls(delta)}">${signed(delta)}달러 (${signed(delta / base * 100)}%)</b> <small>${useIpo ? "공모가" : session === "post" ? "당일 정규장 마지막 5분봉 종가" : "직전 정규장 마지막 5분봉 종가"} ${chFmt(cc, base)} 대비</small>`;
-      summary = `<p class="ch-lv"><span>${sessions[session] || sessions.reg} <strong>${chFmt(cc, last[4])}</strong></span><span>${tick}</span></p>`;
+      summary = `<p class="ch-lv"><span>${sessions[session] || sessions.reg} <strong class="${delta == null ? "c-fl" : cls(delta)}">${chFmt(cc, last[4])}</strong></span><span>${tick}</span></p>`;
     }
     return `<article class="ch-card ch-ipo" data-viewport-key="channel:${esc(it.code)}">
       <div class="ch-top"><b class="ch-nm">${esc(it.name)} <small>${esc(it.code)}</small></b><small class="ch-session">5분봉 · 한국시간 · 시간외는 음영</small></div>${summary}${graph}
