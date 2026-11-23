@@ -467,7 +467,7 @@
         ? `${date.slice(4,6)}/${date.slice(6)} ${time.slice(0,2)}:${time.slice(2,4)}:${time.slice(4)} (증권사 원천)`
         : "원천 시각 확인 불가";
     };
-    const regularLine = nhRegular ? `<p class="lc-f">NH 정규장 ${$(nhRegular.px)} · ${sourceTime(nhRegular)}</p>` : "";
+    const regularLine = nhRegular ? `<p class="lc-f">NH 정규장 ${$$(nhRegular.px)} · ${sourceTime(nhRegular)}</p>` : "";
     const queryLabel = queried ? `${new Date(queried).toLocaleString(marketLocale, { timeZone: "Asia/Seoul" })} 한국 시간 조회` : "조회 시각 확인 불가";
     const SN = { pre: "프리마켓", post: "애프터마켓", day: "주간거래" };
     const label = active ? (SN[e.sess] || "시간외") : `${+x.day.slice(5, 7)}/${+x.day.slice(8, 10)} ${x.open ? "장중" : "마감"}`;
@@ -481,7 +481,7 @@
       const pos = Math.max(0, Math.min(100, (x.px - x.lo20) / (x.hi20 - x.lo20) * 100));
       bar = `<div class="lc-r"><small>20일 저가 ${$$(x.lo20)}</small><span class="lc-b"><i style="left:${pos.toFixed(0)}%"></i></span><small>고가 ${$$(x.hi20)}</small></div>`;
     }
-    const ext = e ? `<p class="lc-f">${active ? `${e.base > 0 ? `정규장 종가 ${$(e.base)} 대비` : "기준가 확인 중"}` : `${SN[e.sess] || "시간외"} 마지막 체결 ${$$(e.px)} ${pc(e.chg)} · ${e.at ? md2(e.at) + " " + hm(e.at) : ""}`} <small>· ${esc(e.source || "야후")}${active ? ` · ${e.source_time ? sourceTime(e) : queryLabel}` : ""}</small></p>` : `<p class="lc-f">${x.open ? "정규장 거래 중 — 위 가격이 실시간" : "시간외 거래 없는 시간(정규장 종가 표시)"}</p>`;
+    const ext = e ? `<p class="lc-f">${active ? `${e.base > 0 ? `정규장 종가 ${$$(e.base)} 대비` : "기준가 확인 중"}` : `${SN[e.sess] || "시간외"} 마지막 체결 ${$$(e.px)} ${pc(e.chg)} · ${e.at ? md2(e.at) + " " + hm(e.at) : ""}`} <small>· ${esc(e.source || "야후")}${active ? ` · ${e.source_time ? sourceTime(e) : queryLabel}` : ""}</small></p>` : `<p class="lc-f">${x.open ? "정규장 거래 중 — 위 가격이 실시간" : "시간외 거래 없는 시간(정규장 종가 표시)"}</p>`;
     const base = x.base_chg != null ? `기초 ${esc(String(x.base).replace(/\(.*\)/, ""))} <b class="${cls(x.base_chg)}">${pc(x.base_chg)}</b>` : "";
     const mem = x.members ? ` · 구성 대형주 ${x.members.n_up}/${x.members.n} 상승` : "";
     return `<div class="lc"><p class="lc-h"><b>${esc(x.sym)}</b> <small class="dim">${esc(x.name)}</small></p>
