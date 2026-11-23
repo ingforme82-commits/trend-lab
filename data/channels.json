@@ -88,7 +88,8 @@
   {
    "cc": "us",
    "country": "미국",
-   "sector": "인버스 · 숏", "inverse": true,
+   "sector": "인버스 · 숏",
+   "inverse": true,
    "items": [
     [
      "NVDQ",
@@ -191,6 +192,36 @@
     [
      "4062.T",
      "이비덴"
+    ]
+   ]
+  },
+  {
+   "cc": "tw",
+   "country": "대만",
+   "sector": "패키지 기판",
+   "items": [
+    [
+     "3037.TW",
+     "유니마이크론"
+    ],
+    [
+     "8046.TW",
+     "난야 PCB"
+    ]
+   ]
+  },
+  {
+   "cc": "tw",
+   "country": "대만",
+   "sector": "MLCC·수동부품",
+   "items": [
+    [
+     "2327.TW",
+     "Yageo"
+    ],
+    [
+     "2492.TW",
+     "Walsin Technology"
     ]
    ]
   }

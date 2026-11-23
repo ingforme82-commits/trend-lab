@@ -100,13 +100,11 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
 <main id="top">
 
 <!-- TRL market notices -->
-<aside id="trl-market-notices" hidden aria-label="휴장·거래시간 변경" style="padding:.65rem 1rem;background:#eef4fb;color:#172b42;font-size:.9rem">
-  <ul style="margin:0 auto;max-width:1120px;padding-left:1.3rem"></ul>
-</aside>
+<style>
+.ch-ch .ch-holiday{display:inline-block;margin-inline-start:.45em;font-size:.75em;color:var(--sub);font-weight:650}
+</style>
 <script>
 (() => {
-  const box = document.getElementById("trl-market-notices");
-  const list = box.querySelector("ul");
   const sources = {
     kr: "https://global.krx.co.kr/contents/GLB/06/0602/0602010201/GLB0602010201T1.jsp",
     us: "https://www.nyse.com/trade/hours-calendars",
@@ -121,22 +119,12 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
     ["kr", "2026-12-30", "2026-12-31", "12/31 한국 KRX 연말 휴장"],
   ];
   const parts = new Intl.DateTimeFormat("en-CA", {timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"});
-  function refresh() {
-    const date = Object.fromEntries(parts.formatToParts(new Date()).map(p => [p.type,p.value]));
+  window.trlMarketNoticesFor = (market, now = new Date()) => {
+    const date = Object.fromEntries(parts.formatToParts(now).map(p => [p.type,p.value]));
     const day = [date.year,date.month,date.day].join("-");
-    const items = events.filter(([,start,end]) => start <= day && day <= end).map(([market,,,text]) => {
-      const row = document.createElement("li");
-      const link = document.createElement("a");
-      link.href = sources[market];
-      link.textContent = text;
-      row.append(link);
-      return row;
-    });
-    list.replaceChildren(...items);
-    box.hidden = !items.length;
-  }
-  refresh();
-  setInterval(refresh, 60000);
+    return events.filter(([id,start,end]) => id === market && start <= day && day <= end)
+      .map(([id,,,text]) => ({href:sources[id],text}));
+  };
 })();
 </script>
 <!-- /TRL market notices -->
@@ -1272,7 +1260,7 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
 <script src="viewport.js?v=20261120-steady-pin"></script>
 <script src="app.js?v=20261123-trend-labels"></script>
 <script src="chart.js?v=20261122-clean-chart"></script>
-<script src="news.js?v=20261123-four-tabs-quotes"></script>
+<script src="news.js?v=20261123-country-notices-tw"></script>
 <script src="fold.js?v=20261121-ux-axes"></script>
 <script src="tint.js?v=20261118-stable-scroll"></script>
 <!-- 11/17 운영자: 지수 흐름·분할 칸(flow.js)은 내림 — 추세 판단 채널 그래프가 대신 맨 위 -->
