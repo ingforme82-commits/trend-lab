@@ -919,7 +919,7 @@
     const when = (ms) => { if (!(ms > 0)) return ""; const d = kstDay(ms), t = kstDay(Date.now()); return (d === t ? "" : d.slice(5).replace("-", "/") + " ") + hm(ms); };
     const cell = (k, label, val, sub) => `<div class="cx ${k}"><span class="cx-l">${label}</span><b class="cx-v">${val}</b>${sub ? `<span class="cx-s">${sub}</span>` : ""}</div>`;
     const ext = (label, px, ms, base, vs) => px > 0 && base > 0
-      ? cell("cx-ext", label, `<span class="${kc(px / base - 1)}">${chFmt(cc, px)}</span>`, `<b class="${kc(px / base - 1)}">${sgn((px / base - 1) * 100)}</b> ${vs} · ⏱ ${when(ms)}`) : "";
+      ? cell("cx-ext", label, `<span class="cx-quote"><span class="${kc(px / base - 1)}">${chFmt(cc, px)}</span><span class="cx-pct ${kc(px / base - 1)}">${sgn((px / base - 1) * 100)}</span></span>`, `${vs} · ⏱ ${when(ms)}`) : "";
     const none = (label, why) => cell("cx-off", label, "—", why);
     if (cc === "kr") {
       const kx = regular.krx_close > 0 ? regular.krx_close : null;
@@ -932,7 +932,10 @@
         : nx.px > 0 && nx.last_only ? cell("cx-ext", "NXT 마지막 체결", chFmt(cc, nx.px), when(nx.at) + " KST")
         : nx.px > 0 ? ext(`넥장 ${nx.session === "프리" ? "프리마켓" : "애프터마켓"}`, nx.px, nx.at, kx, "KRX 종가 대비") : none("넥장 시간외", "시세 없음"));
       const m5 = it.ma5 > 0 ? `<p class="cx-ma">5일선 통합 <b>${chFmt(cc, it.ma5)}</b>${regular.ma5_krx > 0 ? ` · KRX <b>${chFmt(cc, regular.ma5_krx)}</b>` : ""}</p>` : "";
-      return `<div class="cx-row">${cells.join("")}</div>${m5}`;
+      const basis = regular.uni_sma5_closed > 0
+        ? `<p class="cx-ma">${esc(regular.uni_close_day || "")} 통합 확정 5일선 <b>${chFmt(cc, regular.uni_sma5_closed)}</b>${regular.uni_below_sma5 === true ? " · 통합 종가 5일선 아래" : ""}</p>`
+        : '<p class="cx-ma">통합 5일선 확인 중</p>';
+      return `<div class="cx-row">${cells.join("")}</div>${m5}${basis}`;
     }
     // U.S. cards already show the session price and change in the header.
     // Keep the comparison price visible on touch screens when it is distinct.

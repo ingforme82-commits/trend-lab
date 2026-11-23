@@ -24,7 +24,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261121-ux-axes2">
+<link rel="stylesheet" href="style.css?v=20261123-mobile-tabs">
 <script>document.documentElement.classList.add("trl-reserve");setTimeout(function(){document.documentElement.classList.remove("trl-reserve")},6000);</script>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0f1b2d">
@@ -44,6 +44,16 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
 .trl-language:focus-visible { outline: 2px solid #f6c773; outline-offset: 2px; }
 .trl-language-note { margin: .55rem 0 0; font-size: .925rem; line-height: 1.5; }
 .trl-language-note[hidden] { display: none; }
+</style>
+<style>
+  .mobile-market-nav{display:none}
+  @media (max-width:760px){
+    .mobile-market-nav{display:flex;gap:8px;padding:8px 12px;background:var(--navy);overflow-x:auto}
+    .mobile-market-nav a{flex:0 0 auto;color:#fff;font-weight:700;font-size:.86rem;padding:6px 9px;border:1px solid #8290a4;border-radius:7px}
+    .mobile-market-nav a:focus-visible{outline:2px solid #fff;outline-offset:-2px}
+    .nav #notice,.hero .eyebrow,.hero .lead,.hero .hero-btns,.hero #heroLive,.hero #heroStudy,.axis .axis-k{display:none!important}
+    #chan,#news,#market{scroll-margin-top:120px}
+  }
 </style>
 </head>
 <body>
@@ -85,6 +95,9 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
       </div>
     </details>
   </div>
+<nav class="mobile-market-nav" aria-label="Market sections">
+  <a href="#chan">추세 판단</a><a href="#news">속보 · 지수 반응</a><a href="#market">전체 시세</a>
+</nav>
   <div class="notice" id="notice" hidden></div>
   <script>(()=>{const m=document.getElementById("navMore");if(!m)return;document.addEventListener("click",(e)=>{if(m.open&&(!m.contains(e.target)||e.target.closest(".nav-more-menu a,.nav-more-menu button")))m.open=false;});})();</script>
   <div class="ticker" id="ticker" hidden></div>
@@ -338,7 +351,8 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
 <nav class="bnav" id="bnav" aria-label="모바일 주요 메뉴">
   <a href="#today" data-sec="today"><span class="bn-i" aria-hidden="true">📰</span><span>시황</span></a>
   <a href="#market" data-sec="market"><span class="bn-i" aria-hidden="true">📈</span><span>시세</span></a>
-  <a href="#research" data-sec="research"><span class="bn-i" aria-hidden="true">📐</span><span>리서치</span></a>
+  <a href="#news" data-sec="news"><span class="bn-i" aria-hidden="true">⚡</span><span>속보</span></a>
+  <a href="#chan" data-sec="chan"><span class="bn-i" aria-hidden="true">📐</span><span>추세</span></a>
   <a href="#lab" data-sec="lab"><span class="bn-i" aria-hidden="true">🧭</span><span>스터디</span></a>
 </nav>
 
@@ -1213,6 +1227,25 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
       if (key >= 0) element.textContent = quizLabels[key + 1];
     }
   }).observe(result, { childList: true });
+})();
+</script>
+<script>
+(() => {
+  const media = matchMedia("(max-width:760px)");
+  const main = document.getElementById("top");
+  const sections = ["chan", "news"].map(id => document.getElementById(id));
+  if (!main || sections.some(section => !section || section.parentNode !== main)) return;
+  const anchors = sections.map(section => {
+    const anchor = document.createComment("desktop section position");
+    section.before(anchor);
+    return anchor;
+  });
+  function placeMarketSections() {
+    if (media.matches) main.prepend(...sections);
+    else sections.forEach((section, index) => anchors[index].after(section));
+  }
+  placeMarketSections();
+  media.addEventListener("change", placeMarketSections);
 })();
 </script>
 <script src="i18n-ui.js?v=20261123-trend-labels" defer></script>

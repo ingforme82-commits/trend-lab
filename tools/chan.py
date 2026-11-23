@@ -8,7 +8,7 @@
 - 상태: 채널 안 / 상단 근접(다음 거래일 상단까지 3% 안) / 채널 위·5일선 아래(돌파 미확인) / 돌파 시도(장중 상단 +1%·5일선 위) /
         돌파 확인(종가 상단 +1%·5일선 위) / 하단 이탈
 - 캔들: 장대양봉·장대음봉·망치형(아래꼬리)·윗꼬리·도지·양봉·음봉 — 오늘(진행 중) 봉 기준
-- 넥장(NXT, 11/18 운영자 "추세판단 업데이트"): 한국 종목은 08:00~09:00 프리·15:30 이후 애프터 체결가로 '넥장 기준' 위치를 따로 계산한다
+- 넥장(NXT, 11/18 운영자 "추세판단 업데이트"): 한국 종목은 08:00~08:50 프리·15:30 이후 애프터 체결가로 '넥장 기준' 위치를 따로 계산한다
         (it['nxt']). 거래소(KRX) 일봉·상태·5일선 시그널은 그대로 두고 섞지 않는다. 출처 = 네이버 NXT 실시간(체결 시각 오늘인 것만).
 - 통합/시간외 차트: session_chan.py가 화면용 display를 만든다. 국내 오늘 KRX+NXT 통합 OHLC, 미국 프리+정규+애프터 1분봉을 날짜별 통합하고 확보 이력을 유지. 정규장 상태·주문용 signals는 보존한다.
 - 기록: 상태·눈에 띄는 캔들이 바뀌면 state_dir/chan_log.json 에 쌓고 최근 것을 사이트 '기록'에 보여 준다
@@ -261,9 +261,9 @@ def _krx_close(code: str, now: datetime) -> float | None:
 
 
 def nxt_window(now: datetime) -> bool:
-    """넥스트레이드 시간: 평일 08:00~09:00 프리마켓, 15:30 이후 애프터마켓(20:00 마감 뒤엔 마지막 체결을 '마감'으로)."""
+    """넥스트레이드 시간: 평일 08:00~08:50 프리마켓, 15:30 이후 애프터마켓(20:00 마감 뒤엔 마지막 체결을 '마감'으로)."""
     hm = now.hour * 100 + now.minute
-    return now.weekday() < 5 and (800 <= hm < 900 or hm >= 1530)
+    return now.weekday() < 5 and (800 <= hm < 850 or hm >= 1530)
 
 
 def _nxt_quotes(codes: list[str], now: datetime) -> dict:
@@ -276,7 +276,9 @@ def _nxt_quotes(codes: list[str], now: datetime) -> dict:
     now_ms = int(now.timestamp() * 1000)
     active = nxt_window(now) and now.hour < 20
     delay = 55 if active else 300
-    if time.time() - cached.get("t", 0) >= delay or not set(codes) <= set(cached.get("codes", [])):
+    premarket_day = now.date().isoformat() if active and now.hour == 8 else None
+    entering_premarket = premarket_day is not None and cached.get("premarket_day") != premarket_day
+    if entering_premarket or time.time() - cached.get("t", 0) >= delay or not set(codes) <= set(cached.get("codes", [])):
         from krx import BASE, _parse
 
         try:
@@ -306,7 +308,7 @@ def _nxt_quotes(codes: list[str], now: datetime) -> dict:
                                 "session": "프리" if stamp[11:16] < "09:00" else "애프터"}
         except Exception as error:  # noqa: BLE001
             ERRS.append(f"넥장 시세 {type(error).__name__}")
-        lc["_nxt"] = {"t": time.time(), "codes": codes, "q": quotes}
+        lc["_nxt"] = {"t": time.time(), "codes": codes, "q": quotes, "premarket_day": premarket_day}
         _save(LIVE, lc)
     return {code: {**quote, "last_only": (not active or quote.get("day") != now.date().isoformat()
                                          or quote.get("status") != "OPEN"
@@ -411,7 +413,23 @@ def kr_basis(code: str, rows: list[list], now: datetime, nq: dict | None) -> dic
         k.append(float(kv) if kv else r[4]); u.append(float(uv) if uv else (float(kv) if kv else r[4]))
     done_k = not last_today or hm >= 1531
     done_u = not last_today or hm >= 2000
-    return {"u": u, "k": k, "ma5": sum(u[-5:]) / 5, "ma5_krx": sum(k[-5:]) / 5,
+    closed_rows = rows if done_u else rows[:-1]
+    closed = []
+    for row in closed_rows[-5:]:
+        if last_today and row[0] == md:
+            if (nq and nq.get("day") == now.date().isoformat()
+                    and nq.get("session") == "애프터" and nq.get("px", 0) > 0):
+                closed.append(float(nq["px"]))
+            else:
+                break
+        elif U.get(row[0]):
+            closed.append(float(U[row[0]]))
+        else:
+            break
+    uni_sma5_closed = sum(closed) / 5 if len(closed) == 5 else None
+    uni_below_sma5 = closed[-1] < uni_sma5_closed if uni_sma5_closed is not None else None
+    return {"uni_sma5_closed": uni_sma5_closed, "uni_below_sma5": uni_below_sma5,
+            "u": u, "k": k, "ma5": sum(u[-5:]) / 5, "ma5_krx": sum(k[-5:]) / 5,
             "base": k[-2] if last_today and len(k) > 1 else k[-1],
             "krx_close": k[-1] if done_k else k[-2], "krx_close_day": rows[-1 if done_k else -2][0],
             "uni_close": u[-1] if done_u else u[-2], "uni_close_day": rows[-1 if done_u else -2][0],
@@ -602,7 +620,8 @@ def build(now: datetime | None = None) -> dict:
                 it.update(INDEX_META.get(code, {}))
             if kb:
                 it.update(ma5_krx=round(kb["ma5_krx"], 2), krx_close=kb["krx_close"], krx_close_day=kb["krx_close_day"],
-                          uni_close=kb["uni_close"], uni_close_day=kb["uni_close_day"], base=kb["base"],
+                          uni_close=kb["uni_close"], uni_close_day=kb["uni_close_day"],
+                          uni_sma5_closed=kb["uni_sma5_closed"], uni_below_sma5=kb["uni_below_sma5"], base=kb["base"],
                           reg_closes=[[r[0], round(v, 2)] for r, v in zip(rows, kb["u"])][:-1],
                           ma5_basis="통합 종가(KRX+넥장 20시) 4일 + 현재가" + (f" · 통합 {kb['miss_u']}일 KRX로 대체" if kb["miss_u"] else ""),
                           krx_missing=kb["miss_k"])

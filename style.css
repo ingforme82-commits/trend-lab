@@ -1018,6 +1018,15 @@ html.trl-live-update,html.trl-live-update body{overflow-anchor:none!important;sc
 .cx-cls{border-left-color:#9aa3b2}.cx-ext{border-left-color:#7c5cd6;background:#faf8ff}.cx-live{border-left-color:#2e9e5b;background:#f6fcf8}.cx-off{border-left-color:#d5d9e0;opacity:.8}
 .cx-l{font-size:11.5px;color:var(--sub);font-weight:600}.cx-v{font-size:17px;font-variant-numeric:tabular-nums;line-height:1.25}.cx-s{font-size:11.5px;color:var(--sub)}
 .cx-ma{margin:0 0 4px;font-size:12px;color:var(--sub)}
+.cx-quote{display:inline-flex;align-items:baseline;gap:.45em;white-space:nowrap;font-variant-numeric:tabular-nums}
+.cx-quote .cx-pct{font-size:.78em}
+@media (max-width:760px){
+  .cx-row>.cx-ext{flex-basis:100%}
+  .cx-ext .cx-quote{font-size:clamp(14px,4vw,17px);gap:8px}
+  .lc-p{display:flex;align-items:baseline;flex-wrap:wrap;column-gap:6px}
+  .lc-p>b{white-space:nowrap;font-variant-numeric:tabular-nums}
+  .lc-p>small{flex-basis:100%}
+}
 
 /* 11/21 채널 상단 돌파 뒤: 옛 상단 = 회색 점선(지지 전환), 새 저항 = 돌파 뒤 고점 */
 .ch-chart .ch-res-old{stroke:#8a93a3;stroke-width:1.8;stroke-dasharray:4 3}
@@ -1157,7 +1166,7 @@ mark.nw-hit{background:#fde68a;color:inherit;padding:0 1px;border-radius:2px}
   .nav-in .trl-language{margin-left:auto}
   .nav-in .btn-kakao{padding:7px 10px}
   .nav-in .trl-language{max-width:6.5rem}
-  .bnav{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;left:0;right:0;bottom:0;z-index:30;
+  .bnav{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));position:fixed;left:0;right:0;bottom:0;z-index:30;
     background:rgba(15,27,45,.97);backdrop-filter:blur(8px);border-top:1px solid #22324d;
     padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
   .bnav a{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:56px;color:#c7d0dd;text-decoration:none;font-size:12.5px;font-weight:700}

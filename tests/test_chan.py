@@ -58,7 +58,7 @@ class T(unittest.TestCase):
     def test_nxt_window(self):
         kst = timezone(timedelta(hours=9))
         at = lambda h, m=0, d=18: nxt_window(datetime(2026, 11, d, h, m, tzinfo=kst))
-        self.assertTrue(at(8, 10)); self.assertFalse(at(9)); self.assertFalse(at(15, 29))
+        self.assertTrue(at(8)); self.assertTrue(at(8, 49)); self.assertFalse(at(8, 50)); self.assertFalse(at(9)); self.assertFalse(at(15, 29))
         self.assertTrue(at(15, 30)); self.assertTrue(at(21)); self.assertFalse(at(7, 59)); self.assertFalse(at(16, 0, 21))
 
     def test_nxt_view_after_and_pre(self):
