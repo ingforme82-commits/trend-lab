@@ -224,9 +224,8 @@
     box.innerHTML = `<svg width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${s}<g id="cmHover"></g></svg>`;
     // 차트 구간의 속보 목록(누르면 선택)
     const inBk = st.bk ? inWin.filter((n) => n.ts >= st.bk[0] && n.ts <= st.bk[1]) : [];
-    const rest = inWin.filter((n) => !inBk.includes(n)).sort((a, b) => b.ts - a.ts);
-    const ordered = [...inBk, ...rest.filter((n) => piv.has(n.ts)), ...rest.filter((n) => !piv.has(n.ts))];
-    root.querySelector("#cmNews").innerHTML = inWin.length ? `<p class="cm-nh">${inBk.length ? `선택한 ${hm(st.bk[0])}${hm(st.bk[1]) !== hm(st.bk[0]) ? "–" + hm(st.bk[1]) : ""} 속보 ${inBk.length}건 먼저 · ` : ""}이 구간의 속보 ${inWin.length}건${piv.size ? ` · 🔴 변곡점 관련 뉴스 ${inWin.filter((n) => piv.has(n.ts)).length}건` : ""} <small>위 점(숫자 = 같은 시각대 건수)을 누르면 그 시각 속보가 맨 위로</small></p>` + ordered.slice(0, 60).map((n) =>
+    const ordered = [...inWin].sort((a, b) => b.ts - a.ts);
+    root.querySelector("#cmNews").innerHTML = inWin.length ? `<p class="cm-nh">${inBk.length ? `선택한 ${hm(st.bk[0])}${hm(st.bk[1]) !== hm(st.bk[0]) ? "–" + hm(st.bk[1]) : ""} 속보 ${inBk.length}건 · ` : ""}이 구간의 속보 ${inWin.length}건${piv.size ? ` · 🔴 변곡점 관련 뉴스 ${inWin.filter((n) => piv.has(n.ts)).length}건` : ""} <small>차트 점을 누르면 해당 시각을 선택합니다</small></p>` + ordered.slice(0, 60).map((n) =>
       `<button class="cm-ni${n.ts === st.sel ? " on" : ""}${piv.has(n.ts) ? " hot" : ""}" data-sel="${n.ts}"><b>${piv.has(n.ts) ? "🔴 " : ""}${hm(n.ts)}</b> ${esc(n.text)} <small>${esc(n.src || "")}</small></button>`).join("") : "";
     drawLinked();
     drawHover();
