@@ -90,6 +90,8 @@
     if(location.hash!=="#"+id)history.replaceState(null,"","#"+id);
     go(el);
   });
+  // Reordered or removed cards must not drag the reader to a new viewport.
+  const smallLayoutShift = (delta) => Math.abs(delta) <= Math.min(160, innerHeight / 4);
   function update(fn) {
     if(depth) return fn();
     if(lockElement()){
@@ -112,7 +114,7 @@
       window.trlFold?.apply();
       const element=mark&&locate(mark.key);
       const delta=element&&element.getBoundingClientRect().height>0 ? element.getBoundingClientRect().top-mark.top : 0;
-      const target=beforeY>80 ? Math.max(0,beforeY+delta) : beforeY;
+      const target=beforeY>80 && smallLayoutShift(delta) ? Math.max(0,beforeY+delta) : beforeY;
       if(Math.abs(scrollY-target)>0.5) {
         try { window.scrollTo({left:beforeX,top:target,behavior:"instant"}); }
         catch { window.scrollTo(beforeX,target); }
@@ -156,7 +158,7 @@
     let d=null;
     if(pin.el?.isConnected&&pin.el.getBoundingClientRect().height>0)d=pin.el.getBoundingClientRect().top-pin.top;
     else{const k=locate(pin.key);if(k)d=k.getBoundingClientRect().top-(pin.ktop??pin.top);}
-    if(d!=null&&Math.abs(d)>0.5){jump(scrollY+d);}
+    if(d!=null&&Math.abs(d)>0.5&&smallLayoutShift(d)){jump(scrollY+d);}
     pinNow();
   }
   ["wheel","touchstart","touchmove","keydown","pointerdown"].forEach((t)=>addEventListener(t,()=>{userAt=performance.now();},{passive:true}));
@@ -168,6 +170,17 @@
     if(document.readyState==="loading")addEventListener("DOMContentLoaded",watch);else watch();
   }
   const baseUpdate=update;
-  function updatePinned(fn){try{return baseUpdate(fn);}finally{if(!depth){if(pinRaf)cancelAnimationFrame(pinRaf);pinRaf=requestAnimationFrame(pinNow);}}}
+  function updatePinned(fn){
+    try{return baseUpdate(fn);}
+    finally{
+      if(!depth){
+        if(pinRaf)cancelAnimationFrame(pinRaf);
+        if(fixRaf)cancelAnimationFrame(fixRaf);
+        fixRaf=0;
+        // Capture the current screen now, before ResizeObserver can use the old pin.
+        pinNow();
+      }
+    }
+  }
   window.trlViewport={update:updatePinned,html:(el,value)=>{if(!el||lastHTML.get(el)===value)return false;return updatePinned(()=>{el.innerHTML=value;lastHTML.set(el,value);return true;});},offerUpdate,go,get updating(){return depth>0;}};
 })();
