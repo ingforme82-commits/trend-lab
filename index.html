@@ -99,6 +99,47 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
 
 <main id="top">
 
+<!-- TRL market notices -->
+<aside id="trl-market-notices" hidden aria-label="휴장·거래시간 변경" style="padding:.65rem 1rem;background:#eef4fb;color:#172b42;font-size:.9rem">
+  <ul style="margin:0 auto;max-width:1120px;padding-left:1.3rem"></ul>
+</aside>
+<script>
+(() => {
+  const box = document.getElementById("trl-market-notices");
+  const list = box.querySelector("ul");
+  const sources = {
+    kr: "https://global.krx.co.kr/contents/GLB/06/0602/0602010201/GLB0602010201T1.jsp",
+    us: "https://www.nyse.com/trade/hours-calendars",
+    jp: "https://www.jpx.co.jp/english/news/2040/20261120-01.html",
+    cn: "https://www.sse.com.cn/disclosure/dealinstruc/closed/",
+    tw: "https://www.twse.com.tw/en/trading/holiday.html",
+  };
+  const events = [
+    ["jp", "2026-11-23", "2026-11-23", "11/23 일본 JPX 현물·파생 휴장"],
+    ["us", "2026-11-25", "2026-11-27", "11/26 미국 NYSE 추수감사절 휴장 (현지 거래일)"],
+    ["us", "2026-11-26", "2026-11-28", "11/27 미국 NYSE 조기 마감 · 현지 13:00 / 한국 11/28 03:00"],
+    ["kr", "2026-12-30", "2026-12-31", "12/31 한국 KRX 연말 휴장"],
+  ];
+  const parts = new Intl.DateTimeFormat("en-CA", {timeZone:"Asia/Seoul",year:"numeric",month:"2-digit",day:"2-digit"});
+  function refresh() {
+    const date = Object.fromEntries(parts.formatToParts(new Date()).map(p => [p.type,p.value]));
+    const day = [date.year,date.month,date.day].join("-");
+    const items = events.filter(([,start,end]) => start <= day && day <= end).map(([market,,,text]) => {
+      const row = document.createElement("li");
+      const link = document.createElement("a");
+      link.href = sources[market];
+      link.textContent = text;
+      row.append(link);
+      return row;
+    });
+    list.replaceChildren(...items);
+    box.hidden = !items.length;
+  }
+  refresh();
+  setInterval(refresh, 60000);
+})();
+</script>
+<!-- /TRL market notices -->
 <section class="sec chan-sec" id="chan" hidden>
   <div class="wrap">
     <div class="sec-head">
