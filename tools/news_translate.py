@@ -22,6 +22,7 @@ MAX_SECONDS = 20
 MEMORY_CHARS = 4800
 UA = {"User-Agent": "Mozilla/5.0"}
 _SEARCH_LOCK = threading.Lock()
+PRIORITY_WIRES = re.compile(r"\b(?:Reuters|CNBC|Bloomberg)\b|로이터|블룸버그", re.I)
 
 
 def pause_until(exc, now):
@@ -162,13 +163,16 @@ def run(items, *, path: Path, legacy_path=None, terms=lambda en,ko:ko, now=None)
         last_errors[provider]={"code":code,"at":now}
 
     originals={}
+    priority=set()
     for item in items:
         if not needs_translation(item): continue
         original=str(item.get("orig") or item["text"]).strip()
         if item.get("tr")=="auto" and valid_translation(original,item.get("text")):
             entries.setdefault(original,{"text":item["text"],"provider":item.get("tr_provider","legacy"),"at":now})
         originals[original]=max(originals.get(original,0),item.get("ts",0))
-    todo=[text for text in sorted(originals,key=lambda t:-originals[t])
+        if any(PRIORITY_WIRES.search(str(item.get(key) or "")) for key in ("src", "osrc")):
+            priority.add(original)
+    todo=[text for text in sorted(originals, key=lambda title: (title not in priority, -originals[title]))
           if not valid_translation(text,(entries.get(text) or {}).get("text")) and retry.get(text,0)<=now]
     # At most six titles per request and a bounded encoded URL.
     pending=list(todo)
