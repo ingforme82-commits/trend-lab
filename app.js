@@ -680,18 +680,14 @@ async function loadStudies() {
     };
     $("#archChips").innerHTML = [["all", "전체"], ["regular", "📈 정기 스터디"], ["book", "📚 독서 토론"], ...(hasG ? [["growth", "📒 " + growth.title]] : [])].map(([k, l]) => `<button class="chip${k === archCat ? " on" : ""}" data-k="${k}">${l}</button>`).join("");
     const latestRecord = [past[0]?.date, growthPhotos[0]?.date].filter(Boolean).sort().at(-1);
+    $("#archStamp").textContent = latestRecord ? `마지막 기록 ${fmtD(latestRecord, true)}` : "";
     const draw = () => {
       if (archCat === "growth" && hasG) {
         $("#archList").innerHTML = `<p class="arc-intro">${esc(growth.intro || "")}</p>` + growthPhotos.map(growthCard).join("");
         return;
       }
       const pick = (s) => archCat === "all" || s.series === archCat;
-      const history = past.filter(pick).map((s) => ({ date: s.date, render: () => {
-        const card = archCard(s, false, label);
-        return latestRecord && s.series === "regular" && Number(s.no) === 7
-          ? `<div class="arc-record"><p class="stamp" id="archStamp">마지막 기록 ${esc(fmtD(latestRecord, true))}</p>${card}</div>`
-          : card;
-      } }));
+      const history = past.filter(pick).map((s) => ({ date: s.date, render: () => archCard(s, false, label) }));
       if (archCat === "all") {
         history.push(...growthPhotos.map((p) => ({ date: p.date, render: () => growthCard(p) })));
         history.sort((a, b) => b.date.localeCompare(a.date));
