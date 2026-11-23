@@ -42,10 +42,15 @@ def push(title: str, body: str, url: str = SITE, tag: str = "") -> int:
     """등록된 모든 기기에 알림. 보낸 기기 수. 키·기기가 없거나 실패해도 예외 없음."""
     try:
         from pywebpush import WebPushException, webpush
-    except Exception:  # noqa: BLE001
+    except ImportError:
+        print("TRL Push: pywebpush 미설치", file=sys.stderr)
         return 0
     subs = _subs()
-    if not subs or not KEY.exists():
+    if not subs:
+        print("TRL Push: 등록 기기 없음", file=sys.stderr)
+        return 0
+    if not KEY.is_file():
+        print("TRL Push: 발송 키 파일 없음", file=sys.stderr)
         return 0
     data = json.dumps({"title": title[:80], "body": body[:600], "url": url, "tag": tag}, ensure_ascii=False)
     ok, keep = 0, []
@@ -56,9 +61,11 @@ def push(title: str, body: str, url: str = SITE, tag: str = "") -> int:
             keep.append(s)
         except WebPushException as e:
             code = getattr(getattr(e, "response", None), "status_code", 0)
+            print(f"TRL Push: 기기 발송 실패 HTTP {code or '미확인'}", file=sys.stderr)
             if code not in (404, 410):                       # 지워진 기기만 버림, 일시 오류는 남김
                 keep.append(s)
-        except Exception:  # noqa: BLE001
+        except Exception as exc:  # noqa: BLE001
+            print(f"TRL Push: 기기 발송 실패 {type(exc).__name__}", file=sys.stderr)
             keep.append(s)
     if len(keep) != len(subs):
         _save(keep)
