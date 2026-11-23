@@ -675,7 +675,7 @@ def build(now: datetime | None = None) -> dict:
             ma5_prev = sum(closes[-6:-1]) / 5 if len(closes) >= 6 else None
             it["gap_low"] = round((ch["lo_now"] / px - 1) * 100, 2)             # 하락 추세 지속 시 다음 채널 지지선까지
             it["above_ma5"] = px > ch["ma5"]
-            if live and ch["channel_valid"] and ma5_prev and pcu <= ma5_prev and px > ch["ma5"] and was.get("ma5sig") != stamp:
+            if code != "NVDL" and live and ch["channel_valid"] and ma5_prev and pcu <= ma5_prev and px > ch["ma5"] and was.get("ma5sig") != stamp:
                 sig = {"ts": int(now.timestamp() * 1000), "day": stamp, "code": code, "name": name, "cc": g["cc"], "contact_policy": contact_policy,
                        "text": _josa(f"📐 5일선 돌파 시그널 — {name} {_fmt(g['cc'], px)}가 5일선 {_fmt(g['cc'], ch['ma5'])} 위로 (어제 {_fmt(g['cc'], pcu)}는 5일선 아래) · 채널 상단선 {_fmt(g['cc'], ch['up_now'])}까지 {((ch['up_now'] / px - 1) * 100):+.1f}%")}
                 signals.append(sig)
