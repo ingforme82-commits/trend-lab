@@ -24,7 +24,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=20261123-mobile-tabs">
+<link rel="stylesheet" href="style.css?v=20261123-four-tabs-quotes">
 <script>document.documentElement.classList.add("trl-reserve");setTimeout(function(){document.documentElement.classList.remove("trl-reserve")},6000);</script>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#0f1b2d">
@@ -46,14 +46,15 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
 .trl-language-note[hidden] { display: none; }
 </style>
 <style>
-  .mobile-market-nav{display:none}
   @media (max-width:760px){
-    .mobile-market-nav{display:flex;gap:8px;padding:8px 12px;background:var(--navy);overflow-x:auto}
-    .mobile-market-nav a{flex:0 0 auto;color:#fff;font-weight:700;font-size:.86rem;padding:6px 9px;border:1px solid #8290a4;border-radius:7px}
-    .mobile-market-nav a:focus-visible{outline:2px solid #fff;outline-offset:-2px}
     .nav #notice,.hero .eyebrow,.hero .lead,.hero .hero-btns,.hero #heroLive,.hero #heroStudy,.axis .axis-k{display:none!important}
     #chan,#news,#market{scroll-margin-top:120px}
   }
+</style>
+<style id="trl-core-layout">
+  #top > .hero, #headline, #brief, #about, #notice {display:none!important}
+  #today {height:0;overflow:hidden;margin:0;padding:0}
+  .nav-in > .btn-kakao, .nav-in > .nav-blog {display:none}
 </style>
 </head>
 <body>
@@ -62,16 +63,9 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
   <div class="wrap nav-in">
     <a class="brand" href="#top"><span class="brand-mark">TRL</span><span class="brand-txt">Trend Research Lab</span></a>
     <nav class="nav-links" aria-label="섹션 바로가기">
-      <a href="#headline">오늘 핵심</a>
-      <a href="#market">시세</a>
-      <a href="#chan">추세 판단</a>
-      <a href="#brief" hidden>브리핑</a>
+      <a href="#chan">추세</a>
       <a href="#news">속보</a>
-      <a href="#about">소개</a>
-      <a href="#quiz">성향 테스트</a>
-      <a href="#study">그룹 스터디</a>
-      <a href="#archive">아카이브</a>
-      <a href="#curriculum">커리큘럼</a>
+      <a href="#market">시세</a>
     </nav>
     <select id="trlLanguage" class="trl-language" aria-label="언어 선택">
       <option value="ko" lang="ko">한국어</option>
@@ -90,20 +84,84 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
         <button class="btn btn-gold btn-sm" id="installBtn" type="button" hidden>📲 앱 설치</button>
         <button class="btn btn-ghost btn-sm" id="pushBtn" type="button" hidden>🔔 알림 받기</button>
         <a class="btn btn-ghost btn-sm more-blog" href="https://blog.naver.com/ingforme" target="_blank" rel="noopener">블로그</a>
-        <a class="btn btn-ghost btn-sm" href="#about">소개</a>
         <a class="btn btn-ghost btn-sm" href="/en/" lang="en" hreflang="en">English overview</a>
       </div>
     </details>
   </div>
-<nav class="mobile-market-nav" aria-label="Market sections">
-  <a href="#chan">추세 판단</a><a href="#news">속보 · 지수 반응</a><a href="#market">전체 시세</a>
-</nav>
-  <div class="notice" id="notice" hidden></div>
+<div class="notice" id="notice" hidden></div>
   <script>(()=>{const m=document.getElementById("navMore");if(!m)return;document.addEventListener("click",(e)=>{if(m.open&&(!m.contains(e.target)||e.target.closest(".nav-more-menu a,.nav-more-menu button")))m.open=false;});})();</script>
   <div class="ticker" id="ticker" hidden></div>
 </header>
 
 <main id="top">
+
+<section class="sec chan-sec" id="chan" hidden>
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <h2>📐 추세 판단</h2>
+      </div>
+      <p class="stamp" id="chanStamp"></p>
+    </div>
+    <div class="ch-sigbox" id="chanSig" hidden></div>
+    <div id="chanBoard"></div>
+    <details class="ch-foot"><summary>차트 기준 보기</summary><p id="chanRule"></p><p>채널은 최근 고점과 저점을 이은 선입니다. 수평 지지·저항은 최근 스윙 저점·고점을 기준으로 표시합니다.</p></details>
+  </div>
+</section>
+
+<section class="sec sec-alt" id="news">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <h2>실시간 속보 · 지수 반응</h2>
+      </div>
+      <p class="stamp" id="newsStamp" hidden>속보를 불러오지 못했습니다.</p>
+    </div>
+    <div class="nc-grid" id="newsCharts"></div>
+    <div class="tgsum" id="tgSum" hidden></div>
+    <div class="mv-head"><h3>📍 시장을 움직인 순간</h3></div>
+    <div class="flow-box mv-react" id="moveReact" hidden></div>
+    <div class="mv-list" id="moveList"></div>
+    <h3 class="nw-head">전체 속보</h3>
+    <div class="news-tools" id="newsTools">
+      <label class="nw-search"><span class="sr-only">속보 검색</span>
+        <input type="search" id="newsSearch" placeholder="속보 검색 — 예: 엔비디아, 금리, 유가" autocomplete="off" enterkeyhint="search" aria-describedby="newsCount">
+      </label>
+      <div class="nw-views" id="newsViews" role="group" aria-label="시황 구분"></div>
+      <p class="nw-count" id="newsCount" aria-live="polite"></p>
+    </div>
+    <div class="trend" id="trendBox"></div>
+    <div class="nfilt" id="newsFilt"></div>
+    <div class="chips" id="newsChips"></div>
+    <ol class="nws" id="newsList"></ol>
+    <button class="btn btn-ghost-dark btn-more" id="newsMore" hidden>더 보기</button>
+    <p class="fine">매매 권유가 아닙니다.</p>
+  </div>
+</section>
+
+<section class="sec" id="market">
+  <div class="wrap">
+    <div class="sec-head">
+      <div>
+        <h2>실시간 시세</h2>
+      </div>
+      <p class="stamp tick-stamp" id="tickStamp" role="status" aria-live="polite">불러오는 중…</p>
+    </div>
+    <div class="mkt-now" id="mktNow" aria-label="현재 시장 요약">
+      <p class="mkt-now-h">현재 시장</p>
+      <ul class="pulse-sess" id="mktNowSess"></ul>
+      <ul class="pulse-grid mkt-now-grid" id="mktNowGrid"></ul>
+    </div>
+    <div class="s7-box" id="s7Box" hidden></div>
+    <div class="watch-box" id="watchBox" hidden></div>
+    <div class="sector-box" id="sectorBox" hidden></div>
+    <div class="flow-box" id="flowBox" hidden></div>
+    <div class="tick-grid" id="tickGrid"></div>
+
+    <p class="tick-group world-h">해외 지수 <small>정규장 시세(5분 갱신) · 대만은 24시간 ETF</small></p>
+    <div class="tick-grid" id="worldGrid"></div>
+  </div>
+</section>
 
 <section class="hero" aria-labelledby="heroTitle">
   <div class="wrap hero-in">
@@ -142,44 +200,6 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
   </div>
 </section>
 
-<section class="sec" id="market">
-  <div class="wrap">
-    <div class="sec-head">
-      <div>
-        <h2>실시간 시세</h2>
-      </div>
-      <p class="stamp tick-stamp" id="tickStamp" role="status" aria-live="polite">불러오는 중…</p>
-    </div>
-    <div class="mkt-now" id="mktNow" aria-label="현재 시장 요약">
-      <p class="mkt-now-h">현재 시장</p>
-      <ul class="pulse-sess" id="mktNowSess"></ul>
-      <ul class="pulse-grid mkt-now-grid" id="mktNowGrid"></ul>
-    </div>
-    <div class="s7-box" id="s7Box" hidden></div>
-    <div class="watch-box" id="watchBox" hidden></div>
-    <div class="sector-box" id="sectorBox" hidden></div>
-    <div class="flow-box" id="flowBox" hidden></div>
-    <div class="tick-grid" id="tickGrid"></div>
-
-    <p class="tick-group world-h">해외 지수 <small>정규장 시세(5분 갱신) · 대만은 24시간 ETF</small></p>
-    <div class="tick-grid" id="worldGrid"></div>
-  </div>
-</section>
-
-<section class="sec chan-sec" id="chan" hidden>
-  <div class="wrap">
-    <div class="sec-head">
-      <div>
-        <h2>📐 추세 판단</h2>
-      </div>
-      <p class="stamp" id="chanStamp"></p>
-    </div>
-    <div class="ch-sigbox" id="chanSig" hidden></div>
-    <div id="chanBoard"></div>
-    <details class="ch-foot"><summary>차트 기준 보기</summary><p id="chanRule"></p><p>채널은 최근 고점과 저점을 이은 선입니다. 수평 지지·저항은 최근 스윙 저점·고점을 기준으로 표시합니다.</p></details>
-  </div>
-</section>
-
 <section class="sec" id="brief" hidden>
   <div class="wrap">
     <div class="sec-head">
@@ -188,36 +208,6 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
       </div>
     </div>
     <div class="brief" id="briefNow"></div>
-  </div>
-</section>
-
-<section class="sec sec-alt" id="news">
-  <div class="wrap">
-    <div class="sec-head">
-      <div>
-        <h2>실시간 속보 · 지수 반응</h2>
-      </div>
-      <p class="stamp" id="newsStamp" hidden>속보를 불러오지 못했습니다.</p>
-    </div>
-    <div class="nc-grid" id="newsCharts"></div>
-    <div class="tgsum" id="tgSum" hidden></div>
-    <div class="mv-head"><h3>📍 시장을 움직인 순간</h3></div>
-    <div class="flow-box mv-react" id="moveReact" hidden></div>
-    <div class="mv-list" id="moveList"></div>
-    <h3 class="nw-head">전체 속보</h3>
-    <div class="news-tools" id="newsTools">
-      <label class="nw-search"><span class="sr-only">속보 검색</span>
-        <input type="search" id="newsSearch" placeholder="속보 검색 — 예: 엔비디아, 금리, 유가" autocomplete="off" enterkeyhint="search" aria-describedby="newsCount">
-      </label>
-      <div class="nw-views" id="newsViews" role="group" aria-label="시황 구분"></div>
-      <p class="nw-count" id="newsCount" aria-live="polite"></p>
-    </div>
-    <div class="trend" id="trendBox"></div>
-    <div class="nfilt" id="newsFilt"></div>
-    <div class="chips" id="newsChips"></div>
-    <ol class="nws" id="newsList"></ol>
-    <button class="btn btn-ghost-dark btn-more" id="newsMore" hidden>더 보기</button>
-    <p class="fine">매매 권유가 아닙니다.</p>
   </div>
 </section>
 
@@ -349,10 +339,9 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
 </main>
 
 <nav class="bnav" id="bnav" aria-label="모바일 주요 메뉴">
-  <a href="#today" data-sec="today"><span class="bn-i" aria-hidden="true">📰</span><span>시황</span></a>
-  <a href="#market" data-sec="market"><span class="bn-i" aria-hidden="true">📈</span><span>시세</span></a>
-  <a href="#news" data-sec="news"><span class="bn-i" aria-hidden="true">⚡</span><span>속보</span></a>
   <a href="#chan" data-sec="chan"><span class="bn-i" aria-hidden="true">📐</span><span>추세</span></a>
+  <a href="#news" data-sec="news"><span class="bn-i" aria-hidden="true">⚡</span><span>속보</span></a>
+  <a href="#market" data-sec="market"><span class="bn-i" aria-hidden="true">📈</span><span>시세</span></a>
   <a href="#lab" data-sec="lab"><span class="bn-i" aria-hidden="true">🧭</span><span>스터디</span></a>
 </nav>
 
@@ -1229,25 +1218,6 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
   }).observe(result, { childList: true });
 })();
 </script>
-<script>
-(() => {
-  const media = matchMedia("(max-width:760px)");
-  const main = document.getElementById("top");
-  const sections = ["chan", "news"].map(id => document.getElementById(id));
-  if (!main || sections.some(section => !section || section.parentNode !== main)) return;
-  const anchors = sections.map(section => {
-    const anchor = document.createComment("desktop section position");
-    section.before(anchor);
-    return anchor;
-  });
-  function placeMarketSections() {
-    if (media.matches) main.prepend(...sections);
-    else sections.forEach((section, index) => anchors[index].after(section));
-  }
-  placeMarketSections();
-  media.addEventListener("change", placeMarketSections);
-})();
-</script>
 <script src="i18n-ui.js?v=20261123-trend-labels" defer></script>
 <script src="localize.js?v=20261121-lang9" defer></script>
 <script src="gtranslate.js?v=20261121-lang9" defer></script>
@@ -1257,7 +1227,7 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
 <script src="viewport.js?v=20261120-steady-pin"></script>
 <script src="app.js?v=20261123-trend-labels"></script>
 <script src="chart.js?v=20261122-clean-chart"></script>
-<script src="news.js?v=20261123-trend-labels"></script>
+<script src="news.js?v=20261123-four-tabs-quotes"></script>
 <script src="fold.js?v=20261121-ux-axes"></script>
 <script src="tint.js?v=20261118-stable-scroll"></script>
 <!-- 11/17 운영자: 지수 흐름·분할 칸(flow.js)은 내림 — 추세 판단 채널 그래프가 대신 맨 위 -->

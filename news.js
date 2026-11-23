@@ -160,7 +160,7 @@
     if (!items.length) return "";
     return `<div class="lvbox"><p class="mm-h">☀️ ${esc(s.session)} <small>수동 캡처</small></p><div class="lc-g">${items.map((x) => {
       const delta = x.px - x.base, chg = delta / x.base * 100, sign = delta > 0 ? "+" : delta < 0 ? "-" : "";
-      return `<div class="lc"><p class="lc-h"><b>${esc(x.sym)}</b> <small>${esc(s.session)}</small></p><p class="lc-p"><b class="lc-px">$${x.px.toFixed(2)}</b> <b class="${cls(chg)}">${sign}${Math.abs(chg).toFixed(2)}%</b></p><p class="lc-f">정규장 종가 ${x.base.toFixed(2)} 대비</p><p class="lc-f">${md2(Date.parse(x.at))} ${hm(Date.parse(x.at))} KST 화면 확인</p></div>`;
+      return `<div class="lc"><p class="lc-h"><b>${esc(x.sym)}</b> <small>${esc(s.session)}</small></p><p class="lc-p"><span class="lc-quote"><b class="lc-px">$${x.px.toFixed(2)}</b> <b class="${cls(chg)}">${sign}${Math.abs(chg).toFixed(2)}%</b></span></p><p class="lc-f">정규장 종가 ${x.base.toFixed(2)} 대비</p><p class="lc-f">${md2(Date.parse(x.at))} ${hm(Date.parse(x.at))} KST 화면 확인</p></div>`;
     }).join("")}</div><p class="mm-f">${esc(s.source)}</p></div>`;
   }
   async function loadCandles() {
@@ -485,7 +485,7 @@
     const base = x.base_chg != null ? `기초 ${esc(String(x.base).replace(/\(.*\)/, ""))} <b class="${cls(x.base_chg)}">${pc(x.base_chg)}</b>` : "";
     const mem = x.members ? ` · 구성 대형주 ${x.members.n_up}/${x.members.n} 상승` : "";
     return `<div class="lc"><p class="lc-h"><b>${esc(x.sym)}</b> <small class="dim">${esc(x.name)}</small></p>
-      <p class="lc-p"><b class="lc-px">${$$(price)}</b> <b class="${cls(change)}">${pc(change)}</b> <small class="dim">${label}</small></p>${regularLine}${ext}
+      <p class="lc-p"><span class="lc-quote"><b class="lc-px">${$$(price)}</b> <b class="${cls(change)}">${pc(change)}</b></span> <small class="dim">${label}</small></p>${regularLine}${ext}
       <div class="lc-cs">${C.join("")}</div>${bar}${base || mem ? `<p class="lc-f">${base}${mem}</p>` : ""}</div>`;
   }
   function levHtml(L) {
@@ -1183,7 +1183,7 @@
         html += `<article class="ch-card${sgNow ? " t-" + sgNow.tone : ""}" data-viewport-key="channel:${esc(it.code)}">
           <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b>${(() => { const k = it.chg == null || !isFinite(it.chg) ? "dim" : it.chg > 0.005 ? "up" : it.chg < -0.005 ? "down" : "dim";   // 11/19 운영자: 현재가도 전일 종가 대비 색·굵게(상승 빨강·하락 파랑·보합 회색)
             const ses = regular.display && it.session !== "정규장" ? [String(it.session).replace("마켓", "").replace("선물 24시간", "선물"), "ext"] : it.live ? ["정규장", "live"] : ["종가", "cls"];
-            return `<span class="ch-ptag p-${ses[1]}">${esc(ses[0])}</span><b class="mn ${k}">${chFmt(g.cc, it.px)}</b><b class="${k}"`; })()} title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(g.cc, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b>${sgNow ? `<span class="ch-sg ${sgNow.tone}">${({up: "▲", dn: "▼", wk: "△"})[sgNow.tone]} ${esc(sgNow.label)}</span>` : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span><small class="ch-session">${g.cc === "us" ? [ /10분 지연/.test(it.source || "") ? "약 10분 지연" : it.stale ? "지연" : !it.live ? "마지막 체결" : "", it.rt_at || it.source_at ? hm(it.rt_at || it.source_at) + " KST" : "" ].filter(Boolean).join(" · ") : (regular.display ? (it.session === "정규장" ? "정규장" : "시간외 · " + esc(it.session)) : (it.live ? "정규장" : "마감")) + (/10분 지연/.test(it.source || "") ? " · 약 10분 지연" : "") + (it.stale ? " · 지연" : !it.live ? " · 마지막" : "") + (it.rt_at || it.source_at ? ` · ${hm(it.rt_at || it.source_at)}` : "")}</small></div>
+            return `<span class="ch-ptag p-${ses[1]}">${esc(ses[0])}</span><span class="ch-quote"><b class="mn ${k}">${chFmt(g.cc, it.px)}</b><b class="${k}"`; })()} title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(g.cc, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b></span>${sgNow ? `<span class="ch-sg ${sgNow.tone}">${({up: "▲", dn: "▼", wk: "△"})[sgNow.tone]} ${esc(sgNow.label)}</span>` : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span><small class="ch-session">${g.cc === "us" ? [ /10분 지연/.test(it.source || "") ? "약 10분 지연" : it.stale ? "지연" : !it.live ? "마지막 체결" : "", it.rt_at || it.source_at ? hm(it.rt_at || it.source_at) + " KST" : "" ].filter(Boolean).join(" · ") : (regular.display ? (it.session === "정규장" ? "정규장" : "시간외 · " + esc(it.session)) : (it.live ? "정규장" : "마감")) + (/10분 지연/.test(it.source || "") ? " · 약 10분 지연" : "") + (it.stale ? " · 지연" : !it.live ? " · 마지막" : "") + (it.rt_at || it.source_at ? ` · ${hm(it.rt_at || it.source_at)}` : "")}</small></div>
           ${chLvLine(it, g.cc, horizontal)}${chCloseExt(regular, it, g.cc)}${chChart(it, g.cc, sgNow, horizontal)}</article>`;
       });
       html += `</div></div>`;
