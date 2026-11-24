@@ -142,6 +142,71 @@ def _quote(code: str, now: datetime) -> dict | None:
     return next((q for item in data.get("datas", []) if (q := parse_quote(item, code, now))), None)
 
 
+
+def _kis_quote(code: str, now: datetime) -> dict | None:
+    from kis import get
+
+    data = get(
+        "/uapi/domestic-stock/v1/quotations/inquire-time-indexchartprice",
+        "FHKUP03500200",
+        {
+            "FID_COND_MRKT_DIV_CODE": "U",
+            "FID_ETC_CLS_CODE": "0",
+            "FID_INPUT_ISCD": INDEXES[code][0],
+            "FID_INPUT_HOUR_1": "60",
+            "FID_PW_DATA_INCU_YN": "N",
+        },
+    )
+    header = data.get("output1") or {}
+    if isinstance(header, list):
+        header = header[0] if header else {}
+    if not isinstance(header, dict):
+        return None
+
+    minutes = []
+    for row in data.get("output2") or []:
+        try:
+            stamp = datetime.strptime(
+                row["stck_bsop_date"] + row["stck_cntg_hour"], "%Y%m%d%H%M%S"
+            ).replace(tzinfo=now.tzinfo)
+        except (KeyError, TypeError, ValueError):
+            continue
+        if stamp.date() == now.date() and 0 <= (now - stamp).total_seconds() <= MAX_LIVE_AGE:
+            minutes.append((stamp, row))
+    if not minutes:
+        return None
+
+    stamp, minute = max(minutes, key=lambda pair: pair[0])
+    values = _ohlc([
+        header.get("bstp_nmix_oprc"), header.get("bstp_nmix_hgpr"),
+        header.get("bstp_nmix_lwpr"), minute.get("bstp_nmix_prpr"),
+    ])
+    if not values:
+        return None
+    return {
+        "row": [stamp.strftime("%m/%d"), *values],
+        "source_at": int(stamp.timestamp() * 1000),
+        "source": "한투 지수 1분봉",
+        "market_open": True,
+    }
+
+
+def _current_quote(code: str, now: datetime) -> dict | None:
+    try:
+        quote = _quote(code, now)
+    except Exception:
+        quote = None
+    minutes = now.hour * 60 + now.minute
+    if now.weekday() >= 5 or not 540 <= minutes < 930:
+        return quote
+    if quote and quote.get("live"):
+        return quote
+    try:
+        return _kis_quote(code, now) or quote
+    except Exception:
+        return quote
+
+
 def bars(code: str, now: datetime, *, daily_path: Path, live_path: Path, yahoo) -> tuple[list[list], bool, dict]:
     if code not in INDEXES:
         raise ValueError("Unknown index")
@@ -167,7 +232,7 @@ def bars(code: str, now: datetime, *, daily_path: Path, live_path: Path, yahoo) 
     quote = cached.get("quote")
     if not (quote and 0 <= now.timestamp() - cached.get("t", 0) < 55):
         try:
-            quote = _quote(code, now)
+            quote = _current_quote(code, now)
             live_cache[code] = {"t": now.timestamp(), "quote": quote}
             _save(live_path, live_cache)
         except Exception:  # noqa: BLE001
