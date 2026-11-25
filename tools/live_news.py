@@ -191,7 +191,7 @@ TAGS = [
     ("한국", r"코스피|코스닥|한국|원/달러|원화|한은|KOSPI|Korea"),
     ("환율", r"환율|원/달러|달러/원|원화|엔화|엔/달러|달러/엔|위안화|달러인덱스|DXY|외환|yen|currency|forex"),
     ("원전", r"원전|원자력|SMR|소형모듈원자로|두산에너빌리티|한전기술|우라늄|nuclear|Oklo|오클로|NuScale|뉴스케일|Constellation|Cameco"),
-    ("방산", r"방산|방위산업|K9|K2 전차|레드백|천무|한화에어로|LIG넥스원|현대로템|한국항공우주|KAI|Lockheed|록히드|Raytheon|defense contractor"),
+    ("방산", r"방산|방위산업|K9|K2 전차|레드백|천무|한화에어로|LIG넥스원|LIG\s*디펜스(?:앤|\s*&\s*)에어로스페이스|LIG\s*D&A|현대로템|한국항공우주|KAI|Lockheed|록히드|Raytheon|defense contractor"),
     ("조선", r"조선|선박|LNG선|컨테이너선|수주|HD현대중공업|한화오션|삼성중공업|HD한국조선|케이프|한국카본|동성화인텍|세진중공업|성광벤드|보냉재|기자재|선박엔진|shipbuild|MASGA|마스가"),
     ("2차전지", r"2차전지|이차전지|배터리|양극재|음극재|리튬|ESS|LG에너지|삼성SDI|에코프로|포스코퓨처엠|POSCO홀딩스|포스코홀딩스|엔켐|코스모신소재|대주전자재료|천보|battery|lithium"),
     ("바이오", r"바이오|제약|신약|임상|FDA|비만|GLP-1|위고비|마운자로|치매|알츠하이머|ADC|알테오젠|한미약품|biotech|pharma|obesity|Alzheimer"),
