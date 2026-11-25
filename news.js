@@ -1239,6 +1239,29 @@
     const at = Math.max(c?.at || 0, ...asiaGroups.map((g) => g.items[0].source_at || 0));
     q("#chanStamp").textContent = `${hm(at)} KST${live ? " · 진행 중인 봉 포함" : ""}${rtOn ? " · 일부 실시간 체결" : ""}`;
     let html = "", lastC = null;
+    // Cross-country sector comparison stays separate from local-currency price charts.
+    const globalByCode = new Map();
+    allGroups.forEach((g) => (g.items || []).forEach((regular) => {
+      if (CH_HIDE.has(regular.code) || globalByCode.has(regular.code)) return;
+      globalByCode.set(regular.code, {g, it: chLive(chDisplay(regular))});
+    }));
+    const globalViews = (c?.global_sectors || []).map((view) => {
+      const rows = (view.codes || []).map((code) => globalByCode.get(code)).filter(Boolean);
+      return {view, rows};
+    }).filter(({rows}) => rows.length > 1);
+    if (globalViews.length) {
+      html += '<section class="ch-global-flow"><p class="ch-global-title">글로벌 섹터 흐름 <small>국가별 등락 비교 · 실제 자금 유출입 집계가 아닙니다</small></p><div class="ch-global-grid">';
+      globalViews.forEach(({view, rows}) => {
+        const ordered = [...rows].sort((a, b) => (Number.isFinite(b.it.chg) ? b.it.chg : -Infinity) - (Number.isFinite(a.it.chg) ? a.it.chg : -Infinity));
+        html += `<article class="ch-global-card"><h3>${esc(view.label)}</h3><ul>${ordered.map(({g, it}) => {
+          const value = Number.isFinite(it.chg) ? `${it.chg > 0 ? "+" : ""}${it.chg.toFixed(2)}%` : "—";
+          const tone = !Number.isFinite(it.chg) ? "dim" : it.chg > 0 ? "up" : it.chg < 0 ? "down" : "dim";
+          const session = it.stale ? "지연" : it.live ? "장중" : "마지막";
+          return `<li><span>${CH_FLAG[g.cc] || ""} ${esc(it.name)} <small>${esc(it.code)} · ${session}</small></span><b class="${tone}">${value}</b></li>`;
+        }).join("")}</ul></article>`;
+      });
+      html += "</div></section>";
+    }
     // 한국 거래시간에는 한국과 미국을 연속 배치한다.
     const hrK = (new Date().getUTCHours() + 9) % 24;
     const slot = hrK >= 8 && hrK < 20 ? ["kr", "us", "jp", "tw", "cn"] : ["us", "kr", "jp", "tw", "cn"];
