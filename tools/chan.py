@@ -308,6 +308,34 @@ def _nxt_quotes(codes: list[str], now: datetime) -> dict:
                                 "session": "프리" if stamp[11:16] < "09:00" else "애프터"}
         except Exception as error:  # noqa: BLE001
             ERRS.append(f"넥장 시세 {type(error).__name__}")
+        # NXT 선정 종목이 아닌 종목도 KRX 시간외(16:00~20:00)에서 체결될 수 있다.
+        # NXT 응답에 없는 종목만 네이버 국내 통합 현재가로 보완하고, 오늘 시간외 체결이
+        # 2분 이내로 확인될 때만 사용한다. 소스가 달라 NXT 시세와 합치지 않는다.
+        hm = now.hour * 60 + now.minute
+        if now.weekday() < 5 and 16 * 60 <= hm < 20 * 60:
+            today = now.date().isoformat()
+            missing = [code for code in codes if not quotes.get(code)
+                       or quotes[code].get("day") != today
+                       or quotes[code].get("status") != "OPEN"
+                       or now_ms - quotes[code].get("at", 0) > 120000]
+            if missing:
+                try:
+                    from krx import quotes as krx_quotes
+                    current = krx_quotes([f"{code}.KS" for code in missing])
+                    for code in missing:
+                        q = current.get(f"{code}.KS") or {}
+                        at = int(q.get("at") or 0)
+                        if (q.get("px", 0) > 0 and at > 0 and 0 <= now_ms - at <= 120000
+                                and datetime.fromtimestamp(at / 1000, now.tzinfo).date().isoformat() == today
+                                and datetime.fromtimestamp(at / 1000, now.tzinfo).hour * 60
+                                + datetime.fromtimestamp(at / 1000, now.tzinfo).minute >= 16 * 60):
+                            old = quotes.get(code) or {}
+                            if at > old.get("at", 0):
+                                quotes[code] = {"px": q["px"], "chg": q.get("chg"), "at": at,
+                                                "status": "OPEN", "day": today, "session": "애프터",
+                                                "venue": "KRX"}
+                except Exception as error:  # noqa: BLE001
+                    ERRS.append(f"KRX 시간외 보완 {type(error).__name__}")
         lc["_nxt"] = {"t": time.time(), "codes": codes, "q": quotes, "premarket_day": premarket_day}
         _save(LIVE, lc)
     return {code: {**quote, "last_only": (not active or quote.get("day") != now.date().isoformat()
