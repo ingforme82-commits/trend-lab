@@ -307,6 +307,21 @@
      "Cathay TAIEX 인버스 1X"
     ]
    ]
+  },
+  {
+   "cc": "tw",
+   "country": "대만",
+   "sector": "가권 지수 레버리지 2X",
+   "items": [
+    [
+     "00663L.TW",
+     "Cathay 가권 2X"
+    ],
+    [
+     "00675L.TW",
+     "Fubon 가권 2X"
+    ]
+   ]
   }
  ],
  "contact_rules": {
