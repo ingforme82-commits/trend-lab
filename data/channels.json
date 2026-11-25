@@ -295,6 +295,18 @@
      "Yuanta Taiwan 50 인버스 1X"
     ]
    ]
+  },
+  {
+   "cc": "tw",
+   "country": "대만",
+   "sector": "가권지수 인버스 1X",
+   "inverse": true,
+   "items": [
+    [
+     "00664R.TW",
+     "Cathay TAIEX 인버스 1X"
+    ]
+   ]
   }
  ],
  "contact_rules": {
@@ -305,7 +317,7 @@
  },
  "ipo": {
   "ANT": {
-   "ipo_px": 83,
+   "ipo_px": 83.0,
    "listed": "2026-11-19",
    "note": "11/19 나스닥 상장, 공모가 83달러"
   }
