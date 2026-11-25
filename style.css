@@ -1245,3 +1245,20 @@ html,body{overflow-x:clip}
   .lc-quote>.lc-px{font-size:inherit}
   .lc-p>small{display:block}
 }
+
+
+/* Compact cross-market sector comparison; detailed charts remain in local currency. */
+.ch-global-flow{margin:0 0 16px;padding:12px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.ch-global-title{margin:0 0 9px;font-weight:750;font-size:15px}
+.ch-global-title small{margin-left:7px;color:var(--sub);font-weight:450;font-size:12px}
+.ch-global-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.ch-global-card{min-width:0;padding:9px 11px;border:1px solid var(--line);border-radius:9px;background:var(--bg2)}
+.ch-global-card h3{margin:0 0 6px;font-size:13px}
+.ch-global-card ul{list-style:none;margin:0;padding:0}
+.ch-global-card li{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:4px 0;border-top:1px solid color-mix(in srgb,var(--line) 65%,transparent);font-size:12.5px}
+.ch-global-card li>span{min-width:0;overflow-wrap:anywhere}
+.ch-global-card li small{color:var(--sub);font-size:10.5px;white-space:nowrap}
+.ch-global-card b{white-space:nowrap;font-variant-numeric:tabular-nums}
+.ch-global-card b.up{color:var(--market-up)}
+.ch-global-card b.down{color:var(--market-down)}
+@media(max-width:760px){.ch-global-grid{grid-template-columns:1fr}.ch-global-title small{display:block;margin:3px 0 0}.ch-global-card li{font-size:12px}}
