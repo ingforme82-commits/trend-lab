@@ -380,7 +380,8 @@
       const old = Date.now() - w.at > 3 * 3600e3;
       return `<div class="tick"><p class="t-name">${esc(w.region)} · ${esc(w.name)}</p><p class="t-px">${w.px.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}</p>
         <p class="t-ch ${cls(w.chg)}">${w.chg > 0 ? "▲" : w.chg < 0 ? "▼" : ""} ${w.chg > 0 ? "+" : ""}${w.chg.toFixed(2)}%</p>
-        <p class="fine" style="margin:2px 0 0">${w.live ? "24시간 거래" : old ? `${kst(w.at).getMonth() + 1}/${kst(w.at).getDate()} ${hm(w.at)} 마감` : `${hm(w.at)} 기준`}</p></div>`;
+        ${w.low != null && w.rebound != null ? `<p class="fine">장중 저점 ${w.low.toLocaleString("ko-KR")} · 저점 대비 +${w.rebound.toFixed(2)}%</p>` : ""}
+        <p class="fine" style="margin:2px 0 0">${w.sym === "TAIEX" && w.day ? `${esc(w.day)} 종가 · TWSE` : w.live ? "24시간 거래" : old ? `${kst(w.at).getMonth() + 1}/${kst(w.at).getDate()} ${hm(w.at)} 마감` : `${hm(w.at)} 기준`}</p></div>`;
     }).join("");
   }
 
@@ -1209,6 +1210,8 @@
       <td>${r.val ? eok(r.val) : "-"}</td><td>${r.win ? eokS(r.win.amt) : "-"}</td><td>${invCell(r, "frgn")}</td><td>${invCell(r, "org")}</td>
       <td class="fl-5">${r.inv ? `${eokS(r.inv.frgn5)} / ${eokS(r.inv.org5)}` : "-"}</td><td>${progCell(r)}</td></tr>`).join("");
     const invDay = (s7.rows.find((r) => r.inv) || {}).inv;
+    const futures = (brief?.futures || []).filter((f) =>
+      ["코스피200 주간선물", "코스피200 야간선물"].includes(f.name) && Number.isFinite(f.px));
     box.innerHTML = `<p class="spot-h">🏛️ S7 · 코스피 영향 큰 7종목 <small>${st}</small></p>
       <div class="s7-sum">
         <div><span>코스피</span><b>${(+k.px).toLocaleString("ko-KR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</b> ${pct(k.chg)} ${pt(k.pts)}</div>
@@ -1217,6 +1220,7 @@
         <div><span>상승·하락 종목</span><b>${k.up != null ? `${k.up} / ${k.dn}` : "-"}</b></div>
         <div><span>코스피 투자자 <small>${k.flow_day ? md(k.flow_day.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")) : ""}</small></span>개인 ${ek(k.ind)} · 외국인 ${ek(k.frgn)} · 기관 ${ek(k.org)}</div>
         <div><span>프로그램 매매</span>차익 ${ek(k.arb)} · 비차익 ${ek(k.nonarb)} · 합계 ${ek(k.prog)}</div>
+        ${futures.map((f) => `<div><span>${esc(f.name)}</span><b>${f.px.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}</b> ${f.chg == null ? "" : pct(f.chg)}${f.base ? ` <small>기준 ${esc(f.base)}</small>` : ""}</div>`).join("")}
       </div>
       <div class="fl-scroll"><table class="fl-t"><tr>${sth("s7", "name", "종목")}${sth("s7", "chg", "등락")}${sth("s7", "pts", "지수 기여", "추정 포인트")}${sth("s7", "w", "코스피 비중", "전일 시총")}${sth("s7", "val", "거래대금", "통합")}${sth("s7", "win", "외국계 창구", "오늘")}${sth("s7", "frgn", "외국인", invSub(s7.rows, invDay ? md(invDay.day) : ""))}${sth("s7", "org", "기관", invSub(s7.rows, invDay ? md(invDay.day) : ""))}${sth("s7", "s5", "외국인·기관", "5일 합계")}${sth("s7", "prog", "프로그램", "오늘 통합")}</tr>${body}</table></div>`;
   }

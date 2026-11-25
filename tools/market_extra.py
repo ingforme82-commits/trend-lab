@@ -1,6 +1,6 @@
 """해외 지수 · 이번 주 화제 종목 · 오늘 뉴스에 많이 나온 종목 (news.json에 함께 싣는다)
 
-- 해외 지수: 야후 5분봉(장중 갱신, 5분마다만 새로 받음). 대만은 야후 지수가 멈춰 있어 하이퍼리퀴드 EWT(24시간)를 쓴다.
+- 해외 지수: 야후 5분봉(5분 캐시). 대만 가권지수는 대만증권거래소 확정 일봉을 쓴다.
 - 화제 종목: data/site.json 의 spotlight(spot.py로 켜고 끔). 하이퍼리퀴드에 없는 종목은 야후로 값을 받는다.
 - 많이 나온 종목: 최근 24시간 뉴스 헤드라인에서 종목 이름·티커 언급 수를 센다(사실 집계, 추천 아님).
 """
@@ -11,7 +11,7 @@ import json
 import time
 import re
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
@@ -19,8 +19,8 @@ ROOT = Path(__file__).resolve().parents[1]
 CACHE = ROOT / "tools" / "world_cache.json"
 
 WORLD = [  # (심볼, 이름, 지역, 출처)
-    ("^N225", "니케이225", "일본", "yf"), ("000001.SS", "상하이종합", "중국", "yf"), ("000300.SS", "CSI300", "중국", "yf"),
-    ("^HSI", "항셍", "홍콩", "yf"), ("xyz:EWT", "대만(EWT·24시간)", "대만", "hl"),
+    ("TAIEX", "가권지수", "대만", "twse"), ("^N225", "니케이225", "일본", "yf"),
+    ("000001.SS", "상하이종합", "중국", "yf"), ("000300.SS", "CSI300", "중국", "yf"), ("^HSI", "항셍", "홍콩", "yf"),
     ("GC=F", "금 선물 (COMEX GC)", "원자재", "yf"),
     ("^GDAXI", "DAX", "독일", "yf"), ("^FCHI", "CAC40", "프랑스", "yf"), ("^STOXX50E", "유로스톡스50", "유럽", "yf"),
 ]
@@ -48,7 +48,8 @@ def _yf(sym: str) -> dict | None:
         r = j["chart"]["result"][0]
         m = r["meta"]
         pts = [[t * 1000, round(c, 2)] for t, c in zip(r.get("timestamp") or [], r["indicators"]["quote"][0]["close"]) if c]
-        return {"px": m.get("regularMarketPrice"), "prev": m.get("chartPreviousClose"), "at": m["regularMarketTime"] * 1000, "spark": pts}
+        return {"px": m.get("regularMarketPrice"), "prev": m.get("chartPreviousClose"), "at": m["regularMarketTime"] * 1000,
+                "low": m.get("regularMarketDayLow"), "spark": pts}
     except Exception:  # noqa: BLE001
         return None
 
@@ -63,6 +64,35 @@ def _hl_ctx() -> dict:
         return {}
 
 
+def _taiex() -> dict | None:
+    now = datetime.now(ZoneInfo("Asia/Taipei"))
+    month = now.replace(day=1)
+    daily = {}
+    for report in (month, (month - timedelta(days=1)).replace(day=1)):
+        url = f"https://www.twse.com.tw/en/indicesReport/MI_5MINS_HIST?date={report:%Y%m%d}&response=json"
+        try:
+            req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+            data = json.loads(urllib.request.urlopen(req, timeout=8).read())
+            for day, _, high, low, close in data.get("data", []):
+                at = datetime.strptime(day, "%Y/%m/%d").replace(hour=13, minute=30, tzinfo=now.tzinfo)
+                values = [float(v.replace(",", "")) for v in (high, low, close)]
+                if at <= now and 0 < values[1] <= values[2] <= values[0]:
+                    daily[at] = values
+        except (OSError, ValueError, TypeError):
+            continue
+        if len(daily) >= 2:
+            break
+    dates = sorted(daily)
+    if len(dates) < 2:
+        return None
+    at = dates[-1]
+    high, low, px = daily[at]
+    prev = daily[dates[-2]][2]
+    return {"px": px, "chg": round((px / prev - 1) * 100, 2),
+            "at": int(at.timestamp() * 1000), "day": at.date().isoformat(), "high": high,
+            "low": low, "rebound": round((px / low - 1) * 100, 2)}
+
+
 def world_and_spot() -> tuple[list[dict], list[dict]]:
     """5분마다만 새로 받고 그 사이에는 저장본을 쓴다."""
     try:
@@ -74,6 +104,13 @@ def world_and_spot() -> tuple[list[dict], list[dict]]:
     hl = _hl_ctx()
     world = []
     for sym, name, region, src in WORLD:
+        if src == "twse":
+            quote = _taiex()
+            if quote is None and cache:
+                quote = next((row for row in cache.get("world", []) if row.get("sym") == sym), None)
+            if quote:
+                world.append({**quote, "sym": sym, "name": name, "region": region})
+            continue
         if src == "hl":
             c = hl.get(sym)
             if c:
@@ -83,8 +120,11 @@ def world_and_spot() -> tuple[list[dict], list[dict]]:
             continue
         d = _yf(sym)
         if d and d["px"] and d["prev"]:
-            world.append({"sym": sym, "name": name, "region": region, "px": d["px"], "chg": round((d["px"] / d["prev"] - 1) * 100, 2),
-                          "at": d["at"], "spark": d["spark"][::2]})
+            row = {"sym": sym, "name": name, "region": region, "px": d["px"], "chg": round((d["px"] / d["prev"] - 1) * 100, 2),
+                   "at": d["at"], "spark": d["spark"][::2]}
+            if sym == "^N225" and d.get("low") and 0 < d["low"] <= d["px"]:
+                row.update(low=d["low"], rebound=round((d["px"] / d["low"] - 1) * 100, 2))
+            world.append(row)
     # 화제 종목
     spot = []
     try:
