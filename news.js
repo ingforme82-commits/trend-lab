@@ -124,6 +124,7 @@
       const j = incoming && full && incoming !== full
         ? {...full, ...incoming, chan: full.chan}
         : full;
+      if (hasTrendGroups(j)) window.trlChan = j.chan; // 추세 데이터는 속보 시각 비교와 비동기 보조 조회보다 먼저 반영
       if (!preloaded && !window.trlNewsHealth?.direct) window.trlNewsHealth = {direct:false, checked:Date.now()};
       if (Date.now() - auxAt >= 55000) {
         auxAt = Date.now();
