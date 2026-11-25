@@ -832,7 +832,7 @@ body{overflow-x:hidden}
 .ch-chart .ch-res{stroke:#b7791f;stroke-width:2}
 .ch-chart .ch-sup{stroke:#0f8a7e;stroke-width:2}
 .ch-chart .ch-dash{stroke-dasharray:4 4}
-.ch-chart .ch-ma{fill:none;stroke:#7a5cc4;stroke-width:1.5;stroke-dasharray:2 2}
+.ch-chart .ch-ma{fill:none;stroke:#111827;stroke-width:3.5;stroke-dasharray:none;stroke-linecap:round;stroke-linejoin:round}
 .ch-chart .ch-dot-r{fill:#b7791f;stroke:#fff;stroke-width:2}
 .ch-chart .ch-dot-s{fill:#0f8a7e;stroke:#fff;stroke-width:2}
 .ch-chart .ch-live{opacity:.75}
