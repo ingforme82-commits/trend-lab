@@ -78,7 +78,12 @@
       apiLastAt = now;
       try {
         const r = await fetch(API_URL, { headers: { Accept: "application/vnd.github.raw+json" }, cache: "no-cache" });
-        if (r.ok) return keep(await r.json());
+        if (r.ok) {
+          const payload = await r.json();
+          if (payload && Number.isFinite(payload.updated) && Array.isArray(payload.items)) {
+            return keep(payload);
+          }
+        }
         if (r.status === 403 || r.status === 429) apiBlockedUntil = now + 20 * 60000;
       } catch { /* raw로 */ }
     }
