@@ -9,7 +9,7 @@
   const CARDS = [
     { code: "NQ", k: "xyz:XYZ100", n: "나스닥100", d: 0 },
     { code: "K200", k: "xyz:KR200", n: "코스피200", d: 2 },
-    { code: "WTI", k: "xyz:CL", n: "WTI", d: 2, u: "$" },
+    { code: "WTI", k: "xyz:CL", n: "WTI 무기한", d: 2, u: "$" },
     { code: "US10Y", k: "srv:US10Y", n: "미 10년물 금리", d: 3, suf: "%", bp: true },
     { code: "DXY", k: "srv:DXY", n: "달러인덱스", d: 2 },
     { code: "GOLD", k: "xyz:GOLD", n: "금 선물", d: 1, u: "$" },   // 11/21 운영자: 금 변동성도 속보와 같이
