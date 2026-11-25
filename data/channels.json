@@ -71,6 +71,18 @@
    ]
   },
   {
+   "cc": "kr",
+   "country": "한국",
+   "sector": "코스닥150 인버스",
+   "inverse": true,
+   "items": [
+    [
+     "530107",
+     "삼성 인버스 2X 코스닥150 선물 ETN"
+    ]
+   ]
+  },
+  {
    "cc": "us",
    "country": "미국",
    "sector": "AI 대장",
