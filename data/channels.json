@@ -83,6 +83,33 @@
    ]
   },
   {
+   "cc": "kr",
+   "country": "한국",
+   "sector": "코스피200 인버스 2X",
+   "inverse": true,
+   "items": [
+    [
+     "252670",
+     "KODEX 200선물인버스2X"
+    ],
+    [
+     "252710",
+     "TIGER 200선물인버스2X"
+    ]
+   ]
+  },
+  {
+   "cc": "kr",
+   "country": "한국",
+   "sector": "코스피200 레버리지",
+   "items": [
+    [
+     "122630",
+     "KODEX 레버리지"
+    ]
+   ]
+  },
+  {
    "cc": "us",
    "country": "미국",
    "sector": "AI 대장",
@@ -244,6 +271,30 @@
      "Walsin Technology"
     ]
    ]
+  },
+  {
+   "cc": "jp",
+   "country": "일본",
+   "sector": "닛케이 지수 인버스 2X",
+   "inverse": true,
+   "items": [
+    [
+     "1357.T",
+     "NEXT FUNDS 닛케이 더블인버스 2X"
+    ]
+   ]
+  },
+  {
+   "cc": "tw",
+   "country": "대만",
+   "sector": "대만 지수 인버스 1X",
+   "inverse": true,
+   "items": [
+    [
+     "00632R.TW",
+     "Yuanta Taiwan 50 인버스 1X"
+    ]
+   ]
   }
  ],
  "contact_rules": {
@@ -254,7 +305,7 @@
  },
  "ipo": {
   "ANT": {
-   "ipo_px": 83.0,
+   "ipo_px": 83,
    "listed": "2026-11-19",
    "note": "11/19 나스닥 상장, 공모가 83달러"
   }
