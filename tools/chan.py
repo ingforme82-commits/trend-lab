@@ -338,8 +338,13 @@ def _nxt_quotes(codes: list[str], now: datetime) -> dict:
                             {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": code, "FID_HOUR_CLS_CODE": "1"},
                         )
                         output = result.get("output1") or {}
+                        rows = list(result.get("output2") or [])
+                        # KIS output1도 최신 시간외 체결 시각·현재가를 제공한다.
+                        if output.get("stck_cntg_hour") and _n(output.get("ovtm_untp_prpr")) > 0:
+                            rows.append({"stck_cntg_hour": output["stck_cntg_hour"],
+                                         "stck_prpr": output["ovtm_untp_prpr"]})
                         trades = []
-                        for row in result.get("output2") or []:
+                        for row in rows:
                             clock = str(row.get("stck_cntg_hour") or "").zfill(6)
                             if len(clock) != 6 or not clock.isdigit() or int(clock) < 160000:
                                 continue
@@ -351,7 +356,9 @@ def _nxt_quotes(codes: list[str], now: datetime) -> dict:
                         if not trades:
                             continue
                         at, px = max(trades)
-                        pct = _n(output.get("ovtm_untp_prdy_ctrt"))
+                        raw_pct = output.get("ovtm_untp_prdy_ctrt")
+                        prev = (current.get(f"{code}.KS") or {}).get("prev")
+                        pct = _n(raw_pct) if raw_pct not in (None, "") else ((px / prev - 1) * 100 if prev else 0)
                         old = quotes.get(code) or {}
                         if at > old.get("at", 0):
                             quotes[code] = {"px": px, "chg": round(pct, 2), "at": at,
@@ -779,7 +786,7 @@ def build(now: datetime | None = None) -> dict:
     if events:
         hist = (hist + events)[-60:]
     import hashlib
-    body = {"contact_policy": contact_policy, "rule": c["rule"], "stance": c.get("stance", ""), "groups": groups, "log": hist[-20:][::-1], "signals": signals[::-1], "watch_signals": watch_signals[::-1], "resists": resists[::-1], "session_errs": session_errors[:20]}
+    body = {"build": "chan-krx-overtime-kis-v2", "contact_policy": contact_policy, "rule": c["rule"], "stance": c.get("stance", ""), "groups": groups, "log": hist[-20:][::-1], "signals": signals[::-1], "watch_signals": watch_signals[::-1], "resists": resists[::-1], "session_errs": session_errors[:20]}
     fp = hashlib.sha1(json.dumps(body, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     at = log.get("at") if log.get("fp") == fp and log.get("at") else int(now.timestamp() * 1000)   # 내용이 같으면 시각도 그대로(주말에 매분 올리지 않게)
     _save(LOG, {"contact_policy": contact_policy, "last": prev, "events": hist, "fp": fp, "at": at, "signals": signals, "watch_signals": watch_signals, "resists": resists})
