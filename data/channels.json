@@ -39,6 +39,28 @@
   {
    "cc": "kr",
    "country": "한국",
+   "sector": "코스피200 레버리지",
+   "items": [
+    [
+     "122630",
+     "KODEX 레버리지"
+    ]
+   ]
+  },
+  {
+   "cc": "kr",
+   "country": "한국",
+   "sector": "코스닥150 레버리지",
+   "items": [
+    [
+     "233740",
+     "KODEX 코스닥150 레버리지"
+    ]
+   ]
+  },
+  {
+   "cc": "kr",
+   "country": "한국",
    "sector": "메모리 반도체",
    "items": [
     [
@@ -99,17 +121,6 @@
    ]
   },
   {
-   "cc": "kr",
-   "country": "한국",
-   "sector": "코스피200 레버리지",
-   "items": [
-    [
-     "122630",
-     "KODEX 레버리지"
-    ]
-   ]
-  },
-  {
    "cc": "us",
    "country": "미국",
    "sector": "AI 대장",
@@ -145,6 +156,10 @@
     [
      "SOXS",
      "SOXS 반도체 인버스 3배"
+    ],
+    [
+     "TSMS",
+     "TSMC 인버스 2배"
     ]
    ]
   },
@@ -215,6 +230,18 @@
   {
    "cc": "jp",
    "country": "일본",
+   "sector": "닛케이 지수 인버스 2X",
+   "inverse": true,
+   "items": [
+    [
+     "1357.T",
+     "NEXT FUNDS 닛케이 더블인버스 2X"
+    ]
+   ]
+  },
+  {
+   "cc": "jp",
+   "country": "일본",
    "sector": "메모리",
    "items": [
     [
@@ -239,6 +266,36 @@
     [
      "4062.T",
      "이비덴"
+    ]
+   ]
+  },
+  {
+   "cc": "tw",
+   "country": "대만",
+   "sector": "가권지수 2X 롱",
+   "items": [
+    [
+     "00675L.TW",
+     "Fubon 가권 2X"
+    ],
+    [
+     "00663L.TW",
+     "Cathay 가권 2X"
+    ]
+   ]
+  },
+  {
+   "cc": "tw",
+   "country": "대만",
+   "sector": "메모리 반도체",
+   "items": [
+    [
+     "2408.TW",
+     "난야테크놀로지"
+    ],
+    [
+     "2344.TW",
+     "윈본드"
     ]
    ]
   },
@@ -271,57 +328,6 @@
      "Walsin Technology"
     ]
    ]
-  },
-  {
-   "cc": "jp",
-   "country": "일본",
-   "sector": "닛케이 지수 인버스 2X",
-   "inverse": true,
-   "items": [
-    [
-     "1357.T",
-     "NEXT FUNDS 닛케이 더블인버스 2X"
-    ]
-   ]
-  },
-  {
-   "cc": "tw",
-   "country": "대만",
-   "sector": "대만 지수 인버스 1X",
-   "inverse": true,
-   "items": [
-    [
-     "00632R.TW",
-     "Yuanta Taiwan 50 인버스 1X"
-    ]
-   ]
-  },
-  {
-   "cc": "tw",
-   "country": "대만",
-   "sector": "가권지수 인버스 1X",
-   "inverse": true,
-   "items": [
-    [
-     "00664R.TW",
-     "Cathay TAIEX 인버스 1X"
-    ]
-   ]
-  },
-  {
-   "cc": "tw",
-   "country": "대만",
-   "sector": "가권 지수 레버리지 2X",
-   "items": [
-    [
-     "00663L.TW",
-     "Cathay 가권 2X"
-    ],
-    [
-     "00675L.TW",
-     "Fubon 가권 2X"
-    ]
-   ]
   }
  ],
  "contact_rules": {
@@ -332,9 +338,46 @@
  },
  "ipo": {
   "ANT": {
-   "ipo_px": 83.0,
+   "ipo_px": 83,
    "listed": "2026-11-19",
    "note": "11/19 나스닥 상장, 공모가 83달러"
   }
- }
+ },
+ "global_sectors": [
+  {
+   "id": "memory",
+   "label": "메모리 반도체",
+   "codes": [
+    "005930",
+    "000660",
+    "MU",
+    "SNDK",
+    "SKHY",
+    "285A.T",
+    "2408.TW",
+    "2344.TW"
+   ]
+  },
+  {
+   "id": "mlcc",
+   "label": "MLCC·수동부품",
+   "codes": [
+    "009150",
+    "6981.T",
+    "6976.T",
+    "2327.TW",
+    "2492.TW"
+   ]
+  },
+  {
+   "id": "substrate",
+   "label": "패키지 기판",
+   "codes": [
+    "009150",
+    "4062.T",
+    "3037.TW",
+    "8046.TW"
+   ]
+  }
+ ]
 }
