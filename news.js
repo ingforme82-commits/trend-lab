@@ -70,8 +70,13 @@
   // → API 는 2분에 한 번(시간당 30번)만, 사이에는 raw(최대 5분 캐시)를 받고, 둘 중 더 새 것(updated)을 쓴다. 숨긴 탭은 쉰다.
   let apiBlockedUntil = 0, apiLastAt = 0, newest = null;
   const API_GAP = 115000;
+  const hasTrendGroups = (data) => {
+    const groups = data?.chan?.groups;
+    return Array.isArray(groups) && ["kr", "us", "jp", "tw"].every((cc) =>
+      groups.some((group) => group.cc === cc && Array.isArray(group.items) && group.items.length > 0));
+  };
   const keep = (j) => {
-    const complete = j && Number.isFinite(j.updated) && Array.isArray(j.items) && Array.isArray(j.chan?.groups);
+    const complete = j && Number.isFinite(j.updated) && Array.isArray(j.items) && hasTrendGroups(j);
     if (complete && (!newest || j.updated >= (newest.updated || 0))) newest = j;
     return newest;
   };
@@ -84,7 +89,7 @@
         const r = await fetch(API_URL, { headers: { Accept: "application/vnd.github.raw+json" }, cache: "no-cache" });
         if (r.ok) {
           const payload = await r.json();
-          if (payload && Number.isFinite(payload.updated) && Array.isArray(payload.items) && Array.isArray(payload.chan?.groups)) {
+          if (payload && Number.isFinite(payload.updated) && Array.isArray(payload.items) && hasTrendGroups(payload)) {
             return keep(payload);
           }
         }
@@ -113,9 +118,9 @@
   async function loadNews(preloaded = null) {
     try {
       const incoming = preloaded || await fetchNews();
-      const full = Array.isArray(incoming?.chan?.groups)
+      const full = hasTrendGroups(incoming)
         ? incoming
-        : Array.isArray(newest?.chan?.groups) ? newest : await fetchNews();
+        : hasTrendGroups(newest) ? newest : await fetchNews();
       const j = incoming && full && incoming !== full
         ? {...full, ...incoming, chan: full.chan}
         : full;
