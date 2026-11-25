@@ -37,7 +37,7 @@ const TICKS = [
   { k: "MU", n: "MU (마이크론)", d: 2, u: "$", lev: true },
   { g: "🌐 Macro", sub: "환율·원자재·금리" },
   { k: "KRW", n: "원/달러", d: 1, suf: "원", fx: "원/달러" },
-  { k: "CL", n: "WTI 원유", d: 2, u: "$" },
+  { k: "CL", n: "WTI 무기한", d: 2, u: "$" },
   { k: "BRENTOIL", n: "브렌트유", d: 2, u: "$" },
   { k: "GC", n: "금 선물 (COMEX GC)", d: 2 },
   { k: "GOLD", n: "금 무기한 선물", d: 1, u: "$" },
