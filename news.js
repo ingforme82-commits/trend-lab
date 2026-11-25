@@ -387,6 +387,7 @@
       asiaQuotes = rows.filter((row) => ["TAIEX", "^N225"].includes(row?.sym) &&
         [row.px, row.chg, row.at].every(Number.isFinite) && row.px > 0);
       drawWorld();
+      drawChan();
     } catch { /* Keep the last successful snapshot. */ }
   }
   function drawWorld() {
@@ -1158,7 +1159,7 @@
     const pxCls = (v) => v == null || !isFinite(v) ? "dim" : v > 0.005 ? "up" : v < -0.005 ? "down" : "dim";
     return `<p class="ch-sg-h">⚡ 돌파·저항 시그널 <small><i class="ch-dot up"></i>돌파 시도·확정 <i class="ch-dot dn"></i>저항·하락 시그널 · 실시간 값으로 다시 판단</small></p>` +
       by.map((x) => `<div class="ch-sgc"><p class="ch-sgc-h">${CH_FLAG[x.cc] || ""} ${esc(x.country)}</p><ul>${x.rows.map(({g, it, now, ev}) =>
-        `<li><b class="ch-nm">${esc(it.name)}</b> <b class="mn ${pxCls(it.chg)}">${chFmt(g.cc, it.px)}</b> <small class="${pxCls(it.chg)}">${it.chg == null ? "" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</small>
+        `<li><b class="ch-nm">${esc(it.name)}</b> <b class="mn ${pxCls(it.chg)}">${chFmt(units, it.px)}</b> <small class="${pxCls(it.chg)}">${it.chg == null ? "" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</small>
           ${now ? `<span class="ch-sg ${now.tone}">${esc(now.label)}</span>` : ""}
           ${ev.map((s) => `<p class="ch-evl ${chEvTone(s)}"><time>⏱ ${hm(s.ts)}</time> ${esc(chEvText(s.text))}</p>`).join("")}</li>`).join("")}</ul></div>`).join("");
   }
@@ -1173,19 +1174,24 @@
   }
   function drawChanRaw() {                                       // 11/17 운영자: 표 대신 채널 그래프를 항상 펼쳐서(1분마다 갱신)
     const box = q("#chan"), c = window.trlChan; if (!box) return;
-    if (!c || !(c.groups || []).length) { box.hidden = true; return; }
+    const asiaGroups = asiaQuotes.filter((row) => Array.isArray(row.trend?.rows) && row.trend.rows.length >= 20)
+      .map((row) => ({cc: row.sym === "TAIEX" ? "tw" : "jp", country: row.region, sector: "대표 지수",
+        index: true, items: [row.trend]}));
+    const allGroups = [...asiaGroups, ...(c?.groups || [])];
+    if (!allGroups.length) { box.hidden = true; return; }
     box.hidden = false;
     q("#chanRule").textContent = "돌파 관찰: 5일선 위·채널 상단 3% 이내 · 종가와 이후 지지 확인";
     const sgBox = q("#chanSig"), liveItems = [];
-    const live = c.groups.some((g) => g.items.some((it) => it.display ? it.display.live : it.live));
+    const live = allGroups.some((g) => g.items.some((it) => it.display ? it.display.live : it.live));
     const rtOn = Object.values(CH_RT).some((k) => { const r = ((window.trlRt || {}).q || {})[k]; return r && Date.now() - r.at < 15000; });
-    q("#chanStamp").textContent = `${hm(c.at)} KST${live ? " · 진행 중인 봉 포함" : ""}${rtOn ? " · 일부 실시간 체결" : ""}`;
+    const at = Math.max(c?.at || 0, ...asiaGroups.map((g) => g.items[0].source_at || 0));
+    q("#chanStamp").textContent = `${hm(at)} KST${live ? " · 진행 중인 봉 포함" : ""}${rtOn ? " · 일부 실시간 체결" : ""}`;
     let html = "", lastC = null;
     // 한국 거래시간에는 한국과 미국을 연속 배치한다.
     const hrK = (new Date().getUTCHours() + 9) % 24;
     const slot = hrK >= 8 && hrK < 20 ? ["kr", "us", "jp", "tw", "cn"] : ["us", "kr", "jp", "tw", "cn"];
     const cOrd = (cc) => slot.indexOf(cc === "kr_index" ? "kr" : cc);
-    const groups = c.groups.map((g, i) => ({g, i})).sort((a, b) => cOrd(a.g.cc) - cOrd(b.g.cc) || a.i - b.i).map((x) => x.g);
+    const groups = allGroups.map((g, i) => ({g, i})).sort((a, b) => cOrd(a.g.cc) - cOrd(b.g.cc) || a.i - b.i).map((x) => x.g);
     groups.forEach((g) => {
       if (g.country !== lastC) { if (lastC) html += `</div>`; html += `<div class="ch-country"><p class="ch-ch">${CH_FLAG[g.cc] || ""} ${esc(g.country)}${(window.trlMarketNoticesFor?.(g.cc === "kr_index" ? "kr" : g.cc) || []).map(({href,text}) => ` <a class="ch-holiday" href="${esc(href)}">${esc(text)}</a>`).join("")}</p>`; lastC = g.country; }
       const many = g.items.length > 1 && g.cc !== "kr_index";
@@ -1196,6 +1202,7 @@
       html += `<div class="ch-sec"><p class="ch-sh">${esc(g.sector)}${many ? "<small>현재 세션 등락률 높은 순</small>" : ""}${many && items.filter(({it}) => !it.ipo).length > 1 ? chSector(items.map(({it}) => it).filter((x) => !x.ipo)) : ""}</p><div class="ch-grid2">`;
       items.forEach((item, index) => {
         const {regular, it} = item;
+        const units = g.index ? "kr_index" : g.cc;
         if (it.ipo) { html += chIpoCard(it, g.cc); return; }      // 상장 초기 종목은 5분봉 흐름을 표시
         liveItems.push({g, it});
         const horizontal = g.cc === "us" ? chHorizontalLower(it.rows || []) : null;
@@ -1205,8 +1212,8 @@
         html += `<article class="ch-card${sgNow ? " t-" + sgNow.tone : ""}" data-viewport-key="channel:${esc(it.code)}">
           <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b>${(() => { const k = it.chg == null || !isFinite(it.chg) ? "dim" : it.chg > 0.005 ? "up" : it.chg < -0.005 ? "down" : "dim";   // 11/19 운영자: 현재가도 전일 종가 대비 색·굵게(상승 빨강·하락 파랑·보합 회색)
             const ses = g.cc === "tw" && it.live ? ["장중 · 지연 가능", "live"] : regular.display && it.session !== "정규장" ? [String(it.session).replace("마켓", "").replace("선물 24시간", "선물"), "ext"] : it.live ? ["정규장", "live"] : ["종가", "cls"];
-            return `<span class="ch-ptag p-${ses[1]}">${esc(ses[0])}</span><span class="ch-quote"><b class="mn ${k}">${chFmt(g.cc, it.px)}</b><b class="${k}"`; })()} title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(g.cc, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b></span>${sgNow ? `<span class="ch-sg ${sgNow.tone}">${({up: "▲", dn: "▼", wk: "△"})[sgNow.tone]} ${esc(sgNow.label)}</span>` : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span><small class="ch-session">${g.cc === "us" ? [ /10분 지연/.test(it.source || "") ? "약 10분 지연" : it.stale ? "지연" : !it.live ? "마지막 체결" : "", it.rt_at || it.source_at ? hm(it.rt_at || it.source_at) + " KST" : "" ].filter(Boolean).join(" · ") : (regular.display ? (it.session === "정규장" ? "정규장" : "시간외 · " + esc(it.session)) : (it.live ? "정규장" : "마감")) + (/10분 지연/.test(it.source || "") ? " · 약 10분 지연" : "") + (it.stale ? " · 지연" : !it.live ? " · 마지막" : "") + (it.rt_at || it.source_at ? ` · ${hm(it.rt_at || it.source_at)}` : "")}</small></div>
-          ${chLvLine(it, g.cc, horizontal)}${chCloseExt(regular, it, g.cc)}${chChart(it, g.cc, sgNow, horizontal)}</article>`;
+            return `<span class="ch-ptag p-${ses[1]}">${esc(ses[0])}</span><span class="ch-quote"><b class="mn ${k}">${chFmt(units, it.px)}</b><b class="${k}"`; })()} title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(units, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b></span>${sgNow ? `<span class="ch-sg ${sgNow.tone}">${({up: "▲", dn: "▼", wk: "△"})[sgNow.tone]} ${esc(sgNow.label)}</span>` : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span><small class="ch-session">${g.cc === "us" ? [ /10분 지연/.test(it.source || "") ? "약 10분 지연" : it.stale ? "지연" : !it.live ? "마지막 체결" : "", it.rt_at || it.source_at ? hm(it.rt_at || it.source_at) + " KST" : "" ].filter(Boolean).join(" · ") : (regular.display ? (it.session === "정규장" ? "정규장" : "시간외 · " + esc(it.session)) : (it.live ? "정규장" : "마감")) + (/10분 지연/.test(it.source || "") ? " · 약 10분 지연" : "") + (it.stale ? " · 지연" : !it.live ? " · 마지막" : "") + (it.rt_at || it.source_at ? ` · ${hm(it.rt_at || it.source_at)}` : "")}</small></div>
+          ${chLvLine(it, units, horizontal)}${chCloseExt(regular, it, units)}${chChart(it, units, sgNow, horizontal)}</article>`;
       });
       html += `</div></div>`;
     });

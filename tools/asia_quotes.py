@@ -1,23 +1,56 @@
 """Publish Taiwanese and Japanese index snapshots independently of live news."""
 import base64
 import json
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
-from market_extra import _taiex, _yf
+from chan import CONF, NBARS, _open_now, _yahoo, candle, channel, state
+from market_extra import _taiex, _yf, taiex_daily
 from nh_quotes import REPO, gh
 
 
+def trend(row, bars, config, live, source):
+    if len(bars) < 20:
+        return
+    bars = bars[-NBARS:]
+    result = channel(bars, config["anchors"], config.get("contact_rules"), last_closed=not live)
+    if result is None:
+        return
+    day, o, h, l, px = bars[-1]
+    prev = bars[-2][4]
+    row["trend"] = {
+        **result, "code": row["sym"], "name": row["name"], "day": day, "live": live,
+        "px": px, "chg": round((px / prev - 1) * 100, 2), "base": prev,
+        "candle": candle(o, h, l, px, prev), "state": state(result, px, live),
+        "rows": bars, "source": source, "source_at": row["at"],
+    }
+
+
 def collect():
-    taiwan = _taiex()
+    config = json.loads(CONF.read_text(encoding="utf-8"))
+    daily = taiex_daily(datetime.now(ZoneInfo("Asia/Taipei")), months=4, minimum=NBARS)
+    taiwan = _taiex(daily)
     japan = _yf("^N225")
     rows = []
     if taiwan:
-        rows.append({**taiwan, "sym": "TAIEX", "name": "가권지수", "region": "대만"})
+        row = {**taiwan, "sym": "TAIEX", "name": "가권지수", "region": "대만"}
+        trend(row, [[at.strftime("%m/%d"), *ohlc] for at, ohlc in daily], config, False, "대만증권거래소 공식 일봉")
+        rows.append(row)
     if japan and japan["px"] and japan["prev"]:
         px, low = japan["px"], japan.get("low")
         row = {"sym": "^N225", "name": "니케이225", "region": "일본", "px": px,
                "at": japan["at"], "chg": round((px / japan["prev"] - 1) * 100, 2)}
         if low and 0 < low <= px:
             row.update(low=low, rebound=round((px / low - 1) * 100, 2))
+        try:
+            bars = _yahoo("^N225", "3mo", "1d")
+        except (OSError, ValueError, KeyError, TypeError, IndexError):
+            bars = []
+        tokyo = ZoneInfo("Asia/Tokyo")
+        now = datetime.now(tokyo)
+        traded = datetime.fromtimestamp(row["at"] / 1000, tokyo)
+        if bars and bars[-1][0] == traded.strftime("%m/%d"):
+            trend(row, bars, config, traded.date() == now.date() and _open_now("jp", now), "Yahoo 일봉")
         rows.append(row)
     return rows
 
@@ -34,8 +67,9 @@ def main():
     previous = json.loads(base64.b64decode(current["content"])) if current else []
     merged = {row["sym"]: row for row in previous}
     for row in rows:
-        if row["at"] >= merged.get(row["sym"], {}).get("at", 0):
-            merged[row["sym"]] = row
+        old = merged.get(row["sym"], {})
+        if row["at"] >= old.get("at", 0):
+            merged[row["sym"]] = {**old, **row}
     updated = list(merged.values())
     if updated == previous:
         return

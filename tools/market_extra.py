@@ -64,30 +64,34 @@ def _hl_ctx() -> dict:
         return {}
 
 
-def _taiex() -> dict | None:
-    now = datetime.now(ZoneInfo("Asia/Taipei"))
+def taiex_daily(now: datetime, months: int = 2, minimum: int = 2) -> list:
     month = now.replace(day=1)
     daily = {}
-    for report in (month, (month - timedelta(days=1)).replace(day=1)):
-        url = f"https://www.twse.com.tw/en/indicesReport/MI_5MINS_HIST?date={report:%Y%m%d}&response=json"
+    for _ in range(months):
+        url = f"https://www.twse.com.tw/en/indicesReport/MI_5MINS_HIST?date={month:%Y%m%d}&response=json"
+        month = (month - timedelta(days=1)).replace(day=1)
         try:
             req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
             data = json.loads(urllib.request.urlopen(req, timeout=8).read())
-            for day, _, high, low, close in data.get("data", []):
+            for day, opening, high, low, close in data.get("data", []):
                 at = datetime.strptime(day, "%Y/%m/%d").replace(hour=13, minute=30, tzinfo=now.tzinfo)
-                values = [float(v.replace(",", "")) for v in (high, low, close)]
-                if at <= now and 0 < values[1] <= values[2] <= values[0]:
-                    daily[at] = values
+                o, h, l, c = (float(v.replace(",", "")) for v in (opening, high, low, close))
+                if at <= now and 0 < l <= min(o, c) <= max(o, c) <= h:
+                    daily[at] = [o, h, l, c]
         except (OSError, ValueError, TypeError):
             continue
-        if len(daily) >= 2:
+        if len(daily) >= minimum:
             break
-    dates = sorted(daily)
-    if len(dates) < 2:
+    return sorted(daily.items())
+
+
+def _taiex(daily: list | None = None) -> dict | None:
+    if daily is None:
+        daily = taiex_daily(datetime.now(ZoneInfo("Asia/Taipei")))
+    if len(daily) < 2:
         return None
-    at = dates[-1]
-    high, low, px = daily[at]
-    prev = daily[dates[-2]][2]
+    at, (_, high, low, px) = daily[-1]
+    prev = daily[-2][1][3]
     return {"px": px, "chg": round((px / prev - 1) * 100, 2),
             "at": int(at.timestamp() * 1000), "day": at.date().isoformat(), "high": high,
             "low": low, "rebound": round((px / low - 1) * 100, 2)}
