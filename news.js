@@ -108,7 +108,10 @@
   const isRecent = (ts, now, hours) => Number.isFinite(ts) && ts <= now && now - ts < hours * 3600e3;
   async function loadNews(preloaded = null) {
     try {
-      const j = preloaded || await fetchNews();
+      const incoming = preloaded || await fetchNews();
+      const j = incoming && !Array.isArray(incoming.chan?.groups) && Array.isArray(newest?.chan?.groups)
+        ? {...newest, ...incoming, chan: newest.chan}
+        : incoming;
       if (!preloaded && !window.trlNewsHealth?.direct) window.trlNewsHealth = {direct:false, checked:Date.now()};
       if (Date.now() - auxAt >= 55000) {
         auxAt = Date.now();
