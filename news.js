@@ -374,9 +374,29 @@
   }
 
   /* ── 해외 지수 ── */
+  let asiaQuotes = [];
+  async function loadAsiaQuotes() {
+    try {
+      const url = "https://raw.githubusercontent.com/ingforme82-commits/trend-lab/quotes/asia-quotes.json";
+      const response = await fetch(url + "?t=" + Math.floor(Date.now() / 60000), {
+        cache: "no-store", signal: AbortSignal.timeout(8000)
+      });
+      if (!response.ok) return;
+      const rows = await response.json();
+      if (!Array.isArray(rows)) return;
+      asiaQuotes = rows.filter((row) => ["TAIEX", "^N225"].includes(row?.sym) &&
+        [row.px, row.chg, row.at].every(Number.isFinite) && row.px > 0);
+      drawWorld();
+    } catch { /* Keep the last successful snapshot. */ }
+  }
   function drawWorld() {
     const box = q("#worldGrid"); if (!box) return;
-    box.innerHTML = world.filter((w) => w.sym !== "GC=F").map((w) => {
+    const rows = new Map(world.filter((w) => w.sym !== "GC=F").map((w) => [w.sym, w]));
+    for (const row of asiaQuotes) {
+      if (row.at >= (rows.get(row.sym)?.at || 0)) rows.set(row.sym, row);
+      if (row.sym === "TAIEX") rows.delete("xyz:EWT");
+    }
+    box.innerHTML = [...rows.values()].map((w) => {
       const old = Date.now() - w.at > 3 * 3600e3;
       return `<div class="tick"><p class="t-name">${esc(w.region)} · ${esc(w.name)}</p><p class="t-px">${w.px.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}</p>
         <p class="t-ch ${cls(w.chg)}">${w.chg > 0 ? "▲" : w.chg < 0 ? "▼" : ""} ${w.chg > 0 ? "+" : ""}${w.chg.toFixed(2)}%</p>
@@ -1561,6 +1581,8 @@
     }, 5 * 60000);
     stamp().then((v) => { if (first === null && v.replace(/\|/g, "")) first = v; }).catch(() => {});
   })();
+  loadAsiaQuotes();
+  setInterval(loadAsiaQuotes, 60000);
   setInterval(loadNotes, 600000);
   setInterval(async () => { await loadHeadline(); drawHeroLive(); }, 300000);   // 주요 이슈 5분마다
 })();
