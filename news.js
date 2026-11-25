@@ -756,7 +756,7 @@
   function drawWatch() {
     const box = q("#watchBox"); if (!box) return;
     const wh = watchHtml(watch);
-    const h = sessionQuotesHtml() + oilWatchHtml() + sessionHtml() + (wh || levHtml(lev));
+    const h = sessionQuotesHtml() + oilWatchHtml() + sessionHtml() + wh;
     box.hidden = !h; box.innerHTML = h;
   }
 
