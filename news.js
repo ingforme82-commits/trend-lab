@@ -967,6 +967,30 @@
     return `<p class="cx-ma">${esc(basis)} <b>${chFmt(cc, it.base)}</b></p>`;
   }
   function chChart(it, cc, sg, horizontal) {
+    const fullRows = it.rows || [];
+    const offset = Math.max(0, fullRows.length - 28); // 약 40일, 28거래일
+    if (offset) {
+      const shift = (values) => (values || []).filter((i) => i >= offset).map((i) => i - offset);
+      const oldLowerPath = it.lower_path || [];
+      let lowerPath = oldLowerPath
+        .filter((point) => point[0] >= offset)
+        .map((point) => [point[0] - offset, point[1]]);
+      if (oldLowerPath.length === 3 && oldLowerPath[1][0] < offset && oldLowerPath[2][0] >= offset) {
+        const [[a, av], [b, bv], end] = oldLowerPath;
+        const atOffset = av + (bv - av) * (offset - a) / (b - a);
+        lowerPath = [[0, atOffset], [end[0] - offset, end[1]]];
+      }
+      it = {
+        ...it,
+        rows: fullRows.slice(offset),
+        hi: shift(it.hi),
+        lo: shift(it.lo),
+        upper_start: Math.max(0, (it.upper_start ?? it.hi?.[0] ?? offset) - offset),
+        lower_start: Math.max(0, (it.lower_start ?? it.lo?.[0] ?? offset) - offset),
+        lower_path: lowerPath
+      };
+    }
+
     const rows = it.rows, n = rows.length, N = n + 1, W = 640, H = 230, M = {l: 6, r: 74, t: 10, b: 20};
     const up = (i) => it.up_now + it.su * (i - (n - 1)), lo = (i) => {
       const path = it.lower_path;
