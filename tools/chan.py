@@ -319,10 +319,44 @@ def _nxt_quotes(codes: list[str], now: datetime) -> dict:
                        or quotes[code].get("status") != "OPEN"
                        or now_ms - quotes[code].get("at", 0) > 120000]
             if missing:
+                # KRX 별도 애프터마켓은 NXT 피드에 포함되지 않는다.
+                # KIS 시간외 체결 TR(FHPST02310000)에서 오늘 16시 이후 실제 체결만 가져온다.
                 try:
-                    from krx import quotes as krx_quotes
-                    current = krx_quotes([f"{code}.KS" for code in missing])
+                    import kis
                     for code in missing:
+                        result = kis.get(
+                            "/uapi/domestic-stock/v1/quotations/inquire-time-overtimeconclusion",
+                            "FHPST02310000",
+                            {"FID_COND_MRKT_DIV_CODE": "J", "FID_INPUT_ISCD": code, "FID_HOUR_CLS_CODE": "1"},
+                        )
+                        output = result.get("output1") or {}
+                        trades = []
+                        for row in result.get("output2") or []:
+                            clock = str(row.get("stck_cntg_hour") or "").zfill(6)
+                            if len(clock) != 6 or not clock.isdigit() or int(clock) < 160000:
+                                continue
+                            at = int(now.replace(hour=int(clock[:2]), minute=int(clock[2:4]),
+                                                 second=int(clock[4:6]), microsecond=0).timestamp() * 1000)
+                            px = _n(row.get("stck_prpr"))
+                            if 0 < px and at <= now_ms:
+                                trades.append((at, px))
+                        if not trades:
+                            continue
+                        at, px = max(trades)
+                        pct = _n(output.get("ovtm_untp_prdy_ctrt"))
+                        old = quotes.get(code) or {}
+                        if at > old.get("at", 0):
+                            quotes[code] = {"px": px, "chg": round(pct, 2), "at": at,
+                                            "status": "OPEN", "day": today, "session": "애프터",
+                                            "venue": "KRX", "source": "한국투자증권 KRX 시간외 체결"}
+                except Exception as error:  # noqa: BLE001
+                    ERRS.append(f"KRX 시간외 한투 {type(error).__name__}")
+                remaining = [code for code in missing if (quotes.get(code) or {}).get("venue") != "KRX"]
+                if remaining:
+                    try:
+                        from krx import quotes as krx_quotes
+                        current = krx_quotes([f"{code}.KS" for code in remaining])
+                    for code in remaining:
                         q = current.get(f"{code}.KS") or {}
                         at = int(q.get("at") or 0)
                         if (q.get("px", 0) > 0 and at > 0 and 0 <= now_ms - at <= 120000
