@@ -636,7 +636,9 @@ def build(now: datetime | None = None) -> dict:
     INDEX_META.clear()
     c = json.loads(CONF.read_text(encoding="utf-8"))
     from session_chan import collect as collect_sessions, display as display_session
-    session_quotes, session_errors = collect_sessions(c["groups"], now, keystore.state_dir() / "chan_sessions.json")
+    session_cache_path = keystore.state_dir() / "chan_sessions.json"
+    session_quotes, session_errors = collect_sessions(c["groups"], now, session_cache_path)
+    session_archive = (_load(session_cache_path).get("_history") or {})
     groups, events = [], []
     contact_policy = json.dumps(c.get("contact_rules") or {}, sort_keys=True)
     log = _load(LOG); prev = log.get("last", {}) if log.get("contact_policy") == contact_policy else {}; hist = log.get("events", [])
@@ -715,6 +717,12 @@ def build(now: datetime | None = None) -> dict:
                              **nxt_view([r[:4] + [v] for r, v in zip(rows, kb["u"])] if kb else rows, ch, nq["px"], now.strftime("%m/%d"))}
             if g["cc"] in ("kr", "us"):
                 sq = session_quotes.get(code)
+                nq = nxq.get(code) if g["cc"] == "kr" else None
+                if g["cc"] == "kr" and nq and nq.get("session") == "애프터" and nq.get("day") == _iso(rows[-1][0], now):
+                    archived = (session_archive.get(code) or {}).get(nq["day"])
+                    closed = closed_nxt_quote(archived, nq, now)
+                    if closed and (not sq or not sq.get("provider_open") or sq.get("day") != nq["day"]):
+                        sq = closed
                 if sq:
                     try:
                         view = display_session(rows, sq, anc, c.get("contact_rules"), now=now,
