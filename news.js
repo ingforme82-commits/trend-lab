@@ -973,8 +973,8 @@
       if (regular.uni_close > 0) cells.push(cell("cx-cls", "통합 종가 · 넥장 20시", chFmt(cc, regular.uni_close), esc(regular.uni_close_day || "")));
       const nxtInHeader = regular.display && it.live && !it.stale && /^NXT (프리|애프터)$/.test(it.session);
       if (!nxtInHeader) cells.push(krxOpen ? cell("cx-live", "KRX 정규장 진행 중", `<span class="${kc(it.chg)}">${chFmt(cc, it.px)}</span>`, it.chg != null ? `<b class="${kc(it.chg)}">${sgn(+it.chg)}</b> KRX 종가 대비` : "")
-        : nx.px > 0 && nx.last_only ? cell("cx-ext", "NXT 마지막 체결", chFmt(cc, nx.px), when(nx.at) + " KST")
-        : nx.px > 0 ? ext(`넥장 ${nx.session === "프리" ? "프리마켓" : "애프터마켓"}`, nx.px, nx.at, kx, "KRX 종가 대비") : none("넥장 시간외", "시세 없음"));
+        : nx.px > 0 && nx.last_only ? cell("cx-ext", nx.venue === "KRX" ? "KRX 시간외 마지막 체결" : "NXT 마지막 체결", chFmt(cc, nx.px), when(nx.at) + " KST")
+        : nx.px > 0 ? ext(nx.venue === "KRX" ? "KRX 시간외" : `넥장 ${nx.session === "프리" ? "프리마켓" : "애프터마켓"}`, nx.px, nx.at, kx, "KRX 종가 대비") : none("넥장 시간외", "시세 없음"));
       const m5 = it.ma5 > 0 ? `<p class="cx-ma">5일선 통합 <b>${chFmt(cc, it.ma5)}</b>${regular.ma5_krx > 0 ? ` · KRX <b>${chFmt(cc, regular.ma5_krx)}</b>` : ""}</p>` : "";
       const basis = regular.uni_sma5_closed > 0
         ? `<p class="cx-ma">${esc(regular.uni_close_day || "")} 통합 확정 5일선 <b>${chFmt(cc, regular.uni_sma5_closed)}</b>${regular.uni_below_sma5 === true ? " · 통합 종가 5일선 아래" : ""}</p>`
