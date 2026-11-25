@@ -1012,6 +1012,13 @@
       };
     }
 
+    if (offset && horizontal) {
+      horizontal = {
+        ...horizontal,
+        first: Math.max(0, horizontal.first - offset),
+        second: Math.max(0, horizontal.second - offset)
+      };
+    }
     const rows = it.rows, n = rows.length, N = n + 1, W = 640, H = 230, M = {l: 6, r: 74, t: 10, b: 20};
     const up = (i) => it.up_now + it.su * (i - (n - 1)), lo = (i) => {
       const path = it.lower_path;
