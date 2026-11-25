@@ -786,7 +786,7 @@ def build(now: datetime | None = None) -> dict:
     if events:
         hist = (hist + events)[-60:]
     import hashlib
-    body = {"build": "chan-krx-overtime-kis-v2", "contact_policy": contact_policy, "rule": c["rule"], "stance": c.get("stance", ""), "groups": groups, "log": hist[-20:][::-1], "signals": signals[::-1], "watch_signals": watch_signals[::-1], "resists": resists[::-1], "session_errs": session_errors[:20]}
+    body = {"build": "chan-krx-overtime-kis-v3-global-sectors", "contact_policy": contact_policy, "rule": c["rule"], "stance": c.get("stance", ""), "global_sectors": c.get("global_sectors", []), "groups": groups, "log": hist[-20:][::-1], "signals": signals[::-1], "watch_signals": watch_signals[::-1], "resists": resists[::-1], "session_errs": session_errors[:20]}
     fp = hashlib.sha1(json.dumps(body, ensure_ascii=False, sort_keys=True).encode("utf-8")).hexdigest()
     at = log.get("at") if log.get("fp") == fp and log.get("at") else int(now.timestamp() * 1000)   # 내용이 같으면 시각도 그대로(주말에 매분 올리지 않게)
     _save(LOG, {"contact_policy": contact_policy, "last": prev, "events": hist, "fp": fp, "at": at, "signals": signals, "watch_signals": watch_signals, "resists": resists})
