@@ -635,7 +635,7 @@ def build(now: datetime | None = None) -> dict:
     ERRS.clear()
     INDEX_META.clear()
     c = json.loads(CONF.read_text(encoding="utf-8"))
-    from session_chan import collect as collect_sessions, display as display_session
+    from session_chan import collect as collect_sessions, display as display_session, closed_nxt_quote
     session_cache_path = keystore.state_dir() / "chan_sessions.json"
     session_quotes, session_errors = collect_sessions(c["groups"], now, session_cache_path)
     session_archive = (_load(session_cache_path).get("_history") or {})
