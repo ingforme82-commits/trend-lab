@@ -282,6 +282,39 @@ def split_fit(values, regular_close):
     return None
 
 
+
+def closed_nxt_quote(day_ohlc, nxt, now):
+    """마감 뒤 같은 거래일 NXT 최종 체결로 통합 봉 종가를 확정한다."""
+    if not isinstance(nxt, dict) or nxt.get("venue") == "KRX" or nxt.get("session") != "애프터":
+        return None
+    day = nxt.get("day")
+    try:
+        traded_at = int(nxt.get("at") or 0)
+        traded = datetime.fromtimestamp(traded_at / 1000, KST)
+        px = number(nxt.get("px"))
+    except (TypeError, ValueError, OSError, OverflowError):
+        return None
+    if not day or not px or traded_at <= 0 or traded.date().isoformat() != day:
+        return None
+    if not (15 * 60 + 40 <= traded.hour * 60 + traded.minute <= 20 * 60):
+        return None
+    values = ohlc(day_ohlc)
+    if not values:
+        return None
+    values[1] = max(values[1], px)
+    values[2] = min(values[2], px)
+    values[3] = px
+    return {
+        "day": day, "ohlc": values, "source_at": traded_at,
+        "checked_at": int(now.timestamp() * 1000),
+        "source": "NXT 최종 체결 · 보존된 통합 OHLC",
+        "session": "NXT 애프터", "provider_open": False,
+        "time_kind": "최종 체결 시각", "max_age_seconds": MAX_AGE["kr"],
+        "history_note": "마감 후 보존된 KRX+NXT 당일 고가·저가",
+        "scope": "KRX+NXT", "country": "kr",
+    }
+
+
 def display(rows, quote, anchors, rules, *, now, channel, candle, state):
     """정규장 데이터는 보존하고 화면용 projection만 반환. signals 대상 아님."""
     from copy import deepcopy
