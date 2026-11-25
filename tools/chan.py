@@ -312,18 +312,26 @@ def _nxt_quotes(codes: list[str], now: datetime) -> dict:
         # NXT 응답에 없는 종목만 네이버 국내 통합 현재가로 보완하고, 오늘 시간외 체결이
         # 2분 이내로 확인될 때만 사용한다. 소스가 달라 NXT 시세와 합치지 않는다.
         hm = now.hour * 60 + now.minute
-        if now.weekday() < 5 and 16 * 60 <= hm < 20 * 60:
+        if now.weekday() < 5 and hm >= 16 * 60:
             today = now.date().isoformat()
             missing = [code for code in codes if not quotes.get(code)
                        or quotes[code].get("day") != today
                        or quotes[code].get("status") != "OPEN"
                        or now_ms - quotes[code].get("at", 0) > 120000]
             if missing:
-                # KRX 별도 애프터마켓은 NXT 피드에 포함되지 않는다.
-                # KIS 시간외 체결 TR(FHPST02310000)에서 오늘 16시 이후 실제 체결만 가져온다.
+                # KRX 별도 애프터마켓은 NXT 피드와 분리된다.
+                # Naver 당일 기준가로 거래일을 확인한 뒤 KIS 시간외 체결 TR을 조회한다.
+                try:
+                    from krx import quotes as krx_quotes
+                    current = krx_quotes([f"{code}.KS" for code in missing])
+                except Exception as error:  # noqa: BLE001
+                    current = {}
+                    ERRS.append(f"KRX 시간외 거래일 확인 {type(error).__name__}")
+                eligible = [code for code in missing
+                            if (current.get(f"{code}.KS") or {}).get("day") == today]
                 try:
                     import kis
-                    for code in missing:
+                    for code in eligible:
                         result = kis.get(
                             "/uapi/domestic-stock/v1/quotations/inquire-time-overtimeconclusion",
                             "FHPST02310000",
@@ -351,11 +359,9 @@ def _nxt_quotes(codes: list[str], now: datetime) -> dict:
                                             "venue": "KRX", "source": "한국투자증권 KRX 시간외 체결"}
                 except Exception as error:  # noqa: BLE001
                     ERRS.append(f"KRX 시간외 한투 {type(error).__name__}")
-                remaining = [code for code in missing if (quotes.get(code) or {}).get("venue") != "KRX"]
+                remaining = [code for code in eligible if (quotes.get(code) or {}).get("venue") != "KRX"]
                 if remaining:
                     try:
-                        from krx import quotes as krx_quotes
-                        current = krx_quotes([f"{code}.KS" for code in remaining])
                         for code in remaining:
                             q = current.get(f"{code}.KS") or {}
                             at = int(q.get("at") or 0)
