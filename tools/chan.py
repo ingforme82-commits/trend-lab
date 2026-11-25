@@ -356,20 +356,20 @@ def _nxt_quotes(codes: list[str], now: datetime) -> dict:
                     try:
                         from krx import quotes as krx_quotes
                         current = krx_quotes([f"{code}.KS" for code in remaining])
-                    for code in remaining:
-                        q = current.get(f"{code}.KS") or {}
-                        at = int(q.get("at") or 0)
-                        if (q.get("px", 0) > 0 and at > 0 and 0 <= now_ms - at <= 120000
-                                and datetime.fromtimestamp(at / 1000, now.tzinfo).date().isoformat() == today
-                                and datetime.fromtimestamp(at / 1000, now.tzinfo).hour * 60
-                                + datetime.fromtimestamp(at / 1000, now.tzinfo).minute >= 16 * 60):
-                            old = quotes.get(code) or {}
-                            if at > old.get("at", 0):
-                                quotes[code] = {"px": q["px"], "chg": q.get("chg"), "at": at,
-                                                "status": "OPEN", "day": today, "session": "애프터",
-                                                "venue": "KRX"}
-                except Exception as error:  # noqa: BLE001
-                    ERRS.append(f"KRX 시간외 보완 {type(error).__name__}")
+                        for code in remaining:
+                            q = current.get(f"{code}.KS") or {}
+                            at = int(q.get("at") or 0)
+                            if (q.get("px", 0) > 0 and at > 0 and 0 <= now_ms - at <= 120000
+                                    and datetime.fromtimestamp(at / 1000, now.tzinfo).date().isoformat() == today
+                                    and datetime.fromtimestamp(at / 1000, now.tzinfo).hour * 60
+                                    + datetime.fromtimestamp(at / 1000, now.tzinfo).minute >= 16 * 60):
+                                old = quotes.get(code) or {}
+                                if at > old.get("at", 0):
+                                    quotes[code] = {"px": q["px"], "chg": q.get("chg"), "at": at,
+                                                    "status": "OPEN", "day": today, "session": "애프터",
+                                                    "venue": "KRX"}
+                    except Exception as error:  # noqa: BLE001
+                        ERRS.append(f"KRX 시간외 보완 {type(error).__name__}")
         lc["_nxt"] = {"t": time.time(), "codes": codes, "q": quotes, "premarket_day": premarket_day}
         _save(LIVE, lc)
     return {code: {**quote, "last_only": (not active or quote.get("day") != now.date().isoformat()
