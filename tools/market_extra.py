@@ -19,7 +19,7 @@ ROOT = Path(__file__).resolve().parents[1]
 CACHE = ROOT / "tools" / "world_cache.json"
 
 WORLD = [  # (심볼, 이름, 지역, 출처)
-    ("TAIEX", "가권지수", "대만", "twse"), ("^N225", "니케이225", "일본", "yf"),
+    ("TAIEX", "대만 가권지수(TAIEX)", "대만", "twse"), ("^N225", "니케이225", "일본", "yf"),
     ("000001.SS", "상하이종합", "중국", "yf"), ("000300.SS", "CSI300", "중국", "yf"), ("^HSI", "항셍", "홍콩", "yf"),
     ("GC=F", "금 선물 (COMEX GC)", "원자재", "yf"),
     ("^GDAXI", "DAX", "독일", "yf"), ("^FCHI", "CAC40", "프랑스", "yf"), ("^STOXX50E", "유로스톡스50", "유럽", "yf"),
