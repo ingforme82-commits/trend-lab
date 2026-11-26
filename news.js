@@ -819,7 +819,7 @@
     const invDay = (rows.find((r) => r.inv) || {}).inv;
     const dd = invDay ? md(invDay.day) : "";
     const head = compact ? "<tr><th>종목</th><th>등락</th><th>거래대금</th></tr>"
-      : `<tr>${sth("flow", "name", "종목")}${sth("flow", "chg", "등락")}${sth("flow", "val", "거래대금", "통합")}${sth("flow", "mcap", "시가총액")}${sth("flow", "win", "외국계 창구", "오늘")}${sth("flow", "frgn", "외국인", invSub(rows, dd))}${sth("flow", "org", "기관", invSub(rows, dd))}${sth("flow", "s5", "외국인·기관", "3일 합계")}${sth("flow", "prog", "프로그램", "오늘 통합")}${sth("flow", "prog5", "프로그램", "3일 합계")}</tr>`;
+      : `<tr>${sth("flow", "name", "종목")}${sth("flow", "chg", "등락")}${sth("flow", "val", "거래대금", "통합")}${sth("flow", "mcap", "시가총액")}${sth("flow", "win", "외국계 창구", "오늘")}${sth("flow", "frgn", "외국인", invSub(rows, dd))}${sth("flow", "org", "기관", invSub(rows, dd))}${sth("flow", "s5", "외국인·기관", "3일 합계")}${sth("flow", "prog", "프로그램", "오늘 통합")}${sth("flow", "prog5", "프로그램", "5일 합계")}</tr>`;
     const body = rows.map((r) => `<tr><td class="fl-n">${esc(r.name)}</td><td>${pct(r.chg)}</td><td>${r.val ? eok(r.val) : "-"}${!compact && r.val_krx && r.val - r.val_krx > 1e8 ? `<small class="fl-k">KRX ${eok(r.val_krx)}</small>` : ""}</td>${compact ? "" : `
       <td>${mcapS(r.mcap)}</td><td>${r.win ? eokS(r.win.amt) : "-"}</td><td>${invCell(r, "frgn")}</td><td>${invCell(r, "org")}</td>
       <td class="fl-5">${r.inv ? `${eokS(r.inv.frgn3 ?? r.inv.frgn5)} / ${eokS(r.inv.org3 ?? r.inv.org5)}` : "-"}</td><td>${progCell(r)}</td><td>${r.prog ? eokS(r.prog.amt5) : '<span class="dim">-</span>'}</td>`}</tr>`).join("");

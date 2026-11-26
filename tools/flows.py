@@ -159,7 +159,7 @@ def build() -> dict:
     out = []
     for name, rows in alls.items():
         for r in rows:
-            r["inv"] = parse_trend((cache["trend"].get(r["code"]) or {}).get("items") or [])
+            r["inv"] = parse_trend((cache["trend"].get(r["code"]) or {}).get("items") or [], exclude_day=today if is_open else None)
             r["win"] = parse_trader((cache["trader"].get(r["code"]) or {}).get("data") or [], today, r["px"])
             r["prog"] = prog.get(r["code"])
             if kisflow:
