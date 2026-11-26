@@ -56,11 +56,13 @@ def parse_quote(item: dict, code: str, now: datetime) -> dict | None:
     values = _ohlc(item.get(k + "Raw") or item.get(k) for k in ("openPrice", "highPrice", "lowPrice", "closePrice"))
     if not values:
         return None
-    market_open = item.get("marketStatus") == "OPEN"
+    market_status = str(item.get("marketStatus") or "missing")
+    market_open = market_status == "OPEN"
     # 시장 제공 상태를 사용해 수능일 등 시각 변경·휴장 때 정규시간만으로 열림을 추정하지 않는다.
     live = market_open and source.date() == now.date() and 0 <= age <= MAX_LIVE_AGE
     return {"row": [source.strftime("%m/%d"), *values], "source_at": int(source.timestamp() * 1000),
             "source_day": source.date().isoformat(), "source": "네이버 지수", "market_open": market_open,
+            "provider_market_status": market_status, "age_seconds": round(age),
             "live": live, "stale": market_open and not live,
             "quality_note": "장중 제공 지수" if live else "제공 지수 지연·실시간 판단 보류" if market_open else "장 종료·마지막 제공 지수"}
 
@@ -210,7 +212,7 @@ def _current_quote(code: str, now: datetime) -> dict | None:
     if quote and quote.get("live"):
         LIVE_DIAGNOSTICS[code] = "Naver 현재 지수"
         return quote
-    diagnostics.append("Naver 현재 시세 없음" if quote is None else "Naver 시세 지연")
+    diagnostics.append("Naver 현재 시세 없음" if quote is None else f"Naver marketStatus={quote.get('provider_market_status', 'missing')} age={quote.get('age_seconds', '?')}s")
     try:
         kis_quote = _kis_quote(code, now)
         if kis_quote:
