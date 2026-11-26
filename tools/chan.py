@@ -642,7 +642,7 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
     dc = _load(DAILY)
     e = dc.get(code) or {}
     refresh_split = code == "SNDK" and e.get("schema") != "sndk-split-20261120"
-    refresh_jp = cc == "jp" and e.get("schema") != "nh-jp-daily-v1"
+    refresh_jp = cc == "jp" and (e.get("day") != today or not e.get("rows"))
     if refresh_split or refresh_jp or e.get("day") != today or not e.get("rows"):  # 원본 일봉은 하루 한 번
         rows = []
         try:
@@ -654,6 +654,13 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
                 rows = _yahoo(code, "6mo", "1d")
         except Exception as x:  # noqa: BLE001
             ERRS.append(f"{code} 일봉 {type(x).__name__}")
+        if not rows and cc == "jp":
+            try:
+                rows = _yahoo(code, "6mo", "1d")
+                if rows:
+                    ERRS.append(f"{code} NH 일봉 실패 → Yahoo 일봉 임시 사용")
+            except Exception as x:  # noqa: BLE001
+                ERRS.append(f"{code} Yahoo 대체 일봉 {type(x).__name__}")
         if not rows and cc == "kr":                              # 11/17: 서버에서 한투 일봉 실패 → 키움 일봉(ka10081)으로
             ERRS.append(f"{code} 한투 일봉 없음 → 키움")
             try:
@@ -666,7 +673,7 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
                 ERRS.append(f"{code} 네이버 일봉 사용")
             except Exception as x:  # noqa: BLE001
                 ERRS.append(f"{code} 네이버 일봉 {type(x).__name__}")
-        if not rows and (refresh_split or refresh_jp):
+        if not rows and refresh_split:
             return [], False
         if not rows:
             rows = e.get("rows") or []
