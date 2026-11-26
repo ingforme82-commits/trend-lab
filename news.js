@@ -1098,6 +1098,26 @@
     return `<svg class="ch-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(it.name)} 일봉·하락 채널·5일선">${s}</svg>
       <p class="ch-leg">${bk != null ? `<i class="lo"></i>돌파한 상단(지지) <i class="lr"></i>돌파 뒤 고점(저항)` : `<i class="lr"></i>채널 상단`} <i class="ls"></i>채널 하단 <i class="lh"></i>수평 저항·지지 <i class="lp"></i>현재가 <i class="lm"></i>5일선${it.live ? " · 진행 중" : ""}</p>`;
   }
+  function chMarketQuote(regular, cc) {
+    const it = chLive(chDisplay(regular));
+    const today = kstDay(Date.now());
+    if (cc === "jp" && it.code !== "^N225" && today === "2026-11-26" &&
+        it.day === "11/26" && it.rows?.at(-2)?.[0] !== "11/25") {
+      return {...it, chg: null, stale: true, state: "전일 종가 확인 중"};
+    }
+    return it;
+  }
+  function chMarketSession(it, cc) {
+    const day = it.day ? it.day + " " : "";
+    if (cc === "jp" && it.day === kstDay(Date.now()).slice(5).replace("-", "/")) {
+      const now = kst(Date.now()), minute = now.getHours() * 60 + now.getMinutes();
+      if (minute >= 690 && minute < 750) return day + "오전장 마감";
+    }
+    if (it.stale) return day + "시세 확인 중";
+    if (it.session && it.session !== "정규장") return day + it.session + (it.live ? "" : " 마지막");
+    if (it.live) return day + "장중";
+    return day + (cc === "tw" && it.code === "TAIEX" ? "공식 종가" : "정규장 종가");
+  }
   function chDisplay(regular) {
     if (!regular.display) return regular;
     const it = {...regular, ...regular.display};
@@ -1248,7 +1268,7 @@
     const globalByCode = new Map();
     allGroups.forEach((g) => (g.items || []).forEach((regular) => {
       if (CH_HIDE.has(regular.code) || globalByCode.has(regular.code)) return;
-      globalByCode.set(regular.code, {g, it: chLive(chDisplay(regular))});
+      globalByCode.set(regular.code, {g, it: chMarketQuote(regular, g.cc)});
     }));
     const globalViews = (c?.global_sectors || []).map((view) => {
       const rows = (view.codes || []).map((code) => globalByCode.get(code)).filter(Boolean);
@@ -1261,8 +1281,8 @@
         html += `<article class="ch-global-card"><h3>${esc(view.label)}</h3><ul>${ordered.map(({g, it}) => {
           const value = Number.isFinite(it.chg) ? `${it.chg > 0 ? "+" : ""}${it.chg.toFixed(2)}%` : "—";
           const tone = !Number.isFinite(it.chg) ? "dim" : it.chg > 0 ? "up" : it.chg < 0 ? "down" : "dim";
-          const session = it.stale ? "지연" : it.live ? "장중" : "마지막";
-          return `<li><span>${CH_FLAG[g.cc] || ""} ${esc(it.name)} <small>${esc(it.code)} · ${session}</small></span><b class="${tone}">${value}</b></li>`;
+          const session = chMarketSession(it, g.cc);
+          return `<li><span>${CH_FLAG[g.cc] || ""} ${esc(it.name)} <small>${esc(it.code)} · ${esc(session)}</small></span><b class="${tone}">${value}</b></li>`;
         }).join("")}</ul></article>`;
       });
       html += "</div></section>";
@@ -1275,7 +1295,7 @@
     groups.forEach((g) => {
       if (g.country !== lastC) { if (lastC) html += `</div>`; html += `<div class="ch-country"><p class="ch-ch">${CH_FLAG[g.cc] || ""} ${esc(g.country)}${(window.trlMarketNoticesFor?.(g.cc === "kr_index" ? "kr" : g.cc) || []).map(({href,text}) => ` <a class="ch-holiday" href="${esc(href)}">${esc(text)}</a>`).join("")}</p>`; lastC = g.country; }
       const many = g.items.length > 1 && g.cc !== "kr_index";
-      const items = g.items.filter((r) => !CH_HIDE.has(r.code)).map((regular) => ({regular, it: chLive(chDisplay(regular))}));   // 11/19 운영자: 다우 선물 내림
+      const items = g.items.filter((r) => !CH_HIDE.has(r.code)).map((regular) => ({regular, it: chMarketQuote(regular, g.cc)}));   // 11/19 운영자: 다우 선물 내림
       const rankable = ({it}) => Number.isFinite(it.chg) && !it.stale;
       const strength = (item) => rankable(item) ? item.it.chg : -Infinity;
       if (many) items.sort((a, b) => strength(b) - strength(a));
@@ -1291,8 +1311,8 @@
         const mdl = many && rankable(item) ? `<span class="ch-md m${Math.min(rank, 4)} notranslate" translate="no">${(/^(?:|ko)$/i.test(new URLSearchParams(location.search).get("lang") || "") && !/googtrans=\/ko\/(?!ko)/.test(document.cookie) ? ["금", "은", "동"][index] : "") || rank}</span>` : "";
         html += `<article class="ch-card${sgNow ? " t-" + sgNow.tone : ""}" data-viewport-key="channel:${esc(it.code)}">
           <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b>${(() => { const k = it.chg == null || !isFinite(it.chg) ? "dim" : it.chg > 0.005 ? "up" : it.chg < -0.005 ? "down" : "dim";   // 11/19 운영자: 현재가도 전일 종가 대비 색·굵게(상승 빨강·하락 파랑·보합 회색)
-            const ses = it.stale ? [`${it.day || "최근"} 종가 · 실시간 확인 중`, "cls"] : g.cc === "tw" && it.live ? ["장중 · 지연 가능", "live"] : regular.display && it.session !== "정규장" ? [String(it.session).replace("마켓", "").replace("선물 24시간", "선물"), "ext"] : it.live ? ["정규장", "live"] : ["종가", "cls"];
-            return `<span class="ch-ptag p-${ses[1]}">${esc(ses[0])}</span><span class="ch-quote"><b class="mn ${k}">${chFmt(units, it.px)}</b><b class="${k}"`; })()} title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(units, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b></span>${sgNow ? `<span class="ch-sg ${sgNow.tone}">${({up: "▲", dn: "▼", wk: "△"})[sgNow.tone]} ${esc(sgNow.label)}</span>` : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span><small class="ch-session">${g.cc === "us" ? [ /10분 지연/.test(it.source || "") ? "약 10분 지연" : it.stale ? "지연" : !it.live ? "마지막 체결" : "", it.rt_at || it.source_at ? hm(it.rt_at || it.source_at) + " KST" : "" ].filter(Boolean).join(" · ") : (regular.display ? (it.session === "정규장" ? "정규장" : "시간외 · " + esc(it.session)) : (it.live ? "정규장" : "마감")) + (/10분 지연/.test(it.source || "") ? " · 약 10분 지연" : "") + (it.stale ? " · 지연" : !it.live ? " · 마지막" : "") + (it.rt_at || it.source_at ? ` · ${hm(it.rt_at || it.source_at)}` : "")}</small></div>
+            const ses = [chMarketSession(it, g.cc), it.stale ? "cls" : it.session && it.session !== "정규장" ? "ext" : it.live ? "live" : "cls"];
+            return `<span class="ch-ptag p-${ses[1]}">${esc(ses[0])}</span><span class="ch-quote"><b class="mn ${k}">${chFmt(units, it.px)}</b><b class="${k}"`; })()} title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(units, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b></span>${sgNow ? `<span class="ch-sg ${sgNow.tone}">${({up: "▲", dn: "▼", wk: "△"})[sgNow.tone]} ${esc(sgNow.label)}</span>` : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span><small class="ch-session">${it.rt_at || it.source_at ? hm(it.rt_at || it.source_at) + " KST" : ""}</small></div>
           ${chLvLine(it, units, horizontal)}${chCloseExt(regular, it, units)}${chChart(it, units, sgNow, horizontal)}</article>`;
       });
       html += `</div></div>`;

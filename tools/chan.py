@@ -576,6 +576,8 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
                 hm = now.hour * 100 + now.minute
                 live = [_kis_now(code)] if now.weekday() < 5 and hm >= 900 else []
                 live = [b for b in live if b]
+            elif cc == "jp":
+                live = _yahoo(code, "5d", "1d")
             elif cc == "tw" or code == "SNDK":
                 # 분할 조정된 일봉의 시가·고가·저가를 마지막 시간봉으로 덮지 않는다.
                 live = _yahoo(code, "5d", "1d")[-1:]
@@ -599,7 +601,13 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
                 live = live[:-1] + [[d, o, max(h, q["px"]), min(l, q["px"]), q["px"]]]
         except Exception:  # noqa: BLE001
             pass
-    for b in live or []:                                   # 같은 날짜는 바꾸고, 새 날짜는 붙인다
+    if cc == "jp" and live:
+        recent = {r[0]: r for r in live}
+        rows = [recent.pop(r[0], r) for r in rows]
+        # Backfill missing recent sessions in chronological order, including year rollover.
+        rows.extend(recent.values())
+        rows.sort(key=lambda r: (r[0] > now.strftime("%m/%d"), r[0]))
+    for b in ([] if cc == "jp" else live) or []:                                   # 같은 날짜는 바꾸고, 새 날짜는 붙인다
         if rows and rows[-1][0] == b[0]:
             rows[-1] = b
         elif not rows or b[0] > rows[-1][0] or (rows[-1][0][:2] == "12" and b[0][:2] == "01"):
@@ -635,7 +643,10 @@ def _is_current_session_bar(cc: str, live: list[list], rows: list[list], now: da
     if not zone or not live or not rows:
         return False
     day = now.astimezone(ZoneInfo(zone)).strftime("%m/%d")
-    return live[-1][0] == rows[-1][0] == day and _open_now(cc, now)
+    active = _open_now(cc, now)
+    if cc == "jp":
+        active = now.weekday() < 5 and 900 <= now.hour * 100 + now.minute < 1530
+    return live[-1][0] == rows[-1][0] == day and active
 
 
 def build(now: datetime | None = None) -> dict:
@@ -707,6 +718,11 @@ def build(now: datetime | None = None) -> dict:
             it = {"code": code, "name": name, "day": rows[-1][0], "live": live, "stale": market_stale, "px": px, "chg": round((px / pc - 1) * 100, 2),
                   "candle": cd, "state": st, "rows": [[r[0]] + [round(x, 2) for x in r[1:5]] for r in rows],
                   **{k: (round(v, 4) if isinstance(v, float) else v) for k, v in ch.items()}}
+            if g["cc"] == "jp":
+                it["base_day"] = rows[-2][0]
+                # 11/25 was a JPX trading day. Old cached Yahoo bars can skip it.
+                if it["day"] == "11/26" and it["base_day"] != "11/25" and now.year == 2026:
+                    it.update(chg=None, state="전일 종가 확인 중")
             if g["cc"] == "tw":
                 it["source"] = "Yahoo 일봉 · 지연 가능"
             if g["cc"] == "kr_index":
