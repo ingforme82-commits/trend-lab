@@ -1336,6 +1336,16 @@
     if (sgBox) { sgBox.hidden = true; sgBox.innerHTML = ""; }   // 11/19 운영자: 위쪽 시그널 글 칸은 내림 — 카드 색·차트 표시로만
     // 11/17 운영자: 추세 기록 칸은 내림 — 그래프만 실시간으로
   }
+  function s7Org(r) {
+    const p = r.org_public;
+    if (p) return `<b class="${cls(p.org_q)}">${p.org_q > 0 ? "+" : ""}${p.org_q.toLocaleString("ko-KR")}주</b><small class="fl-k">매동 추정 ${esc(p.round)}</small>`;
+    return invCell(r, "org") + (r.inv && !r.est && !r.est_kw ? `<small class="fl-k">${esc(md(r.inv.day))} 확정</small>` : "");
+  }
+  function s7Program(r) {
+    if (!r.prog) return '<span class="dim">오늘 미확인</span>';
+    if (r.prog.scope) return `${eokS(r.prog.amt)}<small class="fl-k">매동 잠정 · ${esc(r.prog.hm)}</small>`;
+    return progCell(r);
+  }
   function drawS7() {
     const box = q("#s7Box"); if (!box) return;
     if (!s7 || !(s7.rows || []).length) { box.hidden = true; return; }
@@ -1348,8 +1358,8 @@
     const partial = s7.reconcile, st = `${hm(s7.at)} 기준${s7.open ? " · 1분마다 갱신" : " · 장 마감"}${partial ? " · 일부 종목 시세 확인 중" : ""}`;
     const body = sortRows(s7.rows, "s7").map((r) => `<tr><td class="fl-n">${esc(r.name)}</td><td>${pct(r.chg)}</td>
       <td class="s7-c">${partial ? (r.indexUnverified ? '<span class="dim">대조 중</span>' : r.code === "005935" ? '<span class="dim">지수 미포함</span>' : '<span class="dim">재계산 중</span>') : r.w == null ? '<span class="dim">지수 미포함</span>' : `${pt(r.pts)}${bar(r.pts)}`}</td><td>${partial ? (r.code === "005935" ? "-" : '<span class="dim">대조 중</span>') : r.w == null ? "-" : r.w.toFixed(1) + "%"}</td>
-      <td>${r.val ? eok(r.val) : "-"}</td><td>${r.win ? eokS(r.win.amt) : "-"}</td><td>${invCell(r, "frgn")}</td><td>${invCell(r, "org")}</td>
-      <td class="fl-5">${r.inv ? `${eokS(r.inv.frgn5)} / ${eokS(r.inv.org5)}` : "-"}</td><td>${progCell(r)}</td></tr>`).join("");
+      <td>${r.val ? eok(r.val) : "-"}</td><td>${r.win ? eokS(r.win.amt) : "-"}</td><td>${invCell(r, "frgn")}</td><td>${s7Org(r)}</td>
+      <td class="fl-5">${r.inv ? `${eokS(r.inv.frgn5)} / ${eokS(r.inv.org5)}` : "-"}</td><td>${s7Program(r)}</td></tr>`).join("");
     const invDay = (s7.rows.find((r) => r.inv) || {}).inv;
     const futures = (brief?.futures || []).filter((f) =>
       ["코스피200 주간선물", "코스피200 야간선물"].includes(f.name) && Number.isFinite(f.px));
@@ -1363,7 +1373,7 @@
         <div><span>프로그램 매매</span>차익 ${ek(k.arb)} · 비차익 ${ek(k.nonarb)} · 합계 ${ek(k.prog)}</div>
         ${futures.map((f) => `<div><span>${esc(f.name)}</span><b>${f.px.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}</b> ${f.chg == null ? "" : pct(f.chg)}${f.base ? ` <small>기준 ${esc(f.base)}</small>` : ""}</div>`).join("")}
       </div>
-      <div class="fl-scroll"><table class="fl-t"><tr>${sth("s7", "name", "종목")}${sth("s7", "chg", "등락")}${sth("s7", "pts", "지수 기여", "추정 포인트")}${sth("s7", "w", "코스피 비중", "전일 시총")}${sth("s7", "val", "거래대금", "통합")}${sth("s7", "win", "외국계 창구", "오늘")}${sth("s7", "frgn", "외국인", invSub(s7.rows, invDay ? md(invDay.day) : ""))}${sth("s7", "org", "기관", invSub(s7.rows, invDay ? md(invDay.day) : ""))}${sth("s7", "s5", "외국인·기관", "5일 합계")}${sth("s7", "prog", "프로그램", "오늘 통합")}</tr>${body}</table></div>`;
+      <div class="fl-scroll"><table class="fl-t"><tr>${sth("s7", "name", "종목")}${sth("s7", "chg", "등락")}${sth("s7", "pts", "지수 기여", "추정 포인트")}${sth("s7", "w", "코스피 비중", "전일 시총")}${sth("s7", "val", "거래대금", "통합")}${sth("s7", "win", "외국계 창구", "오늘")}${sth("s7", "frgn", "외국인", invSub(s7.rows, invDay ? md(invDay.day) : ""))}${sth("s7", "org", "기관", invSub(s7.rows, invDay ? md(invDay.day) : ""))}${sth("s7", "s5", "외국인·기관", "5일 합계")}${sth("s7", "prog", "프로그램", "오늘 순매수")}</tr>${body}</table></div>`;
   }
   function drawFlows() {
     const box = q("#flowBox"); if (!box) return;

@@ -15,6 +15,7 @@
 from __future__ import annotations
 
 import json
+import re
 import sys
 import time
 import urllib.request
@@ -115,6 +116,37 @@ def krx_regular(now: datetime | None = None) -> bool:
     return t.weekday() < 5 and 9 * 60 <= t.hour * 60 + t.minute <= 15 * 60 + 30
 
 
+def public_flow(codes, today, now):
+    def page(path):
+        try:
+            request = urllib.request.Request("https://maedong.kr" + path, headers=UA)
+            return urllib.request.urlopen(request, timeout=7).read().decode("utf-8")
+        except (OSError, UnicodeError):
+            return ""
+
+    def program(code):
+        html = page("/stock/" + code)
+        match = re.search(r'([0-9-]{10}) · 30분 구간 · 최신 ([0-9:]{5}) · 누적 <b[^>]*>([+−0-9,-]+)억</b>', html)
+        if match and match[1] == today and "09:00" <= match[2] <= min(now, "15:30"):
+            return {"day": today, "hm": match[2], "amt": _n(match[3].replace("−", "-")) * 100_000_000,
+                    "src": "매동", "scope": "장중 잠정"}
+        return None
+
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        ranking = pool.submit(page, "/supply")
+        programs = {c: p for c, p in zip(codes, pool.map(program, codes)) if p}
+        html = ranking.result()
+    slot = re.search(r"최신 ([0-9:]{5}) 슬롯", html)
+    estimates = {}
+    if slot and any(p["hm"] == slot[1] for p in programs.values()):
+        section = html.partition("기관 추정 순매수 상위")[2].partition("</table>")[0]
+        pattern = r'/stock/([0-9]{6})#intraday[^<]*</a></td>\s*<td[^>]*>([0-9]/[0-9])</td>\s*<td[^>]*>([+−0-9,-]+)</td>'
+        for code, round_, qty in re.findall(pattern, section):
+            if code in codes:
+                estimates[code] = {"day": today, "round": round_, "org_q": int(qty.replace(",", "").replace("−", "-")), "src": "매동"}
+    return {"day": today, "programs": programs, "estimates": estimates}
+
+
 def build() -> dict:
     sys.path.insert(0, str(Path(__file__).resolve().parent))
     from flows import _trader, _trend, parse_trader, parse_trend
@@ -211,6 +243,20 @@ def build() -> dict:
         kw = kwflow.fetch(list(S7), set(S7))
     except Exception:  # noqa: BLE001
         kwflow, kw = None, {}
+    fallback = cache.get("public_flow") or {}
+    if fallback.get("day") != today:
+        fallback = {}
+    if 900 <= hhmm < 1900 and now.weekday() < 5 and t - fallback.get("t", 0) > 300:
+        if any(not (kp.get(c) or prog.get(c)) or not (ke.get(c) or kw.get(c)) for c in S7):
+            fresh = public_flow(list(S7), today, now.strftime("%H:%M"))
+            fallback = {"day": today, "t": t, **{
+                key: {**(fallback.get(key) or {}), **fresh[key]} for key in ("programs", "estimates")
+            }}
+            cache["public_flow"] = fallback
+            try:
+                CACHE.write_text(json.dumps(cache, ensure_ascii=False), encoding="utf-8")
+            except OSError:
+                pass
     for r in rows:
         r["prog"] = prog.get(r["code"])
         if kisflow:
@@ -219,6 +265,13 @@ def build() -> dict:
             kwflow.merge(r, kw)
         r["inv"] = parse_trend((tr_c.get(r["code"]) or {}).get("items") or [])
         r["win"] = parse_trader((wd_c.get(r["code"]) or {}).get("data") or [], today, r["px"])
+        if not r["prog"]:
+            r["prog"] = (fallback.get("programs") or {}).get(r["code"])
+        if r["inv"] and r["inv"].get("day") == today:
+            r.pop("est", None)
+            r.pop("est_kw", None)
+        elif (r.get("est") or {}).get("org") is None and (r.get("est_kw") or {}).get("org") is None:
+            r["org_public"] = (fallback.get("estimates") or {}).get(r["code"])
         r.pop("pmcap", None)
     order = list(S7)
     rows.sort(key=lambda r: order.index(r["code"]))
