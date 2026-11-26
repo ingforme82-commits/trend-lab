@@ -609,9 +609,7 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
         if kc:
             d, o, h, l, _ = rows[-1][:5]
             rows[-1] = [d, o, max(h, kc), min(l, kc), kc]
-    in_session = bool(live) and live[-1][0] == rows[-1][0] and _open_now(cc, now)
-    if cc == "tw":
-        in_session = in_session and rows[-1][0] == now.astimezone(ZoneInfo("Asia/Taipei")).strftime("%m/%d")
+    in_session = _is_current_session_bar(cc, live, rows, now)
     return rows[-NBARS:], in_session
 
 
@@ -621,13 +619,23 @@ def _open_now(cc: str, now: datetime) -> bool:
         return now.weekday() < 5 and 900 <= hm < 1530
     if cc == "jp":
         hm = now.hour * 100 + now.minute
-        return now.weekday() < 5 and 900 <= hm < 1530
+        return now.weekday() < 5 and (900 <= hm < 1130 or 1230 <= hm < 1530)
     if cc == "tw":
         local = now.astimezone(ZoneInfo("Asia/Taipei"))
         return local.weekday() < 5 and 900 <= local.hour * 100 + local.minute < 1330
     ny = now.astimezone(ZoneInfo("America/New_York"))       # DST 포함
     m = ny.hour * 60 + ny.minute
     return ny.weekday() < 5 and 570 <= m < 960
+
+
+def _is_current_session_bar(cc: str, live: list[list], rows: list[list], now: datetime) -> bool:
+    """장중 표시는 해당 시장의 오늘 날짜 봉이 실제로 있을 때만 허용한다."""
+    zones = {"kr": "Asia/Seoul", "jp": "Asia/Tokyo", "tw": "Asia/Taipei", "us": "America/New_York"}
+    zone = zones.get(cc)
+    if not zone or not live or not rows:
+        return False
+    day = now.astimezone(ZoneInfo(zone)).strftime("%m/%d")
+    return live[-1][0] == rows[-1][0] == day and _open_now(cc, now)
 
 
 def build(now: datetime | None = None) -> dict:
@@ -695,7 +703,8 @@ def build(now: datetime | None = None) -> dict:
             was0 = (prev.get(code) or {}).get("state")       # 11/17: 3% 경계에서 오락가락(채널 안↔상단 근접) 막기 — 나갈 때는 3.5%
             if was0 == "상단 근접" and st == "채널 안" and res_gap(ch, px) <= 3.5:
                 st = "상단 근접"
-            it = {"code": code, "name": name, "day": rows[-1][0], "live": live, "px": px, "chg": round((px / pc - 1) * 100, 2),
+            market_stale = g["cc"] != "kr_index" and _open_now(g["cc"], now) and not live
+            it = {"code": code, "name": name, "day": rows[-1][0], "live": live, "stale": market_stale, "px": px, "chg": round((px / pc - 1) * 100, 2),
                   "candle": cd, "state": st, "rows": [[r[0]] + [round(x, 2) for x in r[1:5]] for r in rows],
                   **{k: (round(v, 4) if isinstance(v, float) else v) for k, v in ch.items()}}
             if g["cc"] == "tw":
