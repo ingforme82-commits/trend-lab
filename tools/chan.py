@@ -207,8 +207,8 @@ def _nh_jp_daily(code: str, now: datetime) -> list[list]:
     payload = {"Input_0": {
         "iem_cd": symbol,
         "end_dt": now.astimezone(ZoneInfo("Asia/Tokyo")).strftime("%Y%m%d"),
-        "count": "0090",
-        "maxavg": "000",
+        "count": "90",
+        "maxavg": "0",
         "gubun": "3",
         "xtick": "0001",
         "today_cls": "0",
