@@ -697,8 +697,12 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
                 live = [_kis_now(code)] if now.weekday() < 5 and hm >= 900 else []
                 live = [b for b in live if b]
             elif cc == "jp":
-                nh_bar = _nh_jp_bar(code, now, rows)
-                live = [nh_bar] if nh_bar else []
+                # Closed market: use the latest daily close; do not query the live quote endpoint.
+                if _open_now("jp", now):
+                    nh_bar = _nh_jp_bar(code, now, rows)
+                    live = [nh_bar] if nh_bar else []
+                else:
+                    live = []
             elif cc == "tw" or code == "SNDK":
                 # 분할 조정된 일봉의 시가·고가·저가를 마지막 시간봉으로 덮지 않는다.
                 live = _yahoo(code, "5d", "1d")[-1:]
