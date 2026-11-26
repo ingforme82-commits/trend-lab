@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import json
+import math
 import time
 import re
 import urllib.request
@@ -48,7 +49,14 @@ def _yf(sym: str) -> dict | None:
         r = j["chart"]["result"][0]
         m = r["meta"]
         pts = [[t * 1000, round(c, 2)] for t, c in zip(r.get("timestamp") or [], r["indicators"]["quote"][0]["close"]) if c]
-        return {"px": m.get("regularMarketPrice"), "prev": m.get("chartPreviousClose"), "at": m["regularMarketTime"] * 1000,
+        px, pct = m.get("regularMarketPrice"), m.get("regularMarketChangePercent")
+        # Yahoo의 중국 장중 차트 기준가는 전 거래일보다 오래된 값일 수 있다.
+        prev = m.get("previousClose") or m.get("chartPreviousClose")
+        if isinstance(pct, (int, float)) and math.isfinite(pct) and pct > -100 and px:
+            prev = px / (1 + pct / 100)
+        elif sym.endswith(".SS"):
+            prev = None
+        return {"px": px, "prev": prev, "at": m["regularMarketTime"] * 1000,
                 "low": m.get("regularMarketDayLow"), "spark": pts}
     except Exception:  # noqa: BLE001
         return None

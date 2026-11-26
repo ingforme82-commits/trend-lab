@@ -79,13 +79,27 @@ class IndexDataTests(unittest.TestCase):
     def test_failed_current_request_keeps_daily_data_without_fake_live(self):
         with tempfile.TemporaryDirectory() as folder:
             with patch.object(index_chan, "_history", return_value=(history(), "fixture daily")), \
-                 patch.object(index_chan, "_quote", side_effect=OSError("offline")):
+                 patch.object(index_chan, "_current_quote", return_value=None), \
+                 patch.object(index_chan, "_naver_history", return_value=[]):
                 rows, live, meta = index_chan.bars("KOSPI", NOW,
                     daily_path=Path(folder) / "daily.json", live_path=Path(folder) / "live.json", yahoo=None)
             self.assertEqual(rows, history())
             self.assertFalse(live)
             self.assertIsNone(meta["source_at"])
             self.assertTrue(meta["stale"])
+
+    def test_current_day_chart_is_used_when_current_quote_unavailable(self):
+        today = ["11/18", 5000, 5010, 4990, 5005]
+        with tempfile.TemporaryDirectory() as folder:
+            with patch.object(index_chan, "_history", return_value=(history(), "fixture daily")), \
+                 patch.object(index_chan, "_current_quote", return_value=None), \
+                 patch.object(index_chan, "_naver_history", return_value=[today]):
+                rows, live, meta = index_chan.bars("KOSPI", NOW,
+                    daily_path=Path(folder) / "daily.json", live_path=Path(folder) / "live.json", yahoo=None)
+            self.assertEqual(rows, history() + [today])
+            self.assertFalse(live)
+            self.assertTrue(meta["stale"])
+            self.assertIsNone(meta["source_at"])
 
     def test_cached_source_time_revalidated_not_replaced_by_checked_time(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -121,7 +135,8 @@ class IndexDataTests(unittest.TestCase):
                  patch.object(index_chan, "bars", return_value=(rows, False, meta)):
                 result = chan.build(NOW)
             item = result["groups"][0]["items"][0]
-            self.assertEqual(item["state"], "자료 확인 중")
+            self.assertEqual(item["state"], "채널 안")
+            self.assertTrue(item["stale"])
             self.assertEqual(item["unit"], "pt")
             self.assertEqual(result["signals"], [])
 

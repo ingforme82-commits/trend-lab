@@ -647,6 +647,7 @@ def _is_current_session_bar(cc: str, live: list[list], rows: list[list], now: da
 
 
 def build(now: datetime | None = None) -> dict:
+    realtime_clock = now is None
     now = now or datetime.now(KST)
     ERRS.clear()
     INDEX_META.clear()
@@ -683,7 +684,8 @@ def build(now: datetime | None = None) -> dict:
                     ERRS.append(f"{code} 상장 초기 시세 {type(x).__name__}")
                 continue
             try:
-                rows, live = bars(g["cc"], code, now)
+                observed_at = datetime.now(KST) if realtime_clock and g["cc"] == "kr_index" else now
+                rows, live = bars(g["cc"], code, observed_at)
             except Exception as x:  # noqa: BLE001
                 ERRS.append(f"{code} 시세 {type(x).__name__}"); continue
             if len(rows) < 20:
@@ -691,7 +693,9 @@ def build(now: datetime | None = None) -> dict:
             anc = c["anchors"]
             if g.get("inverse"):                                # 11/21 운영자 "SKDD 하방 지지선 오류": 인버스는 기초자산과 반대로 움직이므로
                 anc = {"hi1": anc["lo1"], "hi2": anc["lo2"], "lo1": anc["hi1"], "lo2": anc["hi2"]}   # 기초자산 저점 구간 = 인버스 고점 구간
-            ch = channel(rows, anc, c.get("contact_rules"), last_closed=not live)
+            index_stale = g["cc"] == "kr_index" and INDEX_META.get(code, {}).get("stale")
+            provisional = index_stale and rows[-1][0] == observed_at.strftime("%m/%d")
+            ch = channel(rows, anc, c.get("contact_rules"), last_closed=not (live or provisional))
             if not ch:
                 ERRS.append(f"{code} 채널 기준점 없음"); continue
             kb = None
@@ -706,8 +710,8 @@ def build(now: datetime | None = None) -> dict:
             pcu = kb["u"][-2] if kb else pc                       # 시그널 '어제 종가'는 5일선과 같은 통합 기준
             cd = candle(o, h, l, px, pc)
             st = state(ch, px, live)
-            if g["cc"] == "kr_index" and INDEX_META.get(code, {}).get("stale"):
-                st = "자료 확인 중"
+            if index_stale and st == "돌파 확인":
+                st = "돌파 관찰·상단 근접"
             was0 = (prev.get(code) or {}).get("state")       # 11/17: 3% 경계에서 오락가락(채널 안↔상단 근접) 막기 — 나갈 때는 3.5%
             if was0 == "상단 근접" and st == "채널 안" and res_gap(ch, px) <= 3.5:
                 st = "상단 근접"
@@ -773,7 +777,7 @@ def build(now: datetime | None = None) -> dict:
             key = f"{code}"
             was = prev.get(key) or {}
             stamp = f"{rows[-1][0]}"
-            if was.get("state") and was.get("state") != st:
+            if not index_stale and was.get("state") and was.get("state") != st:
                 events.append({"ts": int(now.timestamp() * 1000), "code": code, "text": f"{name}: {was['state']} → {st} ({_fmt(g['cc'], px)}, 상단선 {_fmt(g['cc'], ch['up_now'])}, 5일선 {_fmt(g['cc'], ch['ma5'])})"})
             if live and cd["kind"] in ("bigup", "bigdn", "hammer", "shoot", "doji") and was.get("shape") != f"{stamp}:{cd['kind']}":
                 events.append({"ts": int(now.timestamp() * 1000), "code": code, "text": f"{name}: 오늘 캔들 {cd['name']} (시가 대비 {cd['vs_open']:+.2f}%, {_fmt(g['cc'], px)})"})
@@ -803,7 +807,8 @@ def build(now: datetime | None = None) -> dict:
                 resists.append(rs)
                 events.append({"ts": rs["ts"], "code": code, "text": rs["text"]})
                 was = {**was, "ma5res": stamp}
-            prev[key] = {**was, "state": st}
+            if not index_stale:
+                prev[key] = {**was, "state": st}
         if g["cc"] != "kr_index":
             items.sort(key=lambda x: -x["dd"])
         chan_items = [x for x in items if not x.get("ipo")]

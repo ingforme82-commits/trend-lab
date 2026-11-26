@@ -6,6 +6,7 @@ import math
 import urllib.request
 from datetime import datetime, timedelta
 from pathlib import Path
+from time import monotonic
 
 INDEXES = {"KOSPI": ("0001", "^KS11"), "KOSDAQ": ("1001", "^KQ11")}
 NAVER_INDEX_CODES = {"KOSPI": "KOSPI", "KOSDAQ": "KOSDAQ"}
@@ -79,7 +80,7 @@ def _save(path: Path, data: dict) -> None:
     path.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
 
 
-def parse_naver(data: list, now: datetime) -> list[list]:
+def parse_naver(data: list, now: datetime, *, include_today: bool = False) -> list[list]:
     rows = {}
     for item in data or []:
         day = str(item.get("localDate") or "")
@@ -88,15 +89,16 @@ def parse_naver(data: list, now: datetime) -> list[list]:
         except ValueError:
             continue
         values = _ohlc(item.get(k) for k in ("openPrice", "highPrice", "lowPrice", "closePrice"))
-        if values and date < now.date():                    # 오늘 봉은 실시간 조회로만
+        if values and (date < now.date() or (include_today and date == now.date())):
             rows[day] = [date.strftime("%m/%d"), *values]
     return [rows[k] for k in sorted(rows)]
 
 
-def _naver_history(code: str, now: datetime, days: int = 150) -> list[list]:
+def _naver_history(code: str, now: datetime, days: int = 150, *, include_today: bool = False) -> list[list]:
     u = (f"https://api.stock.naver.com/chart/domestic/index/{code}/day?startDateTime={(now - timedelta(days=days)).strftime('%Y%m%d')}"
          f"&endDateTime={now.strftime('%Y%m%d')}")
-    return parse_naver(json.loads(urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=8).read()), now)
+    return parse_naver(json.loads(urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=8).read()),
+                       now, include_today=include_today)
 
 
 def fill_gaps(rows: list[list], recent: list[list]) -> list[list]:
@@ -141,11 +143,13 @@ def _history(code: str, now: datetime, yahoo) -> tuple[list[list], str]:
 
 
 def _quote(code: str, now: datetime) -> dict | None:
+    started = monotonic()
     naver_code = NAVER_INDEX_CODES.get(code)
     if not naver_code:
         return None
     request = urllib.request.Request(f"https://polling.finance.naver.com/api/realtime/domestic/index/{naver_code}", headers=UA)
     data = json.loads(urllib.request.urlopen(request, timeout=8).read())
+    now += timedelta(seconds=monotonic() - started)
     return next((q for item in data.get("datas", []) if (q := parse_quote(item, code, now))), None)
 
 
@@ -153,6 +157,7 @@ def _quote(code: str, now: datetime) -> dict | None:
 def _kis_quote(code: str, now: datetime) -> dict | None:
     from kis import get
 
+    started = monotonic()
     data = get(
         "/uapi/domestic-stock/v1/quotations/inquire-time-indexchartprice",
         "FHKUP03500200",
@@ -164,6 +169,7 @@ def _kis_quote(code: str, now: datetime) -> dict | None:
             "FID_PW_DATA_INCU_YN": "N",
         },
     )
+    now += timedelta(seconds=monotonic() - started)
     header = data.get("output1") or {}
     if isinstance(header, list):
         header = header[0] if header else {}
@@ -199,6 +205,7 @@ def _kis_quote(code: str, now: datetime) -> dict | None:
 
 
 def _current_quote(code: str, now: datetime) -> dict | None:
+    started = monotonic()
     diagnostics = []
     try:
         quote = _quote(code, now)
@@ -214,7 +221,7 @@ def _current_quote(code: str, now: datetime) -> dict | None:
         return quote
     diagnostics.append("Naver 현재 시세 없음" if quote is None else f"Naver marketStatus={quote.get('provider_market_status', 'missing')} age={quote.get('age_seconds', '?')}s")
     try:
-        kis_quote = _kis_quote(code, now)
+        kis_quote = _kis_quote(code, now + timedelta(seconds=monotonic() - started))
         if kis_quote:
             LIVE_DIAGNOSTICS[code] = "한투 1분 지수"
             return kis_quote
@@ -228,6 +235,7 @@ def _current_quote(code: str, now: datetime) -> dict | None:
 def bars(code: str, now: datetime, *, daily_path: Path, live_path: Path, yahoo) -> tuple[list[list], bool, dict]:
     if code not in INDEXES:
         raise ValueError("Unknown index")
+    started = monotonic()
     today = now.date().isoformat()
     daily = _read(daily_path)
     entry = daily.get(code) or {}
@@ -248,13 +256,16 @@ def bars(code: str, now: datetime, *, daily_path: Path, live_path: Path, yahoo) 
     live_cache = _read(live_path)
     cached = live_cache.get(code) or {}
     quote = cached.get("quote")
+    observed_at = now + timedelta(seconds=monotonic() - started)
     if not (quote and 0 <= now.timestamp() - cached.get("t", 0) < 55):
         try:
-            quote = _current_quote(code, now)
-            live_cache[code] = {"t": now.timestamp(), "quote": quote}
+            quote = _current_quote(code, observed_at)
+            live_cache[code] = {"t": (now + timedelta(seconds=monotonic() - started)).timestamp(), "quote": quote}
             _save(live_path, live_cache)
         except Exception:  # noqa: BLE001
             quote = None  # 실패한 현재 조회를 이전 봉으로 대체해 실시간이라고 표시하지 않는다.
+    now += timedelta(seconds=monotonic() - started)
+    meta["checked_at"] = int(now.timestamp() * 1000)
     active = False
     if quote:
         source = datetime.fromtimestamp(quote["source_at"] / 1000, now.tzinfo)
@@ -271,6 +282,21 @@ def bars(code: str, now: datetime, *, daily_path: Path, live_path: Path, yahoo) 
         meta.update(source=quote["source"], source_at=quote["source_at"],
                     stale=bool(quote["market_open"] and not active),
                     quality_note="장중 제공 지수" if active else "제공 지수 지연·실시간 판단 보류" if quote["market_open"] else "장 종료·마지막 제공 지수")
+    today_label = now.strftime("%m/%d")
+    if not quote or quote["row"][0] != today_label:
+        if now.weekday() < 5 and 540 <= now.hour * 60 + now.minute < 930:
+            meta["stale"] = True
+        try:
+            recent = _naver_history(code, now, 0, include_today=True)
+        except (OSError, ValueError, TypeError):
+            recent = []
+        if recent and recent[-1][0] == today_label:
+            if rows and rows[-1][0] == today_label:
+                rows[-1] = recent[-1]
+            else:
+                rows.append(recent[-1])
+            meta.update(source="네이버 지수 일봉", source_at=None, stale=True,
+                        quality_note="당일 일봉·제공 시각 미확인")
     if warning:
         meta["quality_note"] += " · " + warning
     if not active and meta.get("stale"):

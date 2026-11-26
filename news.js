@@ -990,8 +990,7 @@
       const cells = [cell("cx-cls", "KRX 종가 · 기준가", chFmt(cc, kx), esc(regular.krx_close_day || ""))];
       if (regular.uni_close > 0) cells.push(cell("cx-cls", "통합 종가 · 넥장 20시", chFmt(cc, regular.uni_close), esc(regular.uni_close_day || "")));
       const nxtInHeader = regular.display && it.live && !it.stale && /^NXT (프리|애프터)$/.test(it.session);
-      if (!nxtInHeader) cells.push(krxOpen ? cell("cx-live", "KRX 정규장 진행 중", `<span class="${kc(it.chg)}">${chFmt(cc, it.px)}</span>`, it.chg != null ? `<b class="${kc(it.chg)}">${sgn(+it.chg)}</b> KRX 종가 대비` : "")
-        : nx.px > 0 && nx.last_only ? cell("cx-ext", nx.venue === "KRX" ? "KRX 시간외 마지막 체결" : "NXT 마지막 체결", chFmt(cc, nx.px), when(nx.at) + " KST")
+      if (!krxOpen && !nxtInHeader) cells.push(nx.px > 0 && nx.last_only ? cell("cx-ext", nx.venue === "KRX" ? "KRX 시간외 마지막 체결" : "NXT 마지막 체결", chFmt(cc, nx.px), when(nx.at) + " KST")
         : nx.px > 0 ? ext(nx.venue === "KRX" ? "KRX 시간외" : `넥장 ${nx.session === "프리" ? "프리마켓" : "애프터마켓"}`, nx.px, nx.at, kx, "KRX 종가 대비") : none("넥장 시간외", "시세 없음"));
       const m5 = it.ma5 > 0 ? `<p class="cx-ma">5일선 통합 <b>${chFmt(cc, it.ma5)}</b>${regular.ma5_krx > 0 ? ` · KRX <b>${chFmt(cc, regular.ma5_krx)}</b>` : ""}</p>` : "";
       const basis = regular.uni_sma5_closed > 0
@@ -1326,7 +1325,7 @@
         html += `<article class="ch-card${sgNow ? " t-" + sgNow.tone : ""}" data-viewport-key="channel:${esc(it.code)}">
           <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b>${(() => { const k = it.chg == null || !isFinite(it.chg) ? "dim" : it.chg > 0.005 ? "up" : it.chg < -0.005 ? "down" : "dim";   // 11/19 운영자: 현재가도 전일 종가 대비 색·굵게(상승 빨강·하락 파랑·보합 회색)
             const ses = [chMarketSession(it, g.cc), it.stale ? "cls" : it.session && it.session !== "정규장" ? "ext" : it.live ? "live" : "cls"];
-            return `<span class="ch-ptag p-${ses[1]}">${esc(ses[0])}</span><span class="ch-quote"><b class="mn ${k}">${chFmt(units, it.px)}</b><b class="${k}"`; })()} title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(units, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b></span>${sgNow ? `<span class="ch-sg ${sgNow.tone}">${({up: "▲", dn: "▼", wk: "△"})[sgNow.tone]} ${esc(sgNow.label)}</span>` : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span><small class="ch-session">${it.rt_at || it.source_at ? hm(it.rt_at || it.source_at) + " KST" : ""}</small></div>
+            return `<span class="ch-ptag p-${ses[1]}">${esc(ses[0])}</span><span class="ch-quote"><b class="mn ${k}">${chFmt(units, it.px)}</b><b class="${k}"`; })()} title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(units, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b></span>${sgNow ? `<span class="ch-sg ${sgNow.tone}">${({up: "▲", dn: "▼", wk: "△"})[sgNow.tone]} ${esc(sgNow.label)}</span>` : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span><small class="ch-session">${g.cc === "kr_index" && it.stale ? `${esc(it.day)} 기준 · ${it.source_at ? "지연 " + hm(it.source_at) : "일봉"}` : it.rt_at || it.source_at ? hm(it.rt_at || it.source_at) + " KST" : ""}</small></div>
           ${chLvLine(it, units, horizontal)}${chCloseExt(regular, it, units)}${chChart(it, units, sgNow, horizontal)}</article>`;
       });
       html += `</div></div>`;
