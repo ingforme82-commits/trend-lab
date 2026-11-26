@@ -203,7 +203,8 @@ def _nh_jp_client():
 def _nh_jp_daily(code: str, now: datetime) -> list[list]:
     """NH 해외주식 기간별시세 Output_1의 일본 종목 일봉만 사용한다."""
     nh_quotes, keyfile, token = _nh_jp_client()
-    symbol = "JPN" + code.removesuffix(".T")
+    # Period API uses the bare ticker (e.g. AAPL); JPN prefix is only for current quote.
+    symbol = code.removesuffix(".T")
     payload = {"Input_0": {
         "iem_cd": symbol,
         "end_dt": now.astimezone(ZoneInfo("Asia/Tokyo")).strftime("%Y%m%d"),
