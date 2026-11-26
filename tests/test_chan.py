@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-from chan import candle, channel, levels, nxt_view, nxt_window, sector_view, state  # noqa: E402
+from chan import candle, channel, levels, nxt_view, nxt_window, sector_view, state, _is_current_session_bar  # noqa: E402
 from datetime import datetime, timedelta, timezone  # noqa: E402
 
 A = {"hi1": ["10/26", "10/31"], "hi2": ["11/09", "11/13"], "lo1": ["10/19", "10/24"], "lo2": ["11/03", "11/12"]}
@@ -54,6 +54,16 @@ class T(unittest.TestCase):
         v = sector_view([a, b])
         self.assertEqual((v["state"], v["broke"], v["laggard"]), ("섹터 돌파 아님", 1, "약체"))
         self.assertEqual(sector_view([a, {**b, "px": 111, "state": "돌파 확인"}])["state"], "섹터 돌파 확인")
+
+    def test_market_session_bar_requires_current_local_date(self):
+        kst = timezone(timedelta(hours=9))
+        now = datetime(2026, 11, 26, 9, 15, tzinfo=kst)
+        prior = [["11/25", 100, 101, 99, 100]]
+        current = [["11/26", 100, 101, 99, 100]]
+        self.assertFalse(_is_current_session_bar("jp", prior, prior, now))
+        self.assertTrue(_is_current_session_bar("jp", current, current, now))
+        lunch = datetime(2026, 11, 26, 12, 0, tzinfo=kst)
+        self.assertFalse(_is_current_session_bar("jp", current, current, lunch))
 
     def test_nxt_window(self):
         kst = timezone(timedelta(hours=9))
