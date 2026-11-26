@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 import urllib.request
@@ -183,6 +184,65 @@ def _yahoo(sym: str, rng: str, iv: str) -> list[list]:
         days[k] = [k, o, h, l, c] if not x else [k, x[1], max(x[2], h), min(x[3], l), c]
     return list(days.values())
 
+
+
+def _nh_jp_bar(code: str, now: datetime, fallback: list[list]) -> list | None:
+    """NH 일본 현재가를 오늘 일봉에 반영한다. 날짜/가격이 검증되지 않으면 Yahoo 보조봉을 유지한다."""
+    try:
+        import nh_quotes
+        candidates = [
+            Path(os.environ.get("NH_APP_KEY_FILE", "")).expanduser() if os.environ.get("NH_APP_KEY_FILE") else None,
+            Path.home() / ".nhplug" / ".env",
+            keystore.keys_file(),
+        ]
+        keyfile = next((p for p in candidates if p and p.is_file()), None)
+        if keyfile is None:
+            ERRS.append(f"{code} NH 일본 인증 파일 없음")
+            return None
+        token = nh_quotes.access_token(keyfile)
+        symbol = "JPN" + code.removesuffix(".T")
+        response = nh_quotes.current_quote(symbol, token)
+        if response.get("rsp_cd") == "IGW40043":
+            token = nh_quotes.access_token(keyfile, force=True)
+            response = nh_quotes.current_quote(symbol, token)
+        if response.get("rsp_cd") != "00000":
+            ERRS.append(f"{code} NH 현재가 응답 {response.get('rsp_cd', '없음')}")
+            return None
+        q = response.get("Output_0") or {}
+        px = _n(q.get("trdprc"))
+        base = _n(q.get("normal_trdprc"))
+        if px <= 0 or base <= 0:
+            ERRS.append(f"{code} NH 현재가 필드 확인")
+            return None
+        raw_day = str(q.get("trade_date") or q.get("trd_date") or q.get("local_date") or "")
+        digits = "".join(ch for ch in raw_day if ch.isdigit())
+        if len(digits) >= 8:
+            day = digits[:4] + "-" + digits[4:6] + "-" + digits[6:8]
+        elif _open_now("jp", now):
+            day = now.astimezone(ZoneInfo("Asia/Tokyo")).strftime("%Y-%m-%d")
+        else:
+            ERRS.append(f"{code} NH 거래일 미확인")
+            return None
+        today = now.astimezone(ZoneInfo("Asia/Tokyo")).strftime("%Y-%m-%d")
+        if day != today:
+            ERRS.append(f"{code} NH 시세 날짜 불일치")
+            return None
+        hhmmss = "".join(ch for ch in str(q.get("quote_time") or q.get("trd_time") or "") if ch.isdigit())[-6:]
+        if hhmmss and len(hhmmss) == 6:
+            minute = int(hhmmss[:2]) * 60 + int(hhmmss[2:4])
+            if minute < 9 * 60 or (minute > 11 * 60 + 30 and minute < 12 * 60 + 30) or minute > 15 * 60 + 30:
+                ERRS.append(f"{code} NH 체결 시각 확인")
+                return None
+        old = next((row for row in fallback if row[0] == now.astimezone(ZoneInfo("Asia/Tokyo")).strftime("%m/%d")), None)
+        def field(*keys):
+            return next((_n(q.get(key)) for key in keys if _n(q.get(key)) > 0), 0.0)
+        op = field("open_prc", "open_price", "oprc") or (old[1] if old else px)
+        hi = field("high_prc", "high_price", "hgpr") or (old[2] if old else max(op, px))
+        lo = field("low_prc", "low_price", "lwpr") or (old[3] if old else min(op, px))
+        return [now.astimezone(ZoneInfo("Asia/Tokyo")).strftime("%m/%d"), op, max(hi, px), min(lo, px), px]
+    except Exception as error:  # noqa: BLE001
+        ERRS.append(f"{code} NH 일본 현재가 {type(error).__name__}")
+        return None
 
 def _kis_daily(code: str) -> list[list]:
     import kis
@@ -578,6 +638,9 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
                 live = [b for b in live if b]
             elif cc == "jp":
                 live = _yahoo(code, "5d", "1d")
+                nh_bar = _nh_jp_bar(code, now, live)
+                if nh_bar:
+                    live = [row for row in live if row[0] != nh_bar[0]] + [nh_bar]
             elif cc == "tw" or code == "SNDK":
                 # 분할 조정된 일봉의 시가·고가·저가를 마지막 시간봉으로 덮지 않는다.
                 live = _yahoo(code, "5d", "1d")[-1:]
