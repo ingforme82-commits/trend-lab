@@ -1,6 +1,6 @@
 """해외 지수 · 이번 주 화제 종목 · 오늘 뉴스에 많이 나온 종목 (news.json에 함께 싣는다)
 
-- 해외 지수: 야후 5분봉(5분 캐시). 대만 가권지수는 대만증권거래소 확정 일봉을 쓴다.
+- 해외 지수: 야후 5분봉(5분 캐시). 대만 가권지수는 TWSE 장중 지수와 확정 일봉을 쓴다.
 - 화제 종목: data/site.json 의 spotlight(spot.py로 켜고 끔). 하이퍼리퀴드에 없는 종목은 야후로 값을 받는다.
 - 많이 나온 종목: 최근 24시간 뉴스 헤드라인에서 종목 이름·티커 언급 수를 센다(사실 집계, 추천 아님).
 """
@@ -97,6 +97,31 @@ def _taiex(daily: list | None = None) -> dict | None:
             "low": low, "rebound": round((px / low - 1) * 100, 2)}
 
 
+def taiex_intraday(now: datetime) -> dict | None:
+    """TWSE 현물 지수. 거래소 날짜·시각과 전일 종가를 함께 검증한다."""
+    if now.weekday() >= 5 or not 900 <= now.hour * 100 + now.minute < 1330:
+        return None
+    url = "https://mis.twse.com.tw/stock/api/getStockInfo.jsp?ex_ch=tse_t00.tw&json=1&delay=0"
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        payload = json.loads(urllib.request.urlopen(req, timeout=8).read())
+        item = payload["msgArray"][0]
+        at = int(item["tlong"])
+        stamp = datetime.fromtimestamp(at / 1000, now.tzinfo)
+        if item["c"] != "t00" or item["d"] != now.strftime("%Y%m%d") or stamp.date() != now.date():
+            return None
+        if not 0 <= (now - stamp).total_seconds() <= 900:
+            return None
+        o, h, l, px, prev = (float(item[key]) for key in ("o", "h", "l", "z", "y"))
+        if not (0 < l <= min(o, px) <= max(o, px) <= h and 0 < prev < float("inf") and h < float("inf")):
+            return None
+        return {"at": at, "day": stamp.date().isoformat(), "px": px, "prev": prev,
+                "open": o, "high": h, "low": l, "intraday": True,
+                "chg": round((px / prev - 1) * 100, 2), "rebound": round((px / l - 1) * 100, 2)}
+    except (OSError, ValueError, KeyError, TypeError, IndexError, OverflowError):
+        return None
+
+
 def world_and_spot() -> tuple[list[dict], list[dict]]:
     """5분마다만 새로 받고 그 사이에는 저장본을 쓴다."""
     try:
@@ -109,11 +134,13 @@ def world_and_spot() -> tuple[list[dict], list[dict]]:
     world = []
     for sym, name, region, src in WORLD:
         if src == "twse":
-            quote = _taiex()
+            from asia_quotes import taiwan_row
+            quote = taiwan_row()
             if quote is None and cache:
-                quote = next((row for row in cache.get("world", []) if row.get("sym") == sym), None)
+                quote = next((row for row in cache.get("world", [])
+                              if row.get("sym") == sym and not row.get("intraday")), None)
             if quote:
-                world.append({**quote, "sym": sym, "name": name, "region": region})
+                world.append(quote)
             continue
         if src == "hl":
             c = hl.get(sym)

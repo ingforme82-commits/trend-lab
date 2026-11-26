@@ -420,14 +420,28 @@
     }
     return [...rows.values()];
   }
+  function worldQuoteStamp(w) {
+    if (w.live) return "24시간 거래";
+    const time = hm(w.at) + " KST";
+    if (w.sym === "TAIEX" && w.day) {
+      if (!w.intraday) return w.day + " 공식 종가 · TWSE";
+      const local = new Date(w.at + 8 * 3600e3);
+      const end = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate(), 5, 30);
+      const current = Date.now() < end && Date.now() - w.at <= 900000;
+      return w.day + " " + time + (current ? " 장중" : " 마지막 장중값") + " · TWSE";
+    }
+    const zone = {"^N225": "Asia/Tokyo", "000001.SS": "Asia/Shanghai", "000300.SS": "Asia/Shanghai",
+      "^HSI": "Asia/Hong_Kong", "^GDAXI": "Europe/Berlin", "^FCHI": "Europe/Paris", "^STOXX50E": "Europe/Paris"}[w.sym];
+    const day = new Intl.DateTimeFormat("sv-SE", {timeZone: zone || "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit"}).format(w.at);
+    return day + " 현지 · " + time + " 기준";
+  }
   function drawWorld() {
     const box = q("#worldGrid"); if (!box) return;
     box.innerHTML = worldQuotes().map((w) => {
-      const old = Date.now() - w.at > 3 * 3600e3;
       return `<div class="tick"><p class="t-name">${esc(w.region)} · ${esc(w.name)}</p><p class="t-px">${w.px.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}</p>
         <p class="t-ch ${cls(w.chg)}">${w.chg > 0 ? "▲" : w.chg < 0 ? "▼" : ""} ${w.chg > 0 ? "+" : ""}${w.chg.toFixed(2)}%</p>
         ${w.low != null && w.rebound != null ? `<p class="fine">장중 저점 ${w.low.toLocaleString("ko-KR")} · 저점 대비 +${w.rebound.toFixed(2)}%</p>` : ""}
-        <p class="fine" style="margin:2px 0 0">${w.sym === "TAIEX" && w.day ? `${esc(w.day)} 종가 · TWSE` : w.live ? "24시간 거래" : w.sym === "^N225" ? `${kst(w.at).getMonth() + 1}/${kst(w.at).getDate()} ${hm(w.at)} 기준 · Yahoo` : old ? `${kst(w.at).getMonth() + 1}/${kst(w.at).getDate()} ${hm(w.at)} 마감` : `${hm(w.at)} 기준`}</p></div>`;
+        <p class="fine" style="margin:2px 0 0">${esc(worldQuoteStamp(w))}</p></div>`;
     }).join("");
   }
 

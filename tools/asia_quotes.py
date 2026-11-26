@@ -5,7 +5,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from chan import CONF, NBARS, _yahoo, candle, channel, state
-from market_extra import _taiex, _yf, taiex_daily
+from market_extra import _taiex, _yf, taiex_daily, taiex_intraday
 from nh_quotes import REPO, gh
 
 
@@ -49,16 +49,33 @@ def add_japan_trend(row, config=None):
         row["trend"]["chg"] = row["chg"]
 
 
+def taiwan_row(config=None):
+    if config is None:
+        config = json.loads(CONF.read_text(encoding="utf-8"))
+    now = datetime.now(ZoneInfo("Asia/Taipei"))
+    daily = taiex_daily(now, months=4, minimum=NBARS)
+    closed = _taiex(daily)
+    live = taiex_intraday(now)
+    quote = live if live and (not closed or live["at"] > closed["at"]) else closed
+    if not quote:
+        return None
+    row = {**quote, "sym": "TAIEX", "name": "가권지수", "region": "대만"}
+    bars = [[at.strftime("%m/%d"), *ohlc] for at, ohlc in daily]
+    if quote is live:
+        # Draw a live candle only if its official previous close matches the daily series.
+        if bars and abs(bars[-1][4] - live["prev"]) < 0.01:
+            bars.append([now.strftime("%m/%d"), live["open"], live["high"], live["low"], live["px"]])
+            trend(row, bars, config, True, "TWSE 장중 지수")
+    else:
+        trend(row, bars, config, False, "대만증권거래소 공식 일봉")
+    return row
+
+
 def collect():
     config = json.loads(CONF.read_text(encoding="utf-8"))
-    daily = taiex_daily(datetime.now(ZoneInfo("Asia/Taipei")), months=4, minimum=NBARS)
-    taiwan = _taiex(daily)
+    taiwan = taiwan_row(config)
     japan = _yf("^N225")
-    rows = []
-    if taiwan:
-        row = {**taiwan, "sym": "TAIEX", "name": "가권지수", "region": "대만"}
-        trend(row, [[at.strftime("%m/%d"), *ohlc] for at, ohlc in daily], config, False, "대만증권거래소 공식 일봉")
-        rows.append(row)
+    rows = [taiwan] if taiwan else []
     if japan and japan["px"] and japan["prev"]:
         px, low = japan["px"], japan.get("low")
         row = {"sym": "^N225", "name": "니케이225", "region": "일본", "px": px,
