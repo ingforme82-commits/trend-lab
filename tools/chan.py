@@ -241,7 +241,7 @@ def _nh_jp_daily(code: str, now: datetime) -> list[list]:
     return [[datetime.strptime(r[0], "%Y%m%d").strftime("%m/%d"), *r[1:]] for r in rows[-90:]]
 
 def _nh_jp_bar(code: str, now: datetime, fallback: list[list]) -> list | None:
-    """NH 일본 현재가를 오늘 일봉에 반영한다. 날짜/가격이 검증되지 않으면 Yahoo 보조봉을 유지한다."""
+    """NH 일본 현재가를 오늘 일봉에 반영한다. 날짜/가격이 검증되지 않으면 일봉만 표시한다."""
     try:
         nh_quotes, keyfile, token = _nh_jp_client()
         symbol = "JPN" + code.removesuffix(".T")
