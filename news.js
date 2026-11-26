@@ -1361,6 +1361,14 @@
       <td class="s7-c">${partial ? (r.indexUnverified ? '<span class="dim">대조 중</span>' : r.code === "005935" ? '<span class="dim">지수 미포함</span>' : '<span class="dim">재계산 중</span>') : r.w == null ? '<span class="dim">지수 미포함</span>' : `${pt(r.pts)}${bar(r.pts)}`}</td><td>${partial ? (r.code === "005935" ? "-" : '<span class="dim">대조 중</span>') : r.w == null ? "-" : r.w.toFixed(1) + "%"}</td>
       <td>${r.val ? eok(r.val) : "-"}</td><td>${r.win ? eokS(r.win.amt) : "-"}</td><td>${invCell(r, "frgn")}</td><td>${s7Org(r)}</td>
       <td class="fl-5">${r.inv ? `${eokS(r.inv.frgn3 ?? r.inv.frgn5)} / ${eokS(r.inv.org3 ?? r.inv.org5)}` : "-"}</td><td>${s7Program(r)}</td></tr>`).join("");
+    const orgRows = s7.rows.map((r) => {
+      const value = s7.open
+        ? (r.est?.org ?? r.est_kw?.org)
+        : (r.inv?.day === s7.day ? r.inv.org : null);
+      return value != null && Number.isFinite(+value) ? +value : null;
+    }).filter((value) => value != null);
+    const orgToday = orgRows.length ? orgRows.reduce((sum, value) => sum + value, 0) : null;
+    const orgBasis = s7.open ? "장중 추정" : "당일 확정";
     const invDay = (s7.rows.find((r) => r.inv) || {}).inv;
     const futures = (brief?.futures || []).filter((f) =>
       ["코스피200 주간선물", "코스피200 야간선물"].includes(f.name) && Number.isFinite(f.px));
@@ -1370,6 +1378,7 @@
         <div><span>S7 기여</span>${partial ? '<b class="dim">재검증 중</b>' : `${pt(s.pts)} <small>${s.share != null ? `지수 변화의 ${s.share}%` : ""} · 비중 ${s.w}%</small>`}</div>
         <div><span>S7 제외 코스피</span>${partial ? '<b class="dim">재검증 중</b>' : `${s.ex_chg != null ? pct(s.ex_chg) : "-"} ${pt(s.ex_pts)}`}</div>
         <div><span>상승·하락 종목</span><b>${k.up != null ? `${k.up} / ${k.dn}` : "-"}</b></div>
+        <div><span>S7 기관 합계 <small>${orgBasis} · ${orgRows.length}/7종목</small></span>${eokS(orgToday)}</div>
         <div><span>코스피 투자자 <small>${k.flow_day ? md(k.flow_day.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")) : ""}</small></span>개인 ${ek(k.ind)} · 외국인 ${ek(k.frgn)} · 기관 ${ek(k.org)}</div>
         <div><span>코스닥 투자자 <small>${s7.kosdaq?.flow_day ? md(s7.kosdaq.flow_day.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")) : ""}</small></span>${s7.kosdaq?.px ? `<b>${(+s7.kosdaq.px).toLocaleString("ko-KR", {minimumFractionDigits:2,maximumFractionDigits:2})}</b> ${pct(s7.kosdaq.chg)} · ` : ""}개인 ${ek(s7.kosdaq?.ind)} · 외국인 ${ek(s7.kosdaq?.frgn)} · 기관 ${ek(s7.kosdaq?.org)}</div>
         <div><span>프로그램 매매</span>차익 ${ek(k.arb)} · 비차익 ${ek(k.nonarb)} · 합계 ${ek(k.prog)}</div>
