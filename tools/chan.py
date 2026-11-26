@@ -710,7 +710,10 @@ def build(now: datetime | None = None) -> dict:
             if g["cc"] == "tw":
                 it["source"] = "Yahoo 일봉 · 지연 가능"
             if g["cc"] == "kr_index":
-                it.update(INDEX_META.get(code, {}))
+                index_meta = INDEX_META.get(code, {})
+                it.update(index_meta)
+                if index_meta.get("stale"):
+                    ERRS.append(f"{code} 지수 실시간 원천 미확인 · {index_meta.get('live_diagnostic', '갱신 대기')}")
             if kb:
                 it.update(ma5_krx=round(kb["ma5_krx"], 2), krx_close=kb["krx_close"], krx_close_day=kb["krx_close_day"],
                           uni_close=kb["uni_close"], uni_close_day=kb["uni_close_day"],
