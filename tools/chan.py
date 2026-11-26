@@ -37,6 +37,7 @@ LOG = keystore.state_dir() / "chan_log.json"
 NBARS = 45
 UA = {"User-Agent": "Mozilla/5.0"}
 INDEX_META: dict[str, dict] = {}
+JP_CHECKS: dict[str, dict] = {}
 ERRS: list[str] = []                                   # 이번 계산에서 빠진 종목·대체 경로(사이트 데이터 'errs' 로 보임)
 
 
@@ -234,6 +235,14 @@ def _nh_jp_bar(code: str, now: datetime, fallback: list[list]) -> list | None:
                 ERRS.append(f"{code} NH 체결 시각 확인")
                 return None
         old = next((row for row in fallback if row[0] == now.astimezone(ZoneInfo("Asia/Tokyo")).strftime("%m/%d")), None)
+        JP_CHECKS[code] = {
+            "primary": "NH",
+            "crosscheck": "Yahoo",
+            "status": "same_day_comparison" if old else "yahoo_same_day_missing",
+            "nh_px": round(px, 4),
+            **({"yahoo_px": round(old[4], 4), "gap_pct": round((px / old[4] - 1) * 100, 3)}
+               if old and old[4] else {}),
+        }
         def field(*keys):
             return next((_n(q.get(key)) for key in keys if _n(q.get(key)) > 0), 0.0)
         op = field("open_prc", "open_price", "oprc") or (old[1] if old else px)
@@ -241,6 +250,7 @@ def _nh_jp_bar(code: str, now: datetime, fallback: list[list]) -> list | None:
         lo = field("low_prc", "low_price", "lwpr") or (old[3] if old else min(op, px))
         return [now.astimezone(ZoneInfo("Asia/Tokyo")).strftime("%m/%d"), op, max(hi, px), min(lo, px), px]
     except Exception as error:  # noqa: BLE001
+        JP_CHECKS[code] = {"primary": "NH", "crosscheck": "Yahoo", "status": "nh_quote_unavailable"}
         ERRS.append(f"{code} NH 일본 현재가 {type(error).__name__}")
         return None
 
@@ -630,6 +640,8 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
     live = None
     if time.time() - le.get("t", 0) < 55 and (code != "SNDK" or le.get("interval") == "1d"):
         live = le.get("bars")
+        if cc == "jp" and le.get("source_check"):
+            JP_CHECKS[code] = le["source_check"]
     else:
         try:
             if cc == "kr":
@@ -637,7 +649,11 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
                 live = [_kis_now(code)] if now.weekday() < 5 and hm >= 900 else []
                 live = [b for b in live if b]
             elif cc == "jp":
-                live = _yahoo(code, "5d", "1d")
+                try:
+                    live = _yahoo(code, "5d", "1d")
+                except Exception as x:  # noqa: BLE001
+                    live = []
+                    ERRS.append(f"{code} Yahoo 교차 확인 {type(x).__name__}")
                 nh_bar = _nh_jp_bar(code, now, live)
                 if nh_bar:
                     live = [row for row in live if row[0] != nh_bar[0]] + [nh_bar]
@@ -646,7 +662,8 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
                 live = _yahoo(code, "5d", "1d")[-1:]
             else:
                 live = _yahoo(code, "5d", "60m")[-1:]            # 오늘(마지막 날)만 — 전날은 일봉 종가 그대로
-            lc[code] = {"t": time.time(), "bars": live}
+            lc[code] = {"t": time.time(), "bars": live,
+                        **({"source_check": JP_CHECKS[code]} if cc == "jp" and code in JP_CHECKS else {})}
             if code == "SNDK":
                 lc[code]["interval"] = "1d"
             _save(LIVE, lc)
@@ -714,6 +731,7 @@ def build(now: datetime | None = None) -> dict:
     now = now or datetime.now(KST)
     ERRS.clear()
     INDEX_META.clear()
+    JP_CHECKS.clear()
     c = json.loads(CONF.read_text(encoding="utf-8"))
     from session_chan import collect as collect_sessions, display as display_session, closed_nxt_quote
     session_cache_path = keystore.state_dir() / "chan_sessions.json"
@@ -783,6 +801,9 @@ def build(now: datetime | None = None) -> dict:
                   "candle": cd, "state": st, "rows": [[r[0]] + [round(x, 2) for x in r[1:5]] for r in rows],
                   **{k: (round(v, 4) if isinstance(v, float) else v) for k, v in ch.items()}}
             if g["cc"] == "jp":
+                it["source"] = "NH 우선 · Yahoo 교차 확인"
+                if code in JP_CHECKS:
+                    it["source_check"] = JP_CHECKS[code]
                 it["base_day"] = rows[-2][0]
                 # 11/25 was a JPX trading day. Old cached Yahoo bars can skip it.
                 if it["day"] == "11/26" and it["base_day"] != "11/25" and now.year == 2026:
