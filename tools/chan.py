@@ -37,7 +37,6 @@ LOG = keystore.state_dir() / "chan_log.json"
 NBARS = 45
 UA = {"User-Agent": "Mozilla/5.0"}
 INDEX_META: dict[str, dict] = {}
-JP_CHECKS: dict[str, dict] = {}
 ERRS: list[str] = []                                   # 이번 계산에서 빠진 종목·대체 경로(사이트 데이터 'errs' 로 보임)
 
 
@@ -187,20 +186,64 @@ def _yahoo(sym: str, rng: str, iv: str) -> list[list]:
 
 
 
+
+def _nh_jp_client():
+    import nh_quotes
+    candidates = [
+        Path(os.environ.get("NH_APP_KEY_FILE", "")).expanduser() if os.environ.get("NH_APP_KEY_FILE") else None,
+        Path.home() / ".nhplug" / ".env",
+        keystore.keys_file(),
+    ]
+    keyfile = next((p for p in candidates if p and p.is_file()), None)
+    if keyfile is None:
+        raise FileNotFoundError("NH credentials")
+    return nh_quotes, keyfile, nh_quotes.access_token(keyfile)
+
+
+def _nh_jp_daily(code: str, now: datetime) -> list[list]:
+    """NH 해외주식 기간별시세 Output_1의 일본 종목 일봉만 사용한다."""
+    nh_quotes, keyfile, token = _nh_jp_client()
+    symbol = "JPN" + code.removesuffix(".T")
+    payload = {"Input_0": {
+        "iem_cd": symbol,
+        "end_dt": now.astimezone(ZoneInfo("Asia/Tokyo")).strftime("%Y%m%d"),
+        "count": "0090",
+        "maxavg": "000",
+        "gubun": "3",
+        "xtick": "0001",
+        "today_cls": "0",
+        "market_cls": "1",
+    }}
+    response = nh_quotes.request("/gbstock/quote/v1/period", payload, token)
+    if response.get("rsp_cd") == "IGW40043":
+        token = nh_quotes.access_token(keyfile, force=True)
+        response = nh_quotes.request("/gbstock/quote/v1/period", payload, token)
+    if response.get("rsp_cd") != "00000":
+        raise ValueError("NH Japan daily rejected")
+    raw = response.get("Output_1")
+    if not isinstance(raw, list):
+        raise ValueError("NH Japan daily Output_1 missing")
+    rows = []
+    for bar in raw:
+        date = str(bar.get("bsop_date") or bar.get("trade_date") or bar.get("date") or "")
+        if len(date) != 8 or not date.isdigit():
+            continue
+        op = _n(bar.get("open_prc"))
+        hi = _n(bar.get("high"))
+        lo = _n(bar.get("low"))
+        close = _n(bar.get("close_prc"))
+        if not all((op > 0, hi > 0, lo > 0, close > 0)) or not lo <= min(op, close) <= max(op, close) <= hi:
+            continue
+        rows.append([date, op, hi, lo, close])
+    rows.sort(key=lambda row: row[0])
+    if len(rows) < 20:
+        raise ValueError(f"NH Japan daily bars insufficient: {len(rows)}")
+    return [[datetime.strptime(r[0], "%Y%m%d").strftime("%m/%d"), *r[1:]] for r in rows[-90:]]
+
 def _nh_jp_bar(code: str, now: datetime, fallback: list[list]) -> list | None:
     """NH 일본 현재가를 오늘 일봉에 반영한다. 날짜/가격이 검증되지 않으면 Yahoo 보조봉을 유지한다."""
     try:
-        import nh_quotes
-        candidates = [
-            Path(os.environ.get("NH_APP_KEY_FILE", "")).expanduser() if os.environ.get("NH_APP_KEY_FILE") else None,
-            Path.home() / ".nhplug" / ".env",
-            keystore.keys_file(),
-        ]
-        keyfile = next((p for p in candidates if p and p.is_file()), None)
-        if keyfile is None:
-            ERRS.append(f"{code} NH 일본 인증 파일 없음")
-            return None
-        token = nh_quotes.access_token(keyfile)
+        nh_quotes, keyfile, token = _nh_jp_client()
         symbol = "JPN" + code.removesuffix(".T")
         response = nh_quotes.current_quote(symbol, token)
         if response.get("rsp_cd") == "IGW40043":
@@ -215,7 +258,7 @@ def _nh_jp_bar(code: str, now: datetime, fallback: list[list]) -> list | None:
         if px <= 0 or base <= 0:
             ERRS.append(f"{code} NH 현재가 필드 확인")
             return None
-        raw_day = str(q.get("trade_date") or q.get("trd_date") or q.get("local_date") or "")
+        raw_day = str(q.get("bsop_date") or q.get("trade_date") or q.get("trd_date") or q.get("local_date") or "")
         digits = "".join(ch for ch in raw_day if ch.isdigit())
         if len(digits) >= 8:
             day = digits[:4] + "-" + digits[4:6] + "-" + digits[6:8]
@@ -235,14 +278,6 @@ def _nh_jp_bar(code: str, now: datetime, fallback: list[list]) -> list | None:
                 ERRS.append(f"{code} NH 체결 시각 확인")
                 return None
         old = next((row for row in fallback if row[0] == now.astimezone(ZoneInfo("Asia/Tokyo")).strftime("%m/%d")), None)
-        JP_CHECKS[code] = {
-            "primary": "NH",
-            "crosscheck": "Yahoo",
-            "status": "same_day_comparison" if old else "yahoo_same_day_missing",
-            "nh_px": round(px, 4),
-            **({"yahoo_px": round(old[4], 4), "gap_pct": round((px / old[4] - 1) * 100, 3)}
-               if old and old[4] else {}),
-        }
         def field(*keys):
             return next((_n(q.get(key)) for key in keys if _n(q.get(key)) > 0), 0.0)
         op = field("open_prc", "open_price", "oprc") or (old[1] if old else px)
@@ -250,7 +285,6 @@ def _nh_jp_bar(code: str, now: datetime, fallback: list[list]) -> list | None:
         lo = field("low_prc", "low_price", "lwpr") or (old[3] if old else min(op, px))
         return [now.astimezone(ZoneInfo("Asia/Tokyo")).strftime("%m/%d"), op, max(hi, px), min(lo, px), px]
     except Exception as error:  # noqa: BLE001
-        JP_CHECKS[code] = {"primary": "NH", "crosscheck": "Yahoo", "status": "nh_quote_unavailable"}
         ERRS.append(f"{code} NH 일본 현재가 {type(error).__name__}")
         return None
 
@@ -607,10 +641,16 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
     dc = _load(DAILY)
     e = dc.get(code) or {}
     refresh_split = code == "SNDK" and e.get("schema") != "sndk-split-20261120"
-    if refresh_split or e.get("day") != today or not e.get("rows"):              # 일봉 원본은 하루 한 번
+    refresh_jp = cc == "jp" and e.get("schema") != "nh-jp-daily-v1"
+    if refresh_split or refresh_jp or e.get("day") != today or not e.get("rows"):  # 원본 일봉은 하루 한 번
         rows = []
         try:
-            rows = _kis_daily(code) if cc == "kr" else _yahoo(code, "6mo", "1d")
+            if cc == "kr":
+                rows = _kis_daily(code)
+            elif cc == "jp":
+                rows = _nh_jp_daily(code, now)
+            else:
+                rows = _yahoo(code, "6mo", "1d")
         except Exception as x:  # noqa: BLE001
             ERRS.append(f"{code} 일봉 {type(x).__name__}")
         if not rows and cc == "kr":                              # 11/17: 서버에서 한투 일봉 실패 → 키움 일봉(ka10081)으로
@@ -625,7 +665,7 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
                 ERRS.append(f"{code} 네이버 일봉 사용")
             except Exception as x:  # noqa: BLE001
                 ERRS.append(f"{code} 네이버 일봉 {type(x).__name__}")
-        if not rows and refresh_split:
+        if not rows and (refresh_split or refresh_jp):
             return [], False
         if not rows:
             rows = e.get("rows") or []
@@ -633,6 +673,8 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
             dc[code] = {"day": today, "rows": rows[-90:]}
             if code == "SNDK":
                 dc[code]["schema"] = "sndk-split-20261120"
+            if cc == "jp":
+                dc[code]["schema"] = "nh-jp-daily-v1"
             _save(DAILY, dc)
         e = dc.get(code) or {}
     rows = [list(r) for r in e.get("rows") or []]
@@ -640,8 +682,6 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
     live = None
     if time.time() - le.get("t", 0) < 55 and (code != "SNDK" or le.get("interval") == "1d"):
         live = le.get("bars")
-        if cc == "jp" and le.get("source_check"):
-            JP_CHECKS[code] = le["source_check"]
     else:
         try:
             if cc == "kr":
@@ -649,21 +689,14 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
                 live = [_kis_now(code)] if now.weekday() < 5 and hm >= 900 else []
                 live = [b for b in live if b]
             elif cc == "jp":
-                try:
-                    live = _yahoo(code, "5d", "1d")
-                except Exception as x:  # noqa: BLE001
-                    live = []
-                    ERRS.append(f"{code} Yahoo 교차 확인 {type(x).__name__}")
-                nh_bar = _nh_jp_bar(code, now, live)
-                if nh_bar:
-                    live = [row for row in live if row[0] != nh_bar[0]] + [nh_bar]
+                nh_bar = _nh_jp_bar(code, now, rows)
+                live = [nh_bar] if nh_bar else []
             elif cc == "tw" or code == "SNDK":
                 # 분할 조정된 일봉의 시가·고가·저가를 마지막 시간봉으로 덮지 않는다.
                 live = _yahoo(code, "5d", "1d")[-1:]
             else:
                 live = _yahoo(code, "5d", "60m")[-1:]            # 오늘(마지막 날)만 — 전날은 일봉 종가 그대로
-            lc[code] = {"t": time.time(), "bars": live,
-                        **({"source_check": JP_CHECKS[code]} if cc == "jp" and code in JP_CHECKS else {})}
+            lc[code] = {"t": time.time(), "bars": live}
             if code == "SNDK":
                 lc[code]["interval"] = "1d"
             _save(LIVE, lc)
@@ -731,7 +764,6 @@ def build(now: datetime | None = None) -> dict:
     now = now or datetime.now(KST)
     ERRS.clear()
     INDEX_META.clear()
-    JP_CHECKS.clear()
     c = json.loads(CONF.read_text(encoding="utf-8"))
     from session_chan import collect as collect_sessions, display as display_session, closed_nxt_quote
     session_cache_path = keystore.state_dir() / "chan_sessions.json"
@@ -801,9 +833,7 @@ def build(now: datetime | None = None) -> dict:
                   "candle": cd, "state": st, "rows": [[r[0]] + [round(x, 2) for x in r[1:5]] for r in rows],
                   **{k: (round(v, 4) if isinstance(v, float) else v) for k, v in ch.items()}}
             if g["cc"] == "jp":
-                it["source"] = "NH 우선 · Yahoo 교차 확인"
-                if code in JP_CHECKS:
-                    it["source_check"] = JP_CHECKS[code]
+                it["source"] = "NH투자증권"
                 it["base_day"] = rows[-2][0]
                 # 11/25 was a JPX trading day. Old cached Yahoo bars can skip it.
                 if it["day"] == "11/26" and it["base_day"] != "11/25" and now.year == 2026:
