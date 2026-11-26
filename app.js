@@ -18,15 +18,15 @@ function skhyMeta(px) {
 }
 
 const TICKS = [
-  { g: "🇰🇷 한국", sub: "코스피·대형주·한국 ETF(24시간 프록시 포함)" },
+  { g: "🇰🇷 한국", sub: "코스피·대형주 · 24시간 참고 시세는 KORU" },
   { k: "KOSPI", n: "코스피", d: 2, krOnly: true },
   { k: "KOSDAQ", n: "KOSDAQ", d: 2, krOnly: true },
   { k: "KR200", n: "코스피200", d: 2 },
   { k: "SMSN", n: "삼성전자", d: 2, u: "$", won: true },
   { k: "SKHX", n: "SK하이닉스", d: 2, u: "$", won: true },
-  { k: "SKSQ", n: "SK스퀘어", rt: true },                // 하이퍼리퀴드에 없음 → 실시간 체결(loadRt)만, 11/18 운영자
+  { k: "SKSQ", n: "SK스퀘어", rt: true },                // NXT 실시간 시세 전용 · 24시간 프록시 제외
   { k: "EWY", n: "EWY (한국 ETF)", d: 2, u: "$" },
-  { k: "KORU", n: "KORU (한국 3배)", d: 2, u: "$" },
+  { k: "KORU", n: "KORU (한국 3배 · 24시간 참고)", d: 2, u: "$" },
   { g: "🇺🇸 미국", sub: "지수·반도체" },
   { k: "SP500", n: "S&P500", d: 1 },
   { k: "XYZ100", n: "나스닥100", d: 0 },

@@ -191,23 +191,27 @@ def build() -> dict:
                      "pmcap": prev_mcap(_n(d.get("marketValueFullRaw")), px, diff, sg)})
     s = calc(rows, kprev, kpts, cache.get("tot") or 0)
 
-    # 투자자별·프로그램(코스피 전체, 억 원): 2분마다
-    if t - (cache.get("integ") or {}).get("t", 0) > 110:
-        try:
-            g = _get("https://m.stock.naver.com/api/index/KOSPI/integration")
-            dt, pt = g.get("dealTrendInfo") or {}, g.get("programTrendInfo") or {}
-            cache["integ"] = {"t": t, "day": dt.get("bizdate", ""), "ind": _n(dt.get("personalValue")), "frgn": _n(dt.get("foreignValue")),
-                              "org": _n(dt.get("institutionalValue")), "arb": _n(pt.get("indexDifferenceReal")),
-                              "nonarb": _n(pt.get("indexBiDifferenceReal")), "prog": _n(pt.get("indexTotalReal")),
-                              "up": _n((g.get("upDownStockInfo") or {}).get("riseCount")) + _n((g.get("upDownStockInfo") or {}).get("upperCount")),
-                              "dn": _n((g.get("upDownStockInfo") or {}).get("fallCount")) + _n((g.get("upDownStockInfo") or {}).get("lowerCount"))}
-        except Exception:  # noqa: BLE001
-            pass
+    # 코스피·코스닥 투자자 수급(네이버 통합, 억 원): 약 2분마다
+    for index_code, cache_key in (("KOSPI", "integ"), ("KOSDAQ", "integ_kosdaq")):
+        if t - (cache.get(cache_key) or {}).get("t", 0) > 110:
+            try:
+                g = _get(f"https://m.stock.naver.com/api/index/{index_code}/integration")
+                dt, pt = g.get("dealTrendInfo") or {}, g.get("programTrendInfo") or {}
+                record = {"t": t, "day": dt.get("bizdate", ""), "ind": _n(dt.get("personalValue")),
+                          "frgn": _n(dt.get("foreignValue")), "org": _n(dt.get("institutionalValue"))}
+                if index_code == "KOSPI":
+                    record.update({"arb": _n(pt.get("indexDifferenceReal")), "nonarb": _n(pt.get("indexBiDifferenceReal")),
+                                   "prog": _n(pt.get("indexTotalReal")),
+                                   "up": _n((g.get("upDownStockInfo") or {}).get("riseCount")) + _n((g.get("upDownStockInfo") or {}).get("upperCount")),
+                                   "dn": _n((g.get("upDownStockInfo") or {}).get("fallCount")) + _n((g.get("upDownStockInfo") or {}).get("lowerCount"))})
+                cache[cache_key] = record
+            except Exception:  # noqa: BLE001
+                pass
 
     # 종목별 수급(확정 30분, 장 마감 직후 10분 / 외국계 창구 장중 2분)
     tr_c, wd_c = cache.setdefault("trend", {}), cache.setdefault("trader", {})
-    trend_age = 600 if 1540 <= hhmm < 1900 else 1800
-    need_tr = [c for c in S7 if c not in tr_c or (t - tr_c[c].get("t", 0) > trend_age and tr_c[c].get("day") != today)]
+    trend_age = 300 if is_open else 600 if 1540 <= hhmm < 1900 else 1800
+    need_tr = [c for c in S7 if c not in tr_c or t - tr_c[c].get("t", 0) > trend_age]
     need_wd = [c for c in S7 if c not in wd_c or (t - wd_c[c].get("t", 0) > 120 and (is_open or wd_c[c].get("day") != today))]
 
     def safe(fn, c):
@@ -263,23 +267,35 @@ def build() -> dict:
             kisflow.merge(r, kp, ke)
         if kwflow:
             kwflow.merge(r, kw)
-        r["inv"] = parse_trend((tr_c.get(r["code"]) or {}).get("items") or [])
+        r["inv"] = parse_trend((tr_c.get(r["code"]) or {}).get("items") or [], exclude_day=today if is_open else None)
         r["win"] = parse_trader((wd_c.get(r["code"]) or {}).get("data") or [], today, r["px"])
         if not r["prog"]:
             r["prog"] = (fallback.get("programs") or {}).get(r["code"])
-        if r["inv"] and r["inv"].get("day") == today:
+        if not is_open and r["inv"] and r["inv"].get("day") == today:
             r.pop("est", None)
             r.pop("est_kw", None)
-        elif (r.get("est") or {}).get("org") is None and (r.get("est_kw") or {}).get("org") is None:
+        if (r.get("est") or {}).get("org") is None and (r.get("est_kw") or {}).get("org") is None:
             r["org_public"] = (fallback.get("estimates") or {}).get(r["code"])
         r.pop("pmcap", None)
     order = list(S7)
     rows.sort(key=lambda r: order.index(r["code"]))
-    ig = cache.get("integ") or {}
+    ig, qg = cache.get("integ") or {}, cache.get("integ_kosdaq") or {}
+    try:
+        qd = (_get(f"{base}/index/KOSDAQ").get("datas") or [{}])[0]
+    except Exception:  # noqa: BLE001
+        qd = {}
+    qpx = _n(qd.get("closePriceRaw"))
+    qdiff, qsign = abs(_n(qd.get("compareToPreviousClosePriceRaw"))), _sign(qd)
+    qprev = qpx - qsign * qdiff if qpx else 0
+    qday = str(qd.get("localTradedAt", ""))[:10] or qg.get("day", "")
     return {"at": int(t * 1000), "open": is_open, "day": kday,
             "quote_source": "KB Open API IVU10140" if kb_quotes else "Naver realtime fallback",
             "kospi": {"px": kpx, "prev": kprev, "pts": round(kpts, 2), "chg": round(kpts / kprev * 100, 2) if kprev else 0.0,
-                      **{k: ig.get(k) for k in ("ind", "frgn", "org", "arb", "nonarb", "prog", "up", "dn")}, "flow_day": ig.get("day")},
+                      **{k: ig.get(k) for k in ("ind", "frgn", "org", "arb", "nonarb", "prog", "up", "dn")},
+                      "flow_day": ig.get("day"), "flow_at": int(ig.get("t", 0) * 1000) if ig.get("t") else None},
+            "kosdaq": {"px": qpx or None, "prev": qprev or None, "chg": round((qpx / qprev - 1) * 100, 2) if qprev else None,
+                       **{k: qg.get(k) for k in ("ind", "frgn", "org")}, "flow_day": qg.get("day"),
+                       "flow_at": int(qg.get("t", 0) * 1000) if qg.get("t") else None},
             "s7": s, "rows": rows, "approx": not cache.get("tot")}
 
 

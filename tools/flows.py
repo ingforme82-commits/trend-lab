@@ -57,20 +57,22 @@ def all_rows(tickers: dict[str, str], q: dict[str, dict]) -> list[dict]:
     return sorted(rows, key=lambda r: -r["chg"])
 
 
-def parse_trend(items: list[dict]) -> dict | None:
-    """네이버 investor-trend items → 최근 확정일 순매수 금액(추정)과 5일 합계."""
+def parse_trend(items: list[dict], exclude_day: str | None = None) -> dict | None:
+    """네이버 투자자별 확정 수급. 현재 장중 날짜는 3일 합계에서 제외 가능."""
     days = []
     for it in items[:5]:
         k = it.get("krx") or {}
         px = _n(k.get("closingPrice"))
         if not px:
             continue
-        days.append({"day": it.get("localTradedAt", ""), "frgn": _n(k.get("foreignNetVolume")) * px,
+        days.append({"day": str(it.get("localTradedAt", ""))[:10], "frgn": _n(k.get("foreignNetVolume")) * px,
                      "org": _n(k.get("organizationNetVolume")) * px, "ind": _n(k.get("individualNetVolume")) * px})
     if not days:
         return None
     d0 = days[0]
+    completed = [d for d in days if not exclude_day or d["day"] != exclude_day][:3]
     return {"day": d0["day"], "frgn": d0["frgn"], "org": d0["org"], "ind": d0["ind"],
+            "frgn3": sum(d["frgn"] for d in completed), "org3": sum(d["org"] for d in completed), "n3": len(completed),
             "frgn5": sum(d["frgn"] for d in days), "org5": sum(d["org"] for d in days), "n5": len(days)}
 
 

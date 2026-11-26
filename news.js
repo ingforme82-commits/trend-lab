@@ -784,7 +784,7 @@
     name: (r) => r.name, chg: (r) => r.chg, val: (r) => r.val, mcap: (r) => r.mcap, pts: (r) => r.pts, w: (r) => r.w,
     win: (r) => r.win ? r.win.amt : null, frgn: (r) => r.est && r.est.frgn != null ? r.est.frgn : r.est_kw && r.est_kw.frgn != null ? r.est_kw.frgn : r.inv ? r.inv.frgn : null,
     org: (r) => r.est && r.est.org != null ? r.est.org : r.est_kw && r.est_kw.org != null ? r.est_kw.org : r.inv ? r.inv.org : null,
-    s5: (r) => r.inv ? (r.inv.frgn5 || 0) + (r.inv.org5 || 0) : null, score: (r) => r.score, breadth: (r) => r.breadth, slot: (r) => r.slot, prog: (r) => r.prog ? r.prog.amt : null, prog5: (r) => r.prog ? r.prog.amt5 : null,
+    s5: (r) => r.inv ? (r.inv.frgn3 ?? r.inv.frgn5 ?? 0) + (r.inv.org3 ?? r.inv.org5 ?? 0) : null, score: (r) => r.score, breadth: (r) => r.breadth, slot: (r) => r.slot, prog: (r) => r.prog ? r.prog.amt : null, prog5: (r) => r.prog ? r.prog.amt5 : null,
   };
   function sortRows(rows, t) {
     const st = sortSt[t]; if (!st.k) return rows;
@@ -819,10 +819,10 @@
     const invDay = (rows.find((r) => r.inv) || {}).inv;
     const dd = invDay ? md(invDay.day) : "";
     const head = compact ? "<tr><th>종목</th><th>등락</th><th>거래대금</th></tr>"
-      : `<tr>${sth("flow", "name", "종목")}${sth("flow", "chg", "등락")}${sth("flow", "val", "거래대금", "통합")}${sth("flow", "mcap", "시가총액")}${sth("flow", "win", "외국계 창구", "오늘")}${sth("flow", "frgn", "외국인", invSub(rows, dd))}${sth("flow", "org", "기관", invSub(rows, dd))}${sth("flow", "s5", "외국인·기관", "5일 합계")}${sth("flow", "prog", "프로그램", "오늘 통합")}${sth("flow", "prog5", "프로그램", "5일 합계")}</tr>`;
+      : `<tr>${sth("flow", "name", "종목")}${sth("flow", "chg", "등락")}${sth("flow", "val", "거래대금", "통합")}${sth("flow", "mcap", "시가총액")}${sth("flow", "win", "외국계 창구", "오늘")}${sth("flow", "frgn", "외국인", invSub(rows, dd))}${sth("flow", "org", "기관", invSub(rows, dd))}${sth("flow", "s5", "외국인·기관", "3일 합계")}${sth("flow", "prog", "프로그램", "오늘 통합")}${sth("flow", "prog5", "프로그램", "3일 합계")}</tr>`;
     const body = rows.map((r) => `<tr><td class="fl-n">${esc(r.name)}</td><td>${pct(r.chg)}</td><td>${r.val ? eok(r.val) : "-"}${!compact && r.val_krx && r.val - r.val_krx > 1e8 ? `<small class="fl-k">KRX ${eok(r.val_krx)}</small>` : ""}</td>${compact ? "" : `
       <td>${mcapS(r.mcap)}</td><td>${r.win ? eokS(r.win.amt) : "-"}</td><td>${invCell(r, "frgn")}</td><td>${invCell(r, "org")}</td>
-      <td class="fl-5">${r.inv ? `${eokS(r.inv.frgn5)} / ${eokS(r.inv.org5)}` : "-"}</td><td>${progCell(r)}</td><td>${r.prog ? eokS(r.prog.amt5) : '<span class="dim">-</span>'}</td>`}</tr>`).join("");
+      <td class="fl-5">${r.inv ? `${eokS(r.inv.frgn3 ?? r.inv.frgn5)} / ${eokS(r.inv.org3 ?? r.inv.org5)}` : "-"}</td><td>${progCell(r)}</td><td>${r.prog ? eokS(r.prog.amt5) : '<span class="dim">-</span>'}</td>`}</tr>`).join("");
     return `<div class="fl-g"><p class="fl-gh">${g.icon || ""} ${esc(g.name)}${g.n ? ` <small>상승 ${g.up}/${g.n}종목</small>` : ""}</p>
       <div class="fl-scroll"><table class="fl-t">${head}${body}</table></div></div>`;
   }
@@ -1336,8 +1336,10 @@
     // 11/17 운영자: 추세 기록 칸은 내림 — 그래프만 실시간으로
   }
   function s7Org(r) {
+    if (s7?.open && r.est && r.est.org != null) return `${eokS(r.est.org)}<small class="fl-k">기관 장중 추정 · 한투 ${esc(r.est.round || "")}</small>`;
+    if (s7?.open && r.est_kw && r.est_kw.org != null) return `${eokS(r.est_kw.org)}<small class="fl-k">기관 장중 추정 · 키움 ${esc(r.est_kw.hm || "")}</small>`;
     const p = r.org_public;
-    if (p) return `<b class="${cls(p.org_q)}">${p.org_q > 0 ? "+" : ""}${p.org_q.toLocaleString("ko-KR")}주</b><small class="fl-k">매동 추정 ${esc(p.round)}</small>`;
+    if (p) return `<b class="${cls(p.org_q)}">${p.org_q > 0 ? "+" : ""}${p.org_q.toLocaleString("ko-KR")}주</b><small class="fl-k">기관 추정 ${esc(p.round)}</small>`;
     return invCell(r, "org") + (r.inv && !r.est && !r.est_kw ? `<small class="fl-k">${esc(md(r.inv.day))} 확정</small>` : "");
   }
   function s7Program(r) {
@@ -1358,7 +1360,7 @@
     const body = sortRows(s7.rows, "s7").map((r) => `<tr><td class="fl-n">${esc(r.name)}</td><td>${pct(r.chg)}</td>
       <td class="s7-c">${partial ? (r.indexUnverified ? '<span class="dim">대조 중</span>' : r.code === "005935" ? '<span class="dim">지수 미포함</span>' : '<span class="dim">재계산 중</span>') : r.w == null ? '<span class="dim">지수 미포함</span>' : `${pt(r.pts)}${bar(r.pts)}`}</td><td>${partial ? (r.code === "005935" ? "-" : '<span class="dim">대조 중</span>') : r.w == null ? "-" : r.w.toFixed(1) + "%"}</td>
       <td>${r.val ? eok(r.val) : "-"}</td><td>${r.win ? eokS(r.win.amt) : "-"}</td><td>${invCell(r, "frgn")}</td><td>${s7Org(r)}</td>
-      <td class="fl-5">${r.inv ? `${eokS(r.inv.frgn5)} / ${eokS(r.inv.org5)}` : "-"}</td><td>${s7Program(r)}</td></tr>`).join("");
+      <td class="fl-5">${r.inv ? `${eokS(r.inv.frgn3 ?? r.inv.frgn5)} / ${eokS(r.inv.org3 ?? r.inv.org5)}` : "-"}</td><td>${s7Program(r)}</td></tr>`).join("");
     const invDay = (s7.rows.find((r) => r.inv) || {}).inv;
     const futures = (brief?.futures || []).filter((f) =>
       ["코스피200 주간선물", "코스피200 야간선물"].includes(f.name) && Number.isFinite(f.px));
@@ -1369,10 +1371,11 @@
         <div><span>S7 제외 코스피</span>${partial ? '<b class="dim">재검증 중</b>' : `${s.ex_chg != null ? pct(s.ex_chg) : "-"} ${pt(s.ex_pts)}`}</div>
         <div><span>상승·하락 종목</span><b>${k.up != null ? `${k.up} / ${k.dn}` : "-"}</b></div>
         <div><span>코스피 투자자 <small>${k.flow_day ? md(k.flow_day.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")) : ""}</small></span>개인 ${ek(k.ind)} · 외국인 ${ek(k.frgn)} · 기관 ${ek(k.org)}</div>
+        <div><span>코스닥 투자자 <small>${s7.kosdaq?.flow_day ? md(s7.kosdaq.flow_day.replace(/(\d{4})(\d{2})(\d{2})/, "$1-$2-$3")) : ""}</small></span>${s7.kosdaq?.px ? `<b>${(+s7.kosdaq.px).toLocaleString("ko-KR", {minimumFractionDigits:2,maximumFractionDigits:2})}</b> ${pct(s7.kosdaq.chg)} · ` : ""}개인 ${ek(s7.kosdaq?.ind)} · 외국인 ${ek(s7.kosdaq?.frgn)} · 기관 ${ek(s7.kosdaq?.org)}</div>
         <div><span>프로그램 매매</span>차익 ${ek(k.arb)} · 비차익 ${ek(k.nonarb)} · 합계 ${ek(k.prog)}</div>
         ${futures.map((f) => `<div><span>${esc(f.name)}</span><b>${f.px.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}</b> ${f.chg == null ? "" : pct(f.chg)}${f.base ? ` <small>기준 ${esc(f.base)}</small>` : ""}</div>`).join("")}
       </div>
-      <div class="fl-scroll"><table class="fl-t"><tr>${sth("s7", "name", "종목")}${sth("s7", "chg", "등락")}${sth("s7", "pts", "지수 기여", "추정 포인트")}${sth("s7", "w", "코스피 비중", "전일 시총")}${sth("s7", "val", "거래대금", "통합")}${sth("s7", "win", "외국계 창구", "오늘")}${sth("s7", "frgn", "외국인", invSub(s7.rows, invDay ? md(invDay.day) : ""))}${sth("s7", "org", "기관", invSub(s7.rows, invDay ? md(invDay.day) : ""))}${sth("s7", "s5", "외국인·기관", "5일 합계")}${sth("s7", "prog", "프로그램", "오늘 순매수")}</tr>${body}</table></div>`;
+      <div class="fl-scroll"><table class="fl-t"><tr>${sth("s7", "name", "종목")}${sth("s7", "chg", "등락")}${sth("s7", "pts", "지수 기여", "추정 포인트")}${sth("s7", "w", "코스피 비중", "전일 시총")}${sth("s7", "val", "거래대금", "통합")}${sth("s7", "win", "외국계 창구", "오늘")}${sth("s7", "frgn", "외국인", invSub(s7.rows, invDay ? md(invDay.day) : ""))}${sth("s7", "org", "기관", invSub(s7.rows, invDay ? md(invDay.day) : ""))}${sth("s7", "s5", "외국인·기관", "3일 합계")}${sth("s7", "prog", "프로그램", "오늘 순매수")}</tr>${body}</table></div>`;
   }
   function drawFlows() {
     const box = q("#flowBox"); if (!box) return;
