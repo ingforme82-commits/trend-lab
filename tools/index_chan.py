@@ -10,6 +10,7 @@ from pathlib import Path
 INDEXES = {"KOSPI": ("0001", "^KS11"), "KOSDAQ": ("1001", "^KQ11")}
 UA = {"User-Agent": "Mozilla/5.0"}
 MAX_LIVE_AGE = 180
+LIVE_DIAGNOSTICS: dict[str, str] = {}
 
 
 def _ohlc(values) -> list[float] | None:
@@ -192,19 +193,30 @@ def _kis_quote(code: str, now: datetime) -> dict | None:
 
 
 def _current_quote(code: str, now: datetime) -> dict | None:
+    diagnostics = []
     try:
         quote = _quote(code, now)
-    except Exception:
+    except Exception as exc:  # noqa: BLE001
         quote = None
+        diagnostics.append(f"Naver {type(exc).__name__}")
     minutes = now.hour * 60 + now.minute
     if now.weekday() >= 5 or not 540 <= minutes < 930:
+        LIVE_DIAGNOSTICS[code] = "정규장 외"
         return quote
     if quote and quote.get("live"):
+        LIVE_DIAGNOSTICS[code] = "Naver 현재 지수"
         return quote
+    diagnostics.append("Naver 현재 시세 없음" if quote is None else "Naver 시세 지연")
     try:
-        return _kis_quote(code, now) or quote
-    except Exception:
-        return quote
+        kis_quote = _kis_quote(code, now)
+        if kis_quote:
+            LIVE_DIAGNOSTICS[code] = "한투 1분 지수"
+            return kis_quote
+        diagnostics.append("한투 신선한 1분봉 없음")
+    except Exception as exc:  # noqa: BLE001
+        diagnostics.append(f"한투 {type(exc).__name__}")
+    LIVE_DIAGNOSTICS[code] = " · ".join(diagnostics)
+    return quote
 
 
 def bars(code: str, now: datetime, *, daily_path: Path, live_path: Path, yahoo) -> tuple[list[list], bool, dict]:
@@ -255,4 +267,6 @@ def bars(code: str, now: datetime, *, daily_path: Path, live_path: Path, yahoo) 
                     quality_note="장중 제공 지수" if active else "제공 지수 지연·실시간 판단 보류" if quote["market_open"] else "장 종료·마지막 제공 지수")
     if warning:
         meta["quality_note"] += " · " + warning
+    if not active and meta.get("stale"):
+        meta["live_diagnostic"] = LIVE_DIAGNOSTICS.get(code, "현재 지수 원천 확인 중")
     return rows[-45:], active, meta
