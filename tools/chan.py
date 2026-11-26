@@ -643,10 +643,7 @@ def _is_current_session_bar(cc: str, live: list[list], rows: list[list], now: da
     if not zone or not live or not rows:
         return False
     day = now.astimezone(ZoneInfo(zone)).strftime("%m/%d")
-    active = _open_now(cc, now)
-    if cc == "jp":
-        active = now.weekday() < 5 and 900 <= now.hour * 100 + now.minute < 1530
-    return live[-1][0] == rows[-1][0] == day and active
+    return live[-1][0] == rows[-1][0] == day and _open_now(cc, now)
 
 
 def build(now: datetime | None = None) -> dict:
@@ -948,5 +945,6 @@ if __name__ == "__main__":
             if "day" not in it:                           # 상장 초기 카드(ANT 등)는 채널 값이 없다(11/20 KeyError)
                 print(f"  {it.get('name')} · {it.get('state', '')} {it.get('px', '')}")
                 continue
-            print(f"  {it['rank']}. {it['name']} {it['day']} {it['px']:,.2f} ({it['chg']:+.2f}%) · {it['state']} · 상단 {it['up_now']:,.2f} 5일선 {it['ma5']:,.2f} · 다음 상단까지 {it['gap_next']:+.1f}% · 캔들 {it['candle']['name']}{' (진행 중)' if it['live'] else ''}")
+            change = f"{it['chg']:+.2f}%" if it["chg"] is not None else "확인 중"
+            print(f"  {it['rank']}. {it['name']} {it['day']} {it['px']:,.2f} ({change}) · {it['state']} · 상단 {it['up_now']:,.2f} 5일선 {it['ma5']:,.2f} · 다음 상단까지 {it['gap_next']:+.1f}% · 캔들 {it['candle']['name']}{' (진행 중)' if it['live'] else ''}")
     print("\n기록:", *[e["text"] for e in r["log"][:5]], sep="\n  ")
