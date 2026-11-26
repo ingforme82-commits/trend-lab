@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from chan import CONF, NBARS, _open_now, _yahoo, candle, channel, state
+from chan import CONF, NBARS, _yahoo, candle, channel, state
 from market_extra import _taiex, _yf, taiex_daily
 from nh_quotes import REPO, gh
 
@@ -26,6 +26,29 @@ def trend(row, bars, config, live, source):
     }
 
 
+def add_japan_trend(row, config=None):
+    try:
+        if config is None:
+            config = json.loads(CONF.read_text(encoding="utf-8"))
+        bars = _yahoo("^N225", "3mo", "1d")
+    except (OSError, ValueError, KeyError, TypeError, IndexError):
+        return
+    tokyo = ZoneInfo("Asia/Tokyo")
+    now = datetime.now(tokyo)
+    traded = datetime.fromtimestamp(row["at"] / 1000, tokyo)
+    if not bars or bars[-1][0] != traded.strftime("%m/%d"):
+        return
+    day, opening, high, low, _ = bars[-1]
+    # The two Yahoo requests can return snapshots from different times.
+    # Use the already collected quote for the latest candle and card.
+    px = row["px"]
+    bars[-1] = [day, opening, max(high, px), min(low, row.get("low", px)), px]
+    live = traded.date() == now.date() and traded.hour * 100 + traded.minute < 1530
+    trend(row, bars, config, live, "Yahoo 일봉")
+    if "trend" in row:
+        row["trend"]["chg"] = row["chg"]
+
+
 def collect():
     config = json.loads(CONF.read_text(encoding="utf-8"))
     daily = taiex_daily(datetime.now(ZoneInfo("Asia/Taipei")), months=4, minimum=NBARS)
@@ -42,15 +65,7 @@ def collect():
                "at": japan["at"], "chg": round((px / japan["prev"] - 1) * 100, 2)}
         if low and 0 < low <= px:
             row.update(low=low, rebound=round((px / low - 1) * 100, 2))
-        try:
-            bars = _yahoo("^N225", "3mo", "1d")
-        except (OSError, ValueError, KeyError, TypeError, IndexError):
-            bars = []
-        tokyo = ZoneInfo("Asia/Tokyo")
-        now = datetime.now(tokyo)
-        traded = datetime.fromtimestamp(row["at"] / 1000, tokyo)
-        if bars and bars[-1][0] == traded.strftime("%m/%d"):
-            trend(row, bars, config, traded.date() == now.date() and _open_now("jp", now), "Yahoo 일봉")
+        add_japan_trend(row, config)
         rows.append(row)
     return rows
 
@@ -69,7 +84,7 @@ def main():
     for row in rows:
         old = merged.get(row["sym"], {})
         if row["at"] >= old.get("at", 0):
-            merged[row["sym"]] = {**old, **row}
+            merged[row["sym"]] = {**old, **row} if row["at"] == old.get("at") else row
     updated = list(merged.values())
     if updated == previous:
         return

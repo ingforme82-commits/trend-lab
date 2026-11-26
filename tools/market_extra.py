@@ -126,8 +126,11 @@ def world_and_spot() -> tuple[list[dict], list[dict]]:
         if d and d["px"] and d["prev"]:
             row = {"sym": sym, "name": name, "region": region, "px": d["px"], "chg": round((d["px"] / d["prev"] - 1) * 100, 2),
                    "at": d["at"], "spark": d["spark"][::2]}
-            if sym == "^N225" and d.get("low") and 0 < d["low"] <= d["px"]:
-                row.update(low=d["low"], rebound=round((d["px"] / d["low"] - 1) * 100, 2))
+            if sym == "^N225":
+                if d.get("low") and 0 < d["low"] <= d["px"]:
+                    row.update(low=d["low"], rebound=round((d["px"] / d["low"] - 1) * 100, 2))
+                from asia_quotes import add_japan_trend
+                add_japan_trend(row)
             world.append(row)
     # 화제 종목
     spot = []

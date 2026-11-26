@@ -411,19 +411,23 @@
       drawChan();
     } catch { /* Keep the last successful snapshot. */ }
   }
-  function drawWorld() {
-    const box = q("#worldGrid"); if (!box) return;
+  function worldQuotes() {
     const rows = new Map(world.filter((w) => w.sym !== "GC=F").map((w) => [w.sym, w]));
     for (const row of asiaQuotes) {
-      if (row.at >= (rows.get(row.sym)?.at || 0)) rows.set(row.sym, row);
+      const prior = rows.get(row.sym);
+      if (!prior || row.at > prior.at || (row.at === prior.at && !prior.trend)) rows.set(row.sym, row);
       if (row.sym === "TAIEX") rows.delete("xyz:EWT");
     }
-    box.innerHTML = [...rows.values()].map((w) => {
+    return [...rows.values()];
+  }
+  function drawWorld() {
+    const box = q("#worldGrid"); if (!box) return;
+    box.innerHTML = worldQuotes().map((w) => {
       const old = Date.now() - w.at > 3 * 3600e3;
       return `<div class="tick"><p class="t-name">${esc(w.region)} · ${esc(w.name)}</p><p class="t-px">${w.px.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}</p>
         <p class="t-ch ${cls(w.chg)}">${w.chg > 0 ? "▲" : w.chg < 0 ? "▼" : ""} ${w.chg > 0 ? "+" : ""}${w.chg.toFixed(2)}%</p>
         ${w.low != null && w.rebound != null ? `<p class="fine">장중 저점 ${w.low.toLocaleString("ko-KR")} · 저점 대비 +${w.rebound.toFixed(2)}%</p>` : ""}
-        <p class="fine" style="margin:2px 0 0">${w.sym === "TAIEX" && w.day ? `${esc(w.day)} 종가 · TWSE` : w.live ? "24시간 거래" : old ? `${kst(w.at).getMonth() + 1}/${kst(w.at).getDate()} ${hm(w.at)} 마감` : `${hm(w.at)} 기준`}</p></div>`;
+        <p class="fine" style="margin:2px 0 0">${w.sym === "TAIEX" && w.day ? `${esc(w.day)} 종가 · TWSE` : w.live ? "24시간 거래" : w.sym === "^N225" ? `${kst(w.at).getMonth() + 1}/${kst(w.at).getDate()} ${hm(w.at)} 기준 · Yahoo` : old ? `${kst(w.at).getMonth() + 1}/${kst(w.at).getDate()} ${hm(w.at)} 마감` : `${hm(w.at)} 기준`}</p></div>`;
     }).join("");
   }
 
@@ -1226,7 +1230,8 @@
   }
   function drawChanRaw() {                                       // 11/17 운영자: 표 대신 채널 그래프를 항상 펼쳐서(1분마다 갱신)
     const box = q("#chan"), c = window.trlChan; if (!box) return;
-    const asiaGroups = asiaQuotes.filter((row) => Array.isArray(row.trend?.rows) && row.trend.rows.length >= 20)
+    const asiaGroups = worldQuotes().filter((row) => ["TAIEX", "^N225"].includes(row.sym) &&
+      row.trend?.source_at === row.at && Array.isArray(row.trend.rows) && row.trend.rows.length >= 20)
       .map((row) => ({cc: row.sym === "TAIEX" ? "tw" : "jp", country: row.region, sector: "대표 지수",
         index: true, items: [row.trend]}));
     const allGroups = [...asiaGroups, ...(c?.groups || [])];
