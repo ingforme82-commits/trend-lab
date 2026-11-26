@@ -415,7 +415,9 @@
     const rows = new Map(world.filter((w) => w.sym !== "GC=F").map((w) => [w.sym, w]));
     for (const row of asiaQuotes) {
       const prior = rows.get(row.sym);
-      if (!prior || row.at > prior.at || (row.at === prior.at && !prior.trend)) rows.set(row.sym, row);
+      if (!prior || row.at > prior.at) rows.set(row.sym, {...row, trend: row.trend || prior?.trend});
+      else if (row.at === prior.at && !prior.trend) rows.set(row.sym, row);
+      else if (!prior.trend && row.trend) rows.set(row.sym, {...prior, trend: row.trend});
       if (row.sym === "TAIEX") rows.delete("xyz:EWT");
     }
     return [...rows.values()];
@@ -1263,10 +1265,15 @@
   }
   function drawChanRaw() {                                       // 11/17 운영자: 표 대신 채널 그래프를 항상 펼쳐서(1분마다 갱신)
     const box = q("#chan"), c = window.trlChan; if (!box) return;
-    const asiaGroups = worldQuotes().filter((row) => ["TAIEX", "^N225"].includes(row.sym) &&
-      row.trend?.source_at === row.at && Array.isArray(row.trend.rows) && row.trend.rows.length >= 20)
-      .map((row) => ({cc: row.sym === "TAIEX" ? "tw" : "jp", country: row.region, sector: "대표 지수",
-        index: true, items: [row.trend]}));
+    const asiaGroups = worldQuotes().filter((row) => {
+      if (!["TAIEX", "^N225"].includes(row.sym) || !row.trend ||
+          !Array.isArray(row.trend.rows) || row.trend.rows.length < 20 ||
+          !Number.isFinite(row.trend.source_at) || row.trend.source_at > row.at) return false;
+      const zone = row.sym === "^N225" ? "Asia/Tokyo" : "Asia/Taipei";
+      const quoteDay = new Intl.DateTimeFormat("en-US", {timeZone: zone, month: "2-digit", day: "2-digit"}).format(row.at);
+      return row.trend.day === quoteDay;
+    }).map((row) => ({cc: row.sym === "TAIEX" ? "tw" : "jp", country: row.region, sector: "대표 지수",
+      index: true, items: [row.trend]}));
     const allGroups = [...asiaGroups, ...(c?.groups || [])];
     if (!allGroups.length) { box.hidden = true; return; }
     box.hidden = false;
