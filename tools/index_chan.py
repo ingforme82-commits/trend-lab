@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 
 INDEXES = {"KOSPI": ("0001", "^KS11"), "KOSDAQ": ("1001", "^KQ11")}
+NAVER_INDEX_CODES = {"KOSPI": "KOSPI", "KOSDAQ": "KOSDAQ"}
 UA = {"User-Agent": "Mozilla/5.0"}
 MAX_LIVE_AGE = 180
 LIVE_DIAGNOSTICS: dict[str, str] = {}
@@ -138,7 +139,10 @@ def _history(code: str, now: datetime, yahoo) -> tuple[list[list], str]:
 
 
 def _quote(code: str, now: datetime) -> dict | None:
-    request = urllib.request.Request(f"https://polling.finance.naver.com/api/realtime/domestic/index/{code}", headers=UA)
+    naver_code = NAVER_INDEX_CODES.get(code)
+    if not naver_code:
+        return None
+    request = urllib.request.Request(f"https://polling.finance.naver.com/api/realtime/domestic/index/{naver_code}", headers=UA)
     data = json.loads(urllib.request.urlopen(request, timeout=8).read())
     return next((q for item in data.get("datas", []) if (q := parse_quote(item, code, now))), None)
 
