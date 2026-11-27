@@ -1019,41 +1019,59 @@
   // 11/20 운영자 "통합 종가로 하자 · KRX 종가도 따로 표시해 체크(종가가 지금은 기준가)": 5일선 = 통합(KRX+넥장 20시), 등락률 기준가 = KRX 종가
   // 11/21 운영자 "각 종목들 종가와 시간외 현재 시각 금액을 별도로 표시": 정규장 종가 줄 + 시간외(프리·애프터·넥장) 현재가·시각·종가 대비 따로
   function chCloseExt(regular, it, cc) {
-    // 11/21 운영자 "주가 구분 표시도 가시성 좋게": 칸을 나눠 이름표·큰 숫자·대비를 따로(정규장 종가 = 회색 칸, 시간외 = 보라 칸, 정규장 진행 = 초록 칸)
-    if (cc !== "kr" && cc !== "us") return "";
+    // 11/28 운영자 "전에 했던 방식"(05907d823, 11/21 색 칸): 종가 두 칸을 나란히 — 국내 = KRX 종가 | 통합 종가(넥장 20시),
+    // 미국 = 정규장 종가 | 애프터·프리마켓, 일본·대만·중국 = 종가 | 전일 종가(장중엔 전일 종가 | 장중). 현재가·등락은 카드 위 따로 한 줄.
     const sgn = (v) => `${v > 0 ? "+" : v < 0 ? "−" : ""}${Math.abs(v).toFixed(2)}%`;
-    const kc = (v) => v > 0.005 ? "up" : v < -0.005 ? "down" : "dim";
+    const kc = (v) => v > 0.00005 ? "up" : v < -0.00005 ? "down" : "dim";
     const when = (ms) => { if (!(ms > 0)) return ""; const d = kstDay(ms), t = kstDay(Date.now()); return (d === t ? "" : d.slice(5).replace("-", "/") + " ") + hm(ms); };
     const cell = (k, label, val, sub) => `<div class="cx ${k}"><span class="cx-l">${label}</span><b class="cx-v">${val}</b>${sub ? `<span class="cx-s">${sub}</span>` : ""}</div>`;
     const ext = (label, px, ms, base, vs) => px > 0 && base > 0
-      ? cell("cx-ext", label, `<span class="cx-quote"><span class="${kc(px / base - 1)}">${chFmt(cc, px)}</span><span class="cx-pct ${kc(px / base - 1)}">${sgn((px / base - 1) * 100)}</span></span>`, `${vs} · ⏱ ${when(ms)}`) : "";
+      ? cell("cx-ext", label, `<span class="cx-quote"><span class="${kc(px / base - 1)}">${chFmt(cc, px)}</span><span class="cx-pct ${kc(px / base - 1)}">${sgn((px / base - 1) * 100)}</span></span>`, `${vs}${ms > 0 ? ` · ⏱ ${when(ms)}` : ""}`) : "";
     const none = (label, why) => cell("cx-off", label, "—", why);
+    const row = (cells) => `<div class="cx-row cx-two">${cells.filter(Boolean).join("")}</div>`;
+    const rows = regular.rows || [], n = rows.length;
     if (cc === "kr") {
       const kx = regular.krx_close > 0 ? regular.krx_close : null;
       if (!kx) return "";
       const nx = regular.nxt || {}, hmK = (() => { const d = kst(Date.now()); return d.getHours() * 100 + d.getMinutes(); })();
       const krxOpen = regular.live && hmK >= 900 && hmK < 1530;
-      const cells = [cell("cx-cls", "KRX 종가 · 기준가", chFmt(cc, kx), esc(regular.krx_close_day || ""))];
       // 11/28: 넥장(NXT) 거래가 없는 종목(ETF 등)은 통합 종가 = KRX 종가임을 밝힌다
-      if (regular.uni_close > 0) cells.push(cell("cx-cls", "통합 종가 · 넥장 20시", chFmt(cc, regular.uni_close), esc(regular.uni_close_day || "") + (regular.nxt_none ? " · 넥장 거래 없음(=KRX)" : "")));
+      const uni = regular.uni_close > 0
+        ? cell("cx-cls cx-uni", "통합 종가 · 넥장 20시", chFmt(cc, regular.uni_close), esc(regular.uni_close_day || "") + (regular.nxt_none ? " · 넥장 거래 없음(=KRX)" : ""))
+        : none("통합 종가 · 넥장 20시", "확인 중");
+      const cells = [cell("cx-cls", "KRX 종가 · 기준가", chFmt(cc, kx), esc(regular.krx_close_day || "")), uni];
       const nxtInHeader = regular.display && it.live && !it.stale && /^NXT (프리|애프터)$/.test(it.session);
-      if (!krxOpen && !nxtInHeader) cells.push(nx.px > 0 && nx.last_only ? cell("cx-ext", nx.venue === "KRX" ? "KRX 시간외 마지막 체결" : "NXT 마지막 체결", chFmt(cc, nx.px), when(nx.at) + " KST")
-        : nx.px > 0 ? ext(nx.venue === "KRX" ? "KRX 시간외" : `넥장 ${nx.session === "프리" ? "프리마켓" : "애프터마켓"}`, nx.px, nx.at, kx, "KRX 종가 대비") : none("넥장 시간외", regular.nxt_none ? "넥장 거래 없음" : "시세 없음"));
+      let nxLine = "";
+      if (!krxOpen && !nxtInHeader && nx.px > 0) {
+        const lbl = nx.venue === "KRX" ? (nx.last_only ? "KRX 시간외 마지막 체결" : "KRX 시간외") : nx.last_only ? "NXT 마지막 체결" : `넥장 ${nx.session === "프리" ? "프리마켓" : "애프터마켓"}`;
+        nxLine = `<p class="cx-ma">${lbl} <b class="${kc(nx.px / kx - 1)}">${chFmt(cc, nx.px)} ${sgn((nx.px / kx - 1) * 100)}</b> <small>KRX 종가 대비 · ${when(nx.at)} KST</small></p>`;
+      } else if (!krxOpen && !nxtInHeader && regular.nxt_none) nxLine = '<p class="cx-ma">넥장 거래 없음</p>';
       const m5 = it.ma5 > 0 ? `<p class="cx-ma">5일선 통합 <b>${chFmt(cc, it.ma5)}</b>${regular.ma5_krx > 0 ? ` · KRX <b>${chFmt(cc, regular.ma5_krx)}</b>` : ""}</p>` : "";
       const basis = regular.uni_sma5_closed > 0
         ? `<p class="cx-ma">${esc(regular.uni_close_day || "")} 통합 확정 5일선 <b>${chFmt(cc, regular.uni_sma5_closed)}</b>${regular.uni_below_sma5 === true ? " · 통합 종가 5일선 아래" : ""}</p>`
         : '<p class="cx-ma">통합 5일선 확인 중</p>';
-      return `<div class="cx-row">${cells.join("")}</div>${m5}${basis}`;
+      return { cells: row(cells), notes: `${nxLine}${m5}${basis}` };
     }
-    // 11/28 운영자 "조기 마감 종가 위주": 정규장 마감 뒤 머리 등락 = 정규장 종가 등락, 애프터마켓은 이 보조 줄
-    const af = regular.after;
-    const afterLine = af && af.px > 0 && af.base > 0
-      ? `<div class="cx-row">${ext(af.live ? "애프터마켓" : "애프터마켓 마지막 체결", af.px, af.at, af.base, "정규장 종가 대비")}</div>` : "";
-    // U.S. cards already show the session price and change in the header.
-    // Keep the comparison price visible on touch screens when it is distinct.
-    if (!(it.base > 0) || it.base === it.px) return afterLine;
-    const basis = it.change_basis || "전일 정규장 종가";
-    return `<p class="cx-ma">${esc(basis)} <b>${chFmt(cc, it.base)}</b></p>${afterLine}`;
+    if (!n) return { cells: "", notes: "" };
+    if (cc === "us" && /=F$/.test(regular.code || "")) {
+      const base = it.base > 0 ? it.base : rows[n - 2]?.[4];
+      return { cells: row([base > 0 ? cell("cx-cls", "전일 정산가", chFmt(cc, base), esc(it.base_day || rows[n - 2]?.[0] || "")) : "",
+        none("CME 선물", "거의 24시간 거래 · 현재가는 위 줄")]), notes: "" };
+    }
+    const close = regular.live ? rows[n - 2] : rows[n - 1];
+    if (!close || !(close[4] > 0)) return { cells: "", notes: "" };
+    if (cc === "us") {
+      // 11/28 운영자 "조기 마감 종가 위주": 정규장 마감 뒤 머리 등락 = 정규장 종가 등락, 애프터마켓은 오른쪽 칸
+      const af = regular.after, d = regular.display;
+      const side = af && af.px > 0 && af.base > 0 ? ext(af.live ? "애프터마켓" : "애프터마켓 마지막 체결", af.px, af.at, af.base, "정규장 종가 대비")
+        : d && d.session && d.session !== "정규장" && d.px > 0 ? ext(d.session, d.px, d.source_at, close[4], "정규장 종가 대비")
+        : regular.live ? none("시간외", "정규장 진행 중") : none("시간외", "거래 없음");
+      return { cells: row([cell("cx-cls", `${regular.live ? "전일 " : ""}정규장 종가`, chFmt(cc, close[4]), esc(close[0])), side]), notes: "" };
+    }
+    const prev = regular.live ? null : rows[n - 2];
+    const second = regular.live ? cell("cx-live", "장중", `<span class="${kc(regular.px / close[4] - 1)}">${chFmt(cc, regular.px)}</span>`, `${sgn((regular.px / close[4] - 1) * 100)} 전일 종가 대비`)
+      : prev && prev[4] > 0 ? cell("cx-cls", "전일 종가", chFmt(cc, prev[4]), esc(prev[0])) : "";
+    return { cells: row([cell("cx-cls", regular.live ? "전일 종가" : "종가", chFmt(cc, close[4]), esc(close[0])), second]), notes: "" };
   }
   function chChart(it, cc, sg, horizontal) {
     const fullRows = it.rows || [];
@@ -1420,11 +1438,14 @@
         const sgNow = chSigNow(it, g.cc);
         const rank = index + 1;
         const mdl = many && rankable(item) ? `<span class="ch-md m${Math.min(rank, 4)} notranslate" translate="no">${(/^(?:|ko)$/i.test(new URLSearchParams(location.search).get("lang") || "") && !/googtrans=\/ko\/(?!ko)/.test(document.cookie) ? ["금", "은", "동"][index] : "") || rank}</span>` : "";
+        const k = it.chg == null || !isFinite(it.chg) ? "dim" : it.chg > 0.005 ? "up" : it.chg < -0.005 ? "down" : "dim";   // 11/19 운영자: 현재가도 전일 종가 대비 색·굵게(상승 빨강·하락 파랑·보합 회색)
+        const ses = [chMarketSession(it, g.cc), it.stale ? "cls" : it.session && it.session !== "정규장" ? "ext" : it.live ? "live" : "cls"];
+        const cx = chCloseExt(regular, it, units) || {cells: "", notes: ""};
+        // 11/28 운영자 "전에 했던 방식": ① 종목명 + 상태 색 네모 ② 종가 두 칸 나란히 ③ 현재가·등락 따로 한 줄 크게
         html += `<article class="ch-card${sgNow ? " t-" + sgNow.tone : ""}" data-viewport-key="channel:${esc(it.code)}">
-          <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b>${(() => { const k = it.chg == null || !isFinite(it.chg) ? "dim" : it.chg > 0.005 ? "up" : it.chg < -0.005 ? "down" : "dim";   // 11/19 운영자: 현재가도 전일 종가 대비 색·굵게(상승 빨강·하락 파랑·보합 회색)
-            const ses = [chMarketSession(it, g.cc), it.stale ? "cls" : it.session && it.session !== "정규장" ? "ext" : it.live ? "live" : "cls"];
-            return `<span class="ch-ptag p-${ses[1]}">${esc(ses[0])}</span><span class="ch-quote"><b class="mn ${k}">${chFmt(units, it.px)}</b><b class="${k}"`; })()} title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(units, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b></span>${sgNow ? `<span class="ch-sg ${sgNow.tone}">${({up: "▲", dn: "▼", wk: "△"})[sgNow.tone]} ${esc(sgNow.label)}</span>` : ""}<span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span><small class="ch-session">${g.cc === "kr_index" && it.stale ? `${esc(it.day)} 기준 · ${it.source_at ? "지연 " + hm(it.source_at) : "일봉"}` : it.rt_at || it.source_at ? hm(it.rt_at || it.source_at) + " KST" : ""}</small></div>
-          ${chLvLine(it, units, horizontal)}${chCloseExt(regular, it, units)}${chChart(it, units, sgNow, horizontal)}</article>`;
+          <div class="ch-top">${mdl}<b class="ch-nm">${esc(it.name)}</b><span class="ch-st s-${CH_ST[it.state] || "in"}">${esc(it.state)}</span>${sgNow ? `<span class="ch-sg ${sgNow.tone}">${({up: "▲", dn: "▼", wk: "△"})[sgNow.tone]} ${esc(sgNow.label)}</span>` : ""}</div>
+          ${cx.cells}<div class="ch-now"><span class="ch-ptag p-${ses[1]}">${esc(ses[0])}</span><span class="ch-quote"><b class="mn ${k}">${chFmt(units, it.px)}</b><b class="${k}" title="${esc(it.change_basis || "전일 정규장 종가")}${it.base > 0 ? ` ${chFmt(units, it.base)}` : ""} 대비">${it.chg == null ? "확인 중" : `${it.chg > 0 ? "+" : ""}${(+it.chg).toFixed(2)}%`}</b></span><small class="ch-session">${g.cc === "kr_index" && it.stale ? `${esc(it.day)} 기준 · ${it.source_at ? "지연 " + hm(it.source_at) : "일봉"}` : it.rt_at || it.source_at ? hm(it.rt_at || it.source_at) + " KST" : ""}</small></div>
+          ${chLvLine(it, units, horizontal)}${cx.notes}${chChart(it, units, sgNow, horizontal)}</article>`;
       });
       html += `</div></div>`;
     });

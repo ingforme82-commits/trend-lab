@@ -318,6 +318,97 @@ window.TRL_UI = {
 "zh-hant": "盤後交易",
 "fr": "Après-Bourse"
 },
+"넥장 거래 없음": {
+"en": "No NXT trades",
+"ja": "NXT取引なし",
+"zh-hans": "NXT无成交",
+"zh-hant": "NXT無成交",
+"fr": "Pas d’échanges NXT"
+},
+"넥장 거래 없음(=KRX)": {
+"en": "No NXT trades (= KRX)",
+"ja": "NXT取引なし(=KRX)",
+"zh-hans": "NXT无成交(=KRX)",
+"zh-hant": "NXT無成交(=KRX)",
+"fr": "Pas d’échanges NXT (= KRX)"
+},
+"애프터마켓 마지막 체결": {
+"en": "Last after-hours trade",
+"ja": "アフターマーケット最終約定",
+"zh-hans": "盘后最后成交",
+"zh-hant": "盤後最後成交",
+"fr": "Dernier cours après-Bourse"
+},
+"정규장 종가 대비": {
+"en": "vs. regular close",
+"ja": "通常取引終値比",
+"zh-hans": "较常规交易收盘价",
+"zh-hant": "較常規交易收盤價",
+"fr": "vs clôture séance régulière"
+},
+"정규장 종가": {
+"en": "Regular close",
+"ja": "通常取引終値",
+"zh-hans": "常规交易收盘价",
+"zh-hant": "常規交易收盤價",
+"fr": "Clôture séance régulière"
+},
+"전일 정규장 종가": {
+"en": "Previous regular close",
+"ja": "前日通常取引終値",
+"zh-hans": "前一日常规交易收盘价",
+"zh-hant": "前一日常規交易收盤價",
+"fr": "Clôture régulière de la veille"
+},
+"전일 종가": {
+"en": "Previous close",
+"ja": "前日終値",
+"zh-hans": "前一日收盘价",
+"zh-hant": "前一日收盤價",
+"fr": "Clôture de la veille"
+},
+"전일 정산가": {
+"en": "Previous settlement",
+"ja": "前日清算値",
+"zh-hans": "前一日结算价",
+"zh-hant": "前一日結算價",
+"fr": "Règlement de la veille"
+},
+"CME 선물": {
+"en": "CME futures",
+"ja": "CME先物",
+"zh-hans": "CME期货",
+"zh-hant": "CME期貨",
+"fr": "Contrats à terme CME"
+},
+"거의 24시간 거래 · 현재가는 위 줄": {
+"en": "Trades almost 24 hours · current price on the line above",
+"ja": "ほぼ24時間取引 · 現在値は上の行",
+"zh-hans": "几乎24小时交易 · 现价见上一行",
+"zh-hant": "幾乎24小時交易 · 現價見上一行",
+"fr": "Cotation quasi 24 h · cours actuel sur la ligne ci-dessus"
+},
+"정규장 진행 중": {
+"en": "Regular session in progress",
+"ja": "通常取引中",
+"zh-hans": "常规交易进行中",
+"zh-hant": "常規交易進行中",
+"fr": "Séance régulière en cours"
+},
+"거래 없음": {
+"en": "No trades",
+"ja": "取引なし",
+"zh-hans": "无成交",
+"zh-hant": "無成交",
+"fr": "Aucun échange"
+},
+"시간외": {
+"en": "Extended hours",
+"ja": "時間外",
+"zh-hans": "盘外交易",
+"zh-hant": "盤外交易",
+"fr": "Hors séance"
+},
 "실시간 시세 전체 →": {
 "en": "All live quotes →",
 "ja": "リアルタイム相場をすべて見る →",
