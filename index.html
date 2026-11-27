@@ -96,10 +96,16 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
 </header>
 
 <main id="top">
+<div class="mkt-notice" id="mktNotice" role="status" hidden></div>
 
 <!-- TRL market notices -->
 <style>
-.ch-ch .ch-holiday{display:inline-block;margin-inline-start:.45em;font-size:.75em;color:var(--sub);font-weight:650}
+.ch-ch .ch-holiday{display:inline-block;margin-inline-start:.5em;padding:.15em .6em;border-radius:999px;font-size:.85em;font-weight:800;color:#7a3d00;background:#ffe2b8;border:1px solid #f0a040;text-decoration:none}
+.mkt-notice{max-width:1180px;margin:10px auto 0;padding:10px 14px;border-radius:12px;background:#fff1dc;border:2px solid #f0a040;color:#5a2e00;font-weight:800;font-size:1.02rem;line-height:1.5}
+.mkt-notice a{color:inherit;text-decoration:underline;display:block}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .mkt-notice{background:#3a2608;color:#ffd9a0;border-color:#c07820}:root:not([data-theme="light"]) .ch-ch .ch-holiday{background:#4a2e08;color:#ffd9a0;border-color:#c07820}}
+:root[data-theme="dark"] .mkt-notice{background:#3a2608;color:#ffd9a0;border-color:#c07820}:root[data-theme="dark"] .ch-ch .ch-holiday{background:#4a2e08;color:#ffd9a0;border-color:#c07820}
+@media (max-width:600px){.mkt-notice{margin:8px 16px 0;font-size:.95rem}}
 </style>
 <script>
 (() => {
@@ -123,6 +129,16 @@ html { scroll-padding-top: var(--trl-header-height, 110px); }
     return events.filter(([id,start,end]) => id === market && start <= day && day <= end)
       .map(([id,,,text]) => ({href:sources[id],text}));
   };
+  const flags = {kr:"🇰🇷",us:"🇺🇸",jp:"🇯🇵",cn:"🇨🇳",tw:"🇹🇼"};
+  const banner = () => {   // 11/28 운영자: 장 일정 변화(휴장·조기 마감)를 페이지 맨 위에 크게
+    const el = document.getElementById("mktNotice");
+    if (!el) return;
+    const items = Object.keys(sources).flatMap(m => window.trlMarketNoticesFor(m).map(n => ({...n, m})));
+    el.hidden = !items.length;
+    el.innerHTML = items.map(({href,text,m}) => `<a href="${href}" target="_blank" rel="noopener">📅 ${flags[m]} ${text}</a>`).join("");
+  };
+  document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", banner) : banner();
+  setInterval(banner, 10 * 60 * 1000);
 })();
 </script>
 <!-- /TRL market notices -->
