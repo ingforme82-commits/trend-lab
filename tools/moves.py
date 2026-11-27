@@ -37,6 +37,12 @@ ASSETS = [
     ("US10Y", "미 10년물 금리", "yf", "^TNX", "bp", 2.5, ("연준·금리", "중동·유가")),
     ("DXY", "달러인덱스", "yf", "DX-Y.NYB", "pct", 0.08, ("연준·금리", "환율", "중동·유가")),
 ]
+# 11/28 운영자 "추천대로": 화면 카드용 시계열만(변곡점 감지·속보 연결 안 함) — 원/달러(하이퍼리퀴드 xyz:KRW 는 봉 없음)·엔비디아·SK하이닉스 24시간
+SERIES_ONLY = [
+    ("USDKRW", "원/달러", "yf", "KRW=X", "pct", 0, ()),
+    ("NVDA", "엔비디아", "hl", "xyz:NVDA", "pct", 0, ()),
+    ("SKHX", "SK하이닉스", "hl", "xyz:SKHX", "pct", 0, ()),
+]
 WIN = 10            # 분
 TREND_1H = {"WTI": 1.0, "BRENT": 1.0}   # 60분 변화가 이 % 이상이면 평소 폭과 상관없이 변곡점(운영자 기준: 유가는 1%만 변해도)
 US_A, KR_A = {"NQ", "SP"}, {"K200", "KOSPI", "KOSDAQ"}
@@ -460,7 +466,9 @@ def analyze(items: list[dict]) -> tuple[list[dict], dict]:
     group_moments(moves)
     # 화면용 5분 간격 시계열. 브라우저에서 직접 시세를 가져오지 못해도 표시한다.
     series = {}
-    for code in ("NQ", "SP", "K200", "WTI", "BRENT", "GOLD", "US10Y", "DXY", "KOSPI", "KOSDAQ"):
+    for a in SERIES_ONLY:
+        data.setdefault(a[0], fetch(a))
+    for code in ("NQ", "SP", "K200", "WTI", "BRENT", "GOLD", "US10Y", "DXY", "KOSPI", "KOSDAQ", "USDKRW", "NVDA", "SKHX"):
         rows = data.get(code) or []
         series[code] = [[t, round(c, 4)] for t, c in rows if (t // 60000) % 5 == 0]
     # 11/20: 금·지수가 40칸을 채워 WTI·금리·달러 변곡점이 잘리던 문제 → 최신 40개 + 자산마다 최신 3개는 항상 남긴다

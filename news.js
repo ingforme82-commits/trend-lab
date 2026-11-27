@@ -6,16 +6,21 @@
   const NEWS_URL = "https://raw.githubusercontent.com/ingforme82-commits/trend-lab/live/news.json";
   const API_URL = "https://api.github.com/repos/ingforme82-commits/trend-lab/contents/news.json?ref=live";
   // 작은 차트 카드: 하이퍼리퀴드 5분봉(xyz:) 또는 서버가 넣어 준 시계열(srv: 금리·달러)
+  // 11/28 운영자 "추천대로": 엔비디아·SK하이닉스(24시간)·원/달러 추가, 달러인덱스는 '더 보기' 안으로
   const CARDS = [
     { code: "NQ", k: "xyz:XYZ100", n: "나스닥100", d: 0 },
     { code: "K200", k: "xyz:KR200", n: "코스피200", d: 2 },
+    { code: "NVDA", k: "xyz:NVDA", n: "엔비디아 24h", d: 2, u: "$" },
+    { code: "SKHX", k: "xyz:SKHX", n: "SK하이닉스 24h", d: 2, u: "$" },
+    { code: "USDKRW", k: "srv:USDKRW", n: "원/달러", d: 1 },
     { code: "WTI", k: "xyz:CL", n: "WTI 무기한", d: 2, u: "$" },
     { code: "US10Y", k: "srv:US10Y", n: "미 10년물 금리", d: 3, suf: "%", bp: true },
-    { code: "DXY", k: "srv:DXY", n: "달러인덱스", d: 2 },
     { code: "GOLD", k: "xyz:GOLD", n: "금 선물", d: 1, u: "$" },   // 11/21 운영자: 금 변동성도 속보와 같이
   ];
-  const COIN = { NQ: "xyz:XYZ100", SP: "xyz:SP500", K200: "xyz:KR200", WTI: "xyz:CL", BRENT: "xyz:BRENTOIL", GOLD: "xyz:GOLD", US10Y: "srv:US10Y", DXY: "srv:DXY", KOSPI: "srv:KOSPI", KOSDAQ: "srv:KOSDAQ" };
-  const REACT = CARDS.slice(0, 3);   // 목록의 '이후' 변화: 나스닥100·코스피200·WTI
+  const MORE_CARDS = [{ code: "DXY", k: "srv:DXY", n: "달러인덱스", d: 2 }];
+  const COIN = { NQ: "xyz:XYZ100", SP: "xyz:SP500", K200: "xyz:KR200", WTI: "xyz:CL", BRENT: "xyz:BRENTOIL", GOLD: "xyz:GOLD", US10Y: "srv:US10Y", DXY: "srv:DXY", KOSPI: "srv:KOSPI", KOSDAQ: "srv:KOSDAQ", NVDA: "xyz:NVDA", SKHX: "xyz:SKHX", USDKRW: "srv:USDKRW" };
+  const CARD = Object.fromEntries([...CARDS, ...MORE_CARDS].map((s) => [s.code, s]));
+  const REACT = ["NQ", "K200", "NVDA", "SKHX", "WTI"].map((c) => CARD[c]);   // 브라우저가 직접 받는 '이후' 변화(하이퍼리퀴드)
   const H = 24;
   const q = (s) => document.querySelector(s);
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -206,7 +211,7 @@
   const pxAt = (rows, t) => { let v = null; for (const [ot, c] of rows) { if (ot + 60000 <= t) v = c; else break; } return v; };
   const WIN = [5, 15, 30, 60];
   function windows(k, ts) {
-    const rows = candles1[k] || [];
+    const rows = candles1[k] || (k.startsWith("srv:") ? rowsOf(k) : []);   // 금리·원/달러는 서버 5분 시계열
     if (rows.length < 2 || ts - 5 * 60000 < rows[0][0] + 60000) return null;      // 기준 가격(보도 5분 전)이 범위 밖
     const base = pxAt(rows, ts - 5 * 60000);
     if (!base) return null;
@@ -214,7 +219,25 @@
     return WIN.map((n) => { const t = ts + n * 60000; if (t > lastOpen) return { n, v: null }; const p = pxAt(rows, t); return { n, v: p ? (p / base - 1) * 100 : null }; });
   }
   window.trlWindows = windows;
-  const reactKey = (n) => (n.tags || []).includes("중동·유가") ? REACT[2] : (n.tags || []).some((t) => ["한국", "반도체", "환율", "2차전지", "조선", "방산", "원전"].includes(t)) ? REACT[1] : REACT[0];
+  // 11/28 운영자 "추천대로": 뉴스 분야별 반응 지표 — 중동·유가→WTI, 연준·금리→미10년물, 환율→원/달러,
+  // 반도체·AI(미국 시간 22~08시 KST·미국 기업)→엔비디아, 한국 메모리·HBM(또는 한국 시간)→SK하이닉스, 그 밖 한국→코스피200, 나머지→나스닥100
+  const US_CO_RX = /엔비디아|브로드컴|AMD|마이크론|인텔|TSMC|애플|마이크로소프트|알파벳|구글|메타|아마존|테슬라|오픈AI|OpenAI|앤트로픽|Anthropic|팔란티어|오라클|퀄컴|Nvidia|NVDA|미국|나스닥|\$[A-Z]{1,5}\b/;
+  const KR_MEM_RX = /하이닉스|삼성전자|메모리|HBM|D램|DRAM|낸드|NAND/i;
+  function reactKey(n) {
+    const tags = n.tags || [], text = `${n.text || ""} ${n.title || ""}`, has = (t) => tags.includes(t);
+    if (has("중동·유가")) return CARD.WTI;
+    if (has("연준·금리")) return CARD.US10Y;
+    if (has("환율")) return CARD.USDKRW;
+    if (has("반도체") || has("AI·빅테크")) {
+      const h = (new Date(n.ts || Date.now()).getUTCHours() + 9) % 24, usHours = h >= 22 || h < 8;
+      if (usHours && US_CO_RX.test(text) && !KR_MEM_RX.test(text.replace(/마이크론/g, ""))) return CARD.NVDA;
+      if (KR_MEM_RX.test(text) || !usHours) return CARD.SKHX;
+      return CARD.NVDA;
+    }
+    if (tags.some((t) => ["한국", "2차전지", "조선", "방산", "원전"].includes(t))) return CARD.K200;
+    return CARD.NQ;
+  }
+  window.trlReactKey = reactKey;
   const rowsOf = (k) => {
     if (k.startsWith("srv:")) return series[k.slice(4)] || [];
     const direct = candles[k] || [];
@@ -302,7 +325,7 @@
 
   /* ── 작은 차트 카드: 변곡점 구간 색칠 + 그 직전 뉴스에만 빨간 점 ── */
   function drawCharts() {
-    q("#newsCharts").innerHTML = CARDS.map((s) => {
+    const card = (s) => {
       const c = rowsOf(s.k);
       if (c.length < 2) return `<div class="nc" data-coin="${s.k}" role="button" tabindex="0"><p class="nc-n">${s.n}</p><p class="fine">${s.k.startsWith("srv:") ? "미국장 시세 대기" : "시세 연결 대기 · 눌러서 차트 열기"}</p></div>`;
       const W = 300, Hh = 76, t0 = c[0][0], t1 = c[c.length - 1][0];
@@ -322,7 +345,10 @@
       return `<div class="nc" data-coin="${s.k}" role="button" tabindex="0"><div class="nc-h"><span class="nc-n">${s.n}</span><span class="nc-v">${val}</span>${chTxt}</div>
         <svg viewBox="0 0 ${W} ${Hh}" preserveAspectRatio="none" class="nc-svg">${zones}<path d="${path}" class="nc-line ${chg >= 0 ? "up" : "down"}"/>${dots}${line}</svg>
         <p class="nc-f">${my.length ? `변곡점 ${my.length}회 · ` : ""}최근 ${H}시간 · 누르면 1분봉</p></div>`;
-    }).join("");
+    };
+    const more = q("#newsCharts .nc-more")?.open ? " open" : "";
+    q("#newsCharts").innerHTML = CARDS.map(card).join("") +
+      `<details class="nc-more" style="grid-column:1/-1"${more}><summary>더 보기 · ${MORE_CARDS.map((s) => s.n).join("·")}</summary><div class="nc-grid" style="margin:8px 0 0">${MORE_CARDS.map(card).join("")}</div></details>`;
   }
 
   /* ── 📊 변곡점 지수 반응표: 변곡점 구간마다 다른 지수·유가·금·금리가 같은 구간에 얼마나 움직였는지(사실 집계) ── */
@@ -1680,7 +1706,7 @@
       const ts = +li.dataset.ts; sel = ts; if (window.trlCount) window.trlCount("news");
       drawCharts(); drawList();
       const m = movesOfNews(ts)[0], n = news.find((x) => x.ts === ts) || { tags: [] };
-      const coin = m ? COIN[m.asset] : n.tags.includes("중동·유가") ? "xyz:CL" : (n.tags.includes("한국") || n.tags.includes("반도체")) ? "xyz:KR200" : n.tags.includes("연준·금리") ? "srv:US10Y" : "xyz:XYZ100";
+      const coin = m ? COIN[m.asset] : reactKey(n).k;
       open(coin, ts);
     });
     q("#newsMore").addEventListener("click", () => { shown += 10; drawList(); });

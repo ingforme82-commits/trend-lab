@@ -7,7 +7,7 @@
     { k: "xyz:KR200", n: "코스피200", d: 2 }, { k: "xyz:EWY", n: "EWY", d: 2, u: "$" },
     { k: "xyz:SKHX", n: "SK하이닉스", d: 2, u: "$" }, { k: "xyz:SMSN", n: "삼성전자", d: 2, u: "$" }, { k: "xyz:KORU", n: "KORU", d: 2, u: "$" }, { k: "xyz:SOXL", n: "SOXL", d: 2, u: "$" },
     { k: "xyz:CL", n: "WTI", d: 2, u: "$" }, { k: "xyz:BRENTOIL", n: "브렌트", d: 2, u: "$" },
-    { k: "xyz:GOLD", n: "금", d: 1, u: "$" }, { k: "xyz:KRW", n: "원/달러", d: 1 },
+    { k: "xyz:GOLD", n: "금", d: 1, u: "$" }, { k: "srv:USDKRW", n: "원/달러", d: 1 },
     { k: "srv:US10Y", n: "미 10년물 금리", d: 3, bp: true }, { k: "srv:DXY", n: "달러인덱스", d: 2 },
   ];
   // 변곡점 자산 코드(서버 news.json의 moves.asset)
@@ -29,7 +29,7 @@
 
   let st = { coin: COINS[0].k, range: 180, sel: null, bk: null, news: [], data: [], timer: null, hover: null, interval: 1 };
   // 11/21 운영자 "속보와 내용이 연결이 안 보인다 · 나스닥·유가·달러·채권·금 모두 연결": 선택한 속보 이후 다른 자산 반응을 한 줄로
-  const LINKED = [["xyz:XYZ100", "나스닥100"], ["xyz:SP500", "S&P500"], ["xyz:KR200", "코스피200"], ["xyz:CL", "WTI"], ["xyz:GOLD", "금"], ["xyz:KRW", "원/달러"], ["srv:DXY", "달러인덱스"], ["srv:US10Y", "미 10년물"]];
+  const LINKED = [["xyz:XYZ100", "나스닥100"], ["xyz:SP500", "S&P500"], ["xyz:KR200", "코스피200"], ["xyz:CL", "WTI"], ["xyz:GOLD", "금"], ["srv:USDKRW", "원/달러"], ["srv:DXY", "달러인덱스"], ["srv:US10Y", "미 10년물"]];
   const linked = { sel: null, at: 0, rows: {} };
   let root = null;
   let loadId = 0;
