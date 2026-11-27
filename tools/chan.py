@@ -214,6 +214,32 @@ def best_anchors(rows: list[list], contact_rules: dict | None = None, window: in
     return best
 
 
+ANCHOR_STATE = keystore.state_dir() / "chan_anchors.json"
+
+
+def auto_anchors(code: str, rows: list[list], c: dict, today: str | None = None) -> dict | None:
+    """11/28 운영자: 종목별 기준점(anchors_by_code)은 일주일마다 자동으로 다시 골라 최신화, 필요하면 며칠 내로도.
+    channels.json anchors_auto = {"refresh_days": 7, "set": "YYYY-MM-DD"(저장 기준점을 고른 날), "reset": "YYYY-MM-DD"(이 날짜 이후 강제 갱신)}.
+    고른 결과는 state_dir/chan_anchors.json 에 {code: {"set", "a"}} 로 두고 재사용. 새로 못 고르면 직전 값 유지."""
+    stored = (c.get("anchors_by_code") or {}).get(code)
+    auto = c.get("anchors_auto") or {}
+    if not stored or not auto:
+        return stored
+    today = today or datetime.now(KST).strftime("%Y-%m-%d")
+    days = max(1, int(auto.get("refresh_days", 7)))
+    st = _load(ANCHOR_STATE)
+    ent = st.get(code) or {"set": auto.get("set", "2000-01-01"), "a": stored}
+    age = (datetime.strptime(today, "%Y-%m-%d") - datetime.strptime(ent["set"], "%Y-%m-%d")).days
+    if age < days and ent["set"] >= auto.get("reset", "2000-01-01"):
+        return ent["a"]
+    a = best_anchors(rows, c.get("contact_rules"))
+    if a:
+        st[code] = {"set": today, "a": a}
+        _save(ANCHOR_STATE, st)
+        return a
+    return ent["a"]
+
+
 def breakout_watch(ch: dict, px: float) -> bool:
     """현재 채널 상단에서 3% 이내이고 5일선을 넘어선 종목."""
     return (ch.get("channel_valid") is not False and ch.get("channel_width_valid") is not False
@@ -910,7 +936,7 @@ def build(now: datetime | None = None) -> dict:
                 ERRS.append(f"{code} 시세 {type(x).__name__}"); continue
             if len(rows) < 20:
                 ERRS.append(f"{code} 일봉 {len(rows)}개뿐"); continue
-            anc = (c.get("anchors_by_code") or {}).get(code) or c["anchors"]   # 11/28: 종목별 기준점(중국·홍콩)이 있으면 우선
+            anc = auto_anchors(code, rows, c) or c["anchors"]   # 11/28: 종목별 기준점(중국·홍콩) 우선, 일주일마다 자동 갱신
             if g.get("inverse"):                                # 11/21 운영자 "SKDD 하방 지지선 오류": 인버스는 기초자산과 반대로 움직이므로
                 anc = {"hi1": anc["lo1"], "hi2": anc["lo2"], "lo1": anc["hi1"], "lo2": anc["hi2"]}   # 기초자산 저점 구간 = 인버스 고점 구간
             index_stale = g["cc"] == "kr_index" and INDEX_META.get(code, {}).get("stale")

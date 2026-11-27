@@ -199,3 +199,25 @@ class StockAnchorsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class AutoAnchorsTest(unittest.TestCase):
+    """11/28 운영자: 종목별 기준점 일주일마다 자동 갱신."""
+    def test_refresh_after_days_and_reset(self):
+        import tempfile
+        from unittest import mock
+        import chan
+        stored = {"hi1": ["10/01", "10/01"], "hi2": ["10/05", "10/20"], "lo1": ["10/02", "10/02"], "lo2": ["10/06", "10/20"]}
+        newa = {"hi1": ["10/10", "10/10"], "hi2": ["10/15", "10/20"], "lo1": ["10/11", "10/11"], "lo2": ["10/16", "10/20"]}
+        c = {"anchors_by_code": {"X": stored}, "anchors_auto": {"refresh_days": 7, "set": "2026-11-28", "reset": "2026-11-28"}}
+        with tempfile.TemporaryDirectory() as d, mock.patch.object(chan, "ANCHOR_STATE", chan.Path(d) / "a.json"), \
+                mock.patch.object(chan, "best_anchors", return_value=newa) as best:
+            self.assertEqual(chan.auto_anchors("X", [], c, "2026-12-03"), stored)      # 5일: 저장값
+            best.assert_not_called()
+            self.assertEqual(chan.auto_anchors("X", [], c, "2026-12-05"), newa)        # 7일: 다시 고름
+            self.assertEqual(chan.auto_anchors("X", [], c, "2026-12-06"), newa)        # 캐시 재사용
+            self.assertEqual(best.call_count, 1)
+            c["anchors_auto"]["reset"] = "2026-12-07"                                   # 며칠 내 강제 갱신
+            chan.auto_anchors("X", [], c, "2026-12-07")
+            self.assertEqual(best.call_count, 2)
+        self.assertIsNone(chan.auto_anchors("Y", [], c))                                 # 종목별 기준점 없으면 공통
