@@ -944,7 +944,8 @@ def build(now: datetime | None = None) -> dict:
             if len(rows) < 20:
                 ERRS.append(f"{code} 일봉 {len(rows)}개뿐"); continue
             anc = auto_anchors(code, rows, c) or c["anchors"]   # 11/28: 종목별 기준점(중국·홍콩) 우선, 일주일마다 자동 갱신
-            if g.get("inverse"):                                # 11/21 운영자 "SKDD 하방 지지선 오류": 인버스는 기초자산과 반대로 움직이므로
+            if g.get("inverse") and code not in (c.get("anchors_by_code") or {}):   # 종목별 기준점은 그 종목 자체 일봉으로 고른 것이라 뒤집지 않음(11/28 SOXS)
+                # 11/21 운영자 "SKDD 하방 지지선 오류": 인버스는 기초자산과 반대로 움직이므로
                 anc = {"hi1": anc["lo1"], "hi2": anc["lo2"], "lo1": anc["hi1"], "lo2": anc["hi2"]}   # 기초자산 저점 구간 = 인버스 고점 구간
             index_stale = g["cc"] == "kr_index" and INDEX_META.get(code, {}).get("stale")
             provisional = index_stale and rows[-1][0] == observed_at.strftime("%m/%d")
