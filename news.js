@@ -903,6 +903,7 @@
     const bars = (it.bars || []).filter((row) => row.length >= 5 && row[0] % 300000 === 0 && row.slice(0, 5).every(Number.isFinite));
     const sessions = { pre: "프리마켓", reg: "정규장", post: "애프터마켓" };
     let graph = '<p class="fine">5분봉 시세 대기</p>';
+    const refs = [["공모가", it.ipo_px], [`첫 시가${it.open1_day ? " " + it.open1_day.slice(5).replace("-", "/") : ""}`, it.open1], ["상장 뒤 고점", it.hi]].filter(([, v]) => Number.isFinite(v) && v > 0);
     if (bars.length) {
       const W = 640, H = 180, left = 8, right = 62, top = 12, bottom = 24;
       const lo = Math.min(...bars.map((row) => row[3]));
@@ -923,8 +924,12 @@
       }).join("");
       graph = `<svg class="ch-chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="${esc(it.name)} 정규장·시간외 5분봉">
         ${axis}${candles}<text class="ch-ax" x="${left}" y="${H - 5}">${label(bars[0][0])}</text>
+        ${refs.filter(([, v]) => v >= lo - pad && v <= hi + pad).map(([name, v]) => `<line x1="${left}" x2="${W - right}" y1="${y(v)}" y2="${y(v)}" stroke="var(--gold)" stroke-dasharray="4 3"/><text class="ch-ax" x="${left + 2}" y="${y(v) - 3}">${name} ${chFmt(cc, v)}</text>`).join("")}
         <text class="ch-ax" x="${W - right}" y="${H - 5}" text-anchor="end">${label(bars.at(-1)[0])}</text></svg>`;
     }
+    // 11/28 운영자 "지난 번처럼": 11/20 첫 카드의 기준선 3개(공모가·첫 시가·상장 뒤 고점) — 차트 범위 밖이면 글로만
+    const px = Number.isFinite(it.px) ? it.px : bars.at(-1)?.[4];
+    const refLine = refs.length && px > 0 ? `<p class="ch-lv">${refs.map(([name, v]) => `<span>${name} <b>${chFmt(cc, v)}</b> <small>${px >= v ? "+" : "−"}${Math.abs((px / v - 1) * 100).toFixed(1)}%</small></span>`).join("")}</p>` : "";
     const last = bars.at(-1);
     let summary = "";
     if (last) {
@@ -945,7 +950,7 @@
       summary = `<p class="ch-lv"><span>${sessions[session] || sessions.reg} <strong class="${delta == null ? "c-fl" : cls(delta)}">${chFmt(cc, last[4])}</strong></span><span>${tick}</span></p>`;
     }
     return `<article class="ch-card ch-ipo" data-viewport-key="channel:${esc(it.code)}">
-      <div class="ch-top"><b class="ch-nm">${esc(it.name)} <small>${esc(it.code)}</small></b><small class="ch-session">5분봉 · 한국시간 · 시간외는 음영</small></div>${summary}${graph}
+      <div class="ch-top"><b class="ch-nm">${esc(it.name)} <small>${esc(it.code)}</small></b><small class="ch-session">5분봉 · 한국시간 · 시간외는 음영</small></div>${summary}${refLine}${graph}
       ${last ? `<p class="fine">마지막 봉 · ${sessions[last[5]] || "정규장"} · ${kstDay(last[0]).slice(5)} ${hm(last[0])} · ${chFmt(cc, last[4])} · ${esc(last[6] || "Yahoo Finance")}</p>` : ""}</article>`;
   }
   // 11/20 운영자 "지지·저항·추세선·5일선 명확히": 카드에 현재가 바로 위 저항·바로 아래 지지, 오늘 고가가 닿고 밀린 선·저가가 받친 선

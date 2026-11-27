@@ -1096,7 +1096,8 @@ def ipo_item(code: str, name: str, cfg: dict, now: datetime) -> dict | None:
     pos = "공모가 위" if px > ipo_px else "공모가 아래"
     pos += " · 첫 시가 위" if px > open1 else " · 첫 시가 아래"
     age = now.timestamp() - (m.get("regularMarketTime") or 0)
-    return {"code": code, "name": name, "ipo": True, "px": px, "chg": round((px / prev - 1) * 100, 2), "chg_basis": "전일 종가(상장일은 공모가)",
+    day = datetime.fromtimestamp(m.get("regularMarketTime") or regular[-1][0] / 1000, ny_tz).strftime("%m/%d")   # 11/28: 화면 휴장·대기 판정용 거래일
+    return {"code": code, "name": name, "ipo": True, "day": day, "px": px, "chg": round((px / prev - 1) * 100, 2), "chg_basis": "전일 종가(상장일은 공모가)",
             "prev_close": round(prev, 4), "ipo_px": ipo_px, "open1": open1, "open1_day": base.get("open1_day"), "hi": hi, "lo": lo, "vs_ipo": round((px / ipo_px - 1) * 100, 2),
             "vs_open1": round((px / open1 - 1) * 100, 2), "from_hi": round((px / hi - 1) * 100, 2), "dd": round((px / hi - 1) * 100, 2),
             "listed": cfg.get("listed"), "note": cfg.get("note", ""), "state": pos, "live": age < 600, "bars": live_bars[-160:],
