@@ -1034,21 +1034,26 @@
       const nx = regular.nxt || {}, hmK = (() => { const d = kst(Date.now()); return d.getHours() * 100 + d.getMinutes(); })();
       const krxOpen = regular.live && hmK >= 900 && hmK < 1530;
       const cells = [cell("cx-cls", "KRX 종가 · 기준가", chFmt(cc, kx), esc(regular.krx_close_day || ""))];
-      if (regular.uni_close > 0) cells.push(cell("cx-cls", "통합 종가 · 넥장 20시", chFmt(cc, regular.uni_close), esc(regular.uni_close_day || "")));
+      // 11/28: 넥장(NXT) 거래가 없는 종목(ETF 등)은 통합 종가 = KRX 종가임을 밝힌다
+      if (regular.uni_close > 0) cells.push(cell("cx-cls", "통합 종가 · 넥장 20시", chFmt(cc, regular.uni_close), esc(regular.uni_close_day || "") + (regular.nxt_none ? " · 넥장 거래 없음(=KRX)" : "")));
       const nxtInHeader = regular.display && it.live && !it.stale && /^NXT (프리|애프터)$/.test(it.session);
       if (!krxOpen && !nxtInHeader) cells.push(nx.px > 0 && nx.last_only ? cell("cx-ext", nx.venue === "KRX" ? "KRX 시간외 마지막 체결" : "NXT 마지막 체결", chFmt(cc, nx.px), when(nx.at) + " KST")
-        : nx.px > 0 ? ext(nx.venue === "KRX" ? "KRX 시간외" : `넥장 ${nx.session === "프리" ? "프리마켓" : "애프터마켓"}`, nx.px, nx.at, kx, "KRX 종가 대비") : none("넥장 시간외", "시세 없음"));
+        : nx.px > 0 ? ext(nx.venue === "KRX" ? "KRX 시간외" : `넥장 ${nx.session === "프리" ? "프리마켓" : "애프터마켓"}`, nx.px, nx.at, kx, "KRX 종가 대비") : none("넥장 시간외", regular.nxt_none ? "넥장 거래 없음" : "시세 없음"));
       const m5 = it.ma5 > 0 ? `<p class="cx-ma">5일선 통합 <b>${chFmt(cc, it.ma5)}</b>${regular.ma5_krx > 0 ? ` · KRX <b>${chFmt(cc, regular.ma5_krx)}</b>` : ""}</p>` : "";
       const basis = regular.uni_sma5_closed > 0
         ? `<p class="cx-ma">${esc(regular.uni_close_day || "")} 통합 확정 5일선 <b>${chFmt(cc, regular.uni_sma5_closed)}</b>${regular.uni_below_sma5 === true ? " · 통합 종가 5일선 아래" : ""}</p>`
         : '<p class="cx-ma">통합 5일선 확인 중</p>';
       return `<div class="cx-row">${cells.join("")}</div>${m5}${basis}`;
     }
+    // 11/28 운영자 "조기 마감 종가 위주": 정규장 마감 뒤 머리 등락 = 정규장 종가 등락, 애프터마켓은 이 보조 줄
+    const af = regular.after;
+    const afterLine = af && af.px > 0 && af.base > 0
+      ? `<div class="cx-row">${ext(af.live ? "애프터마켓" : "애프터마켓 마지막 체결", af.px, af.at, af.base, "정규장 종가 대비")}</div>` : "";
     // U.S. cards already show the session price and change in the header.
     // Keep the comparison price visible on touch screens when it is distinct.
-    if (!(it.base > 0) || it.base === it.px) return "";
+    if (!(it.base > 0) || it.base === it.px) return afterLine;
     const basis = it.change_basis || "전일 정규장 종가";
-    return `<p class="cx-ma">${esc(basis)} <b>${chFmt(cc, it.base)}</b></p>`;
+    return `<p class="cx-ma">${esc(basis)} <b>${chFmt(cc, it.base)}</b></p>${afterLine}`;
   }
   function chChart(it, cc, sg, horizontal) {
     const fullRows = it.rows || [];

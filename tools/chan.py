@@ -443,6 +443,28 @@ def _kis_now(code: str) -> list | None:
         return None
 
 
+def _jp_fill_kis(code: str, rows: list[list], now: datetime) -> list[list]:
+    """NH 일본 일봉에 빠진 최근 거래일 봉을 한투 해외 일봉(HHDFS76240000, EXCD=TSE)으로 뒤에 붙인다.
+    Yahoo 일봉도 11/27 종가가 비어(None) 있어 한투를 쓴다(키옥시아 11/27 8,450엔 +8.86% = 네이버·한투 대조)."""
+    try:
+        import kis
+        out = kis.get("/uapi/overseas-price/v1/quotations/dailyprice", "HHDFS76240000",
+                      {"AUTH": "", "EXCD": "TSE", "SYMB": code.split(".")[0], "GUBN": "0", "BYMD": "", "MODP": "1"}).get("output2") or []
+    except Exception as x:  # noqa: BLE001
+        ERRS.append(f"{code} 한투 일본 일봉 {type(x).__name__}")
+        return rows
+    last = _iso(rows[-1][0], now)
+    add = []
+    for r in out:
+        d = str(r.get("xymd") or "")
+        o, h, l, c = (_n(r.get(k)) for k in ("open", "high", "low", "clos"))
+        if len(d) == 8 and f"{d[:4]}-{d[4:6]}-{d[6:]}" > last and o and h and l and c:
+            add.append([f"{d[4:6]}/{d[6:]}", o, h, l, c])
+    if add:
+        ERRS.append(f"{code} NH 일봉 {rows[-1][0]}까지 → 한투 일봉 {len(add)}일 보충")
+    return rows + add[::-1]                                # 한투는 최신 날짜부터 준다
+
+
 def _krx_close(code: str, now: datetime) -> float | None:
     """오늘 KRX 종가 = 네이버 15:30 분봉(종가 단일가). 11/20: 장 마감 뒤 네이버 현재가·일봉의 종가 자리에 넥장(NXT) 애프터 가격이
     들어와(SK하이닉스 KRX 1,113,000 → 1,109,000) 등락률·상태가 틀어지던 문제. 하루 한 번만 받아 LIVE 캐시에 둔다."""
@@ -682,7 +704,15 @@ def kr_basis(code: str, rows: list[list], now: datetime, nq: dict | None) -> dic
     last_today = rows[-1][0] == md
     hm = now.hour * 100 + now.minute
     u, k, miss_u, miss_k = [], [], 0, 0
+    # 11/28 운영자: 통합 종가 = 넥장 20:00 마지막 체결. 네이버 일봉은 가장 최근 거래일 종가 자리에 KRX 종가를 넣어 둬서
+    # (삼성전자 11/27 KRX 179,500 / NXT 179,400) 장 마감 뒤·주말엔 그날 넥장 애프터 마지막 체결로 바꾼다.
+    nq_day = nq.get("day") if nq and nq.get("session") == "애프터" and nq.get("px", 0) > 0 else None
+    nq_hm = datetime.fromtimestamp(nq["at"] / 1000, KST).strftime("%H%M") if nq_day and nq.get("at") else ""
     for i, r in enumerate(rows):
+        if (i == len(rows) - 1 and not last_today and nq_day == _iso(r[0], now) and nq_hm >= "1530"):
+            kv = K.get(_iso(r[0], now))
+            k.append(float(kv) if kv else r[4]); u.append(float(nq["px"]))
+            continue
         if i == len(rows) - 1 and last_today:
             kx = r[4]                                          # 장중 현재가 / 15:31 뒤 KRX 종가
             at = datetime.fromtimestamp(nq["at"] / 1000, KST).strftime("%H%M") if nq and nq.get("at") else ""
@@ -703,6 +733,8 @@ def kr_basis(code: str, rows: list[list], now: datetime, nq: dict | None) -> dic
                 closed.append(float(nq["px"]))
             else:
                 break
+        elif row is rows[-1] and nq_day == _iso(row[0], now) and nq_hm >= "1530":
+            closed.append(float(nq["px"]))
         elif U.get(row[0]):
             closed.append(float(U[row[0]]))
         else:
@@ -711,7 +743,9 @@ def kr_basis(code: str, rows: list[list], now: datetime, nq: dict | None) -> dic
     uni_below_sma5 = closed[-1] < uni_sma5_closed if uni_sma5_closed is not None else None
     return {"uni_sma5_closed": uni_sma5_closed, "uni_below_sma5": uni_below_sma5,
             "u": u, "k": k, "ma5": sum(u[-5:]) / 5, "ma5_krx": sum(k[-5:]) / 5,
-            "base": k[-2] if last_today and len(k) > 1 else k[-1],
+            # 11/28: 장 마감 뒤·주말·다음 날 장 전에도 마지막 거래일의 정규장 등락(전일 KRX 종가 대비). 예전엔 k[-1](자기 자신) 대비라 0.00%
+            "base": k[-2] if len(k) > 1 else k[-1],
+            "nxt_none": not nq_day and not (nq and nq.get("px", 0) > 0),
             "krx_close": k[-1] if done_k else k[-2], "krx_close_day": rows[-1 if done_k else -2][0],
             "uni_close": u[-1] if done_u else u[-2], "uni_close_day": rows[-1 if done_u else -2][0],
             "miss_u": miss_u, "miss_k": miss_k}
@@ -788,6 +822,10 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
             _save(DAILY, dc)
         e = dc.get(code) or {}
     rows = [list(r) for r in e.get("rows") or []]
+    if cc == "jp" and rows and jp_daily_stale(rows[-1][0], now) and time.time() - e.get("kis_try", 0) >= 600:
+        rows = _jp_fill_kis(code, rows, now)                # 11/28: NH 일봉에 최근 거래일(11/27) 봉이 없으면 한투 해외 일봉으로 채움
+        dc[code] = {**e, "rows": rows[-90:], "kis_try": time.time()}
+        _save(DAILY, dc)
     lc = _load(LIVE); le = lc.get(code) or {}
     live = None
     if time.time() - le.get("t", 0) < 55 and (code != "SNDK" or le.get("interval") == "1d"):
@@ -807,6 +845,10 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
                     live = []
             elif cc == "tw" or code == "SNDK":
                 # 분할 조정된 일봉의 시가·고가·저가를 마지막 시간봉으로 덮지 않는다.
+                live = _yahoo(code, "5d", "1d")[-1:]
+            elif cc == "us" and not code.endswith("=F") and not _open_now("us", now, code):
+                # 11/28 운영자 "조기 마감 종가 위주": 정규장 밖에서는 60분봉 마지막 값(AVGO 310.70, 13:00 종가 경매 빠짐)이 아니라
+                # 일봉 종가(정규장 공식 종가 312.34)를 쓴다. 애프터마켓은 카드 보조 줄로 따로.
                 live = _yahoo(code, "5d", "1d")[-1:]
             else:
                 live = _yahoo(code, "5d", "60m")[-1:]            # 오늘(마지막 날)만 — 전날은 일봉 종가 그대로
@@ -1000,7 +1042,7 @@ def build(now: datetime | None = None) -> dict:
                           uni_sma5_closed=kb["uni_sma5_closed"], uni_below_sma5=kb["uni_below_sma5"], base=kb["base"],
                           reg_closes=[[r[0], round(v, 2)] for r, v in zip(rows, kb["u"])][:-1],
                           ma5_basis="통합 종가(KRX+넥장 20시) 4일 + 현재가" + (f" · 통합 {kb['miss_u']}일 KRX로 대체" if kb["miss_u"] else ""),
-                          krx_missing=kb["miss_k"])
+                          krx_missing=kb["miss_k"], nxt_none=kb["nxt_none"])
             if g["cc"] == "kr" and code in nxq:
                 nq = nxq[code]
                 it["nxt"] = nq
@@ -1030,11 +1072,16 @@ def build(now: datetime | None = None) -> dict:
                             kbase = {r[0]: v for r, v in zip(rows, kb["k"])}.get(view.get("base_day"))
                             if kbase:
                                 view.update(base=kbase, change=round(view["px"] - kbase, 4), chg=round((view["px"] / kbase - 1) * 100, 2))
-                        if view:
+                        if view and g["cc"] == "us" and view.get("session") == "애프터마켓":
+                            # 11/28 운영자: 미국 정규장 마감 뒤 카드 주 등락 = 정규장(조기 마감 포함) 종가 등락, 애프터마켓은 보조 줄.
+                            # 거래가 뜸한 종목(ARM·STX·KLAC 등)의 오래된 애프터 1분봉이 '자료 확인 중'으로 카드를 덮던 문제도 함께 막는다.
+                            it["after"] = {"px": view["px"], "chg": view["chg"], "base": view.get("base"),
+                                           "at": view.get("source_at"), "live": bool(view.get("live"))}
+                        elif view:
                             it["display"] = view
                     except (ValueError, TypeError, KeyError, IndexError):
                         session_errors.append(f"{code} 확장차트 계산 확인")
-                if "display" not in it:
+                if "display" not in it and "after" not in it:
                     it["session_note"] = "통합·확장세션 OHLC 미확인 — 정규장 차트 표시"
             items.append(it)
             key = f"{code}"
