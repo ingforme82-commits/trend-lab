@@ -1276,3 +1276,7 @@ html,body{overflow-x:clip}
 .ch-global-card b.up{color:var(--market-up)}
 .ch-global-card b.down{color:var(--market-down)}
 @media(max-width:760px){.ch-global-grid{grid-template-columns:1fr}.ch-global-title small{display:block;margin:3px 0 0}.ch-global-card li{font-size:12px}}
+
+/* 11/28: 글로벌 섹터 목록 등락(b.up/b.down)이 '다가오는 일정' .up 상자 규칙과 겹쳐 금색 상자로 보이던 문제 */
+.ch-global-card b.up,.ch-global-card b.down,.ch-global-card b.dim{background:none;border:0;border-radius:0;padding:0;display:inline;flex-direction:initial}
+.ch-global-card b.up{color:var(--market-up)}.ch-global-card b.down{color:var(--market-down)}.ch-global-card b.dim{color:var(--sub)}
