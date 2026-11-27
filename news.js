@@ -405,7 +405,7 @@
       if (!response.ok) return;
       const rows = await response.json();
       if (!Array.isArray(rows)) return;
-      asiaQuotes = rows.filter((row) => ["TAIEX", "^N225"].includes(row?.sym) &&
+      asiaQuotes = rows.filter((row) => (["TAIEX", "^N225"].includes(row?.sym) || /^(?:\d{4}|\d{3}[A-Z])\.T$/.test(row?.sym)) &&
         [row.px, row.chg, row.at].every(Number.isFinite) && row.px > 0);
       drawWorld();
       drawChan();
@@ -437,9 +437,20 @@
     const day = new Intl.DateTimeFormat("sv-SE", {timeZone: zone || "Asia/Seoul", year: "numeric", month: "2-digit", day: "2-digit"}).format(w.at);
     return day + " 현지 · " + time + " 기준";
   }
+  function taiwanAwaiting(day) {
+    const now = kst(Date.now());
+    return now.getDay() > 0 && now.getDay() < 6 &&
+      (now.getHours() < 10 || day !== kstDay(Date.now()).slice(5).replace("-", "/"));
+  }
+  function taiwanStatus() {
+    return kst(Date.now()).getHours() < 10 ? "개장 대기 · 10:00 KST" : "당일 시세 대기";
+  }
   function drawWorld() {
     const box = q("#worldGrid"); if (!box) return;
-    box.innerHTML = worldQuotes().map((w) => {
+    box.innerHTML = worldQuotes().filter((w) => !w.sym.endsWith(".T")).map((w) => {
+      if (w.sym === "TAIEX" && taiwanAwaiting(w.day?.slice(5).replace("-", "/"))) {
+        return `<div class="tick"><p class="t-name">대만 · 가권지수</p><p class="fine">${taiwanStatus()}</p></div>`;
+      }
       return `<div class="tick"><p class="t-name">${esc(w.region)} · ${esc(w.name)}</p><p class="t-px">${w.px.toLocaleString("ko-KR", { maximumFractionDigits: 2 })}</p>
         <p class="t-ch ${cls(w.chg)}">${w.chg > 0 ? "▲" : w.chg < 0 ? "▼" : ""} ${w.chg > 0 ? "+" : ""}${w.chg.toFixed(2)}%</p>
         ${w.low != null && w.rebound != null ? `<p class="fine">장중 저점 ${w.low.toLocaleString("ko-KR")} · 저점 대비 +${w.rebound.toFixed(2)}%</p>` : ""}
@@ -1114,7 +1125,18 @@
       <p class="ch-leg">${bk != null ? `<i class="lo"></i>돌파한 상단(지지) <i class="lr"></i>돌파 뒤 고점(저항)` : `<i class="lr"></i>채널 상단`} <i class="ls"></i>채널 하단 <i class="lh"></i>수평 저항·지지 <i class="lp"></i>현재가 <i class="lm"></i>5일선${it.live ? " · 진행 중" : ""}</p>`;
   }
   function chMarketQuote(regular, cc) {
-    const it = chLive(chDisplay(regular));
+    let it = chLive(chDisplay(regular));
+    if (cc === "jp") {
+      const quote = worldQuotes().find((row) => row.sym === it.code);
+      if (quote?.trend?.source_at === quote?.at && quote?.trend &&
+          quote.trend.day === kstDay(Date.now()).slice(5).replace("-", "/") &&
+          (quote.trend.day !== it.day || it.stale || (it.source_at > 0 && quote.at > it.source_at))) {
+        it = {...quote.trend, stale: quote.trend.live && Date.now() - quote.at > 900000};
+      }
+    }
+    if (cc === "tw" && taiwanAwaiting(it.day)) {
+      return {...it, awaiting: true, chg: null, stale: true};
+    }
     const today = kstDay(Date.now());
     if (cc === "jp" && it.code !== "^N225" && today === "2026-11-26" &&
         it.day === "11/26" && it.rows?.at(-2)?.[0] !== "11/25") {
@@ -1123,6 +1145,7 @@
     return it;
   }
   function chMarketSession(it, cc) {
+    if (it.awaiting) return taiwanStatus();
     const day = it.day ? it.day + " " : "";
     if (cc === "jp" && it.day === kstDay(Date.now()).slice(5).replace("-", "/")) {
       const now = kst(Date.now()), minute = now.getHours() * 60 + now.getMinutes();
@@ -1323,6 +1346,10 @@
       items.forEach((item, index) => {
         const {regular, it} = item;
         const units = g.index ? "kr_index" : g.cc;
+        if (it.awaiting) {
+          html += `<article class="ch-card" data-viewport-key="channel:${esc(it.code)}"><div class="ch-top"><b class="ch-nm">${esc(it.name)}</b><small>${taiwanStatus()}</small></div></article>`;
+          return;
+        }
         if (it.ipo) { html += chIpoCard(it, g.cc); return; }      // 상장 초기 종목은 5분봉 흐름을 표시
         liveItems.push({g, it});
         const horizontal = g.cc === "us" ? chHorizontalLower(it.rows || []) : null;

@@ -1,6 +1,7 @@
 """Publish Taiwanese and Japanese index snapshots independently of live news."""
 import base64
 import json
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
@@ -84,9 +85,45 @@ def japan_row(config=None):
     return row
 
 
+def japan_stocks():
+    config = json.loads(CONF.read_text(encoding="utf-8"))
+    now = datetime.now(ZoneInfo("Asia/Tokyo"))
+    if now.weekday() >= 5 or not 900 <= now.hour * 100 + now.minute <= 1600:
+        return []
+
+    def stock(item):
+        sym, name = item
+        quote = _yf(sym)
+        if not quote or not quote["px"] or not quote["prev"]:
+            return None
+        traded = datetime.fromtimestamp(quote["at"] / 1000, now.tzinfo)
+        if traded.date() != now.date() or traded > now or traded.hour < 9:
+            return None
+        try:
+            bars = _yahoo(sym, "3mo", "1d")
+        except (OSError, ValueError, KeyError, TypeError, IndexError):
+            return None
+        if not bars or bars[-1][0] != traded.strftime("%m/%d"):
+            return None
+        px, prev = quote["px"], quote["prev"]
+        day, op, hi, lo, _ = bars[-1]
+        bars[-1] = [day, op, max(hi, px), min(lo, px), px]
+        row = {"sym": sym, "name": name, "region": "일본", "px": px,
+               "chg": round((px / prev - 1) * 100, 2), "at": quote["at"]}
+        trend(row, bars, config, traded.hour * 100 + traded.minute < 1530, "Yahoo Finance · 지연 가능")
+        if "trend" in row:
+            row["trend"].update(chg=row["chg"], base=prev, candle=candle(op, max(hi, px), min(lo, px), px, prev))
+            return row
+        return None
+
+    items = [item for group in config["groups"] if group["cc"] == "jp" for item in group["items"]]
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        return [row for row in pool.map(stock, items) if row]
+
+
 def collect():
     config = json.loads(CONF.read_text(encoding="utf-8"))
-    return [row for row in (taiwan_row(config), japan_row(config)) if row]
+    return [row for row in (taiwan_row(config), japan_row(config), *japan_stocks()) if row]
 
 
 def main():

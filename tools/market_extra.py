@@ -135,14 +135,14 @@ def world_and_spot() -> tuple[list[dict], list[dict]]:
     try:
         cache = json.loads(CACHE.read_text(encoding="utf-8"))
         if datetime.now(timezone.utc).timestamp() - cache["at"] < 290:
-            from asia_quotes import japan_row
+            from asia_quotes import japan_row, japan_stocks
             japan = japan_row()
             world = cache["world"]
             if japan:
                 prior = next((row for row in world if row["sym"] == "^N225"), None)
                 if not prior or japan["at"] >= prior["at"]:
                     world = [row for row in world if row["sym"] != "^N225"] + [japan]
-            return world, cache["spot"]
+            return world + japan_stocks(), cache["spot"]
     except Exception:  # noqa: BLE001
         cache = None
     hl = _hl_ctx()
@@ -218,8 +218,10 @@ def world_and_spot() -> tuple[list[dict], list[dict]]:
         spot.append(row)
     if world or not cache:
         CACHE.write_text(json.dumps({"at": datetime.now(timezone.utc).timestamp(), "world": world, "spot": spot}, ensure_ascii=False), encoding="utf-8")
-        return world, spot
-    return cache["world"], cache["spot"]
+    else:
+        world, spot = cache["world"], cache["spot"]
+    from asia_quotes import japan_stocks
+    return world + japan_stocks(), spot
 
 
 def trending(items: list[dict], hours: int = 24) -> list[dict]:
