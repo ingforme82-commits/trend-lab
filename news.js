@@ -1181,7 +1181,11 @@
       <p class="ch-leg">${bk != null ? `<i class="lo"></i>돌파한 상단(지지) <i class="lr"></i>돌파 뒤 고점(저항)` : `<i class="lr"></i>채널 상단`} <i class="ls"></i>채널 하단 <i class="lh"></i>수평 저항·지지 <i class="lp"></i>현재가 <i class="lm"></i>5일선${it.live ? " · 진행 중" : ""}</p>`;
   }
   function chMarketQuote(regular, cc) {
-    let it = chLive(chDisplay(regular));
+    // 11/28 운영자: 장 마감 뒤(넥장·애프터 거래 끝)엔 카드 현재가·등락 = 그날 정규장 종가·등락. 끝난 시간외 값(NXT 마지막 −0.06%)을
+    // 일간 등락처럼 머리에 쓰지 않고, 시간외는 종가 칸·보조 줄로만 보인다. CME 선물(24시간)은 그대로.
+    const extDone = (cc === "kr" || cc === "us") && regular.display && !/=F$/.test(regular.code || "") &&
+      (!regular.display.live || (cc === "us" && regular.display.session === "애프터마켓"));   // 미국 애프터마켓은 진행 중이어도 보조 칸
+    let it = chLive(extDone ? regular : chDisplay(regular));
     if (cc === "jp") {
       const quote = worldQuotes().find((row) => row.sym === it.code);
       if (quote?.trend?.source_at === quote?.at && quote?.trend &&
