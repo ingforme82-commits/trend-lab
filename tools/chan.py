@@ -180,7 +180,8 @@ def swing_anchors(rows: list[list], window: int = 30, spacing: int = 3, side: in
             "lo1": [dates[lp[0]], dates[lp[0]]], "lo2": [dates[lp[1]], dates[last]]}
 
 
-def best_anchors(rows: list[list], contact_rules: dict | None = None, window: int = 30, spacing: int = 3, side: int = 2) -> dict | None:
+def best_anchors(rows: list[list], contact_rules: dict | None = None, window: int = 40, spacing: int = 3, side: int = 2,
+                 max_width: float = 0.40) -> dict | None:
     """swing_anchors 보완: 최근 window 봉의 스윙 고점·저점을 첫 점 후보로 놓고, 채널 폭이 유효(교차·음수 없음)하면서
     두 선 기울기(가격 대비)가 가장 비슷한 조합을 고른다 — 한쪽 선만 가팔라 벌어지는 채널을 피함. 선이 짧으면 감점."""
     base = swing_anchors(rows, window, spacing, side)
@@ -199,7 +200,8 @@ def best_anchors(rows: list[list], contact_rules: dict | None = None, window: in
     if base:
         ch = channel(rows, base, contact_rules)
         if ch and ch["channel_width_valid"]:
-            best_score = abs(ch["su"] - ch["sl"]) / px * 100
+            w = (ch["up_now"] - ch["lo_now"]) / px
+            best_score = abs(ch["su"] - ch["sl"]) / px * 100 + w * 2 + (100 if w > max_width else 0)
     for h in piv(2, True):
         for l in piv(3, False):
             a = {"hi1": [dates[h], dates[h]], "hi2": [dates[h + spacing], dates[last]],
@@ -208,7 +210,8 @@ def best_anchors(rows: list[list], contact_rules: dict | None = None, window: in
             if not ch or not ch["channel_width_valid"] or not ch["lo_now"] > 0:
                 continue
             short = max(0, 12 - (last - min(h, l))) * 0.05      # 12봉보다 짧은 선은 감점
-            sc = abs(ch["su"] - ch["sl"]) / px * 100 + short
+            w = (ch["up_now"] - ch["lo_now"]) / px                # 11/28: 폭이 현재가의 40% 넘는 채널은 뒤로(AMD·MRVL 등 너무 벌어진 선)
+            sc = abs(ch["su"] - ch["sl"]) / px * 100 + short + w * 2 + (100 if w > max_width else 0)
             if best_score is None or sc < best_score - 0.05:
                 best, best_score = a, sc
     return best
@@ -860,6 +863,9 @@ def cn_limit_state(code: str, chg: float | None) -> str | None:
     return "상한가" if chg >= lim - 0.05 else "하한가" if chg <= -lim + 0.05 else None
 
 
+US_EARLY_CLOSE = {"2026-11-27": 780, "2026-12-24": 780}   # NYSE 조기 마감(현지 13:00 = 분 780)
+
+
 def _open_now(cc: str, now: datetime, code: str = "") -> bool:
     if cc == "kr":
         hm = now.hour * 100 + now.minute
@@ -878,7 +884,8 @@ def _open_now(cc: str, now: datetime, code: str = "") -> bool:
         return local.weekday() < 5 and (930 <= hm < 1130 or 1300 <= hm < 1500)
     ny = now.astimezone(ZoneInfo("America/New_York"))       # DST 포함
     m = ny.hour * 60 + ny.minute
-    return ny.weekday() < 5 and 570 <= m < 960
+    close = US_EARLY_CLOSE.get(ny.strftime("%Y-%m-%d"), 960)   # 11/28 운영자: 조기 마감일은 13:00(현지) 종가 기준
+    return ny.weekday() < 5 and 570 <= m < close
 
 
 def _is_current_session_bar(cc: str, live: list[list], rows: list[list], now: datetime, code: str = "") -> bool:
