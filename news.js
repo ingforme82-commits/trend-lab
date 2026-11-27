@@ -875,6 +875,7 @@
     kr: new Intl.NumberFormat(marketLocale, { style: "currency", currency: "KRW" }),
     jp: new Intl.NumberFormat(marketLocale, { style: "currency", currency: "JPY" }),
     tw: new Intl.NumberFormat(marketLocale, { style: "currency", currency: "TWD" }),
+    cn: new Intl.NumberFormat(marketLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 }),   // 중국·홍콩: 통화가 종목마다 달라(HK$·위안) 이름에 표기
   };
   const chFmt = (cc, value) => value == null ? "-"
     : (chartPriceFormat[cc] || chartPriceFormat.kr).format(value) + (cc === "kr_index" ? " pt" : "");

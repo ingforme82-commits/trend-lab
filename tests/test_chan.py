@@ -135,5 +135,36 @@ class IpoAndJpStaleTest(unittest.TestCase):
             self.assertEqual((e["open1"], e["hi"], e["lo"]), (111.5, 115.1, 73.85))
 
 
+class ChinaHongKongTest(unittest.TestCase):
+    """11/28 1b: 중국·홍콩 반도체 묶음 — 장 시간(종목별)·가격제한폭·금액 표기."""
+    def test_open_hours_by_exchange(self):
+        from chan import _open_now
+        kst = timezone(timedelta(hours=9))
+        at = lambda h, m: datetime(2026, 11, 27, h, m, tzinfo=kst)     # 금요일, 현지 = KST - 1시간
+        self.assertTrue(_open_now("cn", at(16, 30), "0981.HK"))         # 홍콩 15:30
+        self.assertFalse(_open_now("cn", at(16, 30), "688825.SS"))      # 상하이 15:00 마감 뒤
+        self.assertTrue(_open_now("cn", at(10, 45), "002371.SZ"))       # 선전 09:45
+        self.assertFalse(_open_now("cn", at(12, 45), "688981.SS"))      # 점심 11:45
+        self.assertTrue(_open_now("cn", at(12, 45), "1347.HK"))         # 홍콩은 12:00까지
+        self.assertFalse(_open_now("cn", datetime(2026, 11, 28, 11, 0, tzinfo=kst), "0981.HK"))   # 토
+
+    def test_price_limit(self):
+        from chan import cn_limit_pct, cn_limit_state
+        self.assertEqual(cn_limit_pct("688825.SS"), 20.0)
+        self.assertEqual(cn_limit_pct("603986.SS"), 10.0)
+        self.assertEqual(cn_limit_pct("002371.SZ"), 10.0)
+        self.assertIsNone(cn_limit_pct("1347.HK"))
+        self.assertEqual(cn_limit_state("688347.SS", 20.0), "상한가")
+        self.assertEqual(cn_limit_state("002371.SZ", 10.0), "상한가")
+        self.assertIsNone(cn_limit_state("688825.SS", 12.97))
+        self.assertIsNone(cn_limit_state("1347.HK", 20.69))             # 홍콩은 제한폭 없음
+        self.assertEqual(cn_limit_state("603986.SS", -9.98), "하한가")
+
+    def test_money_format(self):
+        from chan import _fmt
+        self.assertEqual(_fmt("hk", 53.4), "HK$53.40")
+        self.assertEqual(_fmt("cn", 527.38), "527.38위안")
+
+
 if __name__ == "__main__":
     unittest.main()

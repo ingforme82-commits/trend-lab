@@ -743,11 +743,26 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
         if kc:
             d, o, h, l, _ = rows[-1][:5]
             rows[-1] = [d, o, max(h, kc), min(l, kc), kc]
-    in_session = _is_current_session_bar(cc, live, rows, now)
+    in_session = _is_current_session_bar(cc, live, rows, now, code)
     return rows[-NBARS:], in_session
 
 
-def _open_now(cc: str, now: datetime) -> bool:
+def cn_limit_pct(code: str) -> float | None:
+    """중국 본토 가격제한폭(%): 커촹반 688·촹예반 300/301 = 20, 그 밖 상하이·선전 = 10. 홍콩은 없음(None). ST 종목은 따지지 않음."""
+    if code.endswith(".HK"):
+        return None
+    return 20.0 if code.startswith(("688", "689", "300", "301")) else 10.0
+
+
+def cn_limit_state(code: str, chg: float | None) -> str | None:
+    """등락률이 가격제한폭에 닿았으면(0.05%p 안) '상한가'·'하한가'."""
+    lim = cn_limit_pct(code)
+    if lim is None or chg is None:
+        return None
+    return "상한가" if chg >= lim - 0.05 else "하한가" if chg <= -lim + 0.05 else None
+
+
+def _open_now(cc: str, now: datetime, code: str = "") -> bool:
     if cc == "kr":
         hm = now.hour * 100 + now.minute
         return now.weekday() < 5 and 900 <= hm < 1530
@@ -757,19 +772,25 @@ def _open_now(cc: str, now: datetime) -> bool:
     if cc == "tw":
         local = now.astimezone(ZoneInfo("Asia/Taipei"))
         return local.weekday() < 5 and 900 <= local.hour * 100 + local.minute < 1330
+    if cc == "cn":                                          # 11/28: 홍콩 09:30~12:00·13:00~16:00, 상하이·선전 09:30~11:30·13:00~15:00(현지)
+        local = now.astimezone(ZoneInfo("Asia/Shanghai"))
+        hm = local.hour * 100 + local.minute
+        if code.endswith(".HK"):
+            return local.weekday() < 5 and (930 <= hm < 1200 or 1300 <= hm < 1600)
+        return local.weekday() < 5 and (930 <= hm < 1130 or 1300 <= hm < 1500)
     ny = now.astimezone(ZoneInfo("America/New_York"))       # DST 포함
     m = ny.hour * 60 + ny.minute
     return ny.weekday() < 5 and 570 <= m < 960
 
 
-def _is_current_session_bar(cc: str, live: list[list], rows: list[list], now: datetime) -> bool:
+def _is_current_session_bar(cc: str, live: list[list], rows: list[list], now: datetime, code: str = "") -> bool:
     """장중 표시는 해당 시장의 오늘 날짜 봉이 실제로 있을 때만 허용한다."""
-    zones = {"kr": "Asia/Seoul", "jp": "Asia/Tokyo", "tw": "Asia/Taipei", "us": "America/New_York"}
+    zones = {"kr": "Asia/Seoul", "jp": "Asia/Tokyo", "tw": "Asia/Taipei", "us": "America/New_York", "cn": "Asia/Shanghai"}
     zone = zones.get(cc)
     if not zone or not live or not rows:
         return False
     day = now.astimezone(ZoneInfo(zone)).strftime("%m/%d")
-    return live[-1][0] == rows[-1][0] == day and _open_now(cc, now)
+    return live[-1][0] == rows[-1][0] == day and _open_now(cc, now, code)
 
 
 def build(now: datetime | None = None) -> dict:
@@ -809,6 +830,7 @@ def build(now: datetime | None = None) -> dict:
                 except Exception as x:  # noqa: BLE001
                     ERRS.append(f"{code} 상장 초기 시세 {type(x).__name__}")
                 continue
+            fcc = "hk" if g["cc"] == "cn" and code.endswith(".HK") else g["cc"]   # 금액 표기(홍콩 HK$·본토 위안)
             try:
                 observed_at = datetime.now(KST) if realtime_clock and g["cc"] == "kr_index" else now
                 rows, live = bars(g["cc"], code, observed_at)
@@ -841,7 +863,7 @@ def build(now: datetime | None = None) -> dict:
             was0 = (prev.get(code) or {}).get("state")       # 11/17: 3% 경계에서 오락가락(채널 안↔상단 근접) 막기 — 나갈 때는 3.5%
             if was0 == "상단 근접" and st == "채널 안" and res_gap(ch, px) <= 3.5:
                 st = "상단 근접"
-            market_stale = g["cc"] != "kr_index" and _open_now(g["cc"], now) and not live
+            market_stale = g["cc"] != "kr_index" and _open_now(g["cc"], now, code) and not live
             if g["cc"] == "jp" and not market_stale and jp_daily_stale(rows[-1][0], now):   # 11/28: NH 일봉에 전 거래일 봉이 없으면 지난 값 표시
                 market_stale = True
             it = {"code": code, "name": name, "day": rows[-1][0], "live": live, "stale": market_stale, "px": px, "chg": round((px / pc - 1) * 100, 2),
@@ -854,6 +876,13 @@ def build(now: datetime | None = None) -> dict:
                     it["stale_note"] = f"{it['day']} 기준 지난 값(최근 거래일 봉 없음)"
             if g["cc"] == "tw":
                 it["source"] = "Yahoo 일봉 · 지연 가능"
+            if g["cc"] == "cn":                                   # 11/28 1b: 중국·홍콩 — Yahoo 일봉 + 당일 60분봉(일봉 당일 값이 비어 옴)
+                it["source"] = "Yahoo 일봉·60분봉 · 지연 가능"
+                it["limit_pct"] = cn_limit_pct(code)
+                lim = cn_limit_state(code, it["chg"])
+                if lim:
+                    it["limit"] = lim
+                    it["name"] = f"{name} · {lim}"
             if g["cc"] == "kr_index":
                 index_meta = INDEX_META.get(code, {})
                 it.update(index_meta)
@@ -906,9 +935,9 @@ def build(now: datetime | None = None) -> dict:
             was = prev.get(key) or {}
             stamp = f"{rows[-1][0]}"
             if not index_stale and was.get("state") and was.get("state") != st:
-                events.append({"ts": int(now.timestamp() * 1000), "code": code, "text": f"{name}: {was['state']} → {st} ({_fmt(g['cc'], px)}, 상단선 {_fmt(g['cc'], ch['up_now'])}, 5일선 {_fmt(g['cc'], ch['ma5'])})"})
+                events.append({"ts": int(now.timestamp() * 1000), "code": code, "text": f"{name}: {was['state']} → {st} ({_fmt(fcc, px)}, 상단선 {_fmt(fcc, ch['up_now'])}, 5일선 {_fmt(fcc, ch['ma5'])})"})
             if live and cd["kind"] in ("bigup", "bigdn", "hammer", "shoot", "doji") and was.get("shape") != f"{stamp}:{cd['kind']}":
-                events.append({"ts": int(now.timestamp() * 1000), "code": code, "text": f"{name}: 오늘 캔들 {cd['name']} (시가 대비 {cd['vs_open']:+.2f}%, {_fmt(g['cc'], px)})"})
+                events.append({"ts": int(now.timestamp() * 1000), "code": code, "text": f"{name}: 오늘 캔들 {cd['name']} (시가 대비 {cd['vs_open']:+.2f}%, {_fmt(fcc, px)})"})
                 was = {**was, "shape": f"{stamp}:{cd['kind']}"}
             # 11/17 운영자: 오늘 봉이 5일선을 위로 넘으면 시그널(어제 종가는 어제까지 5일선 아래였을 때). 하루 한 번
             closes = kb["u"] if kb else [r[4] for r in rows]
@@ -917,7 +946,7 @@ def build(now: datetime | None = None) -> dict:
             it["above_ma5"] = px > ch["ma5"]
             if code != "NVDL" and live and ch["channel_valid"] and ma5_prev and pcu <= ma5_prev and px > ch["ma5"] and was.get("ma5sig") != stamp:
                 sig = {"ts": int(now.timestamp() * 1000), "day": stamp, "code": code, "name": name, "cc": g["cc"], "contact_policy": contact_policy,
-                       "text": _josa(f"📐 5일선 돌파 시그널 — {name} {_fmt(g['cc'], px)}가 5일선 {_fmt(g['cc'], ch['ma5'])} 위로 (어제 {_fmt(g['cc'], pcu)}는 5일선 아래) · 채널 상단선 {_fmt(g['cc'], ch['up_now'])}까지 {((ch['up_now'] / px - 1) * 100):+.1f}%")}
+                       "text": _josa(f"📐 5일선 돌파 시그널 — {name} {_fmt(fcc, px)}가 5일선 {_fmt(fcc, ch['ma5'])} 위로 (어제 {_fmt(fcc, pcu)}는 5일선 아래) · 채널 상단선 {_fmt(fcc, ch['up_now'])}까지 {((ch['up_now'] / px - 1) * 100):+.1f}%")}
                 signals.append(sig)
                 events.append({"ts": sig["ts"], "code": code, "text": sig["text"]})
                 was = {**was, "ma5sig": stamp}
@@ -931,7 +960,7 @@ def build(now: datetime | None = None) -> dict:
             # 사실만 기록하고 주문용 signals 에는 넣지 않는다(자동 주문 경로와 분리). 하루 한 번
             if live and ch["channel_valid"] and ma5_prev and pcu <= ma5_prev and h >= ch["ma5"] and px < ch["ma5"] * 0.997 and was.get("ma5res") != stamp:
                 rs = {"ts": int(now.timestamp() * 1000), "day": stamp, "code": code, "name": name, "cc": g["cc"], "contact_policy": contact_policy, "kind": "resist",
-                      "text": f"📐 5일선 저항 — {name} 장중 고가 {_ro(_fmt(g['cc'], h))} 5일선 {_fmt(g['cc'], ch['ma5'])} 터치 후 현재 {_fmt(g['cc'], px)} (5일선 대비 {((px / ch['ma5'] - 1) * 100):+.1f}%)"}
+                      "text": f"📐 5일선 저항 — {name} 장중 고가 {_ro(_fmt(fcc, h))} 5일선 {_fmt(fcc, ch['ma5'])} 터치 후 현재 {_fmt(fcc, px)} (5일선 대비 {((px / ch['ma5'] - 1) * 100):+.1f}%)"}
                 resists.append(rs)
                 events.append({"ts": rs["ts"], "code": code, "text": rs["text"]})
                 was = {**was, "ma5res": stamp}
@@ -1121,6 +1150,8 @@ def sector_view(items: list[dict]) -> dict:
 
 
 def _fmt(cc: str, v: float) -> str:
+    if cc in ("hk", "cn"):
+        return f"HK${v:,.2f}" if cc == "hk" else f"{v:,.2f}위안"
     if cc == "tw":
         return f"NT${v:,.2f}"
     if cc == "kr_index":
