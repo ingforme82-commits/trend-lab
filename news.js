@@ -1135,9 +1135,17 @@
       }
     }
     if (cc === "tw" && taiwanAwaiting(it.day)) {
-      return {...it, awaiting: true, chg: null, stale: true};
+      return {...it, awaiting: taiwanStatus(), chg: null, stale: true};
     }
-    const today = kstDay(Date.now());
+    const now = Date.now();
+    if (cc === "us" && !it.code.endsWith("=F") &&
+        now >= Date.parse("2026-11-26T05:00:00Z") && now < Date.parse("2026-11-28T02:30:00Z") &&
+        it.day !== "11/27") {
+      const status = now < Date.parse("2026-11-27T09:00:00Z") ?
+        "미국 추수감사절 휴장" : "11/27 미국 시세 대기";
+      return {...it, awaiting: status, chg: null, stale: true};
+    }
+    const today = kstDay(now);
     if (cc === "jp" && it.code !== "^N225" && today === "2026-11-26" &&
         it.day === "11/26" && it.rows?.at(-2)?.[0] !== "11/25") {
       return {...it, chg: null, stale: true, state: "전일 종가 확인 중"};
@@ -1145,7 +1153,7 @@
     return it;
   }
   function chMarketSession(it, cc) {
-    if (it.awaiting) return taiwanStatus();
+    if (it.awaiting) return it.awaiting;
     const day = it.day ? it.day + " " : "";
     if (cc === "jp" && it.day === kstDay(Date.now()).slice(5).replace("-", "/")) {
       const now = kst(Date.now()), minute = now.getHours() * 60 + now.getMinutes();
@@ -1347,7 +1355,7 @@
         const {regular, it} = item;
         const units = g.index ? "kr_index" : g.cc;
         if (it.awaiting) {
-          html += `<article class="ch-card" data-viewport-key="channel:${esc(it.code)}"><div class="ch-top"><b class="ch-nm">${esc(it.name)}</b><small>${taiwanStatus()}</small></div></article>`;
+          html += `<article class="ch-card" data-viewport-key="channel:${esc(it.code)}"><div class="ch-top"><b class="ch-nm">${esc(it.name)}</b><small>${esc(it.awaiting)}</small></div></article>`;
           return;
         }
         if (it.ipo) { html += chIpoCard(it, g.cc); return; }      // 상장 초기 종목은 5분봉 흐름을 표시
