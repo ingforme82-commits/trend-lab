@@ -1105,7 +1105,7 @@
     const a0 = Math.max(upperStart, lowerStart);
     // 11/21 운영자 "상단 저항 채널 돌파했는데도 선이 그대로": 종가가 상단 +1% 위로 마감한 첫 봉(bk)부터는
     // 상단선을 '돌파한 상단 → 지지'(회색 점선)로 바꾸고, 새 저항은 돌파 뒤 최고가 수평선으로 그린다
-    const clB = chCl(it), hiLast = Math.max(...(it.hi || [upperStart]));
+    const clB = chCl(it), hiLast = Math.max(0, ...((it.hi && it.hi.length) ? it.hi : [upperStart]).filter(Number.isFinite));   // 11/28: 기준점이 표시 창(28봉) 밖이면 hi=[] → -Infinity 무한 반복으로 화면 멈춤
     let bk = null;
     if (it.channel_valid !== false) for (let i = hiLast + 1; i < n; i++) {
       const c = i === n - 1 && it.live ? it.px : clB[i];   // 마감 봉은 정규장 종가로 판단
