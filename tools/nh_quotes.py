@@ -13,6 +13,7 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 BASE = "https://api.nhplug.com:8443"
@@ -86,9 +87,20 @@ def normalize(row, checked_at):
     px, base = float(row["trdprc"]), float(row["normal_trdprc"])
     if not sess or px <= 0 or base <= 0:
         raise ValueError("NH quote unavailable")
+    source_date = str(row.get("trade_date", ""))
+    try:
+        trade_day = datetime.strptime(source_date, "%Y%m%d").date()
+        checked_day = datetime.fromtimestamp(
+            checked_at / 1000, timezone(timedelta(hours=-5))
+        ).date()
+        # Extended sessions can carry the prior US trade date.
+        recent_trade_day = 0 <= (checked_day - trade_day).days <= 1
+    except ValueError:
+        recent_trade_day = False
+    live = sess != "reg" and recent_trade_day
     return {"sess": sess, "px": px, "base": base, "change": round(px - base, 4), "chg": round((px / base - 1) * 100, 2),
             "checked_at": checked_at, "source": "NH투자증권", "source_date": row.get("trade_date"), "source_time": row.get("quote_time"),
-            "live": sess != "reg", "stale": sess == "reg"}
+            "live": live, "stale": not live}
 
 
 def gh(args, payload=None):
