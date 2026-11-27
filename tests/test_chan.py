@@ -92,5 +92,48 @@ class T(unittest.TestCase):
         self.assertEqual(candle(100, 100, 100, 100, 100)["kind"], "flat")
 
 
+class IpoAndJpStaleTest(unittest.TestCase):
+    """11/28: ANT 전일 종가·상장일 기준값, 일본 일봉 전 거래일 누락 시 stale."""
+    KST = timezone(timedelta(hours=9))
+
+    def test_jp_missing_previous_trading_day_is_stale(self):
+        from chan import jp_daily_stale
+        sat = datetime(2026, 11, 28, 2, 0, tzinfo=self.KST)          # 토 새벽: 기대 = 11/27(금)
+        self.assertTrue(jp_daily_stale("11/26", sat))
+        self.assertFalse(jp_daily_stale("11/27", sat))
+        mon_am = datetime(2026, 11, 30, 8, 0, tzinfo=self.KST)       # 월 장 전: 기대 = 11/27
+        self.assertFalse(jp_daily_stale("11/27", mon_am))
+        jan = datetime(2027, 1, 4, 16, 0, tzinfo=self.KST)            # 연말 넘김
+        self.assertTrue(jp_daily_stale("12/30", jan))
+
+    def test_ipo_prev_close_uses_previous_close_not_chart_window(self):
+        from chan import ipo_prev_close
+        from zoneinfo import ZoneInfo
+        ny = ZoneInfo("America/New_York")
+        meta = {"chartPreviousClose": 97.17, "previousClose": 82.79}
+        self.assertEqual(ipo_prev_close(meta, [], ny, 83), 82.79)
+        t1 = int(datetime(2026, 11, 25, 15, 55, tzinfo=ny).timestamp()) * 1000
+        t2 = int(datetime(2026, 11, 27, 10, 0, tzinfo=ny).timestamp()) * 1000
+        reg = [[t1, 82, 83, 82, 82.79, "reg"], [t2, 85, 92, 84, 91.5, "reg"]]
+        self.assertEqual(ipo_prev_close({"chartPreviousClose": 97.17}, reg, ny, 83), 82.79)
+
+    def test_ipo_base_from_listing_day_and_cached(self):
+        import tempfile
+        from chan import ipo_base
+        daily = [["2026-11-19", 111.5, 115.1, 92.72, 97.17], ["2026-11-25", 77.93, 85.92, 73.85, 82.79]]
+        calls = []
+        def fake(code):
+            calls.append(code); return daily
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "ipo.json"
+            e = ipo_base("ANT", "2026-11-19", "2026-11-27", daily=fake, path=p)
+            self.assertEqual((e["open1"], e["open1_day"], e["hi"], e["lo"]), (111.5, "2026-11-19", 115.1, 73.85))
+            ipo_base("ANT", "2026-11-19", "2026-11-27", daily=fake, path=p)
+            self.assertEqual(len(calls), 1)                          # 같은 날은 저장값 재사용
+            later = lambda code: [["2026-12-01", 90, 99, 88, 95]]     # 창이 밀려도 첫 시가·고점 유지
+            e = ipo_base("ANT", "2026-11-19", "2026-12-01", daily=later, path=p)
+            self.assertEqual((e["open1"], e["hi"], e["lo"]), (111.5, 115.1, 73.85))
+
+
 if __name__ == "__main__":
     unittest.main()

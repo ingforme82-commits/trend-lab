@@ -842,15 +842,16 @@ def build(now: datetime | None = None) -> dict:
             if was0 == "상단 근접" and st == "채널 안" and res_gap(ch, px) <= 3.5:
                 st = "상단 근접"
             market_stale = g["cc"] != "kr_index" and _open_now(g["cc"], now) and not live
+            if g["cc"] == "jp" and not market_stale and jp_daily_stale(rows[-1][0], now):   # 11/28: NH 일봉에 전 거래일 봉이 없으면 지난 값 표시
+                market_stale = True
             it = {"code": code, "name": name, "day": rows[-1][0], "live": live, "stale": market_stale, "px": px, "chg": round((px / pc - 1) * 100, 2),
                   "candle": cd, "state": st, "rows": [[r[0]] + [round(x, 2) for x in r[1:5]] for r in rows],
                   **{k: (round(v, 4) if isinstance(v, float) else v) for k, v in ch.items()}}
             if g["cc"] == "jp":
                 it["source"] = "NH투자증권"
                 it["base_day"] = rows[-2][0]
-                # 11/25 was a JPX trading day. Old cached Yahoo bars can skip it.
-                if it["day"] == "11/26" and it["base_day"] != "11/25" and now.year == 2026:
-                    it.update(chg=None, state="전일 종가 확인 중")
+                if market_stale:
+                    it["stale_note"] = f"{it['day']} 기준 지난 값(최근 거래일 봉 없음)"
             if g["cc"] == "tw":
                 it["source"] = "Yahoo 일봉 · 지연 가능"
             if g["cc"] == "kr_index":
@@ -958,6 +959,68 @@ def build(now: datetime | None = None) -> dict:
     return {"at": at, **body, "errs": ERRS[:20]}
 
 
+def jp_daily_stale(last_day: str, now: datetime) -> bool:
+    """일본 일봉 마지막 날짜(MM/DD)가 기대하는 최근 거래일보다 앞이면 True. 평일 09:00(도쿄) 전은 전 평일까지 기대.
+    공휴일은 따지지 않음(공휴일 다음 날 오전엔 하루 지난 값으로 보일 수 있음)."""
+    tk = now.astimezone(ZoneInfo("Asia/Tokyo"))
+    d = tk.date()
+    if tk.weekday() >= 5 or tk.hour * 100 + tk.minute < 900:
+        d -= timedelta(days=1)
+    while d.weekday() >= 5:
+        d -= timedelta(days=1)
+    try:
+        last = datetime.strptime(f"{d.year}/{last_day}", "%Y/%m/%d").date()
+    except (TypeError, ValueError):
+        return True
+    if last > d:                                            # 연말 넘김(12/30 봉을 1월에 볼 때)
+        last = last.replace(year=last.year - 1)
+    return last < d
+
+
+IPO_STATE = keystore.state_dir() / "chan_ipo.json"
+
+
+def ipo_daily(code: str) -> list[list]:
+    """상장 뒤 일봉 [YYYY-MM-DD, 시가, 고가, 저가, 종가](Yahoo, 거래소 현지 날짜)."""
+    u = f"https://query1.finance.yahoo.com/v8/finance/chart/{urllib.request.quote(code)}?range=3mo&interval=1d"
+    r = json.loads(urllib.request.urlopen(urllib.request.Request(u, headers=UA), timeout=10).read())["chart"]["result"][0]
+    q = r["indicators"]["quote"][0]; tz = timezone(timedelta(seconds=r["meta"].get("gmtoffset", 0)))
+    return [[datetime.fromtimestamp(t, tz).strftime("%Y-%m-%d"), o, h, l, c]
+            for t, o, h, l, c in zip(r.get("timestamp") or [], q["open"], q["high"], q["low"], q["close"]) if None not in (o, h, l, c)]
+
+
+def ipo_base(code: str, listed: str | None, today: str, daily=None, path: Path | None = None) -> dict:
+    """첫 시가·상장 뒤 고점/저점을 상장일부터 계산해 저장(하루 한 번 일봉 갱신, 첫 시가는 한 번 정하면 그대로)."""
+    path = path or IPO_STATE
+    st = _load(path)
+    e = dict(st.get(code) or {})
+    if e.get("day") == today and e.get("open1"):
+        return e
+    rows = [r for r in (daily or ipo_daily)(code) if not listed or r[0] >= listed]
+    if rows:
+        if not e.get("open1"):
+            e.update(open1=round(rows[0][1], 4), open1_day=rows[0][0])
+        e["hi"] = round(max([r[2] for r in rows] + ([e["hi"]] if e.get("hi") else [])), 4)
+        e["lo"] = round(min([r[3] for r in rows] + ([e["lo"]] if e.get("lo") else [])), 4)
+        e["day"] = today
+        st[code] = e
+        _save(path, st)
+    return e
+
+
+def ipo_prev_close(meta: dict, regular: list[list], ny_tz: ZoneInfo, ipo_px: float) -> float:
+    """전일 종가: Yahoo meta previousClose(5일 창 앞 종가 chartPreviousClose 아님) → 직전 거래일 마지막 정규장 봉 → 공모가."""
+    for k in ("regularMarketPreviousClose", "previousClose"):
+        if meta.get(k):
+            return float(meta[k])
+    if regular:
+        last_day = datetime.fromtimestamp(regular[-1][0] / 1000, ny_tz).date()
+        before = [b for b in regular if datetime.fromtimestamp(b[0] / 1000, ny_tz).date() < last_day]
+        if before:
+            return before[-1][4]
+    return ipo_px
+
+
 def ipo_broker_extended_bars(code: str, ny_tz: ZoneInfo) -> list[list]:
     """한투 해외주식 조회 전용 TR에서 실제 체결이 있는 시간외 5분봉만 사용한다."""
     import kis
@@ -1021,13 +1084,20 @@ def ipo_item(code: str, name: str, cfg: dict, now: datetime) -> dict | None:
     live_bars = [by_time[t] for t in sorted(by_time)]
     hi = max(bar[2] for bar in regular)
     lo = min(bar[3] for bar in regular)
-    prev = m.get("chartPreviousClose") or ipo_px
-    open1 = first[1]
+    open1, base = first[1], {}
+    try:                                                    # 11/28: 첫 시가·고점/저점은 5일 창이 아니라 상장일부터
+        base = ipo_base(code, cfg.get("listed"), now.astimezone(ny_tz).strftime("%Y-%m-%d"))
+        if base.get("open1"):
+            open1 = base["open1"]
+            hi, lo = max(hi, base["hi"]), min(lo, base["lo"])
+    except Exception as x:  # noqa: BLE001
+        ERRS.append(f"{code} 상장일 일봉 {type(x).__name__}")
+    prev = ipo_prev_close(m, regular, ny_tz, ipo_px)
     pos = "공모가 위" if px > ipo_px else "공모가 아래"
     pos += " · 첫 시가 위" if px > open1 else " · 첫 시가 아래"
     age = now.timestamp() - (m.get("regularMarketTime") or 0)
     return {"code": code, "name": name, "ipo": True, "px": px, "chg": round((px / prev - 1) * 100, 2), "chg_basis": "전일 종가(상장일은 공모가)",
-            "ipo_px": ipo_px, "open1": open1, "hi": hi, "lo": lo, "vs_ipo": round((px / ipo_px - 1) * 100, 2),
+            "prev_close": round(prev, 4), "ipo_px": ipo_px, "open1": open1, "open1_day": base.get("open1_day"), "hi": hi, "lo": lo, "vs_ipo": round((px / ipo_px - 1) * 100, 2),
             "vs_open1": round((px / open1 - 1) * 100, 2), "from_hi": round((px / hi - 1) * 100, 2), "dd": round((px / hi - 1) * 100, 2),
             "listed": cfg.get("listed"), "note": cfg.get("note", ""), "state": pos, "live": age < 600, "bars": live_bars[-160:],
             "source": "Yahoo 5분봉 · 현재가", "source_at": int((m.get("regularMarketTime") or 0) * 1000)}
