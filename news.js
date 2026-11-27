@@ -1268,7 +1268,7 @@
     const asiaGroups = worldQuotes().filter((row) => {
       if (!["TAIEX", "^N225"].includes(row.sym) || !row.trend ||
           !Array.isArray(row.trend.rows) || row.trend.rows.length < 20 ||
-          !Number.isFinite(row.trend.source_at) || row.trend.source_at > row.at) return false;
+          !Number.isFinite(row.trend.source_at) || row.trend.source_at !== row.at || row.trend.px !== row.px || row.trend.chg !== row.chg) return false;
       const zone = row.sym === "^N225" ? "Asia/Tokyo" : "Asia/Taipei";
       const quoteDay = new Intl.DateTimeFormat("en-US", {timeZone: zone, month: "2-digit", day: "2-digit"}).format(row.at);
       return row.trend.day === quoteDay;

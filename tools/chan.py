@@ -642,7 +642,8 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
     dc = _load(DAILY)
     e = dc.get(code) or {}
     refresh_split = code == "SNDK" and e.get("schema") != "sndk-split-20261120"
-    refresh_jp = cc == "jp" and (e.get("day") != today or not e.get("rows"))
+    jp_after_close = cc == "jp" and now.weekday() < 5 and now.hour * 100 + now.minute >= 1531
+    refresh_jp = jp_after_close and (e.get("day") != today or not e.get("closed"))
     if refresh_split or refresh_jp or e.get("day") != today or not e.get("rows"):  # 원본 일봉은 하루 한 번
         rows = []
         try:
@@ -675,14 +676,14 @@ def bars(cc: str, code: str, now: datetime) -> tuple[list[list], bool]:
                 ERRS.append(f"{code} 네이버 일봉 {type(x).__name__}")
         if not rows and refresh_split:
             return [], False
-        if not rows:
+        if not rows and cc != "jp":
             rows = e.get("rows") or []
         if rows:
             dc[code] = {"day": today, "rows": rows[-90:]}
             if code == "SNDK":
                 dc[code]["schema"] = "sndk-split-20261120"
             if cc == "jp":
-                dc[code]["schema"] = "nh-jp-daily-v1"
+                dc[code]["closed"] = jp_after_close and rows[-1][0] == now.strftime("%m/%d")
             _save(DAILY, dc)
         e = dc.get(code) or {}
     rows = [list(r) for r in e.get("rows") or []]
