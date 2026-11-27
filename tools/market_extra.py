@@ -135,7 +135,14 @@ def world_and_spot() -> tuple[list[dict], list[dict]]:
     try:
         cache = json.loads(CACHE.read_text(encoding="utf-8"))
         if datetime.now(timezone.utc).timestamp() - cache["at"] < 290:
-            return cache["world"], cache["spot"]
+            from asia_quotes import japan_row
+            japan = japan_row()
+            world = cache["world"]
+            if japan:
+                prior = next((row for row in world if row["sym"] == "^N225"), None)
+                if not prior or japan["at"] >= prior["at"]:
+                    world = [row for row in world if row["sym"] != "^N225"] + [japan]
+            return world, cache["spot"]
     except Exception:  # noqa: BLE001
         cache = None
     hl = _hl_ctx()

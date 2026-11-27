@@ -71,20 +71,22 @@ def taiwan_row(config=None):
     return row
 
 
+def japan_row(config=None):
+    japan = _yf("^N225")
+    if not japan or not japan["px"] or not japan["prev"]:
+        return None
+    px, low = japan["px"], japan.get("low")
+    row = {"sym": "^N225", "name": "니케이225", "region": "일본", "px": px,
+           "at": japan["at"], "chg": round((px / japan["prev"] - 1) * 100, 2)}
+    if low and 0 < low <= px:
+        row.update(low=low, rebound=round((px / low - 1) * 100, 2))
+    add_japan_trend(row, config)
+    return row
+
+
 def collect():
     config = json.loads(CONF.read_text(encoding="utf-8"))
-    taiwan = taiwan_row(config)
-    japan = _yf("^N225")
-    rows = [taiwan] if taiwan else []
-    if japan and japan["px"] and japan["prev"]:
-        px, low = japan["px"], japan.get("low")
-        row = {"sym": "^N225", "name": "니케이225", "region": "일본", "px": px,
-               "at": japan["at"], "chg": round((px / japan["prev"] - 1) * 100, 2)}
-        if low and 0 < low <= px:
-            row.update(low=low, rebound=round((px / low - 1) * 100, 2))
-        add_japan_trend(row, config)
-        rows.append(row)
-    return rows
+    return [row for row in (taiwan_row(config), japan_row(config)) if row]
 
 
 def main():
