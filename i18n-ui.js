@@ -161,7 +161,11 @@ window.TRL_UI = {
 "ja": "今日の市場を",
 "zh-hans": "今日市场，",
 "zh-hant": "今日市場，",
-"fr": "Les marchés du jour,"
+"fr": "Les marchés du jour,",
+"de": "Die heutigen Märkte,",
+"vi": "Thị trường hôm nay,",
+"id": "Pasar hari ini,",
+"ar": "أسواق اليوم،"
 },
 "숫자로 확인합니다": {
 "en": "checked by the numbers",
@@ -203,7 +207,11 @@ window.TRL_UI = {
 "ja": "Market Pulse — いまの市場まとめ",
 "zh-hans": "Market Pulse — 当前市场概要",
 "zh-hant": "Market Pulse — 當前市場概要",
-"fr": "Market Pulse — résumé du marché"
+"fr": "Market Pulse — résumé du marché",
+"de": "Market Pulse — Marktüberblick",
+"vi": "Market Pulse — tóm tắt thị trường",
+"id": "Market Pulse — ringkasan pasar",
+"ar": "Market Pulse — ملخص السوق"
 },
 "{0} KST 기준 · {1}초 전": {
 "en": "As of {0} KST · {1}s ago",
@@ -343,7 +351,11 @@ window.TRL_UI = {
 "ja": "今日の市場 · 市況",
 "zh-hans": "今日市场 · 市况",
 "zh-hant": "今日市場 · 市況",
-"fr": "Marchés du jour"
+"fr": "Marchés du jour",
+"de": "Märkte heute",
+"vi": "Thị trường hôm nay",
+"id": "Pasar hari ini",
+"ar": "أسواق اليوم"
 },
 "오늘 핵심 이슈 → 실시간 시세 → 속보 순서로 확인합니다.": {
 "en": "Key issues → live quotes → breaking news, in that order.",
@@ -518,14 +530,22 @@ window.TRL_UI = {
 "ja": "現在の市場",
 "zh-hans": "当前市场",
 "zh-hant": "當前市場",
-"fr": "Le marché maintenant"
+"fr": "Le marché maintenant",
+"de": "Markt aktuell",
+"vi": "Thị trường hiện tại",
+"id": "Pasar saat ini",
+"ar": "السوق الآن"
 },
 "현재 시장 요약": {
 "en": "Market summary",
 "ja": "現在の市場まとめ",
 "zh-hans": "当前市场概要",
 "zh-hant": "當前市場概要",
-"fr": "Résumé du marché"
+"fr": "Résumé du marché",
+"de": "Marktüberblick",
+"vi": "Tóm tắt thị trường",
+"id": "Ringkasan pasar",
+"ar": "ملخص السوق"
 },
 "코스피": {
 "en": "KOSPI",
@@ -623,7 +643,11 @@ window.TRL_UI = {
 "ja": "📋 市場ブリーフィング",
 "zh-hans": "📋 市场简报",
 "zh-hant": "📋 市場簡報",
-"fr": "📋 Point de marché"
+"fr": "📋 Point de marché",
+"de": "📋 Marktbriefing",
+"vi": "📋 Bản tin thị trường",
+"id": "📋 Ringkasan pasar",
+"ar": "📋 موجز السوق"
 },
 "실시간 속보 · 지수 반응": {
 "en": "Breaking news · Index reaction",
@@ -665,7 +689,11 @@ window.TRL_UI = {
 "ja": "📍 市場が動いた瞬間",
 "zh-hans": "📍 推动市场的时刻",
 "zh-hant": "📍 推動市場的時刻",
-"fr": "📍 Les moments qui ont fait bouger le marché"
+"fr": "📍 Les moments qui ont fait bouger le marché",
+"de": "📍 Momente, die den Markt bewegten",
+"vi": "📍 Khoảnh khắc làm thị trường biến động",
+"id": "📍 Momen yang menggerakkan pasar",
+"ar": "📍 لحظات حرّكت السوق"
 },
 "급변·주요 가격대 통과와 유가 누적 등락(WTI {0}·{1}시간 ±{2}%, 브렌트 {3}시간 ±{4}%·{5}시간 ±{6}%)을 확인합니다. 관련 뉴스는 시작 전 {7}분부터 급변 구간은 최대 {8}분, 누적 구간은 끝까지 연결합니다. 빨간 점(🔴)은 이 뉴스에만 붙습니다. 시각이 겹친다는 뜻이며 인과관계를 단정하지 않습니다. 💡 해석은 운영자가 직접 쓴 내용입니다.": {
 "en": "We track sharp moves, key price levels and cumulative oil moves (WTI ±{2}% over {0}–{1} h; Brent ±{4}% over {3} h and ±{6}% over {5} h). News is linked from {7} min before the start — up to {8} min for sharp moves, and to the end for cumulative moves. The red dot (🔴) marks only these headlines. It means the timing overlaps, not that one caused the other. 💡 Notes are written by the operator.",
@@ -882,7 +910,11 @@ window.TRL_UI = {
 "ja": "市場の反応順",
 "zh-hans": "按市场反应",
 "zh-hant": "按市場反應",
-"fr": "Par réaction du marché"
+"fr": "Par réaction du marché",
+"de": "Marktreaktion",
+"vi": "Phản ứng thị trường",
+"id": "Reaksi pasar",
+"ar": "تفاعل السوق"
 },
 "지수 반응은 보도 {0}분 전 가격 대비 변화로, 시간상 전후 관계일 뿐 인과관계를 뜻하지 않습니다.": {
 "en": "Index reaction is the change from the price {0} min before the report. It shows timing only, not causation.",
@@ -1603,7 +1635,11 @@ window.TRL_UI = {
 "ja": "24時間市場",
 "zh-hans": "24小时市场",
 "zh-hant": "24小時市場",
-"fr": "Marché 24 h"
+"fr": "Marché 24 h",
+"de": "24-Stunden-Markt",
+"vi": "Thị trường 24 giờ",
+"id": "Pasar 24 jam",
+"ar": "سوق على مدار 24 ساعة"
 },
 "한국 프록시": {
 "en": "Korea proxies",
@@ -2215,11 +2251,11 @@ window.TRL_UI = {
 "fr": "Tentative de cassure (avant confirmation à la clôture)"
 },
 "하락 시그널": {
-"en": "Sell signal",
-"ja": "下落シグナル",
-"zh-hans": "下跌信号",
-"zh-hant": "下跌訊號",
-"fr": "Signal de baisse"
+"en": "Downside watch",
+"ja": "下落の観察",
+"zh-hans": "下跌观察",
+"zh-hant": "下跌觀察",
+"fr": "Surveillance baissière"
 },
 "채널 하단 이탈": {
 "en": "Channel floor breakdown",

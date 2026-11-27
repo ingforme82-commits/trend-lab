@@ -44,6 +44,9 @@ const VAPID_PUBLIC = "BKwWSi_sQqLn6ROiJ8CR0AecFzcWyuYUvjQ_cps6NNVinyzus6NKCbP2DN
   if (!btn || !("serviceWorker" in navigator) || !("PushManager" in window) || !("Notification" in window)) return;
   const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
   const standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  // 11/27 운영자 결정: 웹 푸시 공개 등록 보류(개인정보처리방침 전까지) — 관리자 판별이 없어 모든 방문자에게 버튼을 숨긴다.
+  const PUSH_PUBLIC = false;
+  if (!PUSH_PUBLIC) { btn.hidden = true; return; }
   btn.hidden = false;
   const b64 = (s) => btoa(unescape(encodeURIComponent(s))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
   const key = (s) => { const p = "=".repeat((4 - s.length % 4) % 4), r = atob((s + p).replace(/-/g, "+").replace(/_/g, "/")); return Uint8Array.from(r, (c) => c.charCodeAt(0)); };
