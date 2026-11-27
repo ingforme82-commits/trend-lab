@@ -159,8 +159,84 @@ def us() -> dict:
             "all": stocks}                                   # 시간대별 강세(tools/hourly.py)가 쓰는 전 종목 — news.json 에는 안 올림
 
 
+def krw_hangeul(t) -> float:
+    """네이버 '3조 559억원'·'6,323억원' → 원."""
+    t = str(t or "").replace(",", "").replace("원", "").strip()
+    if not t or t == "-":
+        return 0.0
+    total, unit = 0.0, {"조": 1e12, "억": 1e8, "만": 1e4}
+    num = ""
+    for ch in t:
+        if ch.isdigit() or ch == ".":
+            num += ch
+        elif ch in unit:
+            total += float(num or 0) * unit[ch]; num = ""
+    return total + (float(num) if num else 0.0)
+
+
+def cn_limit(code: str, exch: str) -> float | None:
+    """중국 본토 가격제한폭(%): 커촹반 688/689·촹예반 300/301 = 20, 그 밖 10. 홍콩은 없음."""
+    if exch == "HONG_KONG":
+        return None
+    return 20.0 if str(code).startswith(("688", "689", "300", "301")) else 10.0
+
+
+def cn_rows(stocks: list[dict], exch: str) -> list[dict]:
+    """네이버 해외 종목 → 행(거래대금·시총은 원화 환산, 상한가 표시). 거래 없는 교차상장 종목(홍콩 DR 등) 제외."""
+    out = []
+    for s in stocks:
+        if s.get("stockEndType") != "stock":
+            continue
+        val = krw_hangeul(s.get("accumulatedTradingValueKrwHangeul"))
+        if val <= 0:
+            continue
+        code, chg = s.get("symbolCode") or "", _chg(s)
+        lim = cn_limit(code, exch)
+        hit = lim is not None and chg >= lim - 0.05
+        out.append({"sym": s.get("reutersCode") or code, "name": (s.get("stockName") or code) + (" · 상한가" if hit else ""),
+                    "ind": (s.get("industryCodeType") or {}).get("industryGroupKor"), "px": _n(s.get("closePriceRaw")), "chg": chg,
+                    "val": val, "mcap": krw_hangeul(s.get("marketValueKrwHangeul")), "limit_up": hit,
+                    "ex": {"SHANGHAI": "상하이", "SHENZHEN": "선전", "HONG_KONG": "홍콩"}.get(exch, exch)})
+    return out
+
+
+def cn_groups(stocks: list[dict]) -> list[dict]:
+    """업종 묶음(us_groups 재사용) + 업종별 상한가 개수."""
+    gs = us_groups(stocks)
+    for g in gs:
+        g["limit_up"] = sum(1 for r in stocks if r.get("ind") == g["name"] and r.get("limit_up"))
+    return gs
+
+
+def cn() -> dict:
+    """11/28 3a: 중국·홍콩(상하이·선전·홍콩 시총 상위 각 300) 업종 주도 + 상한가 집계. 네이버 해외(15분 지연)."""
+    pages = [(ex, p) for ex in ("SHANGHAI", "SHENZHEN", "HONG_KONG") for p in (1, 2, 3)]
+
+    def page(x):
+        try:
+            return x[0], _get(f"https://api.stock.naver.com/stock/exchange/{x[0]}/marketValue?page={x[1]}&pageSize=100").get("stocks", [])
+        except Exception:  # noqa: BLE001
+            return x[0], []
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        res = list(ex.map(page, pages))
+    stocks, seen, status = [], set(), ""
+    for exch, ss in res:
+        for r in cn_rows(ss, exch):
+            if r["sym"] in seen:
+                continue
+            seen.add(r["sym"]); stocks.append(r)
+        status = status or next((s.get("marketStatus") for s in ss if s.get("marketStatus") == "OPEN"), "")
+    lim = sorted((r for r in stocks if r["limit_up"]), key=lambda r: -r["val"])
+    return {"industry": score(rising_groups(cn_groups(stocks)))[:N_SHOW], "open": status == "OPEN",
+            "limit_up": [{k: r[k] for k in ("sym", "name", "ind", "chg", "val", "ex")} for r in lim[:30]], "limit_up_n": len(lim),
+            "basis": "네이버 해외 상하이·선전·홍콩 시총 상위 각 300 · 거래대금·시총 원화 환산 · 15분 지연"}
+
+
 def _fresh(c: dict, k: str, hh: int) -> bool:
-    live = (800 <= hh < 2000) if k == "kr" else (hh >= 1700 or hh < 900)
+    if k == "cn":                                           # 중국·홍콩 장(한국시간 10:30~17:10) 중 3분, 그 밖 30분
+        live = 1030 <= hh < 1710
+    else:
+        live = (800 <= hh < 2000) if k == "kr" else (hh >= 1700 or hh < 900)
     return bool(c.get(k)) and time.time() - c[k].get("t", 0) < (170 if live else 1800)
 
 
@@ -171,7 +247,7 @@ def build() -> dict:
         c = json.loads(CACHE.read_text(encoding="utf-8"))
     except Exception:  # noqa: BLE001
         c = {}
-    for k, fn in (("kr", kr), ("us", us)):
+    for k, fn in (("kr", kr), ("us", us), ("cn", cn)):
         if not _fresh(c, k, hh):
             try:
                 c[k] = {"t": time.time(), "v": fn()}
@@ -182,7 +258,7 @@ def build() -> dict:
     except OSError:
         pass
     out = {"at": int(time.time() * 1000)}
-    for k in ("kr", "us"):
+    for k in ("kr", "us", "cn"):
         if c.get(k):
             out[k] = {**c[k]["v"], "at": int(c[k]["t"] * 1000)}
             for kind in ("industry", "theme"):

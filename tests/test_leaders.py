@@ -47,6 +47,35 @@ class LeadersTest(unittest.TestCase):
             tmp.unlink(missing_ok=True)
 
 
+class ChinaLeadersTest(unittest.TestCase):
+    """11/28 3a: 중국·홍콩 업종 주도 + 상한가 집계."""
+    def test_krw_hangeul(self):
+        from leaders import krw_hangeul
+        self.assertEqual(krw_hangeul("3조 559억원"), 3.0559e12)
+        self.assertEqual(krw_hangeul("6,323억원"), 6.323e11)
+        self.assertEqual(krw_hangeul("-"), 0.0)
+
+    def test_limit_and_groups(self):
+        from leaders import cn_groups, cn_limit, cn_rows
+        self.assertEqual(cn_limit("688347", "SHANGHAI"), 20.0)
+        self.assertEqual(cn_limit("002371", "SHENZHEN"), 10.0)
+        self.assertIsNone(cn_limit("01347", "HONG_KONG"))
+        def st(code, ratio, ind, val="100억원", up=True):
+            return {"stockEndType": "stock", "symbolCode": code, "reutersCode": code + ".X", "stockName": code,
+                    "fluctuationsRatioRaw": str(ratio), "compareToPreviousPrice": {"code": "2" if up else "5"},
+                    "industryCodeType": {"industryGroupKor": ind}, "accumulatedTradingValueKrwHangeul": val,
+                    "marketValueKrwHangeul": "1조원", "closePriceRaw": "10"}
+        rows = cn_rows([st("688347", "20.00", "반도체"), st("603986", "10.00", "반도체"), st("688825", "12.97", "반도체"),
+                        st("601288", "2.00", "은행", up=False), st("04338", "0", "소프트웨어", val="-")], "SHANGHAI")
+        self.assertEqual(len(rows), 4)                              # 거래 없는 종목 제외
+        self.assertTrue(rows[0]["name"].endswith("상한가"))
+        self.assertFalse(rows[2]["limit_up"])
+        g = [x for x in cn_groups(rows) if x["name"] == "반도체"][0]
+        self.assertEqual((g["n"], g["limit_up"]), (3, 2))
+        hk = cn_rows([st("01347", "20.69", "반도체")], "HONG_KONG")
+        self.assertFalse(hk[0]["limit_up"])                         # 홍콩은 제한폭 없음
+
+
 if __name__ == "__main__":
     unittest.main()
 

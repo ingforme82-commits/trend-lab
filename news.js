@@ -593,7 +593,7 @@
     const result = (blk[kind] || []).filter(risingLeader).map(g => ({...g, rows:(g.rows || []).map(r=>({...r})), relatedPatterns:[]}));
     const symbols = g => new Set((g.rows || []).map(r=>r.sym || r.code).filter(Boolean));
     for (const s of spot || []) {
-      if (s.pin || s.id === "ASIA" || s.market !== (market === "us" ? "미국" : "한국") || !Number.isFinite(s.chg) || s.chg <= 0) continue;
+      if (s.pin || s.id === "ASIA" || s.market !== (market === "us" ? "미국" : market === "cn" ? "중국" : "한국") || !Number.isFinite(s.chg) || s.chg <= 0) continue;
       const rows = s.members?.length ? s.members : s.px > 0 ? [{sym:s.id,name:s.name,px:s.px,chg:s.chg}] : [];
       if (!rows.length || rows.some(r=>!Number.isFinite(r.chg) || r.stale)) continue;
       const candidate = {name:s.name, chg:s.chg, n:rows.length, up:rows.filter(r=>r.chg>0).length,
@@ -620,14 +620,14 @@
   }
   function leadersHtml() {
     if (!leaders && !spot.length) return "";
-    const tabs = [["kr.industry", "🇰🇷 한국 업종"], ["kr.theme", "🇰🇷 한국 테마"], ["us.industry", "🇺🇸 미국 업종"]];
+    const tabs = [["kr.industry", "🇰🇷 한국 업종"], ["kr.theme", "🇰🇷 한국 테마"], ["cn.industry", "🇨🇳 중국·홍콩 업종"], ["us.industry", "🇺🇸 미국 업종"]];
     if (mode() === "us") tabs.unshift(tabs.pop());
     const tab = ldTab || tabs[0][0];
     const [mk, kd] = tab.split("."), blk = (leaders || {})[mk] || {}, isUs = mk === "us";
     const money = (v) => isUs ? usd(v) : v ? eok(v) : "-";
     const gs = sortRows(leaderGroups(blk, kd, mk), "ld");
     const chips = gs.map((g) => `<button class="sc-chip ld-chip${ldOpen === g.name ? " on" : ""}" data-ld-open="${esc(g.name)}" aria-expanded="${ldOpen === g.name}">
-      ${esc(g.name)} ${sg2(g.chg)} <small>상승 ${g.up}/${g.n} · 대금 ${money(g.val)}${g.score == null ? " · 종목군" : ` · 점수 ${g.score}`}</small></button>`).join("");
+      ${esc(g.name)} ${sg2(g.chg)} <small>상승 ${g.up}/${g.n}${g.limit_up ? ` · 상한가 ${g.limit_up}` : ""} · 대금 ${money(g.val)}${g.score == null ? " · 종목군" : ` · 점수 ${g.score}`}</small></button>`).join("");
     const g = gs.find((x) => x.name === ldOpen);
     const mem = g ? `<div class="sc-panel"><div class="fl-scroll"><table class="fl-t"><tr>${sth("ldm", "name", "종목")}${sth("ldm", "chg", "등락")}${sth("ldm", "val", "거래대금")}${sth("ldm", "mcap", "시가총액")}</tr>
       ${sortRows(g.rows || [], "ldm").map((r) => `<tr><td class="fl-n">${esc(r.name)}</td><td>${pct(r.chg)}</td><td>${money(r.val)}</td><td>${money(r.mcap)}</td></tr>`).join("")}</table></div>
@@ -636,6 +636,7 @@
       <div class="fl-sort">${tabs.map(([k, l]) => `<button class="sc-chip${tab === k ? " on" : ""}" data-ld-tab="${k}">${l}</button>`).join("")}</div>
       ${sortChips("ld", [["score", "주도 점수순"], ["chg", "등락률순"], ["val", "거래대금순"], ["mcap", "시가총액순"], ["breadth", "상승 비율순"]])}
       <div class="sc-bar">${chips || '<span class="dim">현재 기준을 충족하는 상승 주도 섹터가 없습니다.</span>'}</div>${mem}
+      ${mk === "cn" && blk.limit_up_n ? `<p class="fine">상한가 ${blk.limit_up_n}종목(본토 커촹반·촹예반 20%·그 밖 10%): ${(blk.limit_up || []).slice(0, 12).map((r) => `${esc(r.name.replace(" · 상한가", ""))}(${esc(r.ind || "-")})`).join(", ")} · ${esc(blk.basis || "")}</p>` : ""}
       ${methodNote("leader", "주도 점수 기준 보기", "등락률 순위 50%·거래대금 순위 30%·상승 종목 비율 20%를 반영합니다.")}</div>`;
   }
   const methodOpen = new Set();
