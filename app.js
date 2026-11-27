@@ -23,7 +23,7 @@ const TICKS = [
   { k: "KOSDAQ", n: "KOSDAQ", d: 2, krOnly: true },
   { k: "KR200", n: "코스피200", d: 2 },
   { k: "SMSN", n: "삼성전자", d: 2, u: "$", won: true },
-  { k: "SKHX", n: "SK하이닉스", d: 2, u: "$", won: true },  { k: "EWY", n: "EWY (한국 ETF)", d: 2, u: "$" },  { g: "🇺🇸 미국", sub: "지수·반도체" },
+  { k: "EWY", n: "EWY (한국 ETF)", d: 2, u: "$" },  { g: "🇺🇸 미국", sub: "지수·반도체" },
   { k: "SP500", n: "S&P500", d: 1 },
   { k: "XYZ100", n: "나스닥100", d: 0 },
   { k: "DOW", n: "다우존스", d: 0, srv: true },
