@@ -142,6 +142,78 @@ def channel(rows: list[list], anchors: dict, contact_rules: dict | None = None,
             **levels(rows, px)}
 
 
+def swing_anchors(rows: list[list], window: int = 30, spacing: int = 3, side: int = 2) -> dict | None:
+    """11/28 운영자 "중국·홍콩 추세선 2점씩 잘 연결": 종목 일봉 최근 window 봉에서 채널 기준점 날짜를 고른다(종목별 anchors 용).
+    상단: 가장 높은 스윙 고점 뒤에 스윙 고점이 또 있으면 (최고점 → 뒤 고점, 하락·횡보), 없으면 (바로 앞 스윙 고점 → 최고점, 상승).
+    하단: 가장 낮은 스윙 저점 기준 같은 방식. 스윙 = 좌우 side 봉보다 높/낮음. 마지막 봉은 판정 대상이라 제외."""
+    last = len(rows) - 2
+    first = max(side, last - window + 1)
+    if last - first < 2 * spacing + 2:
+        return None
+    dates = [r[0] for r in rows]
+
+    def piv(vals, up):
+        out = []
+        for i in range(first, last - side + 1):
+            nb = vals[i - side:i] + vals[i + 1:i + 1 + side]
+            if all(vals[i] >= v for v in nb) if up else all(vals[i] <= v for v in nb):
+                if not out or i - out[-1] >= spacing:
+                    out.append(i)
+                elif (vals[i] > vals[out[-1]]) if up else (vals[i] < vals[out[-1]]):
+                    out[-1] = i
+        return out
+
+    def pick(vals, up):
+        ps = piv(vals, up)
+        if len(ps) < 2:
+            return None
+        ext = (max if up else min)(ps, key=lambda i: vals[i])
+        later = [i for i in ps if i - ext >= spacing]
+        if later:
+            return ext, later[0]
+        earlier = [i for i in ps if ext - i >= spacing]
+        return (earlier[-1], ext) if earlier else None
+    hp, lp = pick([r[2] for r in rows], True), pick([r[3] for r in rows], False)
+    if not hp or not lp:
+        return None
+    return {"hi1": [dates[hp[0]], dates[hp[0]]], "hi2": [dates[hp[1]], dates[last]],
+            "lo1": [dates[lp[0]], dates[lp[0]]], "lo2": [dates[lp[1]], dates[last]]}
+
+
+def best_anchors(rows: list[list], contact_rules: dict | None = None, window: int = 30, spacing: int = 3, side: int = 2) -> dict | None:
+    """swing_anchors 보완: 최근 window 봉의 스윙 고점·저점을 첫 점 후보로 놓고, 채널 폭이 유효(교차·음수 없음)하면서
+    두 선 기울기(가격 대비)가 가장 비슷한 조합을 고른다 — 한쪽 선만 가팔라 벌어지는 채널을 피함. 선이 짧으면 감점."""
+    base = swing_anchors(rows, window, spacing, side)
+    last = len(rows) - 2
+    first = max(side, last - window + 1)
+    dates = [r[0] for r in rows]
+
+    def piv(k, up):
+        vals = [r[k] for r in rows]
+        def ok(i):
+            nb = vals[i - side:i] + vals[i + 1:i + 1 + side]
+            return all(vals[i] >= v for v in nb) if up else all(vals[i] <= v for v in nb)
+        return [i for i in range(first, last - spacing + 1) if ok(i)]
+    px = rows[-1][4]
+    best, best_score = base, None
+    if base:
+        ch = channel(rows, base, contact_rules)
+        if ch and ch["channel_width_valid"]:
+            best_score = abs(ch["su"] - ch["sl"]) / px * 100
+    for h in piv(2, True):
+        for l in piv(3, False):
+            a = {"hi1": [dates[h], dates[h]], "hi2": [dates[h + spacing], dates[last]],
+                 "lo1": [dates[l], dates[l]], "lo2": [dates[l + spacing], dates[last]]}
+            ch = channel(rows, a, contact_rules)
+            if not ch or not ch["channel_width_valid"] or not ch["lo_now"] > 0:
+                continue
+            short = max(0, 12 - (last - min(h, l))) * 0.05      # 12봉보다 짧은 선은 감점
+            sc = abs(ch["su"] - ch["sl"]) / px * 100 + short
+            if best_score is None or sc < best_score - 0.05:
+                best, best_score = a, sc
+    return best
+
+
 def breakout_watch(ch: dict, px: float) -> bool:
     """현재 채널 상단에서 3% 이내이고 5일선을 넘어선 종목."""
     return (ch.get("channel_valid") is not False and ch.get("channel_width_valid") is not False
@@ -838,7 +910,7 @@ def build(now: datetime | None = None) -> dict:
                 ERRS.append(f"{code} 시세 {type(x).__name__}"); continue
             if len(rows) < 20:
                 ERRS.append(f"{code} 일봉 {len(rows)}개뿐"); continue
-            anc = c["anchors"]
+            anc = (c.get("anchors_by_code") or {}).get(code) or c["anchors"]   # 11/28: 종목별 기준점(중국·홍콩)이 있으면 우선
             if g.get("inverse"):                                # 11/21 운영자 "SKDD 하방 지지선 오류": 인버스는 기초자산과 반대로 움직이므로
                 anc = {"hi1": anc["lo1"], "hi2": anc["lo2"], "lo1": anc["hi1"], "lo2": anc["hi2"]}   # 기초자산 저점 구간 = 인버스 고점 구간
             index_stale = g["cc"] == "kr_index" and INDEX_META.get(code, {}).get("stale")

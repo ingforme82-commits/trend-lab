@@ -166,5 +166,36 @@ class ChinaHongKongTest(unittest.TestCase):
         self.assertEqual(_fmt("cn", 527.38), "527.38위안")
 
 
+class StockAnchorsTest(unittest.TestCase):
+    """11/28 운영자 '중국·홍콩 추세선 2점씩': 종목별 기준점 — 상승 채널도 두 선이 같은 방향·교차 없음."""
+    @staticmethod
+    def zigzag(slope):
+        import math
+        rows, d0 = [], datetime(2026, 9, 1)
+        for i in range(45):
+            mid = 100 + slope * i + 6 * math.sin(i / 2.2)
+            day = (d0 + timedelta(days=i)).strftime("%m/%d")
+            rows.append([day, mid, mid + 2, mid - 2, mid + 0.5])
+        return rows
+
+    def test_uptrend_channel_both_lines_rise(self):
+        from chan import best_anchors, swing_anchors
+        rows = self.zigzag(1.0)
+        a = best_anchors(rows)
+        self.assertIsNotNone(a)
+        ch = channel(rows, a)
+        self.assertTrue(ch["channel_width_valid"])
+        self.assertGreater(ch["su"], 0); self.assertGreater(ch["sl"], 0)
+        self.assertLess(abs(ch["su"] - ch["sl"]), 0.5)
+        self.assertIsNotNone(swing_anchors(rows))
+
+    def test_downtrend_channel_both_lines_fall(self):
+        from chan import best_anchors
+        rows = self.zigzag(-1.0)
+        ch = channel(rows, best_anchors(rows))
+        self.assertTrue(ch["channel_width_valid"])
+        self.assertLess(ch["su"], 0); self.assertLess(ch["sl"], 0)
+
+
 if __name__ == "__main__":
     unittest.main()
