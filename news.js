@@ -405,7 +405,7 @@
       if (!response.ok) return;
       const rows = await response.json();
       if (!Array.isArray(rows)) return;
-      asiaQuotes = rows.filter((row) => (["TAIEX", "^N225"].includes(row?.sym) || /^(?:\d{4}|\d{3}[A-Z])\.T$/.test(row?.sym)) &&
+      asiaQuotes = rows.filter((row) => (["TAIEX", "^N225"].includes(row?.sym) || /^(?:\d{4}|\d{3}[A-Z])\.T$/.test(row?.sym) || /^\d{4,6}[A-Z]?\.TW$/.test(row?.sym)) &&
         [row.px, row.chg, row.at].every(Number.isFinite) && row.px > 0);
       drawWorld();
       drawChan();
@@ -447,7 +447,7 @@
   }
   function drawWorld() {
     const box = q("#worldGrid"); if (!box) return;
-    box.innerHTML = worldQuotes().filter((w) => !w.sym.endsWith(".T")).map((w) => {
+    box.innerHTML = worldQuotes().filter((w) => !/\.(T|TW)$/.test(w.sym)).map((w) => {
       if (w.sym === "TAIEX" && taiwanAwaiting(w.day?.slice(5).replace("-", "/"))) {
         return `<div class="tick"><p class="t-name">대만 · 가권지수</p><p class="fine">${taiwanStatus()}</p></div>`;
       }
@@ -1134,6 +1134,19 @@
         it = {...quote.trend, stale: quote.trend.live && Date.now() - quote.at > 900000};
       }
     }
+    if (cc === "tw" && it.code.endsWith(".TW")) {
+      const quote = worldQuotes().find((row) => row.sym === it.code);
+      if (quote?.day && !taiwanAwaiting(quote.day)) {
+        const fresh = !quote.intraday || Date.now() - quote.at <= 900000;
+        if (fresh && quote.trend) {
+          return {...quote.trend, stale: false};
+        }
+        if (fresh) {
+          return {...it, day: quote.day, px: quote.px, chg: quote.chg, base: quote.prev,
+            source_at: quote.at, live: quote.intraday, stale: false, quoteOnly: true};
+        }
+      }
+    }
     if (cc === "tw" && taiwanAwaiting(it.day)) {
       return {...it, awaiting: taiwanStatus(), chg: null, stale: true};
     }
@@ -1356,6 +1369,11 @@
         const units = g.index ? "kr_index" : g.cc;
         if (it.awaiting) {
           html += `<article class="ch-card" data-viewport-key="channel:${esc(it.code)}"><div class="ch-top"><b class="ch-nm">${esc(it.name)}</b><small>${esc(it.awaiting)}</small></div></article>`;
+          return;
+        }
+        if (it.quoteOnly) {
+          const tone = it.chg > 0 ? "up" : it.chg < 0 ? "down" : "dim";
+          html += `<article class="ch-card" data-viewport-key="channel:${esc(it.code)}"><div class="ch-top"><b class="ch-nm">${esc(it.name)}</b><span class="ch-quote"><b class="${tone}">${chFmt(units, it.px)}</b><b class="${tone}">${it.chg > 0 ? "+" : ""}${it.chg.toFixed(2)}%</b></span><small>TWSE · ${hm(it.source_at)} KST</small></div></article>`;
           return;
         }
         if (it.ipo) { html += chIpoCard(it, g.cc); return; }      // 상장 초기 종목은 5분봉 흐름을 표시

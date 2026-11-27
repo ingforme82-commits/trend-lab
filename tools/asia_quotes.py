@@ -1,6 +1,7 @@
 """Publish Taiwanese and Japanese index snapshots independently of live news."""
 import base64
 import json
+import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -121,9 +122,59 @@ def japan_stocks():
         return [row for row in pool.map(stock, items) if row]
 
 
+def taiwan_stocks():
+    config = json.loads(CONF.read_text(encoding="utf-8"))
+    now = datetime.now(ZoneInfo("Asia/Taipei"))
+    if now.weekday() >= 5 or not 900 <= now.hour * 100 + now.minute <= 1345:
+        return []
+    items = {sym.removesuffix(".TW"): (sym, name)
+             for group in config["groups"] if group["cc"] == "tw"
+             for sym, name in group["items"] if sym.endswith(".TW")}
+    channels = "|".join(f"tse_{code}.tw" for code in items)
+    url = "https://mis.twse.com.tw/stock/api/getStockInfo.jsp?" + urllib.parse.urlencode(
+        {"ex_ch": channels, "json": 1, "delay": 0})
+    try:
+        request = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+        with urllib.request.urlopen(request, timeout=8) as response:
+            quotes = json.load(response).get("msgArray", [])
+    except (OSError, ValueError):
+        return []
+
+    def stock(quote):
+        try:
+            sym, name = items[quote["c"]]
+            at = int(quote["tlong"])
+            traded = datetime.fromtimestamp(at / 1000, now.tzinfo)
+            age = (datetime.now(now.tzinfo) - traded).total_seconds()
+            if (quote["d"] != now.strftime("%Y%m%d") or traded.date() != now.date() or
+                    not 900 <= traded.hour * 100 + traded.minute <= 1330 or not 0 <= age <= 900):
+                return None
+            op, hi, lo, px, prev = (float(quote[key]) for key in ("o", "h", "l", "z", "y"))
+            if not (0 < lo <= min(op, px) <= max(op, px) <= hi < float("inf") and 0 < prev < float("inf")):
+                return None
+        except (KeyError, ValueError, TypeError, OverflowError):
+            return None
+        row = {"sym": sym, "name": name, "region": "대만", "px": px, "at": at,
+               "chg": round((px / prev - 1) * 100, 2), "prev": prev,
+               "day": traded.strftime("%m/%d"), "source": "TWSE 체결", "intraday": traded.hour * 100 + traded.minute < 1330}
+        try:
+            bars = _yahoo(sym, "3mo", "1d")
+            if bars and bars[-1][0] == row["day"]:
+                bars.pop()
+            if bars and abs(bars[-1][4] - prev) < 0.01:
+                bars.append([row["day"], op, hi, lo, px])
+                trend(row, bars, config, row["intraday"], row["source"])
+        except (OSError, ValueError, KeyError, TypeError, IndexError):
+            pass
+        return row
+
+    with ThreadPoolExecutor(max_workers=8) as pool:
+        return [row for row in pool.map(stock, quotes) if row]
+
+
 def collect():
     config = json.loads(CONF.read_text(encoding="utf-8"))
-    return [row for row in (taiwan_row(config), japan_row(config), *japan_stocks()) if row]
+    return [row for row in (taiwan_row(config), japan_row(config), *japan_stocks(), *taiwan_stocks()) if row]
 
 
 def main():
