@@ -94,10 +94,10 @@ class TranslationTests(unittest.TestCase):
             p=Path(folder)/"c.json"
             with patch.object(t,"google_batch",side_effect=OSError()),patch.object(t,"memory_one",side_effect=OSError()):
                 t.run([{"text":TITLE,"lang":"en","ts":1}],path=p,now=1000)
-            self.assertEqual(json.loads(p.read_text())["retry"][TITLE],1060)
+            self.assertEqual(json.loads(p.read_text(encoding="utf-8"))["retry"][TITLE],1060)
             with patch.object(t,"google_batch",side_effect=AssertionError("not due")),patch.object(t,"memory_one",side_effect=AssertionError("not due")):
                 t.run([{"text":TITLE,"lang":"en","ts":1}],path=p,now=1055)
-            self.assertEqual(json.loads(p.read_text())["retry"][TITLE],1060)
+            self.assertEqual(json.loads(p.read_text(encoding="utf-8"))["retry"][TITLE],1060)
 
     def test_call_budget_shared_between_runs(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -155,7 +155,7 @@ class TranslationTests(unittest.TestCase):
             p.write_text(json.dumps({"policy":t.POLICY,"budget":{"start":1000,"calls":7}}))
             with patch.object(t,"_get",return_value=[[["Nvidia earnings improve the market"]]]):
                 first=t.google_search_one("엔비디아 실적",path=p,now=1010)
-            self.assertEqual(json.loads(p.read_text())["budget"]["calls"],8)
+            self.assertEqual(json.loads(p.read_text(encoding="utf-8"))["budget"]["calls"],8)
             with patch.object(t,"_get",side_effect=AssertionError("cached or budget")):
                 self.assertEqual(t.google_search_one("엔비디아 실적",path=p,now=1011),first)
                 with self.assertRaises(RuntimeError):

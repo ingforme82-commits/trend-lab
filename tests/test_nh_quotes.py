@@ -17,10 +17,18 @@ class NhQuotesTest(unittest.TestCase):
             self.assertEqual(run.call_args.kwargs["creationflags"], NO_WINDOW)
 
     def test_day_quote_uses_regular_close_and_query_time(self):
-        quote = normalize({"marketperiod_cls": "3", "trdprc": 101, "normal_trdprc": 100, "pctchng": 99}, 123456)
-        self.assertEqual((quote["sess"], quote["chg"], quote["checked_at"]), ("day", 1, 123456))
+        at = 1795796420000  # 2026-11-28 01:20 KST = 11-27 11:20 ET
+        quote = normalize({"marketperiod_cls": "3", "trdprc": 101, "normal_trdprc": 100, "pctchng": 99,
+                           "trade_date": "20261127"}, at)
+        self.assertEqual((quote["sess"], quote["chg"], quote["checked_at"]), ("day", 1, at))
         self.assertNotIn("at", quote)
         self.assertTrue(quote["live"])
+
+    def test_old_trade_date_is_stale(self):
+        quote = normalize({"marketperiod_cls": "3", "trdprc": 101, "normal_trdprc": 100,
+                           "trade_date": "20261124"}, 1795796420000)
+        self.assertFalse(quote["live"])
+        self.assertTrue(quote["stale"])
 
     def test_regular_is_not_extended(self):
         quote = normalize({"marketperiod_cls": "1", "trdprc": 101, "normal_trdprc": 100}, 123456)

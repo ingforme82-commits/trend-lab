@@ -17,7 +17,8 @@ class KeystoreTest(unittest.TestCase):
             f.write_text("# 주석\nKIS_APP_KEY=\"from-file\"\nKIS_APP_SECRET=sec\n", encoding="utf-8")
             with mock.patch.dict(os.environ, {"TRL_KEYS_FILE": str(f)}, clear=False), \
                     mock.patch.object(keystore, "_from_registry", lambda n: ""):
-                os.environ.pop("KIS_APP_KEY", None)
+                for k in ("KIS_APP_KEY", "KIS_APP_SECRET"):
+                    os.environ.pop(k, None)   # PC 실제 키가 테스트에 섞이지 않게
                 self.assertEqual(keystore.get("KIS_APP_KEY"), "from-file")
                 self.assertEqual(keystore.pair("KIS_APP_KEY", "KIS_APP_SECRET"), ("from-file", "sec"))
                 with mock.patch.dict(os.environ, {"KIS_APP_KEY": "from-env"}):
@@ -30,7 +31,8 @@ class KeystoreTest(unittest.TestCase):
             kf.write_text("KIS_APP_KEY=x\n", encoding="utf-8")
             env = {"TRL_KEYS_FILE": str(kf), "NHPLUG_ENV_FILE": str(nf)}
             with mock.patch.dict(os.environ, env), mock.patch.object(keystore, "_from_registry", lambda n: ""):
-                os.environ.pop("NHPLUG_APP_KEY", None)
+                for k in ("NHPLUG_APP_KEY", "KIS_APP_SECRET"):
+                    os.environ.pop(k, None)
                 self.assertEqual(keystore.get("NHPLUG_APP_KEY"), "nh-file")          # nhplug 설정 파일
                 self.assertEqual(keystore.get("KIS_APP_SECRET"), "")                 # NHPLUG_ 아닌 이름은 안 봄
                 kf.write_text("NHPLUG_APP_KEY=from-keys\n", encoding="utf-8")
