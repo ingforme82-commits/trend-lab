@@ -1039,10 +1039,22 @@
       const uni = regular.uni_close > 0
         ? cell("cx-cls cx-uni", "통합 종가 · 넥장 20시", chFmt(cc, regular.uni_close), esc(regular.uni_close_day || "") + (regular.nxt_none ? " · 넥장 거래 없음(=KRX)" : ""))
         : none("통합 종가 · 넥장 20시", "확인 중");
-      const cells = [cell("cx-cls", "KRX 종가 · 기준가", chFmt(cc, kx), esc(regular.krx_close_day || "")), uni];
+      let cells = [cell("cx-cls", "KRX 종가 · 기준가", chFmt(cc, kx), esc(regular.krx_close_day || "")), uni];
+      // 11/28 운영자 "국내도 같은 문제": KRX 마감 뒤에는 오늘 KRX 종가·등락이 아래 큰 줄에 있으므로 칸은 겹치지 않게
+      //   왼쪽 = 등락 기준인 전일 KRX 종가, 오른쪽 = 통합 종가(넥장 20시, KRX 종가 대비) 또는 '넥장 거래 없음'
+      const closedView = !krxOpen && regular.krx_close_day && it.base > 0;
+      if (closedView) {
+        const pvDay = n > 1 ? rows[n - 2][0] : "";
+        const uniPx = regular.uni_close > 0 ? regular.uni_close : 0;
+        cells = [cell("cx-cls", "전일 KRX 종가 · 기준가", chFmt(cc, it.base), esc(pvDay)),
+          regular.nxt_none ? none("통합 종가 · 넥장 20시", "넥장 거래 없음(=KRX 종가)")
+            : uniPx ? cell("cx-cls cx-uni", "통합 종가 · 넥장 20시", `<span class="cx-quote"><span class="${kc(uniPx / kx - 1)}">${chFmt(cc, uniPx)}</span><span class="cx-pct ${kc(uniPx / kx - 1)}">${sgn((uniPx / kx - 1) * 100)}</span></span>`, `${esc(regular.uni_close_day || "")} · KRX 종가 대비`)
+            : none("통합 종가 · 넥장 20시", "확인 중")];
+      }
       const nxtInHeader = regular.display && it.live && !it.stale && /^NXT (프리|애프터)$/.test(it.session);
       let nxLine = "";
-      if (!krxOpen && !nxtInHeader && nx.px > 0) {
+      if (closedView && (regular.nxt_none || (nx.last_only && nx.px === regular.uni_close))) nxLine = "";   // 오른쪽 칸과 같은 값 — 다시 쓰지 않음
+      else if (!krxOpen && !nxtInHeader && nx.px > 0) {
         const lbl = nx.venue === "KRX" ? (nx.last_only ? "KRX 시간외 마지막 체결" : "KRX 시간외") : nx.last_only ? "NXT 마지막 체결" : `넥장 ${nx.session === "프리" ? "프리마켓" : "애프터마켓"}`;
         nxLine = `<p class="cx-ma">${lbl} <b class="${kc(nx.px / kx - 1)}">${chFmt(cc, nx.px)} ${sgn((nx.px / kx - 1) * 100)}</b> <small>KRX 종가 대비 · ${when(nx.at)} KST</small></p>`;
       } else if (!krxOpen && !nxtInHeader && regular.nxt_none) nxLine = '<p class="cx-ma">넥장 거래 없음</p>';
