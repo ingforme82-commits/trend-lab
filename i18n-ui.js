@@ -2,6 +2,69 @@
  * 키 = 한국어 문구(숫자는 {0},{1}… 자리표, 요일 (월)…(일)은 ({w})). zh-hant 는 zh-hans 를 OpenCC(s2twp)로 변환.
  * 새 고정 문구를 넣으면 여기에 6개 언어를 함께 추가한다 — tests/test_i18n_ui.py 가 빠진 문구를 잡는다. */
 window.TRL_UI = {
+"전일 KRX 종가": {
+"en": "Previous KRX close",
+"ja": "前日KRX終値",
+"zh-hans": "前一日KRX收盘价",
+"zh-hant": "前一日KRX收盤價",
+"fr": "Clôture KRX de la veille"
+},
+"기준가": {
+"en": "Base price",
+"ja": "基準価格",
+"zh-hans": "基准价",
+"zh-hant": "基準價",
+"fr": "Prix de référence"
+},
+"통합 종가": {
+"en": "Combined close",
+"ja": "統合終値",
+"zh-hans": "合并收盘价",
+"zh-hant": "合併收盤價",
+"fr": "Clôture consolidée"
+},
+"넥장 {0}시": {
+"en": "NXT {0}:00",
+"ja": "NXT {0}時",
+"zh-hans": "NXT {0}点",
+"zh-hant": "NXT {0}點",
+"fr": "NXT {0} h"
+},
+"넥장 거래 없음(=KRX 종가)": {
+"en": "No NXT trading (= KRX close)",
+"ja": "NXT取引なし(=KRX終値)",
+"zh-hans": "NXT无成交(=KRX收盘价)",
+"zh-hant": "NXT無成交(=KRX收盤價)",
+"fr": "Pas d’échange NXT (= clôture KRX)"
+},
+"KRX 종가 대비": {
+"en": "vs KRX close",
+"ja": "KRX終値比",
+"zh-hans": "较KRX收盘价",
+"zh-hant": "較KRX收盤價",
+"fr": "vs clôture KRX"
+},
+"KRX 기준가": {
+"en": "KRX base price",
+"ja": "KRX基準価格",
+"zh-hans": "KRX基准价",
+"zh-hant": "KRX基準價",
+"fr": "Prix de référence KRX"
+},
+"등락은 KRX 기준": {
+"en": "Change vs KRX",
+"ja": "騰落はKRX基準",
+"zh-hans": "涨跌以KRX为准",
+"zh-hant": "漲跌以KRX為準",
+"fr": "Variation base KRX"
+},
+"통합": {
+"en": "Combined",
+"ja": "統合",
+"zh-hans": "合并",
+"zh-hant": "合併",
+"fr": "Consolidé"
+},
 "오늘 핵심": {
 "en": "Today's key issues",
 "ja": "今日の注目",

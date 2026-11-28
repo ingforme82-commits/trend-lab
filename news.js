@@ -1046,7 +1046,12 @@
       if (closedView) {
         const pvDay = n > 1 ? rows[n - 2][0] : "";
         const uniPx = regular.uni_close > 0 ? regular.uni_close : 0;
-        cells = [cell("cx-cls", "전일 KRX 종가 · 기준가", chFmt(cc, it.base), esc(pvDay)),
+        // 11/28 운영자 "전일 종가 넣고 구분": 전일 KRX 종가(등락 기준)와 전일 통합 종가(넥장 20시, 차트 일봉)를 나눠 표시
+        const pvUni = n > 1 && !regular.nxt_none ? rows[n - 2][4] : 0;
+        const pvVal = pvUni > 0 && pvUni !== it.base
+          ? `<span class="cx-pv"><span><small>KRX</small> ${chFmt(cc, it.base)}</span><span><small>통합</small> ${chFmt(cc, pvUni)}</span></span>`
+          : chFmt(cc, it.base);
+        cells = [cell("cx-cls", pvUni > 0 && pvUni !== it.base ? "전일 종가 · KRX 기준가" : "전일 KRX 종가 · 기준가", pvVal, esc(pvDay) + (pvUni > 0 && pvUni !== it.base ? " · 등락은 KRX 기준" : "")),
           regular.nxt_none ? none("통합 종가 · 넥장 20시", "넥장 거래 없음(=KRX 종가)")
             : uniPx ? cell("cx-cls cx-uni", "통합 종가 · 넥장 20시", `<span class="cx-quote"><span class="${kc(uniPx / kx - 1)}">${chFmt(cc, uniPx)}</span><span class="cx-pct ${kc(uniPx / kx - 1)}">${sgn((uniPx / kx - 1) * 100)}</span></span>`, `${esc(regular.uni_close_day || "")} · KRX 종가 대비`)
             : none("통합 종가 · 넥장 20시", "확인 중")];

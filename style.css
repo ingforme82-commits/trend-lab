@@ -1285,3 +1285,5 @@ html,body{overflow-x:clip}
 .cx-two .cx-quote{display:flex;flex-wrap:wrap;column-gap:.45em;row-gap:0;white-space:normal}
 .cx-two .cx-quote>span{white-space:nowrap}
 .cx-two .cx-quote>span.up,.cx-two .cx-quote>span.down,.cx-two .cx-quote>span.dim{background:none;border:0;padding:0;border-radius:0}
+/* 11/28: 전일 종가 KRX·통합 구분 */
+.cx-pv{display:flex;flex-direction:column;gap:0}.cx-pv>span{white-space:nowrap}.cx-pv small{font-size:11px;font-weight:600;color:var(--sub);margin-right:4px}.cx-pv>span+span{font-size:.82em;font-weight:600;color:var(--sub)}
