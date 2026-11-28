@@ -1066,12 +1066,15 @@
       const side = af && af.px > 0 && af.base > 0 ? ext(af.live ? "애프터마켓" : "애프터마켓 마지막 체결", af.px, af.at, af.base, "정규장 종가 대비")
         : d && d.session && d.session !== "정규장" && d.px > 0 ? ext(d.session, d.px, d.source_at, close[4], "정규장 종가 대비")
         : regular.live ? none("시간외", "정규장 진행 중") : none("시간외", "거래 없음");
-      return { cells: row([cell("cx-cls", `${regular.live ? "전일 " : ""}정규장 종가`, chFmt(cc, close[4]), esc(close[0])), side]), notes: "" };
+      // 11/28 운영자 "중복 표시 수정": 마감 뒤에는 정규장 종가·등락이 아래 큰 줄에 있으므로 왼쪽 칸은 등락 기준인 전일 정규장 종가
+      const pv = regular.live ? close : rows[n - 2], pvPx = it.base > 0 ? it.base : pv?.[4];
+      return { cells: row([pvPx > 0 ? cell("cx-cls", "전일 정규장 종가", chFmt(cc, pvPx), esc(it.base_day || pv?.[0] || "")) : "", side]), notes: "" };
     }
     const prev = regular.live ? null : rows[n - 2];
     const second = regular.live ? cell("cx-live", "장중", `<span class="${kc(regular.px / close[4] - 1)}">${chFmt(cc, regular.px)}</span>`, `${sgn((regular.px / close[4] - 1) * 100)} 전일 종가 대비`)
       : prev && prev[4] > 0 ? cell("cx-cls", "전일 종가", chFmt(cc, prev[4]), esc(prev[0])) : "";
-    return { cells: row([cell("cx-cls", regular.live ? "전일 종가" : "종가", chFmt(cc, close[4]), esc(close[0])), second]), notes: "" };
+    // 11/28: 마감 뒤 '종가'는 아래 큰 줄과 같아 빼고 전일 종가만
+    return { cells: row(regular.live ? [cell("cx-cls", "전일 종가", chFmt(cc, close[4]), esc(close[0])), second] : [second]), notes: "" };
   }
   function chChart(it, cc, sg, horizontal) {
     const fullRows = it.rows || [];

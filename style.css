@@ -240,7 +240,8 @@ body{overflow-x:hidden}
 /* upcoming */
 .sec-sub.dark{color:#6b5a38}
 .up-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
-.up{background:#fff;border:2px solid var(--gold);border-radius:18px;padding:22px;display:flex;flex-direction:column}
+/* 11/28: '다가오는 일정' 카드만(article.up) — 시세 등락 .up 글자에 금색 상자가 씌워지던 문제 */
+article.up{background:#fff;border:2px solid var(--gold);border-radius:18px;padding:22px;display:flex;flex-direction:column}
 .up-top{display:flex;justify-content:space-between;align-items:center}
 .up-kind{font-size:13px;font-weight:700;color:var(--gold-d)}
 .up-dday{background:var(--up);color:#fff;font-weight:900;font-size:13px;border-radius:7px;padding:2px 9px}
@@ -811,7 +812,6 @@ body{overflow-x:hidden}
 .ch-t b.down{color:var(--market-down);font-weight:600}
 .ch-cd span{vertical-align:middle}
 .ch-gl{width:12px;height:28px;vertical-align:middle;margin-right:6px}
-.ch-now{font-style:normal;font-size:11px;color:var(--gold-d);background:var(--gold-bg);padding:0 6px;border-radius:999px;margin-left:4px}
 .ch-md{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;border-radius:50%;font-size:11.5px;font-weight:800;color:#fff}
 .ch-md.m1{background:#c9963a}
 .ch-md.m2{background:#8a94a3}
@@ -1280,3 +1280,8 @@ html,body{overflow-x:clip}
 /* 11/28: 글로벌 섹터 목록 등락(b.up/b.down)이 '다가오는 일정' .up 상자 규칙과 겹쳐 금색 상자로 보이던 문제 */
 .ch-global-card b.up,.ch-global-card b.down,.ch-global-card b.dim{background:none;border:0;border-radius:0;padding:0;display:inline;flex-direction:initial}
 .ch-global-card b.up{color:var(--market-up)}.ch-global-card b.down{color:var(--market-down)}.ch-global-card b.dim{color:var(--sub)}
+
+/* 11/28 운영자(모바일): 시간외 칸 가격·등락이 칸 밖으로 밀리던 문제 — 좁으면 등락을 아래 줄로 */
+.cx-two .cx-quote{display:flex;flex-wrap:wrap;column-gap:.45em;row-gap:0;white-space:normal}
+.cx-two .cx-quote>span{white-space:nowrap}
+.cx-two .cx-quote>span.up,.cx-two .cx-quote>span.down,.cx-two .cx-quote>span.dim{background:none;border:0;padding:0;border-radius:0}
